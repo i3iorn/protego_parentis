@@ -1,0 +1,106 @@
+package dev.schrammel.dementor_watch.model
+
+import java.time.Instant
+import kotlin.time.Duration
+
+/**
+ * Why an app is unavailable.
+ *
+ * Every reason carries [liftsAt] so the block screen can always answer the only
+ * question the teen actually has, which is "until when?". A null [liftsAt] means
+ * indefinitely — only a parent can clear it.
+ */
+sealed interface Reason {
+    val liftsAt: Instant?
+
+    /** A parent blocked this app outright. */
+    data object ManuallyBlocked : Reason {
+        override val liftsAt: Instant? get() = null
+    }
+
+    /** A named schedule window is running and does not allow this app. */
+    data class ScheduleActive(
+        val scheduleId: ScheduleId,
+        val scheduleName: String,
+        override val liftsAt: Instant,
+    ) : Reason
+
+    /** The device-wide daily allowance is spent. */
+    data class DeviceBudgetExhausted(override val liftsAt: Instant) : Reason
+
+    /** This app's own daily allowance is spent. */
+    data class AppBudgetExhausted(
+        val pkg: PackageName,
+        override val liftsAt: Instant,
+    ) : Reason
+
+    /**
+     * A category this app belongs to has spent its allowance. Carries the name so
+     * the block screen can say "Games is used up" rather than something abstract.
+     */
+    data class CategoryBudgetExhausted(
+        val categoryId: CategoryId,
+        val categoryName: String,
+        override val liftsAt: Instant,
+    ) : Reason
+}
+
+/** Position on the warning ladder. */
+enum class BudgetLevel {
+    /** More than the notice threshold remaining. */
+    NORMAL,
+
+    /** Inside the notice threshold — a one-off notification has been earned. */
+    NOTICE,
+
+    /** Inside the grace threshold — persistent banner, one-tap request offered. */
+    GRACE,
+
+    /** Spent. Enforcement applies. */
+    EXHAUSTED,
+}
+
+/**
+ * A budget's standing right now. [allowed] excludes bonus time and [remaining]
+ * includes it, so reports can tell a well-behaved week from a topped-up one.
+ */
+data class BudgetStatus(
+    val allowed: Duration,
+    val used: Duration,
+    val bonus: Duration,
+    val remaining: Duration,
+    val level: BudgetLevel,
+) {
+    val isUnlimited: Boolean get() = allowed.isInfinite()
+    val isExhausted: Boolean get() = level == BudgetLevel.EXHAUSTED
+}
+
+/**
+ * The complete desired state of the device, computed from policy plus usage.
+ *
+ * This is what the reconciler drives `DevicePolicyManager` towards. It is a pure
+ * value: the same inputs always produce the same enforcement, which is what makes
+ * the whole engine testable without a device.
+ */
+data class Enforcement(
+    val policyVersion: Long,
+    val suspend: Map<PackageName, Reason>,
+    val hide: Set<PackageName>,
+    /**
+     * Suspensions withheld because a call or navigation session is running.
+     * They apply as soon as that clears — see [DeviceState.suspensionDeferred].
+     */
+    val deferred: Map<PackageName, Reason>,
+    val deviceBudget: BudgetStatus,
+    val appBudgets: Map<PackageName, BudgetStatus>,
+    val categoryBudgets: Map<CategoryId, BudgetStatus>,
+    val activeSchedules: List<ScheduleBlock>,
+    /**
+     * When this decision would next change on its own — the next day boundary, a
+     * schedule edge, a grant expiry, or the projected moment the foreground app
+     * exhausts its budget. The service sets an exact alarm for this instead of polling.
+     */
+    val nextChangeAt: Instant?,
+) {
+    fun reasonFor(pkg: PackageName): Reason? = suspend[pkg] ?: deferred[pkg]
+}

@@ -1,0 +1,142 @@
+<resources>
+    <string name="app_name">Dementor Watch</string>
+
+    <!-- Persistent notification. Required by policy: this app is never hidden. -->
+    <string name="service_channel_name">Screen time</string>
+    <string name="service_channel_description">Shows that screen-time rules are active on this device.</string>
+    <string name="service_notification_title">Screen time is on</string>
+    <string name="service_notification_text">Checking your screen time…</string>
+    <string name="service_needs_permission">Tap to finish setting up</string>
+    <string name="service_remaining">%1$s left today</string>
+    <string name="service_used_up">Today\'s time is used up</string>
+    <string name="service_no_limit">%1$s today</string>
+
+    <!-- The warning ladder. -->
+    <string name="warning_channel_name">Time warnings</string>
+    <string name="warning_channel_description">Warns you before your daily screen time runs out.</string>
+    <string name="warn_title">Screen time</string>
+    <string name="warn_notice">%1$s left today. Time to start wrapping up.</string>
+    <string name="warn_grace">Only %1$s left. Ask for more time if you need it.</string>
+    <string name="warn_exhausted">Today\'s screen time is used up. It resets at 4am.</string>
+
+    <!-- Compliance / disclosure. -->
+    <string name="compliance_title">Set up Dementor Watch</string>
+    <string name="compliance_disclosure">This phone is managed by your family.\n\nWhat is shared: which apps you use and for how long, your daily screen time, and whether the phone is on and charged.\n\nWhat is never shared: your messages, your photos, what you type, and what is on your screen.\n\nYou can see everything your parent sees, at any time, in this app.</string>
+    <string name="compliance_continue">I understand, continue</string>
+
+    <!-- Home ("My time"). -->
+    <string name="home_title">My time</string>
+    <string name="home_permission_title">One thing left to do</string>
+    <string name="home_permission_body">Dementor Watch needs usage access to measure screen time. Find Dementor Watch in the list on the next screen and turn it on.</string>
+    <string name="home_permission_button">Open settings</string>
+    <string name="home_remaining">%1$s left today</string>
+    <string name="home_used_of">%1$s used of %2$s</string>
+    <string name="home_used_no_limit">%1$s used today</string>
+    <string name="home_no_limit_headline">No limit set</string>
+    <string name="home_used_up">Time\'s up for today</string>
+    <string name="home_resets">Resets at 4:00am</string>
+    <string name="home_monitor_only">Watching only. This phone is not set up for blocking, so nothing gets blocked — the rules below are being checked but not applied.</string>
+    <string name="home_managed">This phone is managed. Rules below are being enforced.</string>
+    <string name="home_rules_header">My rules</string>
+    <string name="home_apps_header">Today</string>
+    <string name="home_would_block_header">Would be blocked right now</string>
+    <string name="home_edit_rules">Change rules</string>
+    <string name="home_no_usage">No screen time recorded yet today.</string>
+    <string name="home_nothing_blocked">Nothing is blocked right now.</string>
+    <string name="home_rule_limit">Daily limit: %1$s</string>
+    <string name="home_rule_no_limit">No daily limit</string>
+    <string name="home_rule_bedtime">Bedtime: %1$s to %2$s</string>
+    <string name="home_rule_no_bedtime">No bedtime set</string>
+    <string name="home_until">until %1$s</string>
+
+    <!-- Rules editor. -->
+    <string name="rules_title">Change rules</string>
+    <string name="rules_daily_limit_header">Daily limit</string>
+    <string name="rules_daily_limit_hint">Drag to zero for no limit. Try 5 minutes to see the warnings work.</string>
+    <string name="rules_bedtime_header">Bedtime</string>
+    <string name="rules_bedtime_enable">Turn on bedtime</string>
+    <string name="rules_bedtime_start">Starts  %1$s</string>
+    <string name="rules_bedtime_end">Ends  %1$s</string>
+    <string name="rules_done">Done</string>
+    <string name="rules_categories_header">Categories</string>
+    <string name="rules_categories_hint">Each category has its own daily limit. An app can be in more than one — its time counts against every category it belongs to.</string>
+    <string name="rules_no_categories">No categories yet.</string>
+    <string name="rules_category_row">%1$s — %2$s · %3$s</string>
+    <plurals name="rules_category_apps">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
+    <string name="rules_add_category">Add category</string>
+    <string name="rules_exempt_header">Apps with no limit</string>
+    <string name="rules_exempt_hint">These ignore the daily limit, bedtime, and every category.</string>
+    <string name="rules_no_exempt">None chosen.</string>
+    <string name="rules_choose_exempt">Choose apps</string>
+    <string name="rules_app_limits_header">Single app limits</string>
+    <string name="rules_app_limits_hint">A limit for one app on its own, on top of any category it is in.</string>
+    <string name="rules_open_app_limits">Set app limits</string>
+    <string name="rules_bonus_header">Bonus time</string>
+    <string name="rules_bonus_hint">Extra time for today only. It never changes the limits themselves.</string>
+    <string name="rules_open_bonus">Give bonus time</string>
+    <string name="rules_security_header">Security</string>
+    <string name="rules_change_pin">Change PIN</string>
+    <string name="rules_device_header">Device control</string>
+    <string name="rules_device_status_owner">This phone is under full control. Limits are enforced.</string>
+    <string name="rules_device_status_monitor">This phone is not under control yet, so nothing is blocked. Limits are only measured.</string>
+    <string name="rules_tamper_enable">Lock this phone down</string>
+    <string name="rules_tamper_hint">Blocks factory reset, clock changes, safe mode, and stops this app being uninstalled. Correct for a child phone. Do not turn this on while testing on your own phone.</string>
+    <string name="rules_release">Release this phone</string>
+    <string name="rules_release_confirm_title">Release this phone?</string>
+    <string name="rules_release_confirm_body">Every limit is lifted, all blocked apps are restored, and this app gives up control. You would need to set it up again from scratch.</string>
+    <string name="rules_release_done">Released. This phone is no longer controlled.</string>
+    <string name="rules_release_not_owner">This phone is not under control, so there is nothing to release.</string>
+
+    <!-- PIN. -->
+    <string name="pin_title">Parent PIN</string>
+    <string name="pin_create">Choose a PIN. You will need it to change the rules.</string>
+    <string name="pin_confirm">Enter the same PIN again.</string>
+    <string name="pin_enter">Enter your PIN to change the rules.</string>
+    <string name="pin_hint">PIN</string>
+    <string name="pin_continue">Continue</string>
+    <string name="pin_wrong">That PIN is not right.</string>
+    <string name="pin_mismatch">Those did not match. Start again.</string>
+    <plurals name="pin_too_short">
+        <item quantity="one">Use at least %d digit.</item>
+        <item quantity="other">Use at least %d digits.</item>
+    </plurals>
+
+    <!-- Category editor. -->
+    <string name="category_title">Category</string>
+    <string name="category_name_hint">Name, for example Games</string>
+    <string name="category_name_required">Give the category a name.</string>
+    <string name="category_limit_header">Daily limit</string>
+    <string name="category_apps_header">Apps in this category</string>
+    <string name="category_no_apps">No apps chosen yet.</string>
+    <string name="category_choose_apps">Choose apps</string>
+    <string name="category_save">Save</string>
+    <string name="category_delete">Delete category</string>
+
+    <!-- Single app limits. -->
+    <string name="app_limits_title">App limits</string>
+    <string name="app_limits_hint">Tap an app to give it its own daily limit. Apps that already have one are listed first.</string>
+    <string name="app_limits_none">No limit</string>
+    <string name="app_limits_save">Save</string>
+
+    <!-- Bonus time. -->
+    <string name="bonus_title">Bonus time</string>
+    <string name="bonus_hint">Extra time for today. It expires at 4am and does not change the limits.</string>
+    <string name="bonus_device_header">Whole device</string>
+    <string name="bonus_category_header">A category</string>
+    <string name="bonus_add_minutes">+%1$d min</string>
+    <plurals name="bonus_granted">
+        <item quantity="one">Added %d minute for today.</item>
+        <item quantity="other">Added %d minutes for today.</item>
+    </plurals>
+    <string name="bonus_clear">Remove bonus time for today</string>
+    <string name="bonus_cleared">Bonus time removed.</string>
+
+    <!-- Home: category budgets. -->
+    <string name="home_categories_header">Category limits</string>
+    <string name="home_category_row">%1$s: %2$s left</string>
+    <string name="home_category_used_up">%1$s: used up</string>
+    <string name="home_category_no_limit">%1$s: no limit</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deliberately narrow. We ask for what enforcement actually needs and nothing
+  more: no wipe-data, no camera disable. A parental control app holding wipe
+  authority over a teenager's phone is both unnecessary and a bad look in review.
+-->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- lockNow(), used by the parent's "lock device" action. -->
+        <force-lock />
+        <!-- Required for setMaximumTimeToLock and keyguard configuration. -->
+        <limit-password />
+        <watch-login />
+    </uses-policies>
+</device-admin>

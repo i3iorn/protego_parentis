@@ -1,0 +1,37 @@
+# Build output
+build/
+.gradle/
+.kotlin/
+
+# Local machine configuration. Contains the absolute path to your Android SDK,
+# so it must never be shared — it differs on every machine.
+local.properties
+
+# Android Studio / IntelliJ. Most of .idea is per-developer state; the few files
+# worth sharing are listed as exceptions below.
+.idea/*
+!.idea/gradle.xml
+!.idea/compiler.xml
+!.idea/misc.xml
+.idea/workspace.xml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/deploymentTargetSelector.xml
+.idea/deploymentTargetDropDown.xml
+*.iml
+
+# Signing material. A leaked release keystore cannot be revoked — losing control
+# of it means anyone can ship an update that looks like ours.
+*.jks
+*.keystore
+keystore.properties
+
+# Captures and profiling
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS noise
+.DS_Store
+Thumbs.db

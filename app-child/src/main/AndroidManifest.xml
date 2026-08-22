@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      Both are allowed under Play's parental-control exception but need a
+      declaration form at submission time. See spec section 7.
+    -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+
+        <!--
+          The device owner receiver. Android hands provisioning results here, and
+          every DevicePolicyManager call is made against this component.
+        -->
+        <receiver
+            android:name=".dpc.DementorDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+                <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Tells the setup wizard we want a fully managed device, not a work profile. -->
+        <activity
+            android:name=".setup.GetProvisioningModeActivity"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <intent-filter>
+                <action android:name="android.app.action.GET_PROVISIONING_MODE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          The one moment we have the teen's attention on a fresh device: pairing,
+          permissions, and the monitoring disclosure they must acknowledge.
+        -->
+        <activity
+            android:name=".setup.ComplianceActivity"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <intent-filter>
+                <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.HomeActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.RulesActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <!--
+          excludeFromRecents so the PIN screen cannot be skipped by resuming the
+          rules editor from the recents list.
+        -->
+        <activity
+            android:name=".ui.PinActivity"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.AppPickerActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.AppLimitsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.BonusTimeActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.CategoryEditActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <receiver
+            android:name=".enforcement.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".enforcement.EnforcementService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Enforces the family's screen-time rules and keeps the parent's dashboard current." />
+        </service>
+    </application>
+
+</manifest>

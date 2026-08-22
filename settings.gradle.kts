@@ -1,0 +1,34 @@
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "dementor_watch"
+
+// Pure-JVM core. No Android dependencies, no device required to test.
+include(":core-model")
+include(":core-policy")
+include(":core-provisioning")
+
+// The Device Policy Controller that runs on the teen's phone.
+// This is the module that produces the installable APK.
+include(":app-child")
