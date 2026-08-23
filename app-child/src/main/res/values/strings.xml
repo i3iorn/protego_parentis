@@ -626,4 +626,58 @@
     <string name="audit_broken_hint">Some entries no longer follow from the ones before them. Something edited or removed part of this record outside the app.</string>
     <string name="audit_device_approved">Approved %1$s as %2$s</string>
     <string name="audit_device_revoked">Removed %1$s from the family</string>
+
+    <string name="privacy_summary_header">What your parents\' phones are sent</string>
+    <string name="privacy_summary_body">Today\'s total, how much of the limit is left, and the five apps you used most, with how long each was open. No times, no history of when you used anything, and nothing about what you did inside an app. Your parents see the same numbers you see on this phone — nothing more.</string>
+
+    <!-- Why an app is unavailable. -->
+    <string name="reason_blocked">Blocked</string>
+    <string name="reason_unmanaged_browser">This browser cannot be filtered</string>
+    <string name="reason_daily_limit">Daily limit</string>
+    <string name="reason_app_limit">App limit</string>
+
+    <!-- Web filtering (WF-1, WF-2). -->
+    <string name="rules_row_web">Web filtering</string>
+    <string name="rules_row_web_detail">Block adult sites device-wide, and lock down the browser</string>
+    <string name="web_title">Web filtering</string>
+    <string name="web_intro">Two separate things. One points the whole phone at a filtering name server; the other tells Chrome what it may do.</string>
+    <string name="web_dns_header">Filtering name server</string>
+    <string name="web_dns_hint">Covers every app on the phone, including pages opened inside apps, and costs nothing in battery. It blocks whole sites — it cannot filter what is inside one.</string>
+    <string name="web_dns_off">No filtering</string>
+    <string name="web_dns_malware">Block malware</string>
+    <string name="web_dns_adult">Block malware and adult sites</string>
+    <string name="web_dns_strict">Block adult sites, ads and trackers</string>
+    <string name="web_dns_custom">A server I choose</string>
+    <string name="web_dns_custom_label">Server name, if you chose your own</string>
+    <string name="web_dns_custom_hint">dns.example.com</string>
+    <string name="web_dns_bad_host">That does not look like a server name. It should look like dns.example.com, with no https:// and no slashes.</string>
+    <string name="web_dns_save">Save</string>
+    <string name="web_dns_saved">Saved. If the phone rejects the server, it will say so on the rules screen.</string>
+    <string name="web_browser_header">Browser</string>
+    <string name="web_browser_hint">These reach Chrome only. Chrome honours them because it accepts settings from a managed device.</string>
+    <string name="web_safe_search">Force SafeSearch</string>
+    <string name="web_youtube">Restrict YouTube</string>
+    <string name="web_incognito">Turn off incognito</string>
+    <string name="web_suspend_browsers">Pause browsers that cannot be filtered</string>
+    <string name="web_suspend_browsers_hint">Other browsers ignore these settings, so leaving one installed is a way straight round them. Pausing takes the browser away rather than filtering it, which needs explaining to whoever holds the phone.</string>
+    <string name="web_limits_note">Neither of these filters what happens inside an app. A video suggested in a feed is not a web page, and nothing here will touch it.</string>
+    <string name="rules_dns_failed">The phone refused the filtering server. Nothing is being filtered — check the name and save again.</string>
+
+    <!-- The parent's today view (RPT-1). -->
+    <string name="parent_today_header">Today</string>
+    <string name="parent_today_none">Nothing heard yet today</string>
+    <string name="parent_today_none_hint">Today\'s totals arrive with the next check-in.</string>
+    <string name="parent_today_used">Used</string>
+    <string name="parent_today_remaining">Left</string>
+    <string name="parent_today_no_limit">No daily limit set</string>
+    <string name="parent_today_apps">Where the time went</string>
+    <string name="parent_today_as_of">As of %1$s</string>
+
+    <!-- Device health (LOC-4). -->
+    <string name="integrity_switched_off">Switched off</string>
+    <string name="integrity_switched_off_hint">The phone said it was switching off. It will check in again when it comes back.</string>
+    <string name="integrity_battery_notification">The other phone is low on battery and may switch off soon.</string>
+
+    <string name="audit_web_filter_changed">Web filtering set to %1$s</string>
+    <string name="audit_browser_policy_changed">Browser setting \"%1$s\" turned %2$s</string>
 </resources>

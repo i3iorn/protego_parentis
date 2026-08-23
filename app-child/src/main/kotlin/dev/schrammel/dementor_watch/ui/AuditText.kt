@@ -7,6 +7,7 @@ import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.AuditEntry
 import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.ValueKind
+import dev.schrammel.dementor_watch.rules.DnsProfile
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.sync.SyncRole
 import java.time.LocalTime
@@ -119,6 +120,12 @@ object AuditText {
 
             AuditAction.PIN_CHANGED -> context.getString(R.string.audit_pin_changed)
 
+            AuditAction.WEB_FILTER_CHANGED ->
+                context.getString(R.string.audit_web_filter_changed, webProfile(context, entry.after))
+
+            AuditAction.BROWSER_POLICY_CHANGED ->
+                context.getString(R.string.audit_browser_policy_changed, subject, after)
+
             AuditAction.DEVICE_APPROVED -> context.getString(
                 R.string.audit_device_approved,
                 subject,
@@ -190,6 +197,16 @@ object AuditText {
             R.string.audit_install_gated
         } else {
             R.string.audit_install_notify
+        },
+    )
+
+    private fun webProfile(context: Context, raw: String?): String = context.getString(
+        when (DnsProfile.parse(raw)) {
+            DnsProfile.OFF -> R.string.web_dns_off
+            DnsProfile.MALWARE -> R.string.web_dns_malware
+            DnsProfile.ADULT -> R.string.web_dns_adult
+            DnsProfile.STRICT -> R.string.web_dns_strict
+            DnsProfile.CUSTOM -> R.string.web_dns_custom
         },
     )
 

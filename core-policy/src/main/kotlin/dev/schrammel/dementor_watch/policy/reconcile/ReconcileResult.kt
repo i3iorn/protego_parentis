@@ -19,6 +19,8 @@ data class ReconcileResult(
     val failed: Set<PackageName> = emptySet(),
     val restrictionsAdded: Set<String> = emptySet(),
     val restrictionsCleared: Set<String> = emptySet(),
+    /** Whether this pass changed where the device sends its DNS queries (WF-1). */
+    val dnsChanged: Boolean = false,
     /**
      * Attempts to restrict something that must never be restricted. Always empty
      * in normal operation; a non-empty list means a bug upstream and should raise

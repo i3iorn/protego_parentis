@@ -18,6 +18,18 @@ sealed interface Reason {
         override val liftsAt: Instant? get() = null
     }
 
+    /**
+     * A browser that does not honour managed configuration, while web filtering
+     * is on (WF-2).
+     *
+     * Distinct from [ManuallyBlocked] because the answer to "why?" is different
+     * and actionable: this app cannot filter this browser, so it is paused rather
+     * than left as a way round the filter. Using the managed browser lifts it.
+     */
+    data object UnmanagedBrowser : Reason {
+        override val liftsAt: Instant? get() = null
+    }
+
     /** A named schedule window is running and does not allow this app. */
     data class ScheduleActive(
         val scheduleId: ScheduleId,
@@ -111,6 +123,16 @@ data class Enforcement(
     val activeSchedules: List<ScheduleBlock>,
     /** Contextual rules applying right now, for showing on the dashboard. */
     val activeContextRules: List<ContextRule> = emptyList(),
+    /**
+     * The filtering resolver the device should be pointed at, or null for none.
+     *
+     * Carried through the enforcement value rather than read from the policy by
+     * the reconciler, so everything the device is driven towards arrives from one
+     * place and can be asserted in one test.
+     */
+    val dnsHost: String? = null,
+    /** Managed configuration per package, applied as-is by the reconciler (WF-2). */
+    val appRestrictions: Map<PackageName, Map<String, RestrictionValue>> = emptyMap(),
     /**
      * Whether new installs are barred right now (AC-3).
      *

@@ -22,6 +22,18 @@ enum class SyncMessageType {
     /** Parent → child: that new app is fine, or it is not. */
     APP_DECIDED,
 
+    /** Child → parents: today's totals, for the parent's one-glance view (RPT-1). */
+    DAILY_SUMMARY,
+
+    /**
+     * Child → parents: this phone is switching off (LOC-4).
+     *
+     * Best effort. A phone being shut down has seconds and may lose the network
+     * first, so its absence means nothing; its arrival is what distinguishes
+     * "switched off" from "lost signal".
+     */
+    DEVICE_STOPPING,
+
     /**
      * Either → everyone: this is who I am.
      *

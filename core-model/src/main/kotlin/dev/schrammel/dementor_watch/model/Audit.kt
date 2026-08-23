@@ -82,6 +82,8 @@ enum class AuditAction(val valueKind: ValueKind) {
     // ---------- the device itself ----------
     PIN_CHANGED(ValueKind.NONE),
     SYNC_CONFIGURED(ValueKind.FLAG),
+    WEB_FILTER_CHANGED(ValueKind.TOKEN),
+    BROWSER_POLICY_CHANGED(ValueKind.FLAG),
     DEVICE_APPROVED(ValueKind.TOKEN),
     DEVICE_REVOKED(ValueKind.NONE),
     INSTALL_POLICY_CHANGED(ValueKind.TOKEN),

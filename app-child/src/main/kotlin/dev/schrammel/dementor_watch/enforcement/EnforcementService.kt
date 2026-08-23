@@ -28,6 +28,7 @@ import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
+import dev.schrammel.dementor_watch.sync.AppTime
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
@@ -97,6 +98,21 @@ class EnforcementService : Service() {
         }
     }
 
+    /**
+     * Fires as the phone shuts down (LOC-4).
+     *
+     * Best effort, and unreliable by nature: a shutting-down phone has seconds and
+     * may lose the network first. Its absence therefore means nothing — but when
+     * it does arrive it lets a parent see "switched off" rather than "gone quiet",
+     * which is the difference between shrugging and worrying.
+     */
+    private val onShutdown = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != Intent.ACTION_SHUTDOWN) return
+            runCatching { sync.publishStopping() }
+        }
+    }
+
     private val tick = object : Runnable {
         override fun run() {
             // An exception escaping here would kill the Runnable and stop
@@ -130,6 +146,12 @@ class EnforcementService : Service() {
             this,
             onUnlocked,
             IntentFilter(Intent.ACTION_USER_PRESENT),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        ContextCompat.registerReceiver(
+            this,
+            onShutdown,
+            IntentFilter(Intent.ACTION_SHUTDOWN),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         ContextCompat.registerReceiver(
@@ -183,6 +205,7 @@ class EnforcementService : Service() {
         worker.quitSafely()
         runCatching { unregisterReceiver(onUnlocked) }
         runCatching { unregisterReceiver(onPackagesChanged) }
+        runCatching { unregisterReceiver(onShutdown) }
         super.onDestroy()
     }
 
@@ -244,8 +267,17 @@ class EnforcementService : Service() {
 
         // Throttled inside the coordinator: this tick can fire every fifteen
         // seconds when a limit is close, and a heartbeat that often is a battery bug.
-        runCatching { sync.publishHeartbeat(heartbeatOf(snapshot, now)) }
+        val saidHello = runCatching { sync.publishHeartbeat(heartbeatOf(snapshot, now)) }
             .onFailure { Log.w(TAG, "Could not send heartbeat", it) }
+            .isSuccess
+
+        // Rides the heartbeat's throttle: the two answer the same question from a
+        // parent, and there is no sense in one being fresh while the other is a
+        // quarter of an hour stale.
+        if (saidHello) {
+            runCatching { publishToday(snapshot) }
+                .onFailure { Log.w(TAG, "Could not send today's summary", it) }
+        }
 
         // Introduces this phone to any parent that has not enrolled it yet.
         // Throttled inside the coordinator to once an hour.
@@ -299,6 +331,35 @@ class EnforcementService : Service() {
         usageAccessGranted = true,
         suspendedCount = snapshot.enforcement.suspend.size,
     )
+
+    /**
+     * Today's totals, for the parent's one-glance view (RPT-1).
+     *
+     * A summary, not a log: totals, and the handful of apps that account for most
+     * of them. No times, no sessions, nothing about *when*. The child sees the
+     * identical figures on their own dashboard, and the privacy screen names this
+     * message so nobody has to guess what leaves the phone.
+     */
+    private fun publishToday(snapshot: EnforcementSnapshot) {
+        val budget = snapshot.enforcement.deviceBudget
+        val top = snapshot.usage.snapshot.byPackage
+            .entries
+            .sortedByDescending { it.value }
+            .take(resources.getInteger(R.integer.week_top_apps))
+            .filter { it.value.inWholeMinutes > 0 }
+            .map { (pkg, time) ->
+                AppTime(installedApps.labelFor(pkg), time.inWholeMinutes.toInt())
+            }
+
+        sync.publishDailySummary(
+            usedMinutes = budget.used.inWholeMinutes.toInt(),
+            // Infinite means no limit; zero is how that travels.
+            allowedMinutes = if (budget.isUnlimited) 0 else budget.allowed.inWholeMinutes.toInt(),
+            bonusMinutes = budget.bonus.inWholeMinutes.toInt(),
+            level = budget.level.ordinal,
+            topApps = top,
+        )
+    }
 
     /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
     private fun batteryPercent(): Int =

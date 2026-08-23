@@ -20,6 +20,16 @@ class PolicyReconciler(
     private val selfPackage: PackageName,
 ) {
 
+    /**
+     * Packages given managed configuration by the last pass.
+     *
+     * Held here rather than read back from the device because the device reports
+     * what this app last wrote, which cannot distinguish "we set nothing" from
+     * "someone else set nothing". Losing it across a process restart costs one
+     * redundant clear, which is harmless.
+     */
+    private var managedLast: Set<PackageName> = emptySet()
+
     fun reconcile(policy: Policy, enforcement: Enforcement): ReconcileResult {
         if (!port.isDeviceOwner()) {
             // Monitor-only mode, or the app lost ownership. Enforcement is not
@@ -65,6 +75,13 @@ class PolicyReconciler(
             // Only when the family has explicitly asked to lock the device down.
             // Without this, provisioning alone would make the device unresettable.
             if (policy.tamperProtection) addAll(TamperRestrictions.BASELINE)
+            // Independent of lockdown: a filter that can be switched off from
+            // Settings in three taps is not a filter. The VPN lock goes with it,
+            // because a VPN carries DNS with it and would route straight past.
+            if (enforcement.dnsHost != null) {
+                add(TamperRestrictions.NO_CONFIG_PRIVATE_DNS)
+                add(TamperRestrictions.NO_CONFIG_VPN)
+            }
             // Whether the gate is shut right now is the engine's call, not ours —
             // it depends on the clock, and this class deliberately has none.
             if (enforcement.installsBlocked) add(TamperRestrictions.NO_INSTALL_APPS)
@@ -78,6 +95,32 @@ class PolicyReconciler(
 
         restrictionsToAdd.forEach(port::addUserRestriction)
         restrictionsToClear.forEach(port::clearUserRestriction)
+
+        // --- web filtering ---
+        var dnsChanged = false
+        if (port.currentPrivateDnsHost() != enforcement.dnsHost) {
+            if (port.setPrivateDnsHost(enforcement.dnsHost)) {
+                dnsChanged = true
+            } else {
+                // Almost always a host that does not answer DNS-over-TLS. Loud,
+                // because a family that believes the phone is filtered and finds
+                // out later that it never was has been actively misled.
+                violations += "could not point private DNS at ${enforcement.dnsHost}"
+            }
+        }
+
+        // Managed configuration is pushed unconditionally rather than diffed:
+        // reading it back reports what this app last set, not what the browser is
+        // acting on, so a diff would skip a re-push after the browser was updated.
+        enforcement.appRestrictions.forEach { (pkg, restrictions) ->
+            port.setApplicationRestrictions(pkg, restrictions)
+        }
+        // A package that was managed and no longer is has its configuration
+        // cleared, or yesterday's blocklist would outlive the rule that set it.
+        (managedLast - enforcement.appRestrictions.keys).forEach { pkg ->
+            port.setApplicationRestrictions(pkg, emptyMap())
+        }
+        managedLast = enforcement.appRestrictions.keys
 
         // --- self-protection ---
         // Tied to the same switch: if the device is not locked down, the app must
@@ -94,6 +137,7 @@ class PolicyReconciler(
             failed = failed,
             restrictionsAdded = restrictionsToAdd,
             restrictionsCleared = restrictionsToClear,
+            dnsChanged = dnsChanged,
             invariantViolations = violations,
         )
     }

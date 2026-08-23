@@ -218,7 +218,12 @@ class ParentDeviceActivity : ParentRoleActivity() {
 
     private fun titleFor(problem: IntegrityProblem): Int = when (problem) {
         IntegrityProblem.NEVER_HEARD -> R.string.integrity_never_heard
-        IntegrityProblem.SILENT -> R.string.integrity_silent
+        IntegrityProblem.SILENT ->
+            if (heartbeats.stoppedAfterLastHeartbeat()) {
+                R.string.integrity_switched_off
+            } else {
+                R.string.integrity_silent
+            }
         IntegrityProblem.USAGE_ACCESS_MISSING -> R.string.integrity_usage_access
         IntegrityProblem.NOT_MANAGED -> R.string.integrity_not_managed
         IntegrityProblem.BATTERY_LOW -> R.string.integrity_battery_low
@@ -226,7 +231,12 @@ class ParentDeviceActivity : ParentRoleActivity() {
 
     private fun hintFor(problem: IntegrityProblem): Int = when (problem) {
         IntegrityProblem.NEVER_HEARD -> R.string.integrity_never_heard_hint
-        IntegrityProblem.SILENT -> R.string.integrity_silent_hint
+        IntegrityProblem.SILENT ->
+            if (heartbeats.stoppedAfterLastHeartbeat()) {
+                R.string.integrity_switched_off_hint
+            } else {
+                R.string.integrity_silent_hint
+            }
         IntegrityProblem.USAGE_ACCESS_MISSING -> R.string.integrity_usage_access_hint
         IntegrityProblem.NOT_MANAGED -> R.string.integrity_not_managed_hint
         IntegrityProblem.BATTERY_LOW -> R.string.integrity_battery_low_hint

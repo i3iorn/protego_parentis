@@ -141,6 +141,13 @@ class EnforcementCoordinator(context: Context) {
             grants = grants.active(now),
             deviceState = DeviceState(foregroundPackage = usage.foregroundPackage),
             context = surroundings,
+            // Only read when browser policy is on; on a phone with no filtering
+            // configured this is an empty set and costs a map lookup.
+            browsers = if (policy.browserPolicy.suspendUnmanagedBrowsers) {
+                runCatching { installedApps.browsers() }.getOrDefault(emptySet())
+            } else {
+                emptySet()
+            },
             now = now,
         )
 

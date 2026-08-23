@@ -85,6 +85,8 @@ object RosterRules {
         SyncMessageType.REQUEST_RAISED -> SyncRole.CHILD
         SyncMessageType.HEARTBEAT -> SyncRole.CHILD
         SyncMessageType.APP_INSTALLED -> SyncRole.CHILD
+        SyncMessageType.DAILY_SUMMARY -> SyncRole.CHILD
+        SyncMessageType.DEVICE_STOPPING -> SyncRole.CHILD
 
         SyncMessageType.REQUEST_DECIDED -> SyncRole.PARENT
         SyncMessageType.BONUS_GRANTED -> SyncRole.PARENT

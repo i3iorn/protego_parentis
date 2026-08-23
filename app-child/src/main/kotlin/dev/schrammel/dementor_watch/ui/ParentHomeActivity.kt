@@ -2,10 +2,16 @@ package dev.schrammel.dementor_watch.ui
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.model.BudgetLevel
+import dev.schrammel.dementor_watch.sync.DailySummary
+import dev.schrammel.dementor_watch.sync.DailySummaryStore
 import dev.schrammel.dementor_watch.sync.InboxStore
 import dev.schrammel.dementor_watch.sync.ParentPollWorker
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
@@ -30,6 +36,7 @@ class ParentHomeActivity : ParentRoleActivity() {
 
     private lateinit var sync: SyncCoordinator
     private lateinit var inbox: InboxStore
+    private lateinit var summaries: DailySummaryStore
     private lateinit var column: LinearLayout
 
     /** Null until this phone has successfully reached the topic in this session. */
@@ -40,6 +47,7 @@ class ParentHomeActivity : ParentRoleActivity() {
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
         inbox = InboxStore(this)
+        summaries = DailySummaryStore(this)
         // Idempotent, and re-asserted here so a phone that was granted the family
         // connection after choosing its role still starts listening.
         ParentPollWorker.schedule(this)
@@ -87,6 +95,9 @@ class ParentHomeActivity : ParentRoleActivity() {
             },
         )
 
+        column.addView(sectionHeader(getString(R.string.parent_today_header)))
+        column.addView(todayCard())
+
         column.addView(
             group(
                 listOf(
@@ -125,6 +136,103 @@ class ParentHomeActivity : ParentRoleActivity() {
                 ),
             ),
         )
+    }
+
+    /**
+     * Today on the child's phone (RPT-1).
+     *
+     * The figures a parent opens the app for, in the order they are wanted: how
+     * much is left, then how much has gone, then where. Identical to what the
+     * child sees on their own dashboard — that symmetry is the product's central
+     * promise, so this screen shows no more and no less.
+     */
+    private fun todayCard(): LinearLayout = card {
+        val today = summaries.latest
+        if (today == null) {
+            addView(
+                TextView(this@ParentHomeActivity).apply {
+                    setText(R.string.parent_today_none)
+                    styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                },
+            )
+            addView(captionText(getString(R.string.parent_today_none_hint)))
+            return@card
+        }
+
+        addView(
+            TextView(this@ParentHomeActivity).apply {
+                text = headlineFor(today)
+                styleAs(R.style.TextAppearance_Dementor_Display)
+                setTextColor(ContextCompat.getColor(context, colourFor(today)))
+            },
+        )
+
+        if (today.hasLimit) {
+            addView(
+                ProgressBar(
+                    this@ParentHomeActivity,
+                    null,
+                    android.R.attr.progressBarStyleHorizontal,
+                ).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dimen(R.dimen.budget_bar_height),
+                    ).apply { topMargin = dimen(R.dimen.space_md) }
+                    max = 100
+                    progress = percentUsed(today)
+                    progressTintList = ColorStateList.valueOf(
+                        ContextCompat.getColor(context, colourFor(today)),
+                    )
+                },
+            )
+        }
+
+        addView(
+            statRow(
+                getString(R.string.parent_today_used),
+                Format.limit(today.usedMinutes),
+            ),
+        )
+
+        if (today.topApps.isNotEmpty()) {
+            addView(captionText(getString(R.string.parent_today_apps)))
+            today.topApps.forEach { app ->
+                addView(statRow(app.label, Format.limit(app.minutes)))
+            }
+        }
+
+        addView(
+            captionText(
+                getString(
+                    R.string.parent_today_as_of,
+                    timeFormat.format(today.receivedAt.atZone(ZoneId.systemDefault())),
+                ),
+            ),
+        )
+    }
+
+    private fun headlineFor(today: DailySummary): String = when {
+        !today.hasLimit -> getString(R.string.parent_today_no_limit)
+        today.remainingMinutes <= 0 -> getString(R.string.home_used_up)
+        else -> getString(R.string.parent_today_remaining) + " " + Format.limit(today.remainingMinutes)
+    }
+
+    /**
+     * The level travels as an ordinal so a parent phone needs no copy of the
+     * rules to colour it. An unrecognised value reads as normal rather than as
+     * an alarm — a newer child build must not make this screen shout.
+     */
+    private fun colourFor(today: DailySummary): Int =
+        when (BudgetLevel.entries.getOrNull(today.level)) {
+            BudgetLevel.EXHAUSTED -> R.color.state_critical
+            BudgetLevel.GRACE, BudgetLevel.NOTICE -> R.color.state_warning
+            else -> R.color.state_ok
+        }
+
+    private fun percentUsed(today: DailySummary): Int {
+        val total = today.allowedMinutes + today.bonusMinutes
+        if (total <= 0) return 0
+        return ((today.usedMinutes * 100L) / total).coerceIn(0L, 100L).toInt()
     }
 
     private fun statusLine(configured: Boolean): String = when {

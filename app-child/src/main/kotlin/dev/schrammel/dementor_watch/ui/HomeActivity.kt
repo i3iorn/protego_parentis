@@ -386,11 +386,14 @@ class HomeActivity : DementorActivity() {
                 timeFormat.format(it.atZone(ZoneId.systemDefault())),
             )
         }
+        // Resources rather than literals: these were the last English strings
+        // left in the app, and a Swedish phone was showing three of them.
         val what = when (reason) {
-            is Reason.ManuallyBlocked -> "Blocked"
+            is Reason.ManuallyBlocked -> getString(R.string.reason_blocked)
+            is Reason.UnmanagedBrowser -> getString(R.string.reason_unmanaged_browser)
             is Reason.ScheduleActive -> reason.scheduleName
-            is Reason.DeviceBudgetExhausted -> "Daily limit"
-            is Reason.AppBudgetExhausted -> "App limit"
+            is Reason.DeviceBudgetExhausted -> getString(R.string.reason_daily_limit)
+            is Reason.AppBudgetExhausted -> getString(R.string.reason_app_limit)
             is Reason.CategoryBudgetExhausted -> reason.categoryName
             is Reason.ContextRuleActive -> reason.ruleName
         }

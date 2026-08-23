@@ -5,6 +5,7 @@ import dev.schrammel.dementor_watch.model.BudgetStatus
 import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.model.RestrictionValue
 import dev.schrammel.dementor_watch.model.Reason
 import dev.schrammel.dementor_watch.policy.DIALER
 import dev.schrammel.dementor_watch.policy.GAME
@@ -13,6 +14,7 @@ import dev.schrammel.dementor_watch.policy.YOUTUBE
 import dev.schrammel.dementor_watch.policy.policy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.time.Duration
@@ -66,6 +68,28 @@ internal class FakeDevicePolicyPort(
         if (blocked) uninstallBlocked += pkg else uninstallBlocked -= pkg
     }
 
+    var privateDnsHost: String? = null
+
+    /** Set to refuse the next change, standing in for a host that has no DoT. */
+    var refuseDns: Boolean = false
+
+    val appRestrictions: MutableMap<PackageName, Map<String, RestrictionValue>> = mutableMapOf()
+
+    override fun currentPrivateDnsHost(): String? = privateDnsHost
+
+    override fun setPrivateDnsHost(host: String?): Boolean {
+        if (refuseDns) return false
+        privateDnsHost = host
+        return true
+    }
+
+    override fun setApplicationRestrictions(
+        pkg: PackageName,
+        restrictions: Map<String, RestrictionValue>,
+    ) {
+        if (restrictions.isEmpty()) appRestrictions -= pkg else appRestrictions[pkg] = restrictions
+    }
+
     override fun clearDeviceOwner() {
         deviceOwner = false
     }
@@ -73,11 +97,15 @@ internal class FakeDevicePolicyPort(
 
 class PolicyReconcilerTest {
 
+    private val CHROME = PackageName("com.android.chrome")
+
     private fun enforcement(
         suspend: Set<PackageName> = emptySet(),
         hide: Set<PackageName> = emptySet(),
         version: Long = 1L,
         installsBlocked: Boolean = false,
+        dnsHost: String? = null,
+        appRestrictions: Map<PackageName, Map<String, RestrictionValue>> = emptyMap(),
     ) = Enforcement(
         policyVersion = version,
         suspend = suspend.associateWith { Reason.ManuallyBlocked },
@@ -93,6 +121,8 @@ class PolicyReconcilerTest {
         appBudgets = emptyMap(),
         categoryBudgets = emptyMap(),
         activeSchedules = emptyList(),
+        dnsHost = dnsHost,
+        appRestrictions = appRestrictions,
         installsBlocked = installsBlocked,
         nextChangeAt = null,
     )
@@ -249,6 +279,94 @@ class PolicyReconcilerTest {
             .reconcile(policy().copy(tamperProtection = false), enforcement())
 
         assertFalse(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
+    }
+
+    // ---------- web filtering ----------
+
+    @Test
+    fun `points the device at the filtering resolver`() {
+        val port = FakeDevicePolicyPort()
+        val result = PolicyReconciler(port, SELF)
+            .reconcile(policy(), enforcement(dnsHost = "family.cloudflare-dns.com"))
+
+        assertEquals("family.cloudflare-dns.com", port.privateDnsHost)
+        assertTrue(result.dnsChanged)
+    }
+
+    @Test
+    fun `leaves the resolver alone when it already matches`() {
+        val port = FakeDevicePolicyPort().apply { privateDnsHost = "family.cloudflare-dns.com" }
+
+        val result = PolicyReconciler(port, SELF)
+            .reconcile(policy(), enforcement(dnsHost = "family.cloudflare-dns.com"))
+
+        assertFalse(result.dnsChanged)
+    }
+
+    @Test
+    fun `turning filtering off releases the resolver`() {
+        val port = FakeDevicePolicyPort().apply { privateDnsHost = "family.cloudflare-dns.com" }
+
+        PolicyReconciler(port, SELF).reconcile(policy(), enforcement())
+
+        assertNull(port.privateDnsHost)
+    }
+
+    /**
+     * A host that does not answer DNS-over-TLS is refused by Android. Failing
+     * quietly would leave a family believing the phone was filtered when it never
+     * was, which is worse than not offering the feature.
+     */
+    @Test
+    fun `a resolver that cannot be set is reported as a violation`() {
+        val port = FakeDevicePolicyPort().apply { refuseDns = true }
+
+        val result = PolicyReconciler(port, SELF)
+            .reconcile(policy(), enforcement(dnsHost = "not.a.resolver"))
+
+        assertFalse(result.dnsChanged)
+        assertTrue(result.invariantViolations.any { it.contains("not.a.resolver") })
+    }
+
+    /** A filter that can be switched off in Settings is decoration. */
+    @Test
+    fun `filtering locks the DNS and VPN settings without lockdown`() {
+        val port = FakeDevicePolicyPort()
+        PolicyReconciler(port, SELF).reconcile(
+            policy().copy(tamperProtection = false),
+            enforcement(dnsHost = "family.cloudflare-dns.com"),
+        )
+
+        assertTrue(TamperRestrictions.NO_CONFIG_PRIVATE_DNS in port.restrictions)
+        assertTrue(TamperRestrictions.NO_CONFIG_VPN in port.restrictions)
+        // Not the rest of the lockdown, which the family did not ask for.
+        assertFalse(TamperRestrictions.NO_FACTORY_RESET in port.restrictions)
+    }
+
+    @Test
+    fun `pushes managed configuration to the browser`() {
+        val port = FakeDevicePolicyPort()
+        val config = mapOf<String, RestrictionValue>("ForceGoogleSafeSearch" to RestrictionValue.Flag(true))
+
+        PolicyReconciler(port, SELF).reconcile(
+            policy(),
+            enforcement(appRestrictions = mapOf(CHROME to config)),
+        )
+
+        assertEquals(config, port.appRestrictions[CHROME])
+    }
+
+    /** Yesterday's blocklist must not outlive the rule that set it. */
+    @Test
+    fun `clears configuration for a package it no longer manages`() {
+        val port = FakeDevicePolicyPort()
+        val reconciler = PolicyReconciler(port, SELF)
+        val config = mapOf<String, RestrictionValue>("ForceGoogleSafeSearch" to RestrictionValue.Flag(true))
+
+        reconciler.reconcile(policy(), enforcement(appRestrictions = mapOf(CHROME to config)))
+        reconciler.reconcile(policy(), enforcement())
+
+        assertNull(port.appRestrictions[CHROME])
     }
 
     @Test

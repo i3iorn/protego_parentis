@@ -167,6 +167,11 @@
             android:parentActivityName=".ui.SchedulesActivity" />
 
         <activity
+            android:name=".ui.WebFilterActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
             android:name=".ui.AppControlActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

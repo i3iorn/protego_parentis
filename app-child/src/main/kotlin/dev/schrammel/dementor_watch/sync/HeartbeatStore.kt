@@ -51,6 +51,34 @@ class HeartbeatStore(context: Context) {
         }
 
     /**
+     * Records that the phone said it was switching off (LOC-4).
+     *
+     * Stored as a fact about the last heartbeat rather than as a state of its own:
+     * the parent's screen already says "we have not heard from this phone", and a
+     * shutdown is that with a reason, which is the difference between a parent
+     * worrying and a parent shrugging.
+     */
+    fun recordStopped(at: Instant) {
+        prefs.edit { putLong(KEY_STOPPED_AT, at.toEpochMilli()) }
+    }
+
+    /** When the phone last said it was switching off, if it did. */
+    val stoppedAt: Instant?
+        get() = prefs.getLong(KEY_STOPPED_AT, 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
+
+    /**
+     * Whether the last thing heard was a shutdown.
+     *
+     * A heartbeat after the shutdown means the phone came back, so the goodbye is
+     * spent and the silence that follows is ordinary silence again.
+     */
+    fun stoppedAfterLastHeartbeat(): Boolean {
+        val stopped = stoppedAt ?: return false
+        val heard = latest?.sentAt ?: return true
+        return !stopped.isBefore(heard)
+    }
+
+    /**
      * Whether a "this phone has gone quiet" alert has already been raised for the
      * current stretch of silence, so it fires once rather than every fifteen
      * minutes until somebody looks at their phone.
@@ -70,5 +98,6 @@ class HeartbeatStore(context: Context) {
         const val KEY_USAGE_ACCESS = "usageAccess"
         const val KEY_SUSPENDED = "suspended"
         const val KEY_ALERTED = "silenceAlerted"
+        const val KEY_STOPPED_AT = "stoppedAt"
     }
 }

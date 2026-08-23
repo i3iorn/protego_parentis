@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import androidx.core.net.toUri
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.model.PackageName
 
@@ -57,6 +58,29 @@ class InstalledApps(context: Context) {
         return apps
     }
 
+    /**
+     * The apps that can open a web page (WF-2).
+     *
+     * Asked of the package manager rather than matched against a list of known
+     * browser names: a family only needs one obscure browser for a hard-coded
+     * list to be wrong, and being wrong here means an unfiltered way onto the web
+     * that looks filtered.
+     *
+     * Cached with the app list, because it changes exactly when that does.
+     */
+    fun browsers(): Set<PackageName> {
+        cachedBrowsers?.let { return it }
+
+        val probe = Intent(Intent.ACTION_VIEW, "https://example.com".toUri())
+        val found = packageManager
+            .queryIntentActivities(probe, PackageManager.ResolveInfoFlags.of(0L))
+            .mapTo(mutableSetOf()) { PackageName(it.activityInfo.packageName) }
+
+        ensureWatching(appContext)
+        cachedBrowsers = found
+        return found
+    }
+
     /** Labels are looked up far more often than the list changes, so they cache too. */
     fun labelFor(pkg: PackageName): String {
         labels[pkg]?.let { return it }
@@ -76,6 +100,9 @@ class InstalledApps(context: Context) {
         @Volatile
         private var cached: List<AppInfo>? = null
 
+        @Volatile
+        private var cachedBrowsers: Set<PackageName>? = null
+
         private val labels = java.util.concurrent.ConcurrentHashMap<PackageName, String>()
 
         @Volatile
@@ -83,6 +110,7 @@ class InstalledApps(context: Context) {
 
         fun invalidate() {
             cached = null
+            cachedBrowsers = null
             labels.clear()
         }
 

@@ -74,6 +74,7 @@ class LocalPolicyStore(context: Context) {
     private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
     private val contextRuleStore = ContextRuleStore(appContext)
     private val scheduleStore = ScheduleStore(appContext)
+    private val webFilterStore = WebFilterStore(appContext)
 
     // ---------- the assembled policy ----------
 
@@ -88,6 +89,8 @@ class LocalPolicyStore(context: Context) {
         schedules = schedules(),
         contextRules = contextRuleStore.rules,
         safetyAllowlist = SafetyAllowlist.of(appContext),
+        dnsFilter = webFilterStore.filter(),
+        browserPolicy = webFilterStore.browserPolicy,
         installPolicy = installPolicy,
         installWindowUntil = installWindowUntil,
         tamperProtection = tamperProtection,

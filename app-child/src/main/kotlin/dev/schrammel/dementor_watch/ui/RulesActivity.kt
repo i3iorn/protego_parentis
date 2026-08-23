@@ -54,6 +54,9 @@ class RulesActivity : ParentGatedActivity() {
                 row(R.string.rules_row_apps, R.string.rules_row_apps_detail) {
                     startActivity(AppControlActivity.intent(this))
                 },
+                row(R.string.rules_row_web, R.string.rules_row_web_detail) {
+                    startActivity(WebFilterActivity.intent(this))
+                },
             ),
         )
 
@@ -105,10 +108,20 @@ class RulesActivity : ParentGatedActivity() {
      * nothing is being blocked.
      */
     private fun showDeviceStatus() {
-        Background.load(this, { EnforcementCoordinator(this).isDeviceOwner() }) { owner ->
-            findViewById<TextView>(R.id.device_status).setText(
-                if (owner) R.string.rules_device_status_owner else R.string.rules_device_status_monitor,
-            )
+        Background.load(this, {
+            val coordinator = EnforcementCoordinator(this)
+            // A filtering server the phone refused is the one setting here whose
+            // failure is invisible: the screen would otherwise say it is filtered.
+            coordinator.isDeviceOwner() to coordinator.evaluate()?.reconcile
+                ?.invariantViolations
+                ?.any { it.contains("private DNS") }
+        }) { (owner, dnsFailed) ->
+            val status = findViewById<TextView>(R.id.device_status)
+            when {
+                dnsFailed == true -> status.setText(R.string.rules_dns_failed)
+                owner -> status.setText(R.string.rules_device_status_owner)
+                else -> status.setText(R.string.rules_device_status_monitor)
+            }
         }
     }
 

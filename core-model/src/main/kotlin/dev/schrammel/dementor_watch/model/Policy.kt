@@ -53,6 +53,10 @@ data class Policy(
     /** Rules that apply only in certain circumstances. See [ContextRule]. */
     val contextRules: List<ContextRule> = emptyList(),
     val safetyAllowlist: Set<PackageName> = emptySet(),
+    /** A filtering resolver the whole device points at, or null for none (WF-1). */
+    val dnsFilter: DnsFilter? = null,
+    /** What managed browsers are told to do (WF-2). */
+    val browserPolicy: BrowserPolicy = BrowserPolicy.OFF,
     val installPolicy: InstallPolicy = InstallPolicy.NOTIFY,
     /**
      * When a parent-opened installation window closes, under [InstallPolicy.GATED].

@@ -633,4 +633,58 @@
     <string name="audit_broken_hint">Några rader följer inte längre på de föregående. Något har ändrat eller tagit bort delar av den här historiken utanför appen.</string>
     <string name="audit_device_approved">Godkände %1$s som %2$s</string>
     <string name="audit_device_revoked">Tog bort %1$s ur familjen</string>
+
+    <string name="privacy_summary_header">Vad som skickas till föräldrarnas telefoner</string>
+    <string name="privacy_summary_body">Dagens totala tid, hur mycket av gränsen som är kvar, och de fem appar du använt mest med hur länge var och en varit öppen. Inga klockslag, ingen historik över när du använt något, och ingenting om vad du gjort inuti en app. Dina föräldrar ser samma siffror som du ser på den här telefonen — inget mer.</string>
+
+    <!-- Varför en app inte går att använda. -->
+    <string name="reason_blocked">Blockerad</string>
+    <string name="reason_unmanaged_browser">Den här webbläsaren går inte att filtrera</string>
+    <string name="reason_daily_limit">Daglig gräns</string>
+    <string name="reason_app_limit">Appgräns</string>
+
+    <!-- Webbfiltrering (WF-1, WF-2). -->
+    <string name="rules_row_web">Webbfiltrering</string>
+    <string name="rules_row_web_detail">Blockera vuxensajter på hela telefonen, och lås ner webbläsaren</string>
+    <string name="web_title">Webbfiltrering</string>
+    <string name="web_intro">Två skilda saker. Den ena pekar hela telefonen mot en filtrerande namnserver; den andra talar om för Chrome vad den får göra.</string>
+    <string name="web_dns_header">Filtrerande namnserver</string>
+    <string name="web_dns_hint">Täcker varje app i telefonen, även sidor som öppnas inuti appar, och kostar ingenting i batteri. Den blockerar hela sajter — den kan inte filtrera det som finns inuti en.</string>
+    <string name="web_dns_off">Ingen filtrering</string>
+    <string name="web_dns_malware">Blockera skadlig kod</string>
+    <string name="web_dns_adult">Blockera skadlig kod och vuxensajter</string>
+    <string name="web_dns_strict">Blockera vuxensajter, annonser och spårare</string>
+    <string name="web_dns_custom">En server jag väljer</string>
+    <string name="web_dns_custom_label">Servernamn, om du valde en egen</string>
+    <string name="web_dns_custom_hint">dns.exempel.se</string>
+    <string name="web_dns_bad_host">Det ser inte ut som ett servernamn. Det ska se ut som dns.exempel.se, utan https:// och utan snedstreck.</string>
+    <string name="web_dns_save">Spara</string>
+    <string name="web_dns_saved">Sparat. Om telefonen nekar servern syns det på regelsidan.</string>
+    <string name="web_browser_header">Webbläsare</string>
+    <string name="web_browser_hint">De här gäller bara Chrome. Chrome följer dem eftersom den tar emot inställningar från en hanterad enhet.</string>
+    <string name="web_safe_search">Tvinga SafeSearch</string>
+    <string name="web_youtube">Begränsa YouTube</string>
+    <string name="web_incognito">Stäng av inkognito</string>
+    <string name="web_suspend_browsers">Pausa webbläsare som inte kan filtreras</string>
+    <string name="web_suspend_browsers_hint">Andra webbläsare struntar i de här inställningarna, så en installerad sådan är en väg rakt förbi dem. Att pausa tar bort webbläsaren i stället för att filtrera den, vilket behöver förklaras för den som håller i telefonen.</string>
+    <string name="web_limits_note">Ingendera filtrerar det som händer inuti en app. En video som föreslås i ett flöde är inte en webbsida, och ingenting här rör den.</string>
+    <string name="rules_dns_failed">Telefonen nekade den filtrerande servern. Ingenting filtreras — kontrollera namnet och spara igen.</string>
+
+    <!-- Förälderns dagsvy (RPT-1). -->
+    <string name="parent_today_header">I dag</string>
+    <string name="parent_today_none">Inget hört i dag ännu</string>
+    <string name="parent_today_none_hint">Dagens siffror kommer med nästa livstecken.</string>
+    <string name="parent_today_used">Använt</string>
+    <string name="parent_today_remaining">Kvar</string>
+    <string name="parent_today_no_limit">Ingen daglig gräns satt</string>
+    <string name="parent_today_apps">Vart tiden tog vägen</string>
+    <string name="parent_today_as_of">Per %1$s</string>
+
+    <!-- Telefonens hälsa (LOC-4). -->
+    <string name="integrity_switched_off">Avstängd</string>
+    <string name="integrity_switched_off_hint">Telefonen sa att den stängdes av. Den hör av sig igen när den startar.</string>
+    <string name="integrity_battery_notification">Den andra telefonen har lågt batteri och kan snart stängas av.</string>
+
+    <string name="audit_web_filter_changed">Webbfiltrering satt till %1$s</string>
+    <string name="audit_browser_policy_changed">Webbläsarinställningen \"%1$s\" slogs %2$s</string>
 </resources>

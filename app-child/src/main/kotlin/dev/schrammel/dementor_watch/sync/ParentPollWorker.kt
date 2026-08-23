@@ -72,18 +72,33 @@ class ParentPollWorker(
      */
     private fun checkForSilence(context: Context) {
         val store = HeartbeatStore(context)
-        val silent = IntegrityRules.problems(store.latest, Instant.now())
-            .contains(IntegrityProblem.SILENT)
+        val problems = IntegrityRules.problems(store.latest, Instant.now())
 
-        if (!silent) {
+        val worth = when {
+            IntegrityProblem.SILENT in problems -> if (store.stoppedAfterLastHeartbeat()) {
+                // Not silence: the phone said goodbye. Worth telling a parent
+                // once, because "switched off" and "gone quiet" call for very
+                // different responses.
+                R.string.integrity_switched_off_hint
+            } else {
+                R.string.integrity_silent_hint
+            }
+
+            IntegrityProblem.BATTERY_LOW in problems -> R.string.integrity_battery_notification
+            else -> null
+        }
+
+        if (worth == null) {
             store.silenceAlerted = false
             return
         }
+        // Once per stretch, not once per poll. An alert that repeats every fifteen
+        // minutes for a phone that is simply flat teaches a parent to dismiss it
+        // without reading, which is the opposite of what this is for.
         if (store.silenceAlerted) return
 
         store.silenceAlerted = true
-        RequestNotifier(context)
-            .notifyDeviceSilent(context.getString(R.string.integrity_silent_hint))
+        RequestNotifier(context).notifyDeviceSilent(context.getString(worth))
     }
 
     companion object {

@@ -61,6 +61,10 @@ class PrivacyActivity : DementorActivity() {
         if (settings.isUsable) {
             section(R.string.privacy_sent_header, R.string.privacy_sent_body)
             container.addView(body(getString(R.string.privacy_sent_server, settings.serverUrl)))
+            // Named explicitly, because this is the one message carrying what was
+            // used rather than what the app did. A transparency screen that omits
+            // the interesting part is worse than none.
+            section(R.string.privacy_summary_header, R.string.privacy_summary_body)
         } else {
             section(R.string.privacy_sent_header, R.string.privacy_sent_off)
         }

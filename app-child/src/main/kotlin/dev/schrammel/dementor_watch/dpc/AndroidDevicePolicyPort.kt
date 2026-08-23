@@ -3,8 +3,10 @@ package dev.schrammel.dementor_watch.dpc
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.util.Log
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.model.RestrictionValue
 import dev.schrammel.dementor_watch.policy.reconcile.DevicePolicyPort
 
 /**
@@ -63,6 +65,52 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
 
     override fun setUninstallBlocked(pkg: PackageName, blocked: Boolean) {
         dpm.setUninstallBlocked(admin, pkg.value, blocked)
+    }
+
+    override fun currentPrivateDnsHost(): String? =
+        // Only meaningful in the "specified host" mode; in the other modes the
+        // getter returns a stale value that was never applied.
+        if (dpm.getGlobalPrivateDnsMode(admin) == DevicePolicyManager.PRIVATE_DNS_MODE_PROVIDER_HOSTNAME) {
+            dpm.getGlobalPrivateDnsHost(admin)
+        } else {
+            null
+        }
+
+    override fun setPrivateDnsHost(host: String?): Boolean {
+        if (host == null) {
+            // Opportunistic rather than off: encrypted DNS where the network
+            // offers it is strictly better than plain text, and it is what the
+            // device would have done without us.
+            val result = dpm.setGlobalPrivateDnsModeOpportunistic(admin)
+            return result == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR
+        }
+
+        // Android checks the host actually answers DNS-over-TLS before accepting
+        // it, which is why this can fail on a perfectly well-typed hostname.
+        val result = runCatching { dpm.setGlobalPrivateDnsModeSpecifiedHost(admin, host) }
+            .getOrElse { error ->
+                Log.w(TAG, "Private DNS host refused", error)
+                DevicePolicyManager.PRIVATE_DNS_SET_ERROR_FAILURE_SETTING
+            }
+        return result == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR
+    }
+
+    override fun setApplicationRestrictions(
+        pkg: PackageName,
+        restrictions: Map<String, RestrictionValue>,
+    ) {
+        val bundle = Bundle().apply {
+            restrictions.forEach { (key, value) ->
+                when (value) {
+                    is RestrictionValue.Flag -> putBoolean(key, value.value)
+                    is RestrictionValue.Number -> putInt(key, value.value)
+                    is RestrictionValue.Strings ->
+                        putStringArray(key, value.value.toTypedArray())
+                }
+            }
+        }
+        runCatching { dpm.setApplicationRestrictions(admin, pkg.value, bundle) }
+            .onFailure { Log.w(TAG, "Could not set managed configuration for ${pkg.value}", it) }
     }
 
     override fun clearDeviceOwner() {

@@ -68,6 +68,7 @@ class SyncCoordinator(context: Context) {
     private val inbox by lazy { InboxStore(appContext) }
     private val newApps by lazy { NewAppStore(appContext) }
     private val heartbeats by lazy { HeartbeatStore(appContext) }
+    private val summaries by lazy { DailySummaryStore(appContext) }
     private val notifier by lazy { RequestNotifier(appContext) }
 
     fun settings(): SyncSettings = config.load()
@@ -189,6 +190,40 @@ class SyncCoordinator(context: Context) {
             FIELD_TARGET_LABEL to label,
         ),
     )
+
+    /**
+     * Sends today's totals to the parents (RPT-1).
+     *
+     * The one message carrying what the child did rather than what the app did,
+     * and kept to a summary for that reason: totals and the few apps that account
+     * for most of them, with no times attached. The child sees the identical
+     * figures on their own screen.
+     *
+     * Rides the heartbeat's throttle rather than its own, because the two answer
+     * the same question from a parent and there is no sense in one being fresh
+     * while the other is a quarter of an hour stale.
+     */
+    fun publishDailySummary(
+        usedMinutes: Int,
+        allowedMinutes: Int,
+        bonusMinutes: Int,
+        level: Int,
+        topApps: List<AppTime>,
+    ) = publish(
+        type = SyncMessageType.DAILY_SUMMARY,
+        fields = buildMap {
+            put(FIELD_USED, usedMinutes.toString())
+            put(FIELD_ALLOWED, allowedMinutes.toString())
+            put(FIELD_BONUS, bonusMinutes.toString())
+            put(FIELD_LEVEL, level.toString())
+            topApps.forEachIndexed { index, app ->
+                put("$FIELD_APP_PREFIX$index", "${app.minutes}$APP_SEPARATOR${app.label}")
+            }
+        },
+    )
+
+    /** Says the phone is going off, so silence can be told apart from shutdown. */
+    fun publishStopping() = publish(SyncMessageType.DEVICE_STOPPING, emptyMap())
 
     /** A parent's answer about a new app. */
     fun publishAppDecision(packageName: String, blocked: Boolean) = publish(
@@ -338,6 +373,8 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.REQUEST_RAISED,
         SyncMessageType.HEARTBEAT,
         SyncMessageType.APP_INSTALLED,
+        SyncMessageType.DAILY_SUMMARY,
+        SyncMessageType.DEVICE_STOPPING,
         SyncMessageType.DEVICE_ANNOUNCE,
         -> false
     }
@@ -349,6 +386,8 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.REQUEST_DECIDED -> settleRequest(message)
         SyncMessageType.HEARTBEAT -> rememberHeartbeat(message)
         SyncMessageType.APP_INSTALLED -> rememberNewApp(message)
+        SyncMessageType.DAILY_SUMMARY -> rememberSummary(message)
+        SyncMessageType.DEVICE_STOPPING -> rememberStopping(message)
         // Sent by a parent, including possibly this one. Nothing to do with it.
         // An announcement has already done its work in the roster by this point.
         SyncMessageType.BONUS_GRANTED,
@@ -377,6 +416,42 @@ class SyncCoordinator(context: Context) {
             after = Audit.flag(blocked),
         )
         EnforcementService.start(appContext)
+        return true
+    }
+
+    private fun rememberSummary(message: SyncMessage): Boolean {
+        summaries.latest = DailySummary(
+            receivedAt = message.sentAt,
+            usedMinutes = message.longField(FIELD_USED)?.toInt() ?: 0,
+            allowedMinutes = message.longField(FIELD_ALLOWED)?.toInt() ?: 0,
+            bonusMinutes = message.longField(FIELD_BONUS)?.toInt() ?: 0,
+            level = message.longField(FIELD_LEVEL)?.toInt() ?: 0,
+            topApps = message.fields
+                .filterKeys { it.startsWith(FIELD_APP_PREFIX) }
+                // Numeric order, or "app10" would sort between "app1" and "app2".
+                .toSortedMap(compareBy { it.removePrefix(FIELD_APP_PREFIX).toIntOrNull() ?: 0 })
+                .values
+                .mapNotNull(::parseAppTime),
+        )
+        return true
+    }
+
+    private fun parseAppTime(raw: String): AppTime? {
+        val at = raw.indexOf(APP_SEPARATOR)
+        if (at <= 0 || at == raw.lastIndex) return null
+        val minutes = raw.substring(0, at).toIntOrNull() ?: return null
+        return AppTime(label = raw.substring(at + 1).take(MAX_WIRE_TEXT), minutes = minutes)
+    }
+
+    /**
+     * The child's phone said it was switching off.
+     *
+     * Recorded as a very old heartbeat rather than as its own state: the parent's
+     * screen already knows how to say "we have not heard from this phone", and a
+     * shutdown is exactly that with a reason attached.
+     */
+    private fun rememberStopping(message: SyncMessage): Boolean {
+        heartbeats.recordStopped(message.sentAt)
         return true
     }
 
@@ -566,6 +641,14 @@ class SyncCoordinator(context: Context) {
         const val FIELD_MANAGED = "managed"
         const val FIELD_USAGE_ACCESS = "usageAccess"
         const val FIELD_SUSPENDED = "suspended"
+        const val FIELD_USED = "used"
+        const val FIELD_ALLOWED = "allowed"
+        const val FIELD_BONUS = "bonus"
+        const val FIELD_LEVEL = "level"
+        const val FIELD_APP_PREFIX = "app"
+
+        /** Minutes, then the label — so a label containing a digit cannot confuse it. */
+        const val APP_SEPARATOR = ':' 
 
         /** Longer than any real app name or reason, short enough to render. */
         private const val MAX_WIRE_TEXT = 200

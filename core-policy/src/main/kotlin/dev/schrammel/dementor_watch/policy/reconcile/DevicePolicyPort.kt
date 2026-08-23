@@ -1,6 +1,7 @@
 package dev.schrammel.dementor_watch.policy.reconcile
 
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.model.RestrictionValue
 
 /**
  * Everything the reconciler needs from `DevicePolicyManager`.
@@ -38,6 +39,26 @@ interface DevicePolicyPort {
 
     fun setUninstallBlocked(pkg: PackageName, blocked: Boolean)
 
+    /** The hostname the device's private DNS is currently pinned to, or null. */
+    fun currentPrivateDnsHost(): String?
+
+    /**
+     * Points the device at [host], or back to the network's own resolver when null.
+     *
+     * Returns false when the host could not be set — most often because it does
+     * not answer DNS-over-TLS, which Android checks before accepting it. A silent
+     * failure here would leave a family believing the phone was filtered.
+     */
+    fun setPrivateDnsHost(host: String?): Boolean
+
+    /**
+     * Pushes managed configuration to [pkg], replacing whatever was there.
+     *
+     * An empty map clears it. Only ever called for packages this app has decided
+     * to manage, so clearing cannot reach configuration set by anyone else.
+     */
+    fun setApplicationRestrictions(pkg: PackageName, restrictions: Map<String, RestrictionValue>)
+
     /**
      * Relinquishes device ownership. Irreversible without a factory reset, and
      * every policy-clearing call must already have happened — see [DeviceReleaser].
@@ -66,7 +87,12 @@ object TamperRestrictions {
     /** ADB would otherwise allow packages to be unsuspended by hand. */
     const val NO_DEBUGGING_FEATURES = "no_debugging_features"
 
-    /** Stops the teen pointing DNS somewhere unfiltered (WF-1). */
+    /**
+     * Stops the teen pointing DNS somewhere unfiltered (WF-1).
+     *
+     * Applied whenever a filter is configured, not only under lockdown: a filter
+     * that can be turned off from Settings in three taps is decoration.
+     */
     const val NO_CONFIG_PRIVATE_DNS = "no_config_private_dns"
 
     /** Stops a third-party VPN routing around DNS filtering. */

@@ -1,6 +1,7 @@
 package dev.schrammel.dementor_watch.policy
 
 import dev.schrammel.dementor_watch.model.AppRule
+import dev.schrammel.dementor_watch.model.BrowserRestrictions
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.BudgetStatus
 import dev.schrammel.dementor_watch.model.CategoryId
@@ -13,6 +14,7 @@ import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
 import dev.schrammel.dementor_watch.model.Reason
+import dev.schrammel.dementor_watch.model.RestrictionValue
 import dev.schrammel.dementor_watch.model.UsageSnapshot
 import dev.schrammel.dementor_watch.model.WarningThresholds
 import java.time.Instant
@@ -39,6 +41,14 @@ object PolicyEngine {
         grants: List<Grant> = emptyList(),
         deviceState: DeviceState = DeviceState.IDLE,
         context: DeviceContext = DeviceContext.UNKNOWN,
+        /**
+         * Which installed packages can open a web page.
+         *
+         * Supplied rather than derived: working out what counts as a browser
+         * means asking the package manager, which this module deliberately cannot
+         * do. See WF-2.
+         */
+        browsers: Set<PackageName> = emptySet(),
         now: Instant,
     ): Enforcement {
         val zone = policy.timeZone
@@ -117,6 +127,11 @@ object PolicyEngine {
                     add(Reason.ManuallyBlocked)
                     if (rule.hidden) hide += pkg
                 }
+                // A browser that ignores managed configuration would be a way
+                // straight round the filter, so with filtering on it is paused.
+                if (unmanageableBrowser(policy, browsers, pkg)) {
+                    add(Reason.UnmanagedBrowser)
+                }
                 for (schedule in activeSchedules) {
                     if (pkg in schedule.allowedPackages) continue
                     val endsAt = ScheduleResolver.endOfActiveWindow(schedule, nowZdt) ?: continue
@@ -154,6 +169,8 @@ object PolicyEngine {
             categoryBudgets = categoryBudgets,
             activeSchedules = activeSchedules,
             activeContextRules = contextOutcome.activeRules,
+            dnsHost = policy.dnsFilter?.host,
+            appRestrictions = browserRestrictions(policy),
             installsBlocked = installsBlocked(policy, now),
             nextChangeAt = nextChangeAt(
                 policy = policy,
@@ -169,6 +186,47 @@ object PolicyEngine {
             ),
         )
     }
+
+    /**
+     * Whether [pkg] is a browser this app has no way to filter (WF-2).
+     *
+     * Only while the family has actually asked for browser policy: suspending
+     * every alternative browser on a device with no filtering configured would be
+     * a restriction nobody chose.
+     */
+    private fun unmanageableBrowser(
+        policy: Policy,
+        browsers: Set<PackageName>,
+        pkg: PackageName,
+    ): Boolean {
+        if (!policy.browserPolicy.suspendUnmanagedBrowsers) return false
+        if (pkg !in browsers) return false
+        return pkg.value !in MANAGED_BROWSERS
+    }
+
+    /**
+     * The managed configuration to push, keyed by package.
+     *
+     * Empty when the family has set no browser policy, which is not the same as a
+     * policy of "allow everything": pushing an empty configuration would clear
+     * settings an administrator or the family had made elsewhere.
+     */
+    private fun browserRestrictions(
+        policy: Policy,
+    ): Map<PackageName, Map<String, RestrictionValue>> {
+        val chrome = BrowserRestrictions.forChrome(policy.browserPolicy)
+        if (chrome.isEmpty()) return emptyMap()
+        return mapOf(PackageName(BrowserRestrictions.CHROME) to chrome)
+    }
+
+    /**
+     * Browsers that honour enterprise managed configuration.
+     *
+     * A short, explicit list rather than a guess. Adding one means checking that
+     * it really reads these policies — being wrong here means a browser that looks
+     * filtered and is not, which is worse than one that is visibly paused.
+     */
+    private val MANAGED_BROWSERS = setOf(BrowserRestrictions.CHROME)
 
     /**
      * Gated installs, unless a parent has the window open right now.
