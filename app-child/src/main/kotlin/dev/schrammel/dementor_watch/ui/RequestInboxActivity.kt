@@ -17,6 +17,7 @@ import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestId
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.RequestCoordinator
+import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -39,7 +40,9 @@ class RequestInboxActivity : ParentGatedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        coordinator = RequestCoordinator(this)
+        val sync = SyncCoordinator(this)
+        // So a second parent phone sees that this one has already answered.
+        coordinator = RequestCoordinator(this, onDecided = sync::publishDecision)
         policyStore = LocalPolicyStore(this)
         installedApps = InstalledApps(this)
 
@@ -69,12 +72,13 @@ class RequestInboxActivity : ParentGatedActivity() {
             },
         )
 
-        val pending = coordinator.pending()
-        if (pending.isEmpty()) {
-            container.addView(body(getString(R.string.inbox_empty)))
-            return
+        Background.load(this, { coordinator.pending() }) { pending ->
+            if (pending.isEmpty()) {
+                container.addView(body(getString(R.string.inbox_empty)))
+            } else {
+                pending.forEach { container.addView(requestCard(it)) }
+            }
         }
-        pending.forEach { container.addView(requestCard(it)) }
     }
 
     private fun requestCard(request: Request): LinearLayout = LinearLayout(this).apply {

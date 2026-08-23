@@ -65,8 +65,10 @@ class WeekActivity : AppCompatActivity() {
     private fun render() {
         container.removeAllViews()
         container.addView(title(getString(R.string.week_title), 30f))
+        Background.load(this, { coordinator.historyIncludingToday() }, ::show)
+    }
 
-        val recorded = coordinator.historyIncludingToday()
+    private fun show(recorded: List<UsageSnapshot>) {
         if (recorded.isEmpty()) {
             container.addView(body(getString(R.string.week_no_data)))
             return

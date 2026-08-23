@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Svenska.
+
+  Tilltalet är medvetet du-form och vardagligt: appen talar mest med en tonåring,
+  inte med en myndighet. Termen "skärmtid" används genomgående.
+
+  app_name översätts inte — produktnamnet är detsamma på alla språk.
+-->
+<resources>
+
+    <!-- Notis som alltid syns. -->
+    <string name="service_channel_name">Skärmtid</string>
+    <string name="service_channel_description">Visar att skärmtidsreglerna är aktiva på den här telefonen.</string>
+    <string name="service_notification_title">Skärmtid är på</string>
+    <string name="service_notification_text">Kollar din skärmtid…</string>
+    <string name="service_needs_permission">Tryck för att bli klar med inställningarna</string>
+    <string name="service_remaining">%1$s kvar i dag</string>
+    <string name="service_used_up">Dagens tid är slut</string>
+    <string name="service_no_limit">%1$s i dag</string>
+
+    <!-- Varningarna. -->
+    <string name="warning_channel_name">Tidsvarningar</string>
+    <string name="warning_channel_description">Varnar dig innan dagens skärmtid tar slut.</string>
+    <string name="warn_title">Skärmtid</string>
+    <string name="warn_notice">%1$s kvar i dag. Dags att börja avsluta.</string>
+    <string name="warn_grace">Bara %1$s kvar. Be om mer tid om du behöver.</string>
+    <string name="warn_exhausted">Dagens skärmtid är slut. Den nollställs klockan 04.</string>
+
+    <!-- Information vid installation. -->
+    <string name="compliance_title">Kom igång med Dementor Watch</string>
+    <string name="compliance_disclosure">Den här telefonen sköts av din familj.\n\nDetta delas: vilka appar du använder och hur länge, din skärmtid per dag, och om telefonen är på och laddad.\n\nDetta delas aldrig: dina meddelanden, dina bilder, vad du skriver, och vad som syns på skärmen.\n\nDu kan när som helst se allt som din förälder ser, här i appen.</string>
+    <string name="compliance_continue">Jag förstår, fortsätt</string>
+
+    <!-- Startsidan. -->
+    <string name="home_title">Min tid</string>
+    <string name="home_permission_title">En sak kvar</string>
+    <string name="home_permission_body">Dementor Watch behöver åtkomst till användningsdata för att kunna mäta skärmtid. Leta upp Dementor Watch i listan på nästa skärm och slå på det.</string>
+    <string name="home_permission_button">Öppna inställningar</string>
+    <string name="home_remaining">%1$s kvar i dag</string>
+    <string name="home_used_of">%1$s använt av %2$s</string>
+    <string name="home_used_no_limit">%1$s använt i dag</string>
+    <string name="home_no_limit_headline">Ingen gräns satt</string>
+    <string name="home_used_up">Tiden är slut för i dag</string>
+    <string name="home_resets">Nollställs klockan 04:00</string>
+    <string name="home_monitor_only">Bara mätning. Den här telefonen är inte inställd för blockering, så inget blockeras — reglerna nedan kontrolleras men tillämpas inte.</string>
+    <string name="home_managed">Den här telefonen sköts av appen. Reglerna nedan tillämpas.</string>
+    <string name="home_rules_header">Mina regler</string>
+    <string name="home_apps_header">I dag</string>
+    <string name="home_would_block_header">Skulle blockeras just nu</string>
+    <string name="home_edit_rules">Ändra regler</string>
+    <string name="home_no_usage">Ingen skärmtid registrerad i dag än.</string>
+    <plurals name="home_and_more">
+        <item quantity="one">och %d till</item>
+        <item quantity="other">och %d till</item>
+    </plurals>
+    <string name="home_nothing_blocked">Inget är blockerat just nu.</string>
+    <string name="home_rule_limit">Daglig gräns: %1$s</string>
+    <string name="home_rule_no_limit">Ingen daglig gräns</string>
+    <string name="home_rule_bedtime">Läggdags: %1$s till %2$s</string>
+    <string name="home_rule_no_bedtime">Ingen läggdags satt</string>
+    <string name="home_until">till %1$s</string>
+
+    <string name="home_open_week">Se min vecka</string>
+
+    <!-- Veckovyn. -->
+    <string name="week_title">Min vecka</string>
+    <string name="week_no_data">Ingen skärmtid registrerad än. Kom tillbaka i morgon.</string>
+    <string name="week_total_caption">de senaste 7 dagarna</string>
+    <string name="week_average">%1$s per dag i snitt</string>
+    <string name="week_more_than_last">%1$s mer än veckan innan</string>
+    <string name="week_less_than_last">%1$s mindre än veckan innan</string>
+    <string name="week_same_as_last">Lika mycket som veckan innan</string>
+    <string name="week_no_comparison">Ännu inte tillräckligt med historik för att jämföra veckor.</string>
+    <string name="week_by_day">Dag för dag</string>
+    <string name="week_none">ingen</string>
+    <string name="week_top_apps">Vart tiden tog vägen</string>
+    <string name="week_no_apps">Ingen apptid registrerad.</string>
+
+    <string name="home_open_requests">Be om mer tid</string>
+
+    <!-- Regler som beror på omgivningen. -->
+    <string name="context_title">Regler</string>
+    <string name="context_explainer">Regler som bara gäller på vissa platser, eller nära något. Den dagliga gränsen och läggdags fungerar som vanligt; de här ligger ovanpå.</string>
+    <string name="context_sources_header">Vad telefonen kan känna av</string>
+    <string name="context_wifi_ready">Wi-Fi-nätverk: tillgängligt.</string>
+    <string name="context_wifi_blocked">Wi-Fi-nätverk: inte tillgängligt. Android kräver platsbehörighet för att avslöja ett nätverksnamn. Regler om Wi-Fi kommer inte att gälla.</string>
+    <string name="context_place_ready">Platser: tillgängliga.</string>
+    <string name="context_place_blocked">Platser: inte tillgängliga utan platsbehörighet. Regler om platser kommer inte att gälla.</string>
+    <string name="context_near_ready">Enheter i närheten: tillgängliga.</string>
+    <string name="context_near_blocked">Enheter i närheten: inte tillgängliga utan Bluetooth-behörighet. Regler om enheter i närheten kommer inte att gälla.</string>
+    <string name="context_manage_places">Hantera platser</string>
+    <string name="context_rules_header">Dina regler</string>
+    <string name="context_no_rules">Inga regler än.</string>
+    <string name="context_add_rule">Lägg till en regel</string>
+    <string name="context_rule_off">%1$s (av)</string>
+    <string name="context_rule_summary">%1$s → %2$s %3$s</string>
+    <string name="context_when_always">alltid</string>
+    <string name="context_when_never">aldrig</string>
+    <string name="context_when_wifi">på Wi-Fi \u201d%1$s\u201d</string>
+    <string name="context_when_near">nära %1$s</string>
+    <string name="context_when_place">vid %1$s</string>
+    <string name="context_when_not">inte %1$s</string>
+    <string name="context_join_and"> och </string>
+    <string name="context_join_or"> eller </string>
+    <string name="context_place_unknown">en borttagen plats</string>
+    <string name="context_effect_block">blockera</string>
+    <string name="context_effect_allow">tillåt fritt</string>
+    <string name="context_effect_budget">begränsa telefonen till %1$s</string>
+    <string name="context_target_everything">allt</string>
+    <string name="context_target_categories">vissa kategorier</string>
+
+    <string name="context_edit_title">Regel</string>
+    <string name="context_name_hint">Namn, till exempel Inga spel i skolan</string>
+    <string name="context_name_required">Ge regeln ett namn.</string>
+    <string name="context_enabled">Regeln är på</string>
+    <string name="context_when_header">När</string>
+    <string name="context_invert">Gäller när detta INTE stämmer</string>
+    <string name="context_do_header">Gör detta</string>
+    <string name="context_to_header">Med</string>
+    <string name="context_choose_wifi">På ett Wi-Fi-nätverk</string>
+    <string name="context_wifi_hint">Nätverkets namn</string>
+    <string name="context_choose_device">Nära en enhet</string>
+    <string name="context_device_hint">Bluetooth-adress</string>
+    <string name="context_device_explainer">Telefonen räknar en enhet som nära när den är parkopplad och ansluten via Bluetooth. Parkoppla den andra telefonen först och klistra sedan in dess Bluetooth-adress här.</string>
+    <string name="context_choose_budget">Sätt en annan daglig gräns</string>
+    <string name="context_choose_categories">Vissa kategorier</string>
+    <string name="context_choose_apps">Vissa appar</string>
+    <string name="context_save">Spara regeln</string>
+    <string name="context_delete">Ta bort regeln</string>
+
+    <string name="places_title">Platser</string>
+    <string name="places_explainer">En plats sparas där du står. Koordinaterna stannar på telefonen: de skickas aldrig någonstans och syns aldrig i loggen.</string>
+    <string name="places_none">Inga platser än.</string>
+    <string name="places_row">%1$s — inom %2$d m</string>
+    <string name="places_add_here">Spara där jag är nu</string>
+    <string name="places_name_hint">Namn, till exempel Hemma</string>
+    <string name="places_no_fix">Ingen plats tillgänglig än. Öppna en kartapp en stund och försök igen.</string>
+    <string name="places_delete">Ta bort</string>
+    <string name="places_delete_warning">Alla regler som använder platsen tas också bort, så inget blir kvar som pekar på en plats som inte finns.</string>
+    <string name="rules_context_header">Regler</string>
+    <string name="rules_open_context">Var och när regler gäller</string>
+    <string name="home_context_active">Gäller nu: %1$s</string>
+
+    <!-- Integritet och logg. -->
+    <string name="privacy_title">Vad som lämnar telefonen</string>
+    <string name="privacy_measured_header">Mäts här</string>
+    <string name="privacy_measured_body">Vilka appar du öppnar och hur länge, din totala skärmtid per dag, och vilka regler som gällde. Det räknas ut på telefonen och stannar på telefonen.</string>
+    <string name="privacy_never_header">Samlas aldrig in</string>
+    <string name="privacy_never_body">Dina meddelanden, dina bilder, vad du skriver, vad som syns på skärmen, var du är, vad du surfar på, och innehållet i någon app. Inget av det läses, sparas eller skickas.</string>
+    <string name="privacy_sent_header">Skickas från telefonen</string>
+    <string name="privacy_sent_body">Bara när du ber om mer tid, eller när en förfrågan besvaras. Det som skickas: hur många minuter du bad om, till vad, anledningen du skrev, och om svaret blev ja eller nej. Inget annat — ingen applista, ingen skärmtid, ingen plats. Varje meddelande krypteras på telefonen först, så servern kan inte läsa något av det.</string>
+    <string name="privacy_sent_off">Ingenting. Att skicka till föräldrars telefoner är avstängt, så telefonen pratar inte med någon server alls.</string>
+    <string name="privacy_sent_server">Server: %1$s</string>
+    <string name="privacy_log_header">Appens egen logg</string>
+    <string name="privacy_log_body">En kort anteckning om vad appen gjorde — att den kollade din tid, att den startade, att något gick fel. Den innehåller inga appnamn, inga anledningar du skrivit och inga tider då du använde något. Du får läsa hela.</string>
+    <string name="privacy_view_log">Läs loggen</string>
+    <string name="home_open_privacy">Vad som lämnar telefonen</string>
+
+    <string name="diagnostics_title">Applogg</string>
+    <string name="diagnostics_header">Dementor Watch-logg. Innehåller bara vad appen gjorde: händelsenamn, antal och tider. Inga appnamn, inga meddelanden, inga anledningar, inga lösenord.</string>
+    <string name="diagnostics_share">Dela loggen</string>
+    <string name="diagnostics_clear">Rensa loggen</string>
+    <string name="diagnostics_empty">Inget registrerat än.</string>
+
+    <string name="pin_enter_current">Ange din nuvarande PIN-kod.</string>
+
+    <!-- Språk. -->
+    <string name="language_title">Språk</string>
+    <string name="language_system">Systemets språk</string>
+    <string name="home_language">Språk: %1$s</string>
+
+    <!-- Synk med föräldrarnas telefoner. -->
+    <string name="sync_title">Föräldrars telefoner</string>
+    <string name="sync_explainer">Förfrågningar och svar skickas via ett delat ämne. Varje meddelande krypteras på den här telefonen innan det skickas, så servern kan aldrig läsa det. Lägg till en förälders telefon genom att ange samma server, ämne och lösenfras där.</string>
+    <string name="sync_enable">Skicka till föräldrars telefoner</string>
+    <string name="sync_server_label">Server</string>
+    <string name="sync_topic_label">Ämne</string>
+    <string name="sync_topic_hint">Den som känner till det här kan se att meddelanden finns, men inte vad de innehåller. Använd det som genereras.</string>
+    <string name="sync_generate_topic">Skapa ett ämne</string>
+    <string name="sync_passphrase_label">Lösenfras</string>
+    <plurals name="sync_passphrase_hint">
+        <item quantity="one">Minst %d tecken. Det är den som håller meddelandena privata. Använd samma på alla telefoner.</item>
+        <item quantity="other">Minst %d tecken. Det är den som håller meddelandena privata. Använd samma på alla telefoner.</item>
+    </plurals>
+    <string name="sync_passphrase_empty">Inte satt än</string>
+    <string name="sync_passphrase_set">Sparad. Skriv för att byta.</string>
+    <plurals name="sync_passphrase_too_short">
+        <item quantity="one">Använd minst %d tecken.</item>
+        <item quantity="other">Använd minst %d tecken.</item>
+    </plurals>
+    <string name="sync_needs_https">Serveradressen måste börja med https://</string>
+    <string name="sync_needs_topic">Ange eller skapa ett ämne först.</string>
+    <string name="sync_save">Spara</string>
+    <string name="sync_saved">Sparat.</string>
+    <string name="sync_test">Testa anslutningen</string>
+    <string name="sync_testing">Kontrollerar…</string>
+    <string name="sync_test_result">Resultat: %1$s</string>
+    <string name="rules_sync_header">Föräldrars telefoner</string>
+    <string name="rules_open_sync">Ställ in föräldrars telefoner</string>
+
+    <!-- Kategorier i kategorier. -->
+    <string name="category_nested_header">Kategorier inuti den här</string>
+    <string name="category_nested_hint">Deras appar räknas mot den här kategorin också.</string>
+    <string name="category_no_nested">Inga.</string>
+    <string name="category_choose_nested">Välj kategorier</string>
+
+    <!-- Mål och belöningar. -->
+    <string name="goal_channel_name">Mål</string>
+    <string name="goal_channel_description">Säger till när du har förtjänat en belöning.</string>
+    <string name="goal_notification_title">Du fick din belöning</string>
+    <string name="goal_notification_body">%1$s i går, under ditt mål på %2$s. Tryck för att se den.</string>
+    <string name="celebration_headline">Snyggt jobbat</string>
+    <string name="celebration_summary">Du använde %1$s den %3$s, under ditt mål på %2$s.</string>
+    <string name="celebration_prize_label">DIN BELÖNING</string>
+    <string name="celebration_prize_missing">Din förälder har inte skrivit någon belöning än.</string>
+    <string name="celebration_dismiss">Tack</string>
+
+    <string name="rules_goal_header">Mål och belöning</string>
+    <string name="rules_goal_hint">Håll dig under det här en hel dag så dyker belöningen upp nästa morgon.</string>
+    <string name="rules_goal_enable">Sätt ett dagligt mål</string>
+    <string name="rules_goal_prize_hint">Belöningen. Vad du vill — ett löfte, något gott, en hälsning.</string>
+    <string name="rules_goal_saved">Målet sparat.</string>
+    <string name="rules_goal_needs_prize">Skriv en belöning först.</string>
+    <string name="rules_goal_save">Spara målet</string>
+
+    <!-- Notiser om förfrågningar. -->
+    <string name="request_channel_incoming_name">Förfrågningar</string>
+    <string name="request_channel_incoming_description">Säger till när någon ber om mer tid.</string>
+    <string name="request_channel_decision_name">Svar</string>
+    <string name="request_channel_decision_description">Säger till när en förfrågan har fått svar.</string>
+    <string name="request_notification_title">En ny förfrågan</string>
+    <plurals name="request_notification_body">
+        <item quantity="one">%1$d minut till: %2$s</item>
+        <item quantity="other">%1$d minuter till: %2$s</item>
+    </plurals>
+    <string name="request_decision_title">Din förfrågan</string>
+    <string name="request_decision_approved">Godkänd</string>
+    <string name="request_decision_denied">Nekad</string>
+
+    <!-- Förfrågningar, barnets sida. -->
+    <string name="requests_title">Förfrågningar</string>
+    <string name="requests_ask_for">Vad behöver du mer tid till?</string>
+    <string name="requests_target_device">Hela telefonen</string>
+    <string name="requests_target_category">en kategori</string>
+    <string name="requests_target_selected">%1$s  ✓</string>
+    <string name="requests_reason_hint">Varför? Din förälder ser det här.</string>
+    <string name="requests_reason_required">Skriv en anledning först.</string>
+    <string name="requests_ask_minutes">Be om %1$d min</string>
+    <string name="requests_sent">Skickat. Du ser svaret här.</string>
+    <string name="requests_already_pending">Du har redan en förfrågan som väntar på svar om det här.</string>
+    <plurals name="requests_too_many">
+        <item quantity="one">Det har nekats %d gång i dag. Bättre att prata om det i stället.</item>
+        <item quantity="other">Det har nekats %d gånger i dag. Bättre att prata om det i stället.</item>
+    </plurals>
+    <string name="requests_history">Dina förfrågningar</string>
+    <string name="requests_none">Du har inte bett om något än.</string>
+    <string name="requests_row_summary">%1$d min till %2$s, frågade %3$s</string>
+    <string name="requests_row_reason">Anledning: %1$s</string>
+    <string name="requests_withdraw">Glöm det</string>
+    <string name="requests_state_pending">Väntar på svar</string>
+    <string name="requests_state_approved">Godkänd</string>
+    <string name="requests_state_denied">Nekad</string>
+    <string name="requests_state_expired">Inget svar i tid</string>
+    <string name="requests_state_withdrawn">Du ångrade dig</string>
+
+    <!-- Förfrågningar, förälderns sida. -->
+    <string name="inbox_title">Förfrågningar</string>
+    <string name="inbox_empty">Inget väntar på svar.</string>
+    <plurals name="inbox_asking_for">
+        <item quantity="one">Ber om %1$d minut till av %2$s</item>
+        <item quantity="other">Ber om %1$d minuter till av %2$s</item>
+    </plurals>
+    <string name="inbox_expires_at">Går ut %1$s om den inte besvaras</string>
+    <string name="inbox_approve">Godkänn</string>
+    <string name="inbox_deny">Neka</string>
+    <string name="inbox_note_hint">Lägg till en kommentar (frivilligt)</string>
+    <string name="rules_requests_header">Förfrågningar</string>
+    <string name="rules_open_inbox">Svara på förfrågningar</string>
+
+    <!-- Regler. -->
+    <string name="rules_title">Ändra regler</string>
+    <string name="rules_daily_limit_header">Daglig gräns</string>
+    <string name="rules_daily_limit_hint">Dra till noll för ingen gräns. Testa 5 minuter för att se varningarna fungera.</string>
+    <string name="rules_bedtime_header">Läggdags</string>
+    <string name="rules_bedtime_enable">Slå på läggdags</string>
+    <string name="rules_bedtime_start">Börjar  %1$s</string>
+    <string name="rules_bedtime_end">Slutar  %1$s</string>
+    <string name="rules_done">Klar</string>
+    <string name="rules_categories_header">Kategorier</string>
+    <string name="rules_categories_hint">Varje kategori har sin egen dagliga gräns. En app kan ligga i flera — tiden räknas mot varje kategori den tillhör.</string>
+    <string name="rules_no_categories">Inga kategorier än.</string>
+    <string name="rules_category_row">%1$s — %2$s · %3$s</string>
+    <plurals name="rules_category_apps">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d appar</item>
+    </plurals>
+    <string name="rules_add_category">Lägg till kategori</string>
+    <string name="rules_exempt_header">Appar utan gräns</string>
+    <string name="rules_exempt_hint">De struntar i den dagliga gränsen, läggdags och alla kategorier.</string>
+    <string name="rules_no_exempt">Inga valda.</string>
+    <string name="rules_choose_exempt">Välj appar</string>
+    <string name="rules_app_limits_header">Gränser för enskilda appar</string>
+    <string name="rules_app_limits_hint">En gräns för en enskild app, utöver de kategorier den ligger i.</string>
+    <string name="rules_open_app_limits">Sätt appgränser</string>
+    <string name="rules_bonus_header">Extratid</string>
+    <string name="rules_bonus_hint">Extra tid bara för i dag. Den ändrar aldrig själva gränserna.</string>
+    <string name="rules_open_bonus">Ge extratid</string>
+    <string name="rules_security_header">Säkerhet</string>
+    <string name="rules_change_pin">Byt PIN-kod</string>
+    <string name="rules_device_header">Kontroll över telefonen</string>
+    <string name="rules_device_status_owner">Appen har full kontroll över telefonen. Gränserna tillämpas.</string>
+    <string name="rules_device_status_monitor">Appen har ännu inte kontroll över telefonen, så inget blockeras. Gränserna mäts bara.</string>
+    <string name="rules_tamper_enable">Lås ner den här telefonen</string>
+    <string name="rules_tamper_hint">Blockerar fabriksåterställning, klockändringar och felsäkert läge, och hindrar att appen avinstalleras. Rätt för ett barns telefon. Slå inte på det här medan du testar på din egen.</string>
+    <string name="rules_release">Släpp den här telefonen</string>
+    <string name="rules_release_confirm_title">Släppa den här telefonen?</string>
+    <string name="rules_release_confirm_body">Alla gränser tas bort, alla blockerade appar återställs och appen lämnar ifrån sig kontrollen. Du skulle behöva göra om hela installationen.</string>
+    <string name="rules_release_done">Släppt. Telefonen kontrolleras inte längre.</string>
+    <string name="rules_release_not_owner">Appen har inte kontroll över telefonen, så det finns inget att släppa.</string>
+
+    <!-- PIN-kod. -->
+    <string name="pin_title">Förälderns PIN-kod</string>
+    <string name="pin_create">Välj en PIN-kod. Du behöver den för att ändra reglerna.</string>
+    <string name="pin_confirm">Ange samma PIN-kod igen.</string>
+    <string name="pin_enter">Ange din PIN-kod för att ändra reglerna.</string>
+    <string name="pin_hint">PIN-kod</string>
+    <string name="pin_continue">Fortsätt</string>
+    <string name="pin_wrong">Fel PIN-kod.</string>
+    <plurals name="pin_locked_out">
+        <item quantity="one">För många fel. Vänta %d sekund.</item>
+        <item quantity="other">För många fel. Vänta %d sekunder.</item>
+    </plurals>
+    <string name="pin_mismatch">De stämde inte överens. Börja om.</string>
+    <plurals name="pin_too_short">
+        <item quantity="one">Använd minst %d siffra.</item>
+        <item quantity="other">Använd minst %d siffror.</item>
+    </plurals>
+
+    <!-- Kategorier. -->
+    <string name="category_title">Kategori</string>
+    <string name="category_name_hint">Namn, till exempel Spel</string>
+    <string name="category_name_required">Ge kategorin ett namn.</string>
+    <string name="category_limit_header">Daglig gräns</string>
+    <string name="category_apps_header">Appar i den här kategorin</string>
+    <string name="category_no_apps">Inga appar valda än.</string>
+    <string name="category_choose_apps">Välj appar</string>
+    <string name="category_save">Spara</string>
+    <string name="category_delete">Ta bort kategorin</string>
+
+    <!-- Gränser för enskilda appar. -->
+    <string name="app_limits_title">Appgränser</string>
+    <string name="app_limits_hint">Tryck på en app för att ge den en egen daglig gräns. Appar som redan har en visas först.</string>
+    <string name="app_limits_none">Ingen gräns</string>
+    <string name="app_limits_save">Spara</string>
+
+    <!-- Extratid. -->
+    <string name="bonus_title">Extratid</string>
+    <string name="bonus_hint">Extra tid för i dag. Den går ut klockan 04 och ändrar inte gränserna.</string>
+    <string name="bonus_device_header">Hela telefonen</string>
+    <string name="bonus_category_header">En kategori</string>
+    <string name="bonus_add_minutes">+%1$d min</string>
+    <plurals name="bonus_granted">
+        <item quantity="one">La till %d minut för i dag.</item>
+        <item quantity="other">La till %d minuter för i dag.</item>
+    </plurals>
+    <string name="bonus_clear">Ta bort extratiden för i dag</string>
+    <string name="bonus_cleared">Extratiden borttagen.</string>
+
+    <!-- Kategorigränser på startsidan. -->
+    <string name="home_categories_header">Kategorigränser</string>
+    <string name="home_category_row">%1$s: %2$s kvar</string>
+    <string name="home_category_used_up">%1$s: slut</string>
+    <string name="home_category_no_limit">%1$s: ingen gräns</string>
+
+</resources>

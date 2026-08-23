@@ -4,6 +4,7 @@ import dev.schrammel.dementor_watch.model.AppRule
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.BudgetStatus
 import dev.schrammel.dementor_watch.model.CategoryId
+import dev.schrammel.dementor_watch.model.DeviceContext
 import dev.schrammel.dementor_watch.model.DeviceState
 import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.Grant
@@ -36,6 +37,7 @@ object PolicyEngine {
         usage: UsageSnapshot,
         grants: List<Grant> = emptyList(),
         deviceState: DeviceState = DeviceState.IDLE,
+        context: DeviceContext = DeviceContext.UNKNOWN,
         now: Instant,
     ): Enforcement {
         val zone = policy.timeZone
@@ -48,15 +50,24 @@ object PolicyEngine {
         fun bonusFor(target: GrantTarget): Duration =
             liveGrants.filter { it.target == target }.fold(Duration.ZERO) { acc, g -> acc + g.amount }
 
+        // Contextual rules are settled before budgets, because one of them can
+        // replace the device allowance outright.
+        val hierarchyForRules = CategoryHierarchy.resolve(policy.categories)
+        val contextOutcome = ContextRules.evaluate(
+            rules = policy.contextRules,
+            context = context,
+            hierarchy = hierarchyForRules,
+            installedPackages = installedPackages,
+        )
+        val effectiveDeviceBudget = contextOutcome.deviceBudget ?: policy.deviceBudget
+
         val deviceBudget = statusOf(
-            allowed = policy.deviceBudget.forDay(weekday),
+            allowed = effectiveDeviceBudget.forDay(weekday),
             used = usage.deviceTotal,
             bonus = bonusFor(GrantTarget.Device),
             thresholds = policy.warningThresholds,
         )
-        // Nesting is followed once here and reused throughout: a parent category
-        // owns its children's apps too, and a loop is broken rather than followed.
-        val hierarchy = CategoryHierarchy.resolve(policy.categories)
+        val hierarchy = hierarchyForRules
 
         // A category's usage is the sum of its members' time. An app in two
         // categories spends from both — see Category's documentation. Apps that are
@@ -96,6 +107,10 @@ object PolicyEngine {
             // Hard invariant, checked before anything else can restrict the app.
             if (policy.isSafetyExempt(pkg)) continue
 
+            // A contextual allow works like a temporary safety exemption: nothing
+            // else may restrict the app while the rule applies.
+            if (pkg in contextOutcome.allowed) continue
+
             val reasons = buildList {
                 if (rule is AppRule.Blocked) {
                     add(Reason.ManuallyBlocked)
@@ -105,6 +120,9 @@ object PolicyEngine {
                     if (pkg in schedule.allowedPackages) continue
                     val endsAt = ScheduleResolver.endOfActiveWindow(schedule, nowZdt) ?: continue
                     add(Reason.ScheduleActive(schedule.id, schedule.name, endsAt))
+                }
+                contextOutcome.blocked[pkg]?.let { rule ->
+                    add(Reason.ContextRuleActive(rule.id, rule.name))
                 }
                 if (deviceBudget.isExhausted) add(Reason.DeviceBudgetExhausted(dayEnd))
                 if (appBudgets[pkg]?.isExhausted == true) add(Reason.AppBudgetExhausted(pkg, dayEnd))
@@ -134,6 +152,7 @@ object PolicyEngine {
             appBudgets = appBudgets,
             categoryBudgets = categoryBudgets,
             activeSchedules = activeSchedules,
+            activeContextRules = contextOutcome.activeRules,
             nextChangeAt = nextChangeAt(
                 policy = policy,
                 now = now,

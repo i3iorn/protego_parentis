@@ -39,6 +39,7 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
         // single unsuspendable system app does not fail the whole batch.
         val failures = dpm.setPackagesSuspended(admin, names, suspended)
         if (failures.isNotEmpty()) {
+            // Package names go to logcat only, never to the shareable log.
             Log.w(TAG, "Could not set suspended=$suspended on ${failures.joinToString()}")
         }
         return failures.mapTo(mutableSetOf(), ::PackageName)

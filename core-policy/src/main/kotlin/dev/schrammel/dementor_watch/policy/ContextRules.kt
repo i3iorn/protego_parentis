@@ -1,0 +1,141 @@
+package dev.schrammel.dementor_watch.policy
+
+import dev.schrammel.dementor_watch.model.CategoryId
+import dev.schrammel.dementor_watch.model.Condition
+import dev.schrammel.dementor_watch.model.ContextRule
+import dev.schrammel.dementor_watch.model.DeviceContext
+import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.model.RuleEffect
+import dev.schrammel.dementor_watch.model.RuleTarget
+import dev.schrammel.dementor_watch.model.WeeklyBudget
+
+/** What the active contextual rules add up to. */
+data class ContextOutcome(
+    /** Blocked outright while their rule applies, with the rule that did it. */
+    val blocked: Map<PackageName, ContextRule>,
+    /** Exempt from every limit while their rule applies. */
+    val allowed: Set<PackageName>,
+    /** Replaces the device budget when present. */
+    val deviceBudget: WeeklyBudget?,
+    /** The rules that are currently applying, for showing on screen. */
+    val activeRules: List<ContextRule>,
+)
+
+/**
+ * Works out which contextual rules apply, and what they add up to.
+ *
+ * Pure, and given only a resolved [DeviceContext] — no coordinates, no scan
+ * results. Everything awkward about "where am I" is settled before this point,
+ * which is what lets the interesting part be tested exhaustively without a phone.
+ *
+ * Two resolution rules, both chosen so a parent cannot accidentally create a hole:
+ *
+ *  - **Allow beats block.** An explicit "this app is fine here" is a more
+ *    deliberate act than a broad block, and the safety allowlist already works
+ *    this way, so the two behave alike.
+ *  - **The tightest budget wins.** Several rules setting a device budget resolve
+ *    to the smallest. A rule can tighten, never loosen past another rule.
+ */
+object ContextRules {
+
+    /**
+     * How deep a nested condition may go before it is treated as malformed.
+     *
+     * Conditions come from storage and could be corrupted or hand-edited; without
+     * a bound, a deeply nested or self-referential structure would recurse until
+     * the stack gave out inside the enforcement service.
+     */
+    const val MAX_DEPTH = 12
+
+    fun evaluate(
+        rules: List<ContextRule>,
+        context: DeviceContext,
+        hierarchy: ResolvedHierarchy,
+        installedPackages: Set<PackageName>,
+    ): ContextOutcome {
+        val active = rules.filter { it.enabled && holds(it.condition, context) }
+
+        val blocked = LinkedHashMap<PackageName, ContextRule>()
+        val allowed = mutableSetOf<PackageName>()
+        var budget: WeeklyBudget? = null
+
+        active.forEach { rule ->
+            when (val effect = rule.effect) {
+                is RuleEffect.Block ->
+                    resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
+                        blocked.putIfAbsent(pkg, rule)
+                    }
+
+                is RuleEffect.Allow ->
+                    allowed += resolve(rule.target, hierarchy, installedPackages)
+
+                is RuleEffect.SetDeviceBudget ->
+                    budget = tightest(budget, effect.budget)
+            }
+        }
+
+        return ContextOutcome(
+            // Allow wins: see the note above.
+            blocked = blocked.filterKeys { it !in allowed },
+            allowed = allowed,
+            deviceBudget = budget,
+            activeRules = active,
+        )
+    }
+
+    /**
+     * Whether [condition] holds in [context].
+     *
+     * An empty [Condition.AllOf] is true and an empty [Condition.AnyOf] is false,
+     * following the usual reading of "all of nothing" and "any of nothing". The
+     * practical effect is that a half-built rule with no conditions chosen yet does
+     * not silently start blocking things.
+     */
+    fun holds(condition: Condition, context: DeviceContext, depth: Int = 0): Boolean {
+        if (depth > MAX_DEPTH) return false
+
+        return when (condition) {
+            is Condition.Always -> true
+
+            // Exact match. A missing permission leaves the SSID null, which fails
+            // every Wi-Fi condition rather than passing them.
+            is Condition.OnWifi -> context.wifiSsid == condition.ssid
+
+            is Condition.NearDevice -> condition.tag in context.nearbyDevices
+
+            is Condition.AtPlace -> condition.place in context.insidePlaces
+
+            is Condition.AllOf ->
+                condition.conditions.all { holds(it, context, depth + 1) }
+
+            is Condition.AnyOf ->
+                condition.conditions.any { holds(it, context, depth + 1) }
+
+            is Condition.Not -> !holds(condition.condition, context, depth + 1)
+        }
+    }
+
+    /** The packages a target covers, following category nesting. */
+    private fun resolve(
+        target: RuleTarget,
+        hierarchy: ResolvedHierarchy,
+        installedPackages: Set<PackageName>,
+    ): Set<PackageName> = when (target) {
+        is RuleTarget.Everything -> installedPackages
+        is RuleTarget.Apps -> target.packages
+        is RuleTarget.Categories -> target.categories.flatMapTo(mutableSetOf()) { id: CategoryId ->
+            hierarchy.packagesIn(id)
+        }
+    }
+
+    /** The smaller of two budgets, comparing the most permissive day of each. */
+    private fun tightest(existing: WeeklyBudget?, candidate: WeeklyBudget): WeeklyBudget {
+        if (existing == null) return candidate
+        val existingPeak = peak(existing)
+        val candidatePeak = peak(candidate)
+        return if (candidatePeak < existingPeak) candidate else existing
+    }
+
+    private fun peak(budget: WeeklyBudget) =
+        java.time.DayOfWeek.entries.maxOf { budget.forDay(it) }
+}

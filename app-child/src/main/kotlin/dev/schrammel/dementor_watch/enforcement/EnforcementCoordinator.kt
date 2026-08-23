@@ -2,8 +2,13 @@ package dev.schrammel.dementor_watch.enforcement
 
 import android.content.Context
 import android.util.Log
+import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
+import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.dpc.AndroidDevicePolicyPort
+import dev.schrammel.dementor_watch.context.ContextProvider
+import dev.schrammel.dementor_watch.model.DeviceContext
 import dev.schrammel.dementor_watch.model.DeviceState
+import dev.schrammel.dementor_watch.rules.ContextRuleStore
 import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
@@ -54,6 +59,8 @@ class EnforcementCoordinator(context: Context) {
     private val history = UsageHistoryStore(appContext)
     private val recorder = UsageHistoryRecorder(collector, history)
     private val installedApps = InstalledApps(appContext)
+    private val contextProvider = ContextProvider(appContext)
+    private val contextRules = ContextRuleStore(appContext)
     private val port = AndroidDevicePolicyPort(appContext)
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
 
@@ -89,13 +96,28 @@ class EnforcementCoordinator(context: Context) {
         // Almost always a no-op; acts only when the policy day has rolled over.
         // History is a reporting nicety — never let it block enforcement.
         runCatching { recorder.recordClosedDays(policy, now) }
-            .onFailure { Log.w(TAG, "Could not record history", it) }
+            .onSuccess { days ->
+                if (days.isNotEmpty()) {
+                    Diagnostics.record(
+                        appContext,
+                        DiagnosticEvent.HISTORY_RECORDED,
+                        mapOf("days" to days.size.toLong()),
+                    )
+                }
+            }
+            .onFailure {
+                Log.w(TAG, "Could not record history", it)
+                Diagnostics.record(appContext, DiagnosticEvent.HISTORY_FAILED)
+            }
 
         // UsageStatsManager can throw on some OEM builds. A failed read must not
         // take enforcement with it: fall back to an empty day, which enforces
         // nothing rather than enforcing something wrong.
         val usage = runCatching { collector.collect(policy, now) }
-            .onFailure { Log.w(TAG, "Usage read failed; treating today as unmeasured", it) }
+            .onFailure {
+                Log.w(TAG, "Usage read failed; treating today as unmeasured", it)
+                Diagnostics.record(appContext, DiagnosticEvent.USAGE_READ_FAILED)
+            }
             .getOrElse {
                 CollectedUsage(
                     snapshot = UsageSnapshot.empty(
@@ -106,18 +128,30 @@ class EnforcementCoordinator(context: Context) {
             }
         val installed = installedApps.launchable().map { it.pkg }.toSet()
 
+        // Resolved here and nowhere else: the engine receives place ids, never a
+        // position. A failure leaves the context unknown, which makes contextual
+        // rules simply not apply.
+        val surroundings = runCatching { contextProvider.current(contextRules.places) }
+            .getOrDefault(DeviceContext.UNKNOWN)
+
         val enforcement = PolicyEngine.evaluate(
             policy = policy,
             installedPackages = installed,
             usage = usage.snapshot,
             grants = grants.active(now),
             deviceState = DeviceState(foregroundPackage = usage.foregroundPackage),
+            context = surroundings,
             now = now,
         )
 
         val reconcile = if (port.isDeviceOwner()) {
             reconciler.reconcile(policy, enforcement).also { result ->
                 if (result.invariantViolations.isNotEmpty()) {
+                    Diagnostics.record(
+                        appContext,
+                        DiagnosticEvent.INVARIANT_VIOLATION,
+                        mapOf("count" to result.invariantViolations.size.toLong()),
+                    )
                     // Never swallowed: this means a bug upstream, and on a real
                     // device it raises a parent-visible alert.
                     Log.e(TAG, "Invariant violations: ${result.invariantViolations}")

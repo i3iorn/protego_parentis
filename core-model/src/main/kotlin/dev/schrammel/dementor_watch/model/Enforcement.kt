@@ -35,6 +35,20 @@ sealed interface Reason {
     ) : Reason
 
     /**
+     * A contextual rule applies right now — on this network, near this device, at
+     * this place.
+     *
+     * [liftsAt] is null because context is not a schedule: nobody can say when the
+     * phone will leave the school Wi-Fi. The block screen says which rule, not when.
+     */
+    data class ContextRuleActive(
+        val ruleId: String,
+        val ruleName: String,
+    ) : Reason {
+        override val liftsAt: Instant? get() = null
+    }
+
+    /**
      * A category this app belongs to has spent its allowance. Carries the name so
      * the block screen can say "Games is used up" rather than something abstract.
      */
@@ -95,6 +109,8 @@ data class Enforcement(
     val appBudgets: Map<PackageName, BudgetStatus>,
     val categoryBudgets: Map<CategoryId, BudgetStatus>,
     val activeSchedules: List<ScheduleBlock>,
+    /** Contextual rules applying right now, for showing on the dashboard. */
+    val activeContextRules: List<ContextRule> = emptyList(),
     /**
      * When this decision would next change on its own — the next day boundary, a
      * schedule edge, a grant expiry, or the projected moment the foreground app

@@ -32,12 +32,17 @@ class AppLimitsActivity : ParentGatedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = LocalPolicyStore(this)
-        apps = InstalledApps(this).launchable()
         setContentView(buildLayout())
     }
 
     override fun onGatedContentVisible() {
-        render()
+        Background.load(this, {
+            // Both the app list and the stored limits come off disk.
+            InstalledApps(this).launchable() to store.appLimits
+        }) { (loaded, limits) ->
+            apps = loaded
+            render(limits)
+        }
     }
 
     private fun buildLayout(): ScrollView {
@@ -52,9 +57,8 @@ class AppLimitsActivity : ParentGatedActivity() {
         }
     }
 
-    private fun render() {
+    private fun render(limits: Map<String, Int>) {
         container.removeAllViews()
-        val limits = store.appLimits
 
         container.addView(
             TextView(this).apply {
@@ -139,7 +143,7 @@ class AppLimitsActivity : ParentGatedActivity() {
             .setView(content)
             .setPositiveButton(R.string.app_limits_save) { _, _ ->
                 store.setAppLimit(app.pkg.value, LimitSlider.minutesFor(bar.progress))
-                render()
+                onGatedContentVisible()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()

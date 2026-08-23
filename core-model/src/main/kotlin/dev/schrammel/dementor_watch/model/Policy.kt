@@ -49,6 +49,8 @@ data class Policy(
     val appRules: Map<PackageName, AppRule> = emptyMap(),
     val categories: List<Category> = emptyList(),
     val schedules: List<ScheduleBlock> = emptyList(),
+    /** Rules that apply only in certain circumstances. See [ContextRule]. */
+    val contextRules: List<ContextRule> = emptyList(),
     val safetyAllowlist: Set<PackageName> = emptySet(),
     val installPolicy: InstallPolicy = InstallPolicy.NOTIFY,
     /**

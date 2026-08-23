@@ -60,6 +60,13 @@ class HomeActivity : AppCompatActivity() {
         findViewById<Button>(R.id.permission_button).setOnClickListener {
             startActivity(UsageAccess.settingsIntent())
         }
+        findViewById<Button>(R.id.open_privacy).setOnClickListener {
+            startActivity(PrivacyActivity.intent(this))
+        }
+        findViewById<Button>(R.id.open_language).apply {
+            text = getString(R.string.home_language, LanguagePicker.currentLabel(this@HomeActivity))
+            setOnClickListener { LanguagePicker.show(this@HomeActivity) }
+        }
         findViewById<Button>(R.id.open_requests).setOnClickListener {
             startActivity(RequestsActivity.intent(this))
         }
@@ -73,7 +80,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (showPendingCelebration()) return
+        showPendingCelebration()
         requestNotificationPermissionIfNeeded()
         render()
         // Safe to call repeatedly; the service ignores a duplicate start.
@@ -84,10 +91,10 @@ class HomeActivity : AppCompatActivity() {
      * Opening the app is the other way a prize gets seen, for anyone who swiped the
      * notification away. Returns true when the celebration took over the screen.
      */
-    private fun showPendingCelebration(): Boolean {
-        val earned = runCatching { goals.refresh() }.getOrNull() ?: return false
-        startActivity(CelebrationActivity.intent(this))
-        return true
+    private fun showPendingCelebration() {
+        Background.load(this, { runCatching { goals.refresh() }.getOrNull() }) { earned ->
+            if (earned != null) startActivity(CelebrationActivity.intent(this))
+        }
     }
 
     /**
@@ -109,8 +116,15 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Evaluating reads preferences, replays a day of usage events and walks the
+     * installed-app list. All of that ran on the main thread on every resume.
+     */
     private fun render() {
-        val snapshot = coordinator.evaluate()
+        Background.load(this, { coordinator.evaluate() }, ::show)
+    }
+
+    private fun show(snapshot: EnforcementSnapshot?) {
         val needsPermission = snapshot == null
 
         findViewById<View>(R.id.permission_card).visibility =
@@ -128,9 +142,26 @@ class HomeActivity : AppCompatActivity() {
         }
 
         renderSummary(snapshot)
+        renderActiveRules(snapshot)
         renderCategoryBudgets(snapshot)
         renderBlocked(snapshot)
         renderUsage(snapshot)
+    }
+
+    /**
+     * Which contextual rules are applying right now.
+     *
+     * Shown to the child unprompted: a phone that quietly behaves differently at
+     * school than at home, with no way to see why, is the version of this feature
+     * that feels like surveillance rather than a rule.
+     */
+    private fun renderActiveRules(snapshot: EnforcementSnapshot) {
+        val active = snapshot.enforcement.activeContextRules
+        if (active.isEmpty()) return
+
+        findViewById<LinearLayout>(R.id.rules_list).addView(
+            line(getString(R.string.home_context_active, active.joinToString(", ") { it.name })),
+        )
     }
 
     private fun renderCategoryBudgets(snapshot: EnforcementSnapshot) {
@@ -291,6 +322,7 @@ class HomeActivity : AppCompatActivity() {
             is Reason.DeviceBudgetExhausted -> "Daily limit"
             is Reason.AppBudgetExhausted -> "App limit"
             is Reason.CategoryBudgetExhausted -> reason.categoryName
+            is Reason.ContextRuleActive -> reason.ruleName
         }
         return listOfNotNull(what, until).joinToString(" ")
     }

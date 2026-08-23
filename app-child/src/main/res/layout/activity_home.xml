@@ -84,6 +84,19 @@
         </LinearLayout>
 
         <Button
+            android:id="@+id/open_privacy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/home_open_privacy" />
+
+        <Button
+            android:id="@+id/open_language"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg" />
+
+        <Button
             android:id="@+id/open_requests"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
-import android.view.WindowManager
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -14,56 +14,70 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
+import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.security.PinAttempts
 import dev.schrammel.dementor_watch.security.PinLock
 import kotlin.time.Duration
 
 /**
- * Sets or checks the parent's PIN.
+ * Sets, checks or replaces the parent's PIN.
  *
  * Deliberately gates *changing* the rules, not viewing them. The teen's dashboard
  * stays open: they are meant to see exactly what is measured and what is enforced,
  * and a product that hides its own rules from the person living under them is the
  * kind that gets worked around rather than accepted.
+ *
+ * Replacing a PIN verifies the old one first and overwrites only once the new one
+ * is confirmed. An earlier version cleared the stored PIN *before* asking for the
+ * replacement, so backing out at that moment left the app with no PIN at all — and
+ * invited whoever opened a settings screen next to set their own.
  */
 class PinActivity : AppCompatActivity() {
 
+    /** Where we are in the sequence; which sequence depends on how we were launched. */
+    private enum class Step { UNLOCK, VERIFY_EXISTING, CHOOSE_NEW, CONFIRM_NEW }
+
     private lateinit var lock: PinLock
     private lateinit var attempts: PinAttempts
-    private var confirming: String? = null
 
     private lateinit var prompt: TextView
     private lateinit var input: EditText
+
+    private var step = Step.UNLOCK
+    private var chosen: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lock = PinLock(this)
         attempts = PinAttempts(this)
+
         // The PIN screen must not appear in the recents thumbnail.
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE,
         )
+
+        step = when {
+            !lock.isSet -> Step.CHOOSE_NEW
+            intent.getBooleanExtra(EXTRA_CHANGE, false) -> Step.VERIFY_EXISTING
+            else -> Step.UNLOCK
+        }
+
         setContentView(buildLayout())
         updatePrompt()
     }
 
     private fun buildLayout(): LinearLayout {
         prompt = TextView(this).apply {
-            styleAs(R.style.TextAppearance_Dementor_Subtitle)
-            setPadding(0, 0, 0, dimen(R.dimen.space_lg))
+            styleAs(R.style.TextAppearance_Dementor_Body)
+            setPadding(0, dimen(R.dimen.space_md), 0, dimen(R.dimen.space_lg))
         }
 
         input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             hint = getString(R.string.pin_hint)
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-        }
-
-        val submit = Button(this).apply {
-            setText(R.string.pin_continue)
-            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dimen(R.dimen.space_xl) }
-            setOnClickListener { onSubmit() }
         }
 
         return LinearLayout(this).apply {
@@ -78,18 +92,26 @@ class PinActivity : AppCompatActivity() {
                     styleAs(R.style.TextAppearance_Dementor_Title)
                 },
             )
-            addView(prompt.also { it.setPadding(0, dimen(R.dimen.space_md), 0, dimen(R.dimen.space_lg)) })
+            addView(prompt)
             addView(input)
-            addView(submit)
+            addView(
+                Button(context).apply {
+                    setText(R.string.pin_continue)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_xl) }
+                    setOnClickListener { onSubmit() }
+                },
+            )
         }
     }
 
     private fun updatePrompt() {
         prompt.setText(
-            when {
-                !lock.isSet && confirming == null -> R.string.pin_create
-                confirming != null -> R.string.pin_confirm
-                else -> R.string.pin_enter
+            when (step) {
+                Step.UNLOCK -> R.string.pin_enter
+                Step.VERIFY_EXISTING -> R.string.pin_enter_current
+                Step.CHOOSE_NEW -> R.string.pin_create
+                Step.CONFIRM_NEW -> R.string.pin_confirm
             },
         )
     }
@@ -100,45 +122,61 @@ class PinActivity : AppCompatActivity() {
         val entered = input.text.toString()
         input.setText("")
 
-        when {
-            // First run: choose a PIN, then type it again.
-            !lock.isSet && confirming == null -> {
-                if (entered.length < PinLock.MIN_LENGTH) {
-                    toast(
-                        resources.getQuantityString(
-                            R.plurals.pin_too_short,
-                            PinLock.MIN_LENGTH,
-                            PinLock.MIN_LENGTH,
-                        ),
-                    )
-                    return
-                }
-                confirming = entered
+        when (step) {
+            Step.UNLOCK -> if (verify(entered)) succeed()
+
+            Step.VERIFY_EXISTING -> if (verify(entered)) {
+                step = Step.CHOOSE_NEW
                 updatePrompt()
             }
 
-            confirming != null -> {
-                if (entered != confirming) {
-                    confirming = null
-                    updatePrompt()
-                    toast(getString(R.string.pin_mismatch))
-                    return
-                }
-                lock.set(entered)
-                attempts.recordSuccess()
-                succeed()
-            }
+            Step.CHOOSE_NEW -> chooseNew(entered)
 
-            lock.verify(entered) -> {
-                attempts.recordSuccess()
-                succeed()
-            }
-
-            else -> {
-                attempts.recordFailure()
-                if (!rejectWhileLockedOut()) toast(getString(R.string.pin_wrong))
-            }
+            Step.CONFIRM_NEW -> confirmNew(entered)
         }
+    }
+
+    /** Checks an entered PIN, recording the attempt either way. */
+    private fun verify(entered: String): Boolean {
+        if (lock.verify(entered)) {
+            attempts.recordSuccess()
+            return true
+        }
+        attempts.recordFailure()
+        Diagnostics.record(this, DiagnosticEvent.PIN_FAILED)
+        if (!rejectWhileLockedOut()) toast(getString(R.string.pin_wrong))
+        return false
+    }
+
+    private fun chooseNew(entered: String) {
+        if (entered.length < PinLock.MIN_LENGTH) {
+            toast(
+                resources.getQuantityString(
+                    R.plurals.pin_too_short,
+                    PinLock.MIN_LENGTH,
+                    PinLock.MIN_LENGTH,
+                ),
+            )
+            return
+        }
+        chosen = entered
+        step = Step.CONFIRM_NEW
+        updatePrompt()
+    }
+
+    private fun confirmNew(entered: String) {
+        if (entered != chosen) {
+            chosen = null
+            step = Step.CHOOSE_NEW
+            updatePrompt()
+            toast(getString(R.string.pin_mismatch))
+            return
+        }
+        // Only now is any previous PIN replaced.
+        lock.set(entered)
+        attempts.recordSuccess()
+        Diagnostics.record(this, DiagnosticEvent.PIN_CHANGED)
+        succeed()
     }
 
     /** True when a lockout is in force, having told the user how long is left. */
@@ -161,7 +199,9 @@ class PinActivity : AppCompatActivity() {
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+        private const val EXTRA_CHANGE = "change"
 
-        fun intent(context: Context) = Intent(context, PinActivity::class.java)
+        fun intent(context: Context, change: Boolean = false): Intent =
+            Intent(context, PinActivity::class.java).putExtra(EXTRA_CHANGE, change)
     }
 }

@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">Dementor Watch</string>
+    <!-- The product name is the same in every language. -->
+    <string name="app_name" translatable="false">Dementor Watch</string>
 
     <!-- Persistent notification. Required by policy: this app is never hidden. -->
     <string name="service_channel_name">Screen time</string>
@@ -70,6 +71,97 @@
     <string name="week_no_apps">No app time recorded.</string>
 
     <string name="home_open_requests">Ask for more time</string>
+
+    <!-- Contextual rules. -->
+    <string name="context_title">Rules</string>
+    <string name="context_explainer">Rules that only apply somewhere, or near something. The daily limit and bedtime keep working as they are; these sit on top.</string>
+    <string name="context_sources_header">What this phone can tell</string>
+    <string name="context_wifi_ready">Wi-Fi network: available.</string>
+    <string name="context_wifi_blocked">Wi-Fi network: not available. Android needs location permission to reveal a network name. Rules about Wi-Fi will not apply.</string>
+    <string name="context_place_ready">Places: available.</string>
+    <string name="context_place_blocked">Places: not available without location permission. Rules about places will not apply.</string>
+    <string name="context_near_ready">Nearby devices: available.</string>
+    <string name="context_near_blocked">Nearby devices: not available without Bluetooth permission. Rules about nearby devices will not apply.</string>
+    <string name="context_manage_places">Manage places</string>
+    <string name="context_rules_header">Your rules</string>
+    <string name="context_no_rules">No rules yet.</string>
+    <string name="context_add_rule">Add a rule</string>
+    <string name="context_rule_off">%1$s (off)</string>
+    <string name="context_rule_summary">%1$s → %2$s %3$s</string>
+    <string name="context_when_always">always</string>
+    <string name="context_when_never">never</string>
+    <string name="context_when_wifi">on Wi-Fi \u201c%1$s\u201d</string>
+    <string name="context_when_near">near %1$s</string>
+    <string name="context_when_place">at %1$s</string>
+    <string name="context_when_not">not %1$s</string>
+    <string name="context_join_and"> and </string>
+    <string name="context_join_or"> or </string>
+    <string name="context_place_unknown">a deleted place</string>
+    <string name="context_effect_block">block</string>
+    <string name="context_effect_allow">allow freely</string>
+    <string name="context_effect_budget">limit the phone to %1$s</string>
+    <string name="context_target_everything">everything</string>
+    <string name="context_target_categories">some categories</string>
+
+    <string name="context_edit_title">Rule</string>
+    <string name="context_name_hint">Name, for example No games at school</string>
+    <string name="context_name_required">Give the rule a name.</string>
+    <string name="context_enabled">Rule is on</string>
+    <string name="context_when_header">When</string>
+    <string name="context_invert">Apply when this is NOT true</string>
+    <string name="context_do_header">Do this</string>
+    <string name="context_to_header">To</string>
+    <string name="context_choose_wifi">On a Wi-Fi network</string>
+    <string name="context_wifi_hint">Network name</string>
+    <string name="context_choose_device">Near a device</string>
+    <string name="context_device_hint">Bluetooth address</string>
+    <string name="context_device_explainer">The phone counts a device as near when it is paired and connected over Bluetooth. Pair the other phone first, then paste its Bluetooth address here.</string>
+    <string name="context_choose_budget">Set a different daily limit</string>
+    <string name="context_choose_categories">Some categories</string>
+    <string name="context_choose_apps">Some apps</string>
+    <string name="context_save">Save rule</string>
+    <string name="context_delete">Delete rule</string>
+
+    <string name="places_title">Places</string>
+    <string name="places_explainer">A place is saved from where you are standing. Coordinates stay on this phone: they are never sent anywhere and never appear in the log.</string>
+    <string name="places_none">No places yet.</string>
+    <string name="places_row">%1$s — within %2$d m</string>
+    <string name="places_add_here">Save where I am now</string>
+    <string name="places_name_hint">Name, for example Home</string>
+    <string name="places_no_fix">No location available yet. Open a maps app for a moment, then try again.</string>
+    <string name="places_delete">Delete</string>
+    <string name="places_delete_warning">Any rule that uses this place is deleted too, so nothing is left pointing at a place that no longer exists.</string>
+    <string name="rules_context_header">Rules</string>
+    <string name="rules_open_context">Where and when rules apply</string>
+    <string name="home_context_active">Active now: %1$s</string>
+
+    <!-- Privacy and diagnostics. -->
+    <string name="privacy_title">What leaves this phone</string>
+    <string name="privacy_measured_header">Measured here</string>
+    <string name="privacy_measured_body">Which apps you open and for how long, your total screen time each day, and which rules applied. This is worked out on the phone and kept on the phone.</string>
+    <string name="privacy_never_header">Never collected</string>
+    <string name="privacy_never_body">Your messages, your photos, what you type, what is on your screen, your location, your browsing, and the contents of any app. None of it is read, stored or sent.</string>
+    <string name="privacy_sent_header">Sent off the phone</string>
+    <string name="privacy_sent_body">Only when you ask for more time, or when a request is answered. What is sent: how many minutes were asked for, what for, the reason you wrote, and whether the answer was yes or no. Nothing else — no app list, no screen time, no location. Every message is encrypted on this phone first, so the server cannot read any of it.</string>
+    <string name="privacy_sent_off">Nothing. Sending to parent phones is turned off, so this phone talks to no server at all.</string>
+    <string name="privacy_sent_server">Server: %1$s</string>
+    <string name="privacy_log_header">The app\'s own log</string>
+    <string name="privacy_log_body">A short record of what the app did — that it checked your time, that it started, that something failed. It holds no app names, no reasons you wrote and no times you were using anything. You can read all of it.</string>
+    <string name="privacy_view_log">Read the log</string>
+    <string name="home_open_privacy">What leaves this phone</string>
+
+    <string name="diagnostics_title">App log</string>
+    <string name="diagnostics_header">Dementor Watch log. Contains only what the app did: event names, counts and times. No app names, no messages, no reasons, no passwords.</string>
+    <string name="diagnostics_share">Share the log</string>
+    <string name="diagnostics_clear">Clear the log</string>
+    <string name="diagnostics_empty">Nothing recorded yet.</string>
+
+    <string name="pin_enter_current">Enter your current PIN.</string>
+
+    <!-- Language. -->
+    <string name="language_title">Language</string>
+    <string name="language_system">System default</string>
+    <string name="home_language">Language: %1$s</string>
 
     <!-- Sync with parent phones. -->
     <string name="sync_title">Parent phones</string>

@@ -2,6 +2,8 @@ package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
 import android.util.Log
+import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
+import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.model.GrantTarget
 import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestId
@@ -89,10 +91,20 @@ class SyncCoordinator(context: Context) {
             val since = config.lastPolledAt().minusSeconds(POLL_OVERLAP_SECONDS)
 
             when (val result = client.poll(since)) {
-                is TransportResult.Failed -> onFinished(result.message)
+                is TransportResult.Failed -> {
+                    // The message is a transport error, never message content.
+                    Diagnostics.record(appContext, DiagnosticEvent.SYNC_POLL_FAILED)
+                    onFinished(result.message)
+                }
+
                 is TransportResult.Ok -> {
                     val applied = result.value.count { envelope -> apply(key, envelope) }
                     config.recordPolledAt(Instant.now())
+                    Diagnostics.record(
+                        appContext,
+                        DiagnosticEvent.SYNC_POLLED,
+                        mapOf("received" to result.value.size.toLong(), "applied" to applied.toLong()),
+                    )
                     onFinished("$applied applied")
                 }
             }
@@ -122,6 +134,11 @@ class SyncCoordinator(context: Context) {
         val admission = ReplayGuard.admit(message, Instant.now(), seen)
         if (admission is Admission.Reject) {
             Log.w(TAG, "Refused message ${message.id}: ${admission.reason}")
+            Diagnostics.record(
+                appContext,
+                DiagnosticEvent.SYNC_MESSAGE_REFUSED,
+                mapOf("reason" to admission.reason.ordinal.toLong()),
+            )
             return false
         }
         config.rememberSeen(ReplayGuard.remember(seen, message.id))
@@ -168,8 +185,17 @@ class SyncCoordinator(context: Context) {
                 sentAt = Instant.now(),
                 fields = fields,
             )
-            NtfyClient(settings.serverUrl, settings.topic)
+            val sent = NtfyClient(settings.serverUrl, settings.topic)
                 .publish(MessageCrypto.seal(key, SyncCodec.encode(message)))
+            Diagnostics.record(
+                appContext,
+                if (sent is TransportResult.Ok) {
+                    DiagnosticEvent.SYNC_PUBLISHED
+                } else {
+                    DiagnosticEvent.SYNC_PUBLISH_FAILED
+                },
+                mapOf("type" to type.ordinal.toLong()),
+            )
         }
     }
 

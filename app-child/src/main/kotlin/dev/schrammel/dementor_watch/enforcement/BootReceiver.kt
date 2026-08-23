@@ -3,6 +3,8 @@ package dev.schrammel.dementor_watch.enforcement
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
+import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 
 /**
  * Re-arms enforcement after a reboot.
@@ -15,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        Diagnostics.record(context, DiagnosticEvent.BOOT_COMPLETED)
         EnforcementService.start(context)
     }
 }

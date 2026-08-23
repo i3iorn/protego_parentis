@@ -33,10 +33,18 @@ class AppPickerActivity : AppCompatActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
 
         setContentView(buildLayout(title))
+
+        // Loading every launchable app's label and icon is the slowest thing this
+        // screen does, so the list arrives after the frame rather than blocking it.
+        Background.load(this, { InstalledApps(this).launchable() }) { apps ->
+            apps.forEach { app -> content.addView(row(app.pkg.value, app.label, app.icon)) }
+        }
     }
 
+    private lateinit var content: LinearLayout
+
     private fun buildLayout(title: String): ScrollView {
-        val content = LinearLayout(this).apply {
+        content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
@@ -49,10 +57,6 @@ class AppPickerActivity : AppCompatActivity() {
                 setPadding(0, 0, 0, dimen(R.dimen.space_md))
             },
         )
-
-        InstalledApps(this).launchable().forEach { app ->
-            content.addView(row(app.pkg.value, app.label, app.icon))
-        }
 
         return ScrollView(this).apply {
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)

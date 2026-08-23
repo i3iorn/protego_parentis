@@ -69,6 +69,7 @@ class LocalPolicyStore(context: Context) {
         appRules = appRules(),
         categories = categories.map(::toDomain),
         schedules = schedules(),
+        contextRules = ContextRuleStore(appContext).rules,
         safetyAllowlist = SafetyAllowlist.of(appContext),
         installPolicy = installPolicy,
         tamperProtection = tamperProtection,

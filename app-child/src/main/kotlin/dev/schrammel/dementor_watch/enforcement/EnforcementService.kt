@@ -17,6 +17,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
+import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
@@ -66,6 +68,7 @@ class EnforcementService : Service() {
                 evaluate()
             } catch (e: Exception) {
                 Log.e(TAG, "Evaluation failed; retrying", e)
+                Diagnostics.record(this@EnforcementService, DiagnosticEvent.EVALUATION_FAILED)
                 RETRY_INTERVAL_MILLIS
             }
             handler.postDelayed(this, nextIn)
@@ -107,6 +110,7 @@ class EnforcementService : Service() {
             )
         }
 
+        Diagnostics.record(this, DiagnosticEvent.SERVICE_STARTED)
         handler.removeCallbacks(tick)
         handler.post(tick)
 
@@ -115,6 +119,7 @@ class EnforcementService : Service() {
     }
 
     override fun onDestroy() {
+        Diagnostics.record(this, DiagnosticEvent.SERVICE_STOPPED)
         handler.removeCallbacks(tick)
         runCatching { unregisterReceiver(onUnlocked) }
         super.onDestroy()
@@ -126,11 +131,26 @@ class EnforcementService : Service() {
         val snapshot = coordinator.evaluate(now)
         if (snapshot == null) {
             updateNotification(getString(R.string.service_needs_permission))
+            Diagnostics.record(this, DiagnosticEvent.USAGE_ACCESS_MISSING)
             return MAX_INTERVAL_MILLIS
         }
 
         warnings.onEvaluated(snapshot.enforcement.deviceBudget, snapshot.usage.snapshot.policyDay)
         updateNotification(summarise(snapshot))
+
+        // Counts only: enough to see that a day is being measured and how much is
+        // being enforced, without recording which apps or when they were used.
+        Diagnostics.record(
+            this,
+            DiagnosticEvent.EVALUATED,
+            mapOf(
+                "usedMinutes" to snapshot.usage.snapshot.deviceTotal.inWholeMinutes,
+                "appsWithTime" to snapshot.usage.snapshot.byPackage.size.toLong(),
+                "wouldSuspend" to snapshot.enforcement.suspend.size.toLong(),
+                "level" to snapshot.enforcement.deviceBudget.level.ordinal.toLong(),
+                "managed" to if (snapshot.monitorOnly) 0L else 1L,
+            ),
+        )
 
         Log.d(
             TAG,

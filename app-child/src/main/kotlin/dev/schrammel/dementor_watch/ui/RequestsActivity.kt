@@ -19,6 +19,7 @@ import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.policy.request.SubmitDecision
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.RequestCoordinator
+import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -45,7 +46,10 @@ class RequestsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        coordinator = RequestCoordinator(this)
+        val sync = SyncCoordinator(this)
+        // Raising a request tells every parent phone. Publishing is fire-and-forget
+        // and off the main thread; an offline phone simply keeps the request local.
+        coordinator = RequestCoordinator(this, onRaised = sync::publishRequestRaised)
         policyStore = LocalPolicyStore(this)
         installedApps = InstalledApps(this)
 
@@ -168,12 +172,13 @@ class RequestsActivity : AppCompatActivity() {
     private fun renderHistory() {
         container.addView(heading(getString(R.string.requests_history), R.style.TextAppearance_Dementor_Section))
 
-        val all = coordinator.all()
-        if (all.isEmpty()) {
-            container.addView(body(getString(R.string.requests_none)))
-            return
+        Background.load(this, { coordinator.all() }) { all ->
+            if (all.isEmpty()) {
+                container.addView(body(getString(R.string.requests_none)))
+            } else {
+                all.forEach { container.addView(requestRow(it)) }
+            }
         }
-        all.forEach { container.addView(requestRow(it)) }
     }
 
     private fun requestRow(request: Request): LinearLayout = LinearLayout(this).apply {

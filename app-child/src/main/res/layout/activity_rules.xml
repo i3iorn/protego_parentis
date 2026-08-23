@@ -197,6 +197,20 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_4xl"
+            android:text="@string/rules_context_header"
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
+
+        <Button
+            android:id="@+id/open_context_rules"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/rules_open_context" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_goal_header"
             android:textAppearance="@style/TextAppearance.Dementor.Section" />
 

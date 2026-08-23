@@ -16,13 +16,13 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 | Module | Kind | What lives here |
 | --- | --- | --- |
 | `core-model` | Pure Kotlin | Domain types: `Policy`, `Category`, `WeeklyBudget`, `Grant`, `Enforcement`. No Android, no I/O. |
-| `core-policy` | Pure Kotlin | All the real logic: `PolicyEngine` (what should be blocked), `UsageReplay` (how much time was spent), `RequestRules` (asking and answering), `PolicyReconciler` (apply it), `DeviceReleaser` (undo it). |
+| `core-policy` | Pure Kotlin | All the real logic: `ContextRules` (where and near what),  `PolicyEngine` (what should be blocked), `UsageReplay` (how much time was spent), `RequestRules` (asking and answering), `PolicyReconciler` (apply it), `DeviceReleaser` (undo it). |
 | `core-provisioning` | Pure Kotlin | The setup QR payload. Kept Android-free so the parent app can generate codes without a device SDK. |
 | `app-child` | Android app | The app that runs on the teenager's phone. Reads usage, drives `DevicePolicyManager`, stores history, hosts the UI. |
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 207 tests run without a phone.
+in the wrong place — that separation is what lets 285 tests run without a phone.
 
 ---
 
@@ -135,7 +135,7 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-207 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
+285 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
 and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
@@ -171,7 +171,39 @@ Not built yet:
   or emailed on a schedule.
 - **No server and no parent app.** Rules are edited on the same phone that enforces
   them. `LocalPolicyStore` is a stand-in for Room plus sync.
-- **No web filtering or location.**
+
+## Contextual rules
+
+Beyond "how much" and "when on the clock", a rule can depend on where the phone
+is and what it is near. A rule reads as a sentence: **when this, do that, to
+those.**
+
+- **When** — always, on a named Wi-Fi network, at a saved place, near a paired
+  Bluetooth device. Any of them can be inverted, and they compose with and/or.
+- **Do** — block, allow freely, or replace the daily limit.
+- **To** — everything, some categories (following nesting), or some apps.
+
+Resolution rules, both chosen so a parent cannot open a hole by accident: an
+**allow beats a block**, and where several rules set a limit the **tightest
+wins**. The safety allowlist still beats every rule.
+
+Three things about how context is read:
+
+- **Rules fail closed, never open.** A missing permission leaves the value absent,
+  which makes the condition false. Revoking a permission can never turn a block
+  into an allowance.
+- **Nothing is read that no rule needs**, and permissions are requested at the
+  moment a rule asks for them rather than at first launch.
+- **Coordinates never leave `ContextProvider`.** It resolves a position into "the
+  set of places the phone is inside" and discards it. Everything downstream —
+  including the diagnostic log and sync — is structurally incapable of handling a
+  location because it never receives one.
+
+Android treats a Wi-Fi network name as a location signal, so reading the SSID
+needs the location permission. Places use the last known fix rather than waking
+the GPS, so a rule lags rather than costing battery. Proximity means *paired and
+connected over Bluetooth*, not a BLE scan — much cheaper, and good enough for
+"is a parent's phone with them".
 
 ## Security model
 
@@ -190,10 +222,46 @@ no need for tooling. That shapes several decisions:
 - **Parent screens set `FLAG_SECURE`**, keeping rules and PIN entry out of
   screenshots and the recents thumbnail.
 - **The PIN is stored as a salted PBKDF2 hash** and compared in constant time.
+- **Replacing a PIN verifies the old one first** and overwrites only once the new
+  one is confirmed. Clearing it up front left the app unprotected if the parent
+  backed out.
+
+## Privacy
+
+The child is the subject, so the default is to collect and transmit as little as
+possible about them.
+
+- **Nothing leaves the device unless sync is switched on**, and then only
+  requests and their answers — minutes, target, the reason the child wrote, and
+  yes or no. No app list, no screen time, no location. Encrypted before it leaves.
+- **The diagnostic log records what the app did, never what the child did.** Event
+  names, counts and durations only: no package names, no reasons, no prize text,
+  no session times. A test asserts the shape of every rendered line, so a later
+  change that interpolates content fails the build.
+- **The child can read all of it.** "What leaves this phone" and the log itself
+  are reachable from the home screen without the parent PIN. A privacy page the
+  monitored person cannot open is marketing, not transparency.
+- **No analytics, no crash reporting, no third-party SDKs.** The only network
+  destination is the family's own topic.
 
 Known gap: clearing the app's data from Settings resets the PIN and the rules.
 Closing that requires device owner plus `DISALLOW_APPS_CONTROL`, which is part of
 the tamper-protection switch rather than something the app can do on its own.
+
+## Adding a language
+
+The app ships English and Swedish, and picks its language from the in-app
+selector on the home screen (Android stores the choice per app, so it survives
+restarts).
+
+To add one:
+
+1. Add a `<locale>` line to `res/xml/locales_config.xml`.
+2. Add `res/values-xx/strings.xml`.
+
+Nothing in Kotlin changes — the picker reads the supported list back at runtime
+and names each language in itself. Lint treats a missing translation as a build
+error, so a half-finished language cannot ship by accident.
 
 ## Where the configuration lives
 
@@ -207,8 +275,8 @@ the tamper-protection switch rather than something the app can do on its own.
 | UI tuning — list caps, week length, bonus amounts | `app-child/res/values/config.xml` |
 | All user-visible text | `app-child/res/values/strings.xml` |
 
-There should be no bare dimension, text size or tuning number anywhere in Kotlin
-or layout XML. If you need one, add it to the right file above and reference it.
+There should be no bare dimension, text size, tuning number or user-visible
+string anywhere in Kotlin or layout XML. If you need one, add it to the right file above and reference it.
 
 Every colour name in `values/colors.xml` must also exist in `values-night/`, or
 the app crashes at inflate time in dark mode.

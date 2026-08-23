@@ -32,6 +32,12 @@ class RequestCoordinator(
      * be a construction loop.
      */
     private val onRaised: ((Request) -> Unit)? = null,
+    /**
+     * Called when a request is answered here, so the other parent phones learn of
+     * it. Deliberately not invoked when a decision arrives *from* sync — that
+     * would echo it straight back and the phones would answer each other forever.
+     */
+    private val onDecided: ((Request) -> Unit)? = null,
 ) {
 
     private val appContext = context.applicationContext
@@ -100,6 +106,7 @@ class RequestCoordinator(
         grants.add(grant)
         requests.save(approved)
         notifier.notifyDecision(approved)
+        onDecided?.invoke(approved)
         return true
     }
 
@@ -113,6 +120,7 @@ class RequestCoordinator(
         )
         requests.save(denied)
         notifier.notifyDecision(denied)
+        onDecided?.invoke(denied)
         return true
     }
 

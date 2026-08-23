@@ -17,7 +17,6 @@ import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
-import dev.schrammel.dementor_watch.security.PinLock
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.LocalTime
 
@@ -50,6 +49,9 @@ class RulesActivity : ParentGatedActivity() {
         setUpCategories()
         findViewById<Button>(R.id.open_app_limits).setOnClickListener {
             startActivity(AppLimitsActivity.intent(this))
+        }
+        findViewById<Button>(R.id.open_context_rules).setOnClickListener {
+            startActivity(ContextRulesActivity.intent(this))
         }
         findViewById<Button>(R.id.open_sync).setOnClickListener {
             startActivity(SyncSettingsActivity.intent(this))
@@ -219,8 +221,10 @@ class RulesActivity : ParentGatedActivity() {
 
     private fun setUpPin() {
         findViewById<Button>(R.id.change_pin).setOnClickListener {
-            PinLock(this).clear()
-            startActivity(PinActivity.intent(this))
+            // The old PIN is verified inside, and replaced only once the new one
+            // is confirmed. Clearing first left the app unprotected if the parent
+            // backed out.
+            startActivity(PinActivity.intent(this, change = true))
         }
     }
 
