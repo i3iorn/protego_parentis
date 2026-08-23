@@ -30,14 +30,20 @@ class NewAppStore(context: Context) {
     fun all(): List<NewApp> = decode(prefs.getString(KEY_APPS, null))
         .sortedByDescending { it.noticedAt }
 
-    /** Ignores a package already waiting, so a repeated message is not a repeated row. */
-    fun remember(app: NewApp) {
+    /**
+     * Ignores a package already waiting, so a repeated message is not a repeated row.
+     *
+     * Locked for the same reason the inbox is: a poll arriving while a parent taps
+     * Allow would otherwise lose one of the two writes.
+     */
+    fun remember(app: NewApp) = synchronized(LOCK) {
         val existing = decode(prefs.getString(KEY_APPS, null))
-        if (existing.any { it.packageName == app.packageName }) return
-        write(existing + app)
+        if (existing.none { it.packageName == app.packageName }) {
+            write(existing + app)
+        }
     }
 
-    fun forget(packageName: String) {
+    fun forget(packageName: String) = synchronized(LOCK) {
         write(decode(prefs.getString(KEY_APPS, null)).filterNot { it.packageName == packageName })
     }
 
@@ -74,6 +80,9 @@ class NewAppStore(context: Context) {
     }
 
     private companion object {
+        /** Shared across instances: every screen constructs its own store. */
+        val LOCK = Any()
+
         const val FILE_NAME = "new_apps"
         const val KEY_APPS = "apps"
 

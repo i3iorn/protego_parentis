@@ -26,7 +26,7 @@ import java.time.format.DateTimeFormatter
  * front of "approve 15 minutes" is friction with nothing on the other side of it.
  * Switching the phone back to child mode *is* gated — see [ParentSettingsActivity].
  */
-class ParentHomeActivity : DementorActivity() {
+class ParentHomeActivity : ParentRoleActivity() {
 
     private lateinit var sync: SyncCoordinator
     private lateinit var inbox: InboxStore
@@ -37,8 +37,7 @@ class ParentHomeActivity : DementorActivity() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
         inbox = InboxStore(this)
         // Idempotent, and re-asserted here so a phone that was granted the family
@@ -49,8 +48,7 @@ class ParentHomeActivity : DementorActivity() {
         showColumn(column)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onParentPhoneResumed() {
         render()
         // Opening the app is the moment a parent expects to be up to date, so a
         // poll happens here rather than only on a timer.

@@ -25,6 +25,8 @@ import dev.schrammel.dementor_watch.model.Heartbeat
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.rules.AppReviewStore
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
+import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.ui.Format
@@ -143,6 +145,14 @@ class EnforcementService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Belt and braces with the check in BootReceiver. Several screens start
+        // this service, and one of them reaching a parent's phone by mistake must
+        // not turn that phone into a second, fictitious child device.
+        if (RoleStore(this).roleOrChild != DeviceRole.CHILD) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
         // FOREGROUND_SERVICE_TYPE_SPECIAL_USE only exists from API 34. On 33 the
         // two-argument call takes the type from the manifest, which is what we want
         // — passing the constant there would throw.

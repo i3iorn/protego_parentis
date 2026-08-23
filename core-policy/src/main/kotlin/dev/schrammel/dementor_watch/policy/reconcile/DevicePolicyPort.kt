@@ -75,6 +75,16 @@ object TamperRestrictions {
     /** A second user would otherwise be an unmanaged phone. */
     const val NO_ADD_USER = "no_add_user"
 
+    /**
+     * Stops the app's own data being cleared from Settings.
+     *
+     * Without it the whole product is four taps from gone: clearing storage takes
+     * the PIN, the rules, the shared history and the record of which apps were
+     * already here, and leaves an app that looks installed and enforces nothing.
+     * It also blocks force-stop, which is the other way to silence the service.
+     */
+    const val NO_CONTROL_APPS = "no_control_apps"
+
     /** Applied only when the family has chosen gated installs (AC-3). */
     const val NO_INSTALL_APPS = "no_install_apps"
 
@@ -87,6 +97,7 @@ object TamperRestrictions {
         NO_CONFIG_PRIVATE_DNS,
         NO_CONFIG_VPN,
         NO_ADD_USER,
+        NO_CONTROL_APPS,
     )
 
     /** Restrictions this app owns. Anything outside this set is left alone. */

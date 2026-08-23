@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
+import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.RoleStore
 
 /**
  * Re-arms enforcement after a reboot.
@@ -18,6 +20,11 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         Diagnostics.record(context, DiagnosticEvent.BOOT_COMPLETED)
+
+        // Only the managed phone has anything to enforce. Starting the service on
+        // a parent's own handset gave it a permanent monitoring notification and,
+        // worse, made it publish heartbeats that other parents read as the child's.
+        if (RoleStore(context).roleOrChild != DeviceRole.CHILD) return
         EnforcementService.start(context)
     }
 }

@@ -23,12 +23,11 @@ import dev.schrammel.dementor_watch.sync.SyncCoordinator
  * It arrives on the child's phone at the next poll, which is why the confirmation
  * says "sent" rather than "granted".
  */
-class ParentBonusActivity : DementorActivity() {
+class ParentBonusActivity : ParentRoleActivity() {
 
     private lateinit var sync: SyncCoordinator
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
 
         val column = contentColumn()

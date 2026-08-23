@@ -128,6 +128,10 @@ class SyncCoordinator(context: Context) {
      * close, and a heartbeat every fifteen seconds is a battery bug.
      */
     fun publishHeartbeat(heartbeat: Heartbeat, force: Boolean = false) {
+        // A heartbeat is the managed phone's statement about itself. Sending one
+        // from anywhere else would put a second device's battery and permission
+        // state into the parents' view of the child's phone.
+        if (roles.roleOrChild != DeviceRole.CHILD) return
         // Checked before the throttle, so connecting a family does not then wait a
         // quarter of an hour for a heartbeat that could have gone at once.
         if (!config.load().isUsable) return
@@ -322,8 +326,8 @@ class SyncCoordinator(context: Context) {
     private fun rememberNewApp(message: SyncMessage): Boolean {
         val packageName = message.field(FIELD_PACKAGE) ?: return false
         val app = NewApp(
-            packageName = packageName,
-            label = message.field(FIELD_TARGET_LABEL) ?: packageName,
+            packageName = packageName.clip(),
+            label = (message.field(FIELD_TARGET_LABEL) ?: packageName).clip(),
             noticedAt = message.sentAt,
         )
         newApps.remember(app)
@@ -384,9 +388,9 @@ class SyncCoordinator(context: Context) {
 
         val request = IncomingRequest(
             id = id,
-            label = message.field(FIELD_TARGET_LABEL).orEmpty(),
+            label = message.field(FIELD_TARGET_LABEL).orEmpty().clip(),
             minutes = minutes,
-            reason = message.field(FIELD_REASON).orEmpty(),
+            reason = message.field(FIELD_REASON).orEmpty().clip(),
             raisedAt = message.sentAt,
             expiresAt = expiresAt,
             state = RequestState.PENDING,
@@ -404,6 +408,16 @@ class SyncCoordinator(context: Context) {
 
         return inbox.settle(id, state, message.field(FIELD_NOTE))
     }
+
+    /**
+     * Bounds a string that arrived over the wire and is about to be shown.
+     *
+     * The sender holds the family key, so this is not a defence against a stranger
+     * — it is a defence against a buggy or malicious phone inside the family
+     * pushing a megabyte of text into a notification and a card that then cannot
+     * be dismissed past.
+     */
+    private fun String.clip(): String = take(MAX_WIRE_TEXT)
 
     private fun publish(type: SyncMessageType, fields: Map<String, String>) {
         val settings = config.load()
@@ -467,5 +481,8 @@ class SyncCoordinator(context: Context) {
         const val FIELD_MANAGED = "managed"
         const val FIELD_USAGE_ACCESS = "usageAccess"
         const val FIELD_SUSPENDED = "suspended"
+
+        /** Longer than any real app name or reason, short enough to render. */
+        private const val MAX_WIRE_TEXT = 200
     }
 }

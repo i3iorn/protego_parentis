@@ -47,8 +47,16 @@ class InboxStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
+    /**
+     * Every mutation below reads the whole list, changes it and writes it back.
+     * A poll landing on the sync executor while a parent taps Approve on the main
+     * thread would otherwise lose one of the two — either an answer that was never
+     * published, or a request that reappears as unanswered.
+     */
+    private fun <T> exclusively(block: () -> T): T = synchronized(LOCK, block)
+
     /** Everything the parent has heard about, newest first. */
-    fun all(now: Instant = Instant.now()): List<IncomingRequest> {
+    fun all(now: Instant = Instant.now()): List<IncomingRequest> = exclusively {
         val stored = read()
         val current = stored.map { request ->
             if (request.state.isOpen && !now.isBefore(request.expiresAt)) {
@@ -58,7 +66,7 @@ class InboxStore(context: Context) {
             }
         }
         if (current != stored) write(current)
-        return current.sortedByDescending { it.raisedAt }
+        current.sortedByDescending { it.raisedAt }
     }
 
     fun pending(now: Instant = Instant.now()): List<IncomingRequest> =
@@ -71,10 +79,11 @@ class InboxStore(context: Context) {
      * once by design — the poll window overlaps — and re-recording would reopen
      * something this phone had already answered.
      */
-    fun remember(request: IncomingRequest) {
+    fun remember(request: IncomingRequest) = exclusively {
         val existing = read()
-        if (existing.any { it.id == request.id }) return
-        write((existing + request).takeLast(MAX_ENTRIES))
+        if (existing.none { it.id == request.id }) {
+            write((existing + request).takeLast(MAX_ENTRIES))
+        }
     }
 
     /** Marks a request answered, whether by this phone or another parent's. */
@@ -83,10 +92,12 @@ class InboxStore(context: Context) {
         state: RequestState,
         note: String?,
         at: Instant = Instant.now(),
-    ): Boolean {
+    ): Boolean = exclusively {
         val existing = read()
-        val target = existing.firstOrNull { it.id == id } ?: return false
-        if (!target.state.isOpen) return false
+        val target = existing.firstOrNull { it.id == id }
+        if (target == null || !target.state.isOpen) {
+            return@exclusively false
+        }
 
         write(
             existing.map { request ->
@@ -97,7 +108,7 @@ class InboxStore(context: Context) {
                 }
             },
         )
-        return true
+        true
     }
 
     private fun read(): List<IncomingRequest> {
@@ -144,6 +155,9 @@ class InboxStore(context: Context) {
     }
 
     private companion object {
+        /** Shared across instances: every screen constructs its own store. */
+        val LOCK = Any()
+
         const val FILE_NAME = "inbox"
         const val KEY_INBOX = "requests"
 

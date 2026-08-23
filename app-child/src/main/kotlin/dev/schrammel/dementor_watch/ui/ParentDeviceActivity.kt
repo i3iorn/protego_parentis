@@ -33,15 +33,14 @@ private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
  * and the phone — never what was used or when. The child's own dashboard has that,
  * and a parent who wants it can ask to look at it.
  */
-class ParentDeviceActivity : DementorActivity() {
+class ParentDeviceActivity : ParentRoleActivity() {
 
     private lateinit var heartbeats: HeartbeatStore
     private lateinit var newApps: NewAppStore
     private lateinit var sync: SyncCoordinator
     private lateinit var column: LinearLayout
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         heartbeats = HeartbeatStore(this)
         newApps = NewAppStore(this)
         sync = SyncCoordinator(this)
@@ -49,8 +48,7 @@ class ParentDeviceActivity : DementorActivity() {
         showColumn(column)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onParentPhoneResumed() {
         render()
         sync.pollNow {
             runOnUiThread { if (!isFinishing && !isDestroyed) render() }

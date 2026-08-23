@@ -33,7 +33,7 @@ import java.time.format.DateTimeFormatter
  * the honest failure: better than a parent believing they granted time that the
  * child never received.
  */
-class ParentInboxActivity : DementorActivity() {
+class ParentInboxActivity : ParentRoleActivity() {
 
     private lateinit var sync: SyncCoordinator
     private lateinit var inbox: InboxStore
@@ -41,8 +41,7 @@ class ParentInboxActivity : DementorActivity() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
         inbox = InboxStore(this)
 
@@ -50,8 +49,7 @@ class ParentInboxActivity : DementorActivity() {
         showColumn(column)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onParentPhoneResumed() {
         render()
         sync.pollNow {
             runOnUiThread {

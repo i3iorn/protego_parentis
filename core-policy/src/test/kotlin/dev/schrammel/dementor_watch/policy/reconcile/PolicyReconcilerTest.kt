@@ -225,6 +225,32 @@ class PolicyReconcilerTest {
         assertEquals("no_config_date_time", TamperRestrictions.NO_CONFIG_DATE_TIME)
     }
 
+    /**
+     * The restriction that stops the app's own data being cleared from Settings.
+     *
+     * Without it the whole product is four taps from gone — PIN, rules, shared
+     * history and the record of which apps were already installed — leaving an app
+     * that still looks installed and enforces nothing.
+     */
+    @Test
+    fun `lockdown stops the app being cleared or force-stopped`() {
+        val port = FakeDevicePolicyPort()
+        PolicyReconciler(port, SELF)
+            .reconcile(policy().copy(tamperProtection = true), enforcement())
+
+        assertTrue(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
+    }
+
+    /** It is part of the lockdown switch, not of being provisioned. */
+    @Test
+    fun `without lockdown the app can still be cleared`() {
+        val port = FakeDevicePolicyPort()
+        PolicyReconciler(port, SELF)
+            .reconcile(policy().copy(tamperProtection = false), enforcement())
+
+        assertFalse(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
+    }
+
     @Test
     fun `blocked installs add the install restriction`() {
         val port = FakeDevicePolicyPort()

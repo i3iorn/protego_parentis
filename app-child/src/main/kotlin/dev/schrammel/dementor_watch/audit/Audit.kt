@@ -26,6 +26,16 @@ import java.util.UUID
 object Audit {
 
     /**
+     * Serialises the read-modify-write below.
+     *
+     * Entries are recorded from the enforcement worker, the sync executor and the
+     * UI thread. Appending is read-then-write, so without this two entries written
+     * at the same moment lose one of themselves — and a history that quietly drops
+     * rows is worse than no history, because it is still believed.
+     */
+    private val lock = Any()
+
+    /**
      * Records an action, unless nothing actually changed.
      *
      * The no-op guard is not a nicety: sliders and switches fire on every touch,
@@ -43,20 +53,22 @@ object Audit {
     ) {
         if (before != null && before == after) return
 
-        val prefs = prefs(context)
-        val updated = AuditLogFormat.append(
-            raw = prefs.getString(KEY_LOG, null),
-            entry = AuditEntry(
-                id = UUID.randomUUID().toString(),
-                at = at,
-                actor = actor,
-                action = action,
-                subject = subject,
-                before = before,
-                after = after,
-            ),
+        val entry = AuditEntry(
+            id = UUID.randomUUID().toString(),
+            at = at,
+            actor = actor,
+            action = action,
+            subject = subject,
+            before = before,
+            after = after,
         )
-        prefs.edit { putString(KEY_LOG, updated) }
+        synchronized(lock) {
+            val prefs = prefs(context)
+            val updated = AuditLogFormat.append(prefs.getString(KEY_LOG, null), entry)
+            // commit, not apply: a crash between recording an action and the write
+            // landing would leave the history disagreeing with what the app did.
+            prefs.edit(commit = true) { putString(KEY_LOG, updated) }
+        }
     }
 
     /** Newest first, the way the screen reads it. */
