@@ -56,6 +56,9 @@ class HomeActivity : AppCompatActivity() {
         findViewById<Button>(R.id.permission_button).setOnClickListener {
             startActivity(UsageAccess.settingsIntent())
         }
+        findViewById<Button>(R.id.open_requests).setOnClickListener {
+            startActivity(RequestsActivity.intent(this))
+        }
         findViewById<Button>(R.id.open_week).setOnClickListener {
             startActivity(WeekActivity.intent(this))
         }

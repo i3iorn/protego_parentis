@@ -80,6 +80,16 @@
         </activity>
 
         <activity
+            android:name=".ui.RequestsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
+            android:name=".ui.RequestInboxActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
             android:name=".ui.WeekActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />

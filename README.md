@@ -16,13 +16,13 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 | Module | Kind | What lives here |
 | --- | --- | --- |
 | `core-model` | Pure Kotlin | Domain types: `Policy`, `Category`, `WeeklyBudget`, `Grant`, `Enforcement`. No Android, no I/O. |
-| `core-policy` | Pure Kotlin | All the real logic: `PolicyEngine` (what should be blocked), `UsageReplay` (how much time was spent), `PolicyReconciler` (apply it), `DeviceReleaser` (undo it). |
+| `core-policy` | Pure Kotlin | All the real logic: `PolicyEngine` (what should be blocked), `UsageReplay` (how much time was spent), `RequestRules` (asking and answering), `PolicyReconciler` (apply it), `DeviceReleaser` (undo it). |
 | `core-provisioning` | Pure Kotlin | The setup QR payload. Kept Android-free so the parent app can generate codes without a device SDK. |
 | `app-child` | Android app | The app that runs on the teenager's phone. Reads usage, drives `DevicePolicyManager`, stores history, hosts the UI. |
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 164 tests run without a phone.
+in the wrong place — that separation is what lets 182 tests run without a phone.
 
 ---
 
@@ -135,7 +135,7 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-164 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
+182 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
 and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
@@ -146,6 +146,7 @@ and cover the things that are easy to get quietly wrong:
 - screen-off ending open sessions, so a face-down phone accrues nothing
 - gaps in history filling as real zeros, so a day off is not mistaken for a day
   that was never measured
+- an approved request always producing a grant that matches what was asked for
 
 There are **no instrumentation tests** yet. Every `DevicePolicyManager` interaction
 is exercised through a fake (`FakeDevicePolicyPort`), which proves the logic but
@@ -158,7 +159,8 @@ largest untested area in the project.
 
 Working: usage measurement, device/category/per-app limits, bedtime, exempt apps,
 bonus time, the warning ladder, PIN-protected rules, the teen dashboard, the
-weekly view with local history, device owner enforcement and release.
+weekly view with local history, the request and approval loop, device owner
+enforcement and release.
 
 Not built yet:
 
@@ -166,7 +168,6 @@ Not built yet:
   but nothing is pushed or emailed.
 - **No server and no parent app.** Rules are edited on the same phone that enforces
   them. `LocalPolicyStore` is a stand-in for Room plus sync.
-- **No request/approval loop** between child and parent.
 - **No web filtering or location.**
 
 ## Where the configuration lives

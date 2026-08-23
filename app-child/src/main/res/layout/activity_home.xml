@@ -86,6 +86,13 @@
         </LinearLayout>
 
         <Button
+            android:id="@+id/open_requests"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/home_open_requests" />
+
+        <Button
             android:id="@+id/open_week"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

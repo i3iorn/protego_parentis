@@ -69,6 +69,48 @@
     <string name="week_top_apps">Where the time went</string>
     <string name="week_no_apps">No app time recorded.</string>
 
+    <string name="home_open_requests">Ask for more time</string>
+
+    <!-- Requests, child side. -->
+    <string name="requests_title">Requests</string>
+    <string name="requests_ask_for">What do you need more time for?</string>
+    <string name="requests_target_device">The whole phone</string>
+    <string name="requests_target_category">a category</string>
+    <string name="requests_target_selected">%1$s  ✓</string>
+    <string name="requests_reason_hint">Why? Your parent sees this.</string>
+    <string name="requests_reason_required">Add a reason first.</string>
+    <string name="requests_ask_minutes">Ask for %1$d min</string>
+    <string name="requests_sent">Sent. You will see the answer here.</string>
+    <string name="requests_already_pending">You already have a request waiting for this.</string>
+    <plurals name="requests_too_many">
+        <item quantity="one">That has been turned down %d time today. Worth talking about it instead.</item>
+        <item quantity="other">That has been turned down %d times today. Worth talking about it instead.</item>
+    </plurals>
+    <string name="requests_history">Your requests</string>
+    <string name="requests_none">You have not asked for anything yet.</string>
+    <string name="requests_row_summary">%1$d min for %2$s, asked at %3$s</string>
+    <string name="requests_row_reason">Reason: %1$s</string>
+    <string name="requests_withdraw">Never mind</string>
+    <string name="requests_state_pending">Waiting for an answer</string>
+    <string name="requests_state_approved">Approved</string>
+    <string name="requests_state_denied">Turned down</string>
+    <string name="requests_state_expired">No answer in time</string>
+    <string name="requests_state_withdrawn">You cancelled this</string>
+
+    <!-- Requests, parent side. -->
+    <string name="inbox_title">Requests</string>
+    <string name="inbox_empty">Nothing waiting for an answer.</string>
+    <plurals name="inbox_asking_for">
+        <item quantity="one">Asking for %1$d more minute of %2$s</item>
+        <item quantity="other">Asking for %1$d more minutes of %2$s</item>
+    </plurals>
+    <string name="inbox_expires_at">Expires at %1$s if unanswered</string>
+    <string name="inbox_approve">Approve</string>
+    <string name="inbox_deny">Turn down</string>
+    <string name="inbox_note_hint">Add a note (optional)</string>
+    <string name="rules_requests_header">Requests</string>
+    <string name="rules_open_inbox">Answer requests</string>
+
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>
     <string name="rules_daily_limit_header">Daily limit</string>

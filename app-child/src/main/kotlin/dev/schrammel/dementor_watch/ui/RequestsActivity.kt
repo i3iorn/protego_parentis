@@ -1,0 +1,256 @@
+package dev.schrammel.dementor_watch.ui
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.model.CategoryId
+import dev.schrammel.dementor_watch.model.GrantTarget
+import dev.schrammel.dementor_watch.model.Request
+import dev.schrammel.dementor_watch.model.RequestState
+import dev.schrammel.dementor_watch.policy.request.SubmitDecision
+import dev.schrammel.dementor_watch.rules.LocalPolicyStore
+import dev.schrammel.dementor_watch.rules.RequestCoordinator
+import dev.schrammel.dementor_watch.usage.InstalledApps
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlin.time.Duration
+
+/**
+ * The child's side of the negotiation (RQ-1).
+ *
+ * Asking is deliberately cheap and answering is deliberately informative: the
+ * reason field is required, because a bare "+15 minutes" gives a parent nothing
+ * to decide on and turns the feature into a slot machine.
+ */
+class RequestsActivity : AppCompatActivity() {
+
+    private lateinit var coordinator: RequestCoordinator
+    private lateinit var policyStore: LocalPolicyStore
+    private lateinit var installedApps: InstalledApps
+    private lateinit var container: LinearLayout
+
+    private lateinit var reasonInput: EditText
+    private var target: GrantTarget = GrantTarget.Device
+
+    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        coordinator = RequestCoordinator(this)
+        policyStore = LocalPolicyStore(this)
+        installedApps = InstalledApps(this)
+
+        container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dimen(R.dimen.screen_padding)
+            setPadding(pad, pad, pad, pad)
+        }
+        setContentView(
+            ScrollView(this).apply {
+                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
+                addView(container)
+            },
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        render()
+    }
+
+    private fun render() {
+        container.removeAllViews()
+        container.addView(heading(getString(R.string.requests_title), R.style.TextAppearance_Dementor_Title))
+
+        renderCompose()
+        renderHistory()
+    }
+
+    // ---------- asking ----------
+
+    private fun renderCompose() {
+        container.addView(heading(getString(R.string.requests_ask_for), R.style.TextAppearance_Dementor_Section))
+        container.addView(targetPicker())
+
+        reasonInput = EditText(this).apply {
+            hint = getString(R.string.requests_reason_hint)
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        }
+        container.addView(reasonInput)
+
+        val amounts = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                topMargin = dimen(R.dimen.space_md)
+            }
+        }
+        coordinator.suggestedAmounts().forEach { amount ->
+            amounts.addView(
+                Button(this).apply {
+                    text = getString(R.string.requests_ask_minutes, amount.inWholeMinutes)
+                    layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
+                        marginEnd = dimen(R.dimen.space_xs)
+                    }
+                    setOnClickListener { submit(amount) }
+                },
+            )
+        }
+        container.addView(amounts)
+    }
+
+    /**
+     * Lets the child aim the request at the whole device or at one category.
+     * Categories are the common case: "more games time" is a different ask from
+     * "more phone time", and a parent answers them differently.
+     */
+    private fun targetPicker(): LinearLayout {
+        val group = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val options = buildList {
+            add(getString(R.string.requests_target_device) to GrantTarget.Device)
+            policyStore.categories.sortedBy { it.name.lowercase() }.forEach { category ->
+                add(category.name to GrantTarget.Category(CategoryId(category.id)))
+            }
+        }
+
+        options.forEach { (label, option) ->
+            group.addView(
+                TextView(this).apply {
+                    text = if (option == target) getString(R.string.requests_target_selected, label) else label
+                    styleAs(R.style.TextAppearance_Dementor_ListItem)
+                    setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
+                    setOnClickListener {
+                        target = option
+                        render()
+                    }
+                },
+            )
+        }
+        return group
+    }
+
+    private fun submit(amount: Duration) {
+        val reason = reasonInput.text.toString().trim()
+        if (reason.isEmpty()) {
+            toast(getString(R.string.requests_reason_required))
+            return
+        }
+
+        when (val decision = coordinator.canSubmit(target)) {
+            is SubmitDecision.AlreadyPending -> toast(getString(R.string.requests_already_pending))
+            is SubmitDecision.TooManyDenials -> toast(
+                resources.getQuantityString(
+                    R.plurals.requests_too_many,
+                    decision.deniedToday,
+                    decision.deniedToday,
+                ),
+            )
+
+            is SubmitDecision.Allowed -> {
+                coordinator.submit(target, amount, reason)
+                reasonInput.setText("")
+                toast(getString(R.string.requests_sent))
+                render()
+            }
+        }
+    }
+
+    // ---------- history ----------
+
+    private fun renderHistory() {
+        container.addView(heading(getString(R.string.requests_history), R.style.TextAppearance_Dementor_Section))
+
+        val all = coordinator.all()
+        if (all.isEmpty()) {
+            container.addView(body(getString(R.string.requests_none)))
+            return
+        }
+        all.forEach { container.addView(requestRow(it)) }
+    }
+
+    private fun requestRow(request: Request): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
+
+        addView(
+            body(
+                getString(
+                    R.string.requests_row_summary,
+                    request.amount.inWholeMinutes,
+                    describe(request.target),
+                    timeFormat.format(request.createdAt.atZone(ZoneId.systemDefault())),
+                ),
+            ).styleAs(R.style.TextAppearance_Dementor_ListItem),
+        )
+        addView(body(getString(R.string.requests_row_reason, request.reason)))
+        addView(body(statusLine(request)))
+
+        if (request.state.isOpen) {
+            addView(
+                Button(context).apply {
+                    setText(R.string.requests_withdraw)
+                    setOnClickListener {
+                        coordinator.withdraw(request.id)
+                        render()
+                    }
+                },
+            )
+        }
+    }
+
+    private fun statusLine(request: Request): String {
+        val note = request.decisionNote
+        return when (request.state) {
+            RequestState.PENDING -> getString(R.string.requests_state_pending)
+            RequestState.APPROVED -> getString(R.string.requests_state_approved) +
+                (note?.let { " — $it" }.orEmpty())
+
+            RequestState.DENIED -> getString(R.string.requests_state_denied) +
+                (note?.let { " — $it" }.orEmpty())
+
+            RequestState.EXPIRED -> getString(R.string.requests_state_expired)
+            RequestState.WITHDRAWN -> getString(R.string.requests_state_withdrawn)
+        }
+    }
+
+    private fun describe(target: GrantTarget): String = when (target) {
+        is GrantTarget.Device -> getString(R.string.requests_target_device)
+        is GrantTarget.App -> installedApps.labelFor(target.pkg)
+        is GrantTarget.Category ->
+            policyStore.categories.firstOrNull { it.id == target.id.value }?.name
+                ?: getString(R.string.requests_target_category)
+    }
+
+    // ---------- view helpers ----------
+
+    private fun heading(text: String, appearance: Int) = TextView(this).apply {
+        this.text = text
+        styleAs(appearance)
+        setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_xxs))
+    }
+
+    private fun body(text: String) = TextView(this).apply {
+        this.text = text
+        styleAs(R.style.TextAppearance_Dementor_Body)
+        setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_hairline))
+    }
+
+    private fun toast(message: String) =
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
+    companion object {
+        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+        private const val TIME_PATTERN = "HH:mm"
+
+        fun intent(context: Context) = Intent(context, RequestsActivity::class.java)
+    }
+}

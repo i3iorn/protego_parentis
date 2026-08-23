@@ -183,6 +183,20 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_4xl"
+            android:text="@string/rules_requests_header"
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
+
+        <Button
+            android:id="@+id/open_inbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:text="@string/rules_open_inbox" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_security_header"
             android:textAppearance="@style/TextAppearance.Dementor.Section" />
 

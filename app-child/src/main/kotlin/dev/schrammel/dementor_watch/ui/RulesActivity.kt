@@ -65,6 +65,9 @@ class RulesActivity : AppCompatActivity() {
         findViewById<Button>(R.id.open_app_limits).setOnClickListener {
             startActivity(AppLimitsActivity.intent(this))
         }
+        findViewById<Button>(R.id.open_inbox).setOnClickListener {
+            startActivity(RequestInboxActivity.intent(this))
+        }
         findViewById<Button>(R.id.open_bonus).setOnClickListener {
             startActivity(BonusTimeActivity.intent(this))
         }
