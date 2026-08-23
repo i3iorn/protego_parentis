@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.GrantTarget
@@ -29,7 +28,7 @@ import java.time.format.DateTimeFormatter
  * not be able to answer their own request. Approving applies the time immediately;
  * a decision that takes effect "eventually" is one the child will not believe.
  */
-class RequestInboxActivity : AppCompatActivity() {
+class RequestInboxActivity : ParentGatedActivity() {
 
     private lateinit var coordinator: RequestCoordinator
     private lateinit var policyStore: LocalPolicyStore
@@ -57,8 +56,7 @@ class RequestInboxActivity : AppCompatActivity() {
         )
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onGatedContentVisible() {
         render()
     }
 

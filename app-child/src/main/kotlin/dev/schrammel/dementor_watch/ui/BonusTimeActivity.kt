@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.CategoryId
@@ -26,7 +25,7 @@ import java.time.Instant
  * so it is deliberately two taps and nothing more. Bonus time expires at the day
  * boundary and never changes the underlying limit.
  */
-class BonusTimeActivity : AppCompatActivity() {
+class BonusTimeActivity : ParentGatedActivity() {
 
     private lateinit var store: LocalPolicyStore
     private lateinit var grants: GrantStore

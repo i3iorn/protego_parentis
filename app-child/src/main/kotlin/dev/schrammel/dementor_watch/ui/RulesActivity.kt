@@ -1,6 +1,5 @@
 package dev.schrammel.dementor_watch.ui
 
-import android.app.Activity
 import android.app.TimePickerDialog
 import android.os.Bundle
 import android.view.View
@@ -11,7 +10,6 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
@@ -28,24 +26,10 @@ import java.time.LocalTime
  * edited on the device instead of pushed to it. Changes save as you make them and
  * bump the policy version, which is what makes the service re-evaluate.
  */
-class RulesActivity : AppCompatActivity() {
+class RulesActivity : ParentGatedActivity() {
 
     private lateinit var store: LocalPolicyStore
     private lateinit var installedApps: InstalledApps
-    private var unlocked = false
-
-    private val unlock = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            unlocked = true
-            showContent()
-        } else {
-            // Cancelled at the PIN screen: nothing to edit, so back out entirely.
-            finish()
-        }
-    }
-
     private val pickExempt = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -83,22 +67,15 @@ class RulesActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (unlocked) {
-            // Coming back from the category editor; the list may have changed.
-            renderCategories()
-            renderExempt()
-        } else {
-            findViewById<View>(R.id.rules_content).visibility = View.GONE
-            unlock.launch(PinActivity.intent(this))
-        }
-    }
-
-    private fun showContent() {
+    override fun onGatedContentVisible() {
         findViewById<View>(R.id.rules_content).visibility = View.VISIBLE
+        // Also re-read on every return: the category editor may have changed things.
         renderCategories()
         renderExempt()
+    }
+
+    override fun onGatedContentHidden() {
+        findViewById<View>(R.id.rules_content).visibility = View.GONE
     }
 
     // ---------- daily limit ----------

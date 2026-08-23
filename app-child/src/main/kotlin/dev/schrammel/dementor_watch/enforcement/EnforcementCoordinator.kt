@@ -8,6 +8,7 @@ import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
 import dev.schrammel.dementor_watch.model.UsageSnapshot
+import dev.schrammel.dementor_watch.policy.PolicyClock
 import dev.schrammel.dementor_watch.policy.PolicyEngine
 import dev.schrammel.dementor_watch.policy.reconcile.DeviceReleaser
 import dev.schrammel.dementor_watch.policy.reconcile.PolicyReconciler
@@ -86,9 +87,23 @@ class EnforcementCoordinator(context: Context) {
         val policy = store.load()
 
         // Almost always a no-op; acts only when the policy day has rolled over.
-        recorder.recordClosedDays(policy, now)
+        // History is a reporting nicety — never let it block enforcement.
+        runCatching { recorder.recordClosedDays(policy, now) }
+            .onFailure { Log.w(TAG, "Could not record history", it) }
 
-        val usage = collector.collect(policy, now)
+        // UsageStatsManager can throw on some OEM builds. A failed read must not
+        // take enforcement with it: fall back to an empty day, which enforces
+        // nothing rather than enforcing something wrong.
+        val usage = runCatching { collector.collect(policy, now) }
+            .onFailure { Log.w(TAG, "Usage read failed; treating today as unmeasured", it) }
+            .getOrElse {
+                CollectedUsage(
+                    snapshot = UsageSnapshot.empty(
+                        PolicyClock.policyDay(now, policy.timeZone, policy.dayBoundaryHour),
+                    ),
+                    foregroundPackage = null,
+                )
+            }
         val installed = installedApps.launchable().map { it.pkg }.toSet()
 
         val enforcement = PolicyEngine.evaluate(

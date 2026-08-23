@@ -1,6 +1,7 @@
 package dev.schrammel.dementor_watch.rules
 
 import android.content.Context
+import dev.schrammel.dementor_watch.enforcement.RequestNotifier
 import dev.schrammel.dementor_watch.model.GrantId
 import dev.schrammel.dementor_watch.model.GrantTarget
 import dev.schrammel.dementor_watch.model.Request
@@ -28,6 +29,7 @@ class RequestCoordinator(context: Context) {
     private val requests = RequestStore(appContext)
     private val grants = GrantStore(appContext)
     private val policyStore = LocalPolicyStore(appContext)
+    private val notifier = RequestNotifier(appContext)
 
     fun all(now: Instant = Instant.now()): List<Request> = requests.all(now)
 
@@ -64,6 +66,7 @@ class RequestCoordinator(context: Context) {
             expiresAt = now.plusMillis(RequestRules.DEFAULT_LIFETIME.inWholeMilliseconds),
         )
         requests.save(request)
+        notifier.notifyRequestReceived(request)
         return request
     }
 
@@ -86,19 +89,20 @@ class RequestCoordinator(context: Context) {
         )
         grants.add(grant)
         requests.save(approved)
+        notifier.notifyDecision(approved)
         return true
     }
 
     fun deny(id: RequestId, note: String? = null, now: Instant = Instant.now()): Boolean {
         val request = requests.find(id, now)?.takeIf { it.state.isOpen } ?: return false
-        requests.save(
-            RequestRules.deny(
-                request = request,
-                now = now,
-                by = DECIDED_BY_PARENT,
-                note = note?.trim()?.takeIf(String::isNotEmpty),
-            ),
+        val denied = RequestRules.deny(
+            request = request,
+            now = now,
+            by = DECIDED_BY_PARENT,
+            note = note?.trim()?.takeIf(String::isNotEmpty),
         )
+        requests.save(denied)
+        notifier.notifyDecision(denied)
         return true
     }
 

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.WindowManager
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -13,7 +14,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.security.PinAttempts
 import dev.schrammel.dementor_watch.security.PinLock
+import kotlin.time.Duration
 
 /**
  * Sets or checks the parent's PIN.
@@ -26,6 +29,7 @@ import dev.schrammel.dementor_watch.security.PinLock
 class PinActivity : AppCompatActivity() {
 
     private lateinit var lock: PinLock
+    private lateinit var attempts: PinAttempts
     private var confirming: String? = null
 
     private lateinit var prompt: TextView
@@ -34,6 +38,12 @@ class PinActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lock = PinLock(this)
+        attempts = PinAttempts(this)
+        // The PIN screen must not appear in the recents thumbnail.
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
         setContentView(buildLayout())
         updatePrompt()
     }
@@ -85,6 +95,8 @@ class PinActivity : AppCompatActivity() {
     }
 
     private fun onSubmit() {
+        if (rejectWhileLockedOut()) return
+
         val entered = input.text.toString()
         input.setText("")
 
@@ -113,13 +125,29 @@ class PinActivity : AppCompatActivity() {
                     return
                 }
                 lock.set(entered)
+                attempts.recordSuccess()
                 succeed()
             }
 
-            lock.verify(entered) -> succeed()
+            lock.verify(entered) -> {
+                attempts.recordSuccess()
+                succeed()
+            }
 
-            else -> toast(getString(R.string.pin_wrong))
+            else -> {
+                attempts.recordFailure()
+                if (!rejectWhileLockedOut()) toast(getString(R.string.pin_wrong))
+            }
         }
+    }
+
+    /** True when a lockout is in force, having told the user how long is left. */
+    private fun rejectWhileLockedOut(): Boolean {
+        val waiting = attempts.lockoutRemaining()
+        if (waiting <= Duration.ZERO) return false
+        val seconds = waiting.inWholeSeconds.toInt()
+        toast(resources.getQuantityString(R.plurals.pin_locked_out, seconds, seconds))
+        return true
     }
 
     private fun succeed() {

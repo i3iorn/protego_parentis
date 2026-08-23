@@ -22,7 +22,7 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 182 tests run without a phone.
+in the wrong place — that separation is what lets 189 tests run without a phone.
 
 ---
 
@@ -135,7 +135,7 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-182 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
+189 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
 and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
@@ -164,11 +164,33 @@ enforcement and release.
 
 Not built yet:
 
-- **No weekly digest or notification summary.** The weekly view exists in the app,
-  but nothing is pushed or emailed.
+- **No weekly digest.** The weekly view exists in the app, but nothing is pushed
+  or emailed on a schedule.
 - **No server and no parent app.** Rules are edited on the same phone that enforces
   them. `LocalPolicyStore` is a stand-in for Room plus sync.
 - **No web filtering or location.**
+
+## Security model
+
+The adversary is a motivated teenager holding the device, with unlimited time and
+no need for tooling. That shapes several decisions:
+
+- **The PIN throttles.** Four digits is ten thousand combinations, and without a
+  lockout they can simply be tapped in. Failures persist across restarts and the
+  lockout is measured against `SystemClock.elapsedRealtime()`, because the wall
+  clock is settable by the person being locked out.
+- **Every parent-only screen checks the session**, not just the entry point.
+  Gating only the rules screen left the recents list as a way back into an
+  already-unlocked settings screen.
+- **The parent session lives in memory only** and lasts five minutes. Persisting
+  it would let it survive a force-stop, which helps nobody except the child.
+- **Parent screens set `FLAG_SECURE`**, keeping rules and PIN entry out of
+  screenshots and the recents thumbnail.
+- **The PIN is stored as a salted PBKDF2 hash** and compared in constant time.
+
+Known gap: clearing the app's data from Settings resets the PIN and the rules.
+Closing that requires device owner plus `DISALLOW_APPS_CONTROL`, which is part of
+the tamper-protection switch rather than something the app can do on its own.
 
 ## Where the configuration lives
 

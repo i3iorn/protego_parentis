@@ -38,7 +38,15 @@ class EnforcementService : Service() {
 
     private val tick = object : Runnable {
         override fun run() {
-            val nextIn = evaluate()
+            // An exception escaping here would kill the Runnable and stop
+            // enforcement permanently, with the notification still claiming the
+            // rules are active. Always reschedule, whatever happened.
+            val nextIn = try {
+                evaluate()
+            } catch (e: Exception) {
+                Log.e(TAG, "Evaluation failed; retrying", e)
+                RETRY_INTERVAL_MILLIS
+            }
             handler.postDelayed(this, nextIn)
         }
     }
@@ -179,6 +187,9 @@ class EnforcementService : Service() {
 
         /** Never sleep longer than this, so drift and missed events self-correct. */
         private const val MAX_INTERVAL_MILLIS = 5 * 60_000L
+
+        /** Backs off briefly after a failure rather than hammering a broken call. */
+        private const val RETRY_INTERVAL_MILLIS = 60_000L
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, EnforcementService::class.java))

@@ -12,7 +12,6 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.Defaults
 import dev.schrammel.dementor_watch.model.PackageName
@@ -27,7 +26,7 @@ import java.util.UUID
  * An app may be picked here and in any number of other categories — membership is
  * many-to-many by design, and every category it lands in is enforced separately.
  */
-class CategoryEditActivity : AppCompatActivity() {
+class CategoryEditActivity : ParentGatedActivity() {
 
     private lateinit var store: LocalPolicyStore
     private lateinit var installedApps: InstalledApps

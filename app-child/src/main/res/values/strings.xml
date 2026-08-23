@@ -71,6 +71,20 @@
 
     <string name="home_open_requests">Ask for more time</string>
 
+    <!-- Request notifications. -->
+    <string name="request_channel_incoming_name">Requests</string>
+    <string name="request_channel_incoming_description">Tells you when someone asks for more time.</string>
+    <string name="request_channel_decision_name">Answers</string>
+    <string name="request_channel_decision_description">Tells you when a request has been answered.</string>
+    <string name="request_notification_title">A new request</string>
+    <plurals name="request_notification_body">
+        <item quantity="one">%1$d more minute: %2$s</item>
+        <item quantity="other">%1$d more minutes: %2$s</item>
+    </plurals>
+    <string name="request_decision_title">Your request</string>
+    <string name="request_decision_approved">Approved</string>
+    <string name="request_decision_denied">Turned down</string>
+
     <!-- Requests, child side. -->
     <string name="requests_title">Requests</string>
     <string name="requests_ask_for">What do you need more time for?</string>
@@ -160,6 +174,10 @@
     <string name="pin_hint">PIN</string>
     <string name="pin_continue">Continue</string>
     <string name="pin_wrong">That PIN is not right.</string>
+    <plurals name="pin_locked_out">
+        <item quantity="one">Too many wrong tries. Wait %d second.</item>
+        <item quantity="other">Too many wrong tries. Wait %d seconds.</item>
+    </plurals>
     <string name="pin_mismatch">Those did not match. Start again.</string>
     <plurals name="pin_too_short">
         <item quantity="one">Use at least %d digit.</item>

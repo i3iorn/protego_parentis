@@ -11,7 +11,6 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.usage.AppInfo
@@ -24,7 +23,7 @@ import dev.schrammel.dementor_watch.usage.InstalledApps
  * total", this answers "and no more than twenty minutes of that one". Both apply,
  * and whichever runs out first is what blocks.
  */
-class AppLimitsActivity : AppCompatActivity() {
+class AppLimitsActivity : ParentGatedActivity() {
 
     private lateinit var store: LocalPolicyStore
     private lateinit var container: LinearLayout
@@ -35,6 +34,9 @@ class AppLimitsActivity : AppCompatActivity() {
         store = LocalPolicyStore(this)
         apps = InstalledApps(this).launchable()
         setContentView(buildLayout())
+    }
+
+    override fun onGatedContentVisible() {
         render()
     }
 
