@@ -2,6 +2,9 @@ package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
 import androidx.core.content.edit
+import dev.schrammel.dementor_watch.model.Defaults
+import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.sync.SyncSettings.Companion.DEFAULT_SERVER
 import java.time.Instant
 import java.util.UUID
@@ -41,8 +44,8 @@ data class SyncSettings(
  */
 class SyncConfigStore(context: Context) {
 
-    private val prefs = context.applicationContext
-        .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
     fun load(): SyncSettings = SyncSettings(
         enabled = prefs.getBoolean(KEY_ENABLED, false),
@@ -89,9 +92,41 @@ class SyncConfigStore(context: Context) {
         prefs.edit { putLong(KEY_LAST_POLL, at.toEpochMilli()) }
     }
 
+    // ---------- heartbeat throttle ----------
+
+    /**
+     * Whether enough time has passed to say hello again.
+     *
+     * A clock that has moved backwards would otherwise suppress heartbeats until
+     * it caught up, which is precisely the situation where a parent most wants to
+     * hear from the device. Any negative gap is treated as due.
+     */
+    fun heartbeatDue(now: Instant): Boolean {
+        val last = prefs.getLong(KEY_LAST_HEARTBEAT, 0L)
+        if (last <= 0L) return true
+        val elapsed = now.toEpochMilli() - last
+        return elapsed < 0L || elapsed >= Defaults.HEARTBEAT_INTERVAL_MINUTES * MILLIS_PER_MINUTE
+    }
+
+    fun recordHeartbeatAt(at: Instant) {
+        prefs.edit { putLong(KEY_LAST_HEARTBEAT, at.toEpochMilli()) }
+    }
+
+    /**
+     * A stable name for this phone in messages.
+     *
+     * Generated once and then never changed, including if the role is switched
+     * afterwards: the name is how the replay guard and the echo check recognise
+     * this device, so a name that moves would mean a phone acting on its own
+     * messages.
+     */
     private fun deviceName(): String {
         prefs.getString(KEY_DEVICE_NAME, null)?.let { return it }
-        val generated = "child-" + UUID.randomUUID().toString().take(DEVICE_NAME_LENGTH)
+        val prefix = when (RoleStore(appContext).roleOrChild) {
+            DeviceRole.CHILD -> "child"
+            DeviceRole.PARENT -> "parent"
+        }
+        val generated = prefix + "-" + UUID.randomUUID().toString().take(DEVICE_NAME_LENGTH)
         prefs.edit { putString(KEY_DEVICE_NAME, generated) }
         return generated
     }
@@ -108,5 +143,7 @@ class SyncConfigStore(context: Context) {
         const val KEY_DEVICE_NAME = "device_name"
         const val KEY_SEEN = "seen_ids"
         const val KEY_LAST_POLL = "last_poll"
+        const val KEY_LAST_HEARTBEAT = "last_heartbeat"
+        const val MILLIS_PER_MINUTE = 60_000L
     }
 }

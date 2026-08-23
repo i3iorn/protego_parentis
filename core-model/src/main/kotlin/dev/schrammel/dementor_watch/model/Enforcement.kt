@@ -112,6 +112,14 @@ data class Enforcement(
     /** Contextual rules applying right now, for showing on the dashboard. */
     val activeContextRules: List<ContextRule> = emptyList(),
     /**
+     * Whether new installs are barred right now (AC-3).
+     *
+     * Decided here rather than read from the policy by the reconciler, because it
+     * depends on the clock: a gated device with an open installation window is not
+     * barring anything.
+     */
+    val installsBlocked: Boolean = false,
+    /**
      * When this decision would next change on its own — the next day boundary, a
      * schedule edge, a grant expiry, or the projected moment the foreground app
      * exhausts its budget. The service sets an exact alarm for this instead of polling.

@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 
 private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
@@ -47,11 +48,36 @@ internal fun Activity.screenTitle(text: String): TextView = TextView(this).apply
     setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_lg))
 }
 
-/** A group heading within a screen. */
+/**
+ * A group heading.
+ *
+ * Set in small spaced capitals in the quieter colour, so it reads as a label for
+ * what follows rather than as another line of text competing with the title.
+ */
 internal fun Activity.sectionHeader(text: String): TextView = TextView(this).apply {
     this.text = text
     styleAs(R.style.TextAppearance_Dementor_Section)
-    setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_xs))
+    setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_sm))
+}
+
+/**
+ * A raised surface holding a list of rows.
+ *
+ * Rows sitting straight on the window background had nothing marking where the
+ * list started or ended. Grouping them onto a bordered surface is the difference
+ * between a list and a pile.
+ */
+internal fun Activity.group(rows: List<View>): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.VERTICAL
+    setBackgroundResource(R.drawable.card)
+    val side = dimen(R.dimen.card_padding)
+    setPadding(side, 0, side, 0)
+    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+
+    rows.forEachIndexed { index, row ->
+        if (index > 0) addView(divider())
+        addView(row)
+    }
 }
 
 internal fun Activity.bodyText(text: String): TextView = TextView(this).apply {
@@ -129,10 +155,12 @@ internal fun Activity.navigationRow(
     )
     addView(
         TextView(context).apply {
-            // A plain chevron rather than an icon asset: it inherits the text
-            // colour, so it is correct in both themes without a second drawable.
+            // A plain chevron rather than an icon asset: it takes its colour from
+            // the theme, so it is correct in both without a second drawable. Set in
+            // the quieter colour so it marks the row without shouting.
             text = "›"
             styleAs(R.style.TextAppearance_Dementor_Headline)
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(dimen(R.dimen.space_md), 0, 0, 0)
         },
     )
@@ -140,7 +168,7 @@ internal fun Activity.navigationRow(
 
 /** A hairline between rows, so a list reads as a list. */
 internal fun Activity.divider(): View = View(this).apply {
-    layoutParams = LinearLayout.LayoutParams(MATCH, 1)
+    layoutParams = LinearLayout.LayoutParams(MATCH, dimen(R.dimen.divider_height))
     setBackgroundResource(R.color.card_stroke)
 }
 

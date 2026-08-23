@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A quiet raised surface. Used to group a screen's summary away from the
-     list of detail beneath it. -->
+<!-- A raised surface. The stroke is what separates it from the window behind;
+     without it the two tones blur together on a dim screen. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/card" />

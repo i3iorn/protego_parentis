@@ -9,6 +9,11 @@ import androidx.core.app.NotificationCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestState
+import dev.schrammel.dementor_watch.sync.IncomingRequest
+import dev.schrammel.dementor_watch.sync.NewApp
+import dev.schrammel.dementor_watch.ui.AppControlActivity
+import dev.schrammel.dementor_watch.ui.ParentDeviceActivity
+import dev.schrammel.dementor_watch.ui.ParentInboxActivity
 import dev.schrammel.dementor_watch.ui.RequestInboxActivity
 import dev.schrammel.dementor_watch.ui.RequestsActivity
 
@@ -65,6 +70,73 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * The same news, arriving on a parent's own phone over sync.
+     *
+     * Separate from [notifyRequestReceived] because the destination differs: this
+     * one opens the parent phone's inbox, which reads from the sync store rather
+     * than from the child's local requests.
+     */
+    fun notifyIncomingRequest(request: IncomingRequest) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_INCOMING,
+            title = appContext.getString(R.string.request_notification_title),
+            body = appContext.resources.getQuantityString(
+                R.plurals.request_notification_body,
+                request.minutes,
+                request.minutes,
+                request.reason,
+            ),
+            destination = ParentInboxActivity.intent(appContext),
+        )
+    }
+
+    /**
+     * A new app appeared on the child's phone (AC-3).
+     *
+     * Uses the same channel as an incoming request, and a different notification
+     * id so one does not replace the other — a new app and a request for more time
+     * are two separate things a parent may want to act on.
+     */
+    fun notifyNewApp(app: NewApp) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_NEW_APP,
+            title = appContext.getString(R.string.new_app_notification_title),
+            body = appContext.getString(R.string.new_app_notification_body, app.label),
+            destination = ParentDeviceActivity.intent(appContext),
+        )
+    }
+
+    /** The same news on the child's own device, where the review is PIN-gated. */
+    fun notifyNewAppLocally(label: String) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_NEW_APP,
+            title = appContext.getString(R.string.new_app_notification_title),
+            body = appContext.getString(R.string.new_app_notification_body, label),
+            destination = AppControlActivity.intent(appContext),
+        )
+    }
+
+    /**
+     * The child device has stopped checking in (TR-2).
+     *
+     * Deliberately not on the high-importance channel used for requests: this is
+     * usually a flat battery or a school bag, and a full-volume alert for the
+     * common case is how a parent learns to swipe these away unread.
+     */
+    fun notifyDeviceSilent(body: String) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_SILENT,
+            title = appContext.getString(R.string.integrity_notification_title),
+            body = body,
+            destination = ParentDeviceActivity.intent(appContext),
+        )
+    }
+
     /** The request has been answered, one way or the other. */
     fun notifyDecision(request: Request) {
         val body = when (request.state) {
@@ -114,5 +186,7 @@ class RequestNotifier(context: Context) {
         // Fixed ids: a second request replaces the first rather than stacking up.
         const val NOTIFICATION_INCOMING = 3
         const val NOTIFICATION_DECISION = 4
+        const val NOTIFICATION_NEW_APP = 5
+        const val NOTIFICATION_SILENT = 6
     }
 }

@@ -15,6 +15,12 @@ enum class SyncMessageType {
 
     /** Child → parents: still alive, here is the state of things. */
     HEARTBEAT,
+
+    /** Child → parents: an app appeared on this phone that was not here before. */
+    APP_INSTALLED,
+
+    /** Parent → child: that new app is fine, or it is not. */
+    APP_DECIDED,
 }
 
 /**

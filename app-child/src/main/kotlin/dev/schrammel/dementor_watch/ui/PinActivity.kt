@@ -13,6 +13,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.security.PinAttempts
@@ -175,6 +178,7 @@ class PinActivity : DementorActivity() {
         lock.set(entered)
         attempts.recordSuccess()
         Diagnostics.record(this, DiagnosticEvent.PIN_CHANGED)
+        Audit.record(this, AuditActor.PARENT, AuditAction.PIN_CHANGED)
         succeed()
     }
 

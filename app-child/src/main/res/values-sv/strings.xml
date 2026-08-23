@@ -391,4 +391,210 @@
     <string name="home_category_used_up">%1$s: slut</string>
     <string name="home_category_no_limit">%1$s: ingen gräns</string>
 
+    <!-- Vilken sida av familjen den här installationen är. -->
+    <string name="role_title">Vems telefon är det här?</string>
+    <string name="role_intro">Dementor Watch är en app med två uppgifter. Välj den som passar den här telefonen.</string>
+    <string name="role_child_header">Telefonen med gränserna</string>
+    <string name="role_child_body">Den här telefonen mäter sin egen skärmtid och tillämpar familjens regler. Den som använder den ser allt som mäts och kan be om mer tid.</string>
+    <string name="role_child_choose">Det här är telefonen med gränserna</string>
+    <string name="role_parent_header">En förälders telefon</string>
+    <string name="role_parent_body">Den här telefonen svarar på förfrågningar och kan skicka extra tid. Den mäter ingenting och tillämpar inga regler — det finns ingen här att tillämpa dem på.</string>
+    <string name="role_parent_choose">Det här är en förälders telefon</string>
+    <string name="role_change_later">Du kan ändra det här senare, men det kräver PIN-koden.</string>
+
+    <!-- Förälderns telefon. -->
+    <string name="parent_title">Familj</string>
+    <string name="parent_not_connected">Inte ansluten ännu</string>
+    <string name="parent_not_connected_hint">Ställ in familjeanslutningen för att börja ta emot förfrågningar.</string>
+    <string name="parent_nothing_waiting">Inget väntar på dig</string>
+    <plurals name="parent_waiting">
+        <item quantity="one">%1$d förfrågan väntar</item>
+        <item quantity="other">%1$d förfrågningar väntar</item>
+    </plurals>
+    <string name="parent_checking">Kontrollerar…</string>
+    <string name="parent_checked_at">Senast kontrollerad %1$s</string>
+    <string name="parent_row_inbox">Förfrågningar</string>
+    <string name="parent_row_inbox_detail">Svara på önskemål om mer tid</string>
+    <string name="parent_row_bonus">Skicka extratid</string>
+    <string name="parent_row_bonus_detail">Lägg till minuter utan att bli tillfrågad</string>
+    <string name="parent_row_audit">Historik</string>
+    <string name="parent_row_audit_detail">Allt som ändrats, och vem som ändrade det</string>
+    <string name="parent_row_sync">Familjeanslutning</string>
+    <string name="parent_row_sync_detail">Ämnet och lösenfrasen som familjen delar</string>
+    <string name="parent_row_settings">Den här telefonen</string>
+    <string name="parent_row_settings_detail">PIN-kod, och att byta vad telefonen är</string>
+
+    <string name="parent_bonus_title">Skicka extratid</string>
+    <string name="parent_bonus_body">Extra minuter för i dag, utöver den dagliga gränsen. De försvinner klockan 04 och ändrar inte reglerna.</string>
+    <string name="parent_bonus_note">Det här gäller hela telefonen. Gränser för en enskild app eller kategori kan bara fyllas på från telefonen själv, som är den enda som vet vad som är installerat.</string>
+    <plurals name="parent_bonus_sent">
+        <item quantity="one">Skickat: %1$d extra minut.</item>
+        <item quantity="other">Skickat: %1$d extra minuter.</item>
+    </plurals>
+
+    <string name="parent_settings_title">Den här telefonen</string>
+    <string name="parent_settings_pin_header">PIN-kod</string>
+    <string name="parent_settings_pin_body">PIN-koden skyddar inställningarna på den telefon där den är satt.</string>
+    <string name="parent_settings_role_header">Vad den här telefonen är</string>
+    <string name="parent_settings_role_body">Den här telefonen svarar på förfrågningar. Byter du blir den i stället telefonen med gränserna.</string>
+    <string name="parent_settings_become_child">Gör den här till telefonen med gränserna</string>
+    <string name="parent_settings_become_child_confirm">Telefonen börjar mäta sin egen skärmtid och tillämpa familjens regler. Ingenting raderas.</string>
+
+    <string name="inbox_answered_header">Redan besvarade</string>
+
+    <!-- Den delade historiken. -->
+    <string name="home_open_audit">Historik</string>
+    <string name="home_open_audit_detail">Varje regeländring och varje svar, med vem som gjorde det</string>
+    <string name="audit_title">Historik</string>
+    <string name="audit_intro">Allt som ändrats, på båda telefonerna. Dina föräldrar ser exakt den här listan — det finns ingen separat version.</string>
+    <string name="audit_empty">Inget har hänt ännu.</string>
+    <plurals name="audit_retention">
+        <item quantity="one">Den senaste händelsen sparas.</item>
+        <item quantity="other">De senaste %1$d händelserna sparas.</item>
+    </plurals>
+    <string name="audit_today">I dag</string>
+    <string name="audit_yesterday">I går</string>
+    <string name="audit_by_at">%1$s · %2$s</string>
+    <string name="audit_actor_parent">Förälder</string>
+    <string name="audit_actor_child">Du</string>
+    <string name="audit_actor_system">Automatiskt</string>
+    <string name="audit_value_on">på</string>
+    <string name="audit_value_off">av</string>
+    <string name="audit_role_child">telefonen med gränserna</string>
+    <string name="audit_role_parent">en förälders telefon</string>
+
+    <string name="audit_daily_limit_changed">Daglig gräns ändrad från %1$s till %2$s</string>
+    <string name="audit_app_limit_changed">Gränsen för %1$s ändrad från %2$s till %3$s</string>
+    <string name="audit_app_exempted">%1$s räknas inte längre mot gränserna</string>
+    <string name="audit_app_unexempted">%1$s räknas mot gränserna igen</string>
+    <string name="audit_category_saved">Kategorin \"%1$s\" sparad med gränsen %2$s</string>
+    <string name="audit_category_deleted">Kategorin \"%1$s\" borttagen</string>
+    <string name="audit_bedtime_changed">Läggdags ändrad från %1$s till %2$s</string>
+    <string name="audit_bedtime_on">Läggdags påslaget</string>
+    <string name="audit_bedtime_off">Läggdags avstängt</string>
+    <string name="audit_context_rule_saved">Regeln \"%1$s\" sparad</string>
+    <string name="audit_context_rule_deleted">Regeln \"%1$s\" borttagen</string>
+    <string name="audit_goal_changed">Mål satt till %1$s</string>
+    <string name="audit_goal_prize_changed">Belöningen ändrades</string>
+    <string name="audit_request_raised">Bad om %1$s mer på %2$s</string>
+    <string name="audit_request_approved">Godkände %1$s mer på %2$s</string>
+    <string name="audit_request_denied">Nekade %1$s mer på %2$s</string>
+    <string name="audit_request_withdrawn">Drog tillbaka en förfrågan om %1$s på %2$s</string>
+    <string name="audit_bonus_granted">Gav %1$s extra på %2$s</string>
+    <string name="audit_bonus_cleared">Tog bort dagens extratid</string>
+    <string name="audit_pin_changed">PIN-koden ändrades</string>
+    <string name="audit_sync_on">Familjeanslutning påslagen</string>
+    <string name="audit_sync_off">Familjeanslutning avstängd</string>
+    <string name="audit_tamper_on">Nedlåsning påslagen</string>
+    <string name="audit_tamper_off">Nedlåsning avstängd</string>
+    <string name="audit_device_released">Telefonen lämnades tillbaka</string>
+    <string name="audit_role_changed">Den här telefonen blev %1$s</string>
+
+    <!-- Namngivna scheman (SC-2). -->
+    <string name="rules_bedtime_name">Läggdags</string>
+    <string name="rules_bedtime_nights">Vilka nätter</string>
+    <string name="rules_row_schedules">Scheman</string>
+    <string name="rules_row_schedules_detail">Skoltid, middag, läxor — perioder med egna regler</string>
+    <string name="schedules_title">Scheman</string>
+    <string name="schedules_hint">Perioder då telefonen slutar vara intressant. Varje schema har ett namn, och det namnet är vad blockeringsskärmen visar.</string>
+    <string name="schedules_empty">Inga scheman ännu.</string>
+    <string name="schedules_add">Lägg till ett schema</string>
+    <string name="schedules_unnamed">Namnlöst</string>
+    <string name="schedules_window">%1$s–%2$s</string>
+    <string name="schedules_row">%1$s · %2$s</string>
+    <string name="schedules_row_off">%1$s · %2$s · av</string>
+    <string name="schedules_edit_title">Schema</string>
+    <string name="schedules_name_header">Namn</string>
+    <string name="schedules_name_hint">Skola, Middag, Läxor…</string>
+    <string name="schedules_days_header">Dagar</string>
+    <string name="schedules_window_header">Period</string>
+    <string name="schedules_window_hint">Ett slut som är tidigare än starten löper över midnatt till nästa dag.</string>
+    <string name="schedules_from">Från %1$s</string>
+    <string name="schedules_to">Till %1$s</string>
+    <string name="schedules_allowed_header">Appar som fortsätter fungera</string>
+    <string name="schedules_allowed_hint">Allt annat pausas medan perioden pågår. Telefon, meddelanden och kartor är alltid tillåtna.</string>
+    <string name="schedules_allowed_none">Inget extra</string>
+    <string name="schedules_allowed_choose">Välj appar</string>
+    <string name="schedules_enabled">Aktivt</string>
+    <string name="schedules_save">Spara</string>
+    <string name="schedules_delete">Ta bort det här schemat</string>
+    <string name="schedules_needs_name">Ge schemat ett namn.</string>
+    <string name="schedules_needs_days">Välj minst en dag.</string>
+    <string name="schedules_needs_window">Start och slut kan inte vara samma tid.</string>
+
+    <string name="days_every">Varje dag</string>
+    <string name="days_weekdays">Vardagar</string>
+    <string name="days_weekend">Helger</string>
+    <string name="days_none">Inga dagar</string>
+
+    <!-- Nya appar och blockering (AC-2, AC-3). -->
+    <string name="rules_row_apps">Appar på den här telefonen</string>
+    <string name="rules_row_apps_detail">Granska nya appar och blockera det som inte hör hemma här</string>
+    <string name="apps_title">Appar</string>
+    <string name="apps_hint">Att blockera en app gör ikonen grå. Ingenting raderas, och att avblockera sätter tillbaka den direkt.</string>
+    <string name="apps_new_header">Nya</string>
+    <string name="apps_new_hint">De här dök upp sedan någon senast tittade.</string>
+    <string name="apps_all_header">Allt annat</string>
+    <string name="apps_none">Inga appar hittades.</string>
+    <string name="apps_allow">Tillåt</string>
+    <string name="apps_block">Blockera</string>
+    <string name="apps_blocked">Blockerad</string>
+    <string name="new_app_notification_title">En ny app dök upp</string>
+    <string name="new_app_notification_body">%1$s installerades. Tillåt den eller blockera den.</string>
+
+    <string name="rules_installs_header">Nya installationer</string>
+    <string name="rules_installs_hint">Som standard får vem som helst installera appar och du får veta det efteråt. Med spärr går det inte att installera något nytt förrän du öppnar dörren.</string>
+    <string name="rules_installs_gate">Spärra nya installationer</string>
+    <string name="rules_installs_window_shut">Installationer är spärrade just nu.</string>
+    <string name="rules_installs_window_open">Installationer är öppna till %1$s.</string>
+    <plurals name="rules_installs_open">
+        <item quantity="one">Öppna installationer i %1$d minut</item>
+        <item quantity="other">Öppna installationer i %1$d minuter</item>
+    </plurals>
+
+    <!-- Livstecknet och vad det säger (TR-2). -->
+    <string name="parent_row_device">Den andra telefonen</string>
+    <string name="parent_row_device_detail">Om den fortfarande hör av sig, och vad som är nytt på den</string>
+    <string name="device_title">Den andra telefonen</string>
+    <string name="device_healthy">Allt ser bra ut</string>
+    <string name="device_needs_attention">Något behöver ses över</string>
+    <string name="device_never_heard">Inget hört ännu</string>
+    <string name="device_never_heard_hint">Den andra telefonen har inte hört av sig. Den gör det så snart båda telefonerna delar en familjeanslutning.</string>
+    <string name="device_last_heard">Hörde av sig senast</string>
+    <string name="device_ago">för %1$s sedan</string>
+    <string name="device_clock_off">Klockorna stämmer inte</string>
+    <string name="device_battery">Batteri</string>
+    <string name="device_battery_percent">%1$d%%</string>
+    <string name="device_unknown">Okänt</string>
+    <string name="device_enforcing">Tillämpar regler</string>
+    <string name="device_yes">Ja</string>
+    <string name="device_monitor_only">Bara bevakning</string>
+    <string name="device_apps_held">Pausade appar</string>
+    <string name="device_rules_version">Regelversion</string>
+    <string name="device_attention_header">Behöver ses över</string>
+    <string name="device_new_apps_header">Nya appar</string>
+    <string name="device_new_apps_hint">Installerade på den andra telefonen och väntar på svar.</string>
+
+    <string name="integrity_notification_title">Den andra telefonen har tystnat</string>
+    <string name="integrity_never_heard">Aldrig hört av sig</string>
+    <string name="integrity_never_heard_hint">Ingenting har kommit från den andra telefonen ännu.</string>
+    <string name="integrity_silent">Har tystnat</string>
+    <string name="integrity_silent_hint">Ingenting har hörts på över två timmar. Den kan vara avstängd, utan täckning eller utan batteri.</string>
+    <string name="integrity_usage_access">Mäter inte</string>
+    <string name="integrity_usage_access_hint">Åtkomst till användningsdata stängdes av, så ingen skärmtid räknas och ingen gräns kan gälla.</string>
+    <string name="integrity_not_managed">Tillämpar inte</string>
+    <string name="integrity_not_managed_hint">Appen styr inte längre den telefonen. Tiden räknas fortfarande, men ingenting blockeras.</string>
+    <string name="integrity_battery_low">Lågt batteri</string>
+    <string name="integrity_battery_low_hint">Telefonen kan vara på väg att stängas av.</string>
+
+    <!-- Historikrader för de nya händelserna. -->
+    <string name="audit_app_blocked">%1$s blockerades</string>
+    <string name="audit_app_unblocked">%1$s avblockerades</string>
+    <string name="audit_app_reviewed">%1$s granskades som ny app</string>
+    <string name="audit_schedule_saved">Schemat \"%1$s\" sparat för %2$s</string>
+    <string name="audit_schedule_deleted">Schemat \"%1$s\" borttaget</string>
+    <string name="audit_install_policy_changed">Nya installationer: %1$s</string>
+    <string name="audit_install_window_opened">Installationer öppnade i %1$s</string>
+    <string name="audit_install_notify">tillåtna, med besked</string>
+    <string name="audit_install_gated">spärrade tills de öppnas</string>
 </resources>

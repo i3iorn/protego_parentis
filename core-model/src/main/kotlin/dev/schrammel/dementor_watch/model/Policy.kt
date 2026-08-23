@@ -1,5 +1,6 @@
 package dev.schrammel.dementor_watch.model
 
+import java.time.Instant
 import java.time.ZoneId
 
 /** What the family has decided about a single app. */
@@ -53,6 +54,15 @@ data class Policy(
     val contextRules: List<ContextRule> = emptyList(),
     val safetyAllowlist: Set<PackageName> = emptySet(),
     val installPolicy: InstallPolicy = InstallPolicy.NOTIFY,
+    /**
+     * When a parent-opened installation window closes, under [InstallPolicy.GATED].
+     *
+     * Without this, gating installs is a door that locks from the outside: nobody
+     * can ever add an app again, including the parent who turned it on, without
+     * switching the whole policy back. A window expires on its own, so forgetting
+     * to close it is not the same as never having gated installs at all.
+     */
+    val installWindowUntil: Instant? = null,
     /**
      * Whether to lock the device against tampering (TR-1): no factory reset, no
      * clock changes, no safe boot, and the app cannot be uninstalled.

@@ -3,6 +3,7 @@ package dev.schrammel.dementor_watch.rules
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.AppRule
 import dev.schrammel.dementor_watch.model.Category
 import dev.schrammel.dementor_watch.model.CategoryId
@@ -16,6 +17,7 @@ import dev.schrammel.dementor_watch.model.ScheduleId
 import dev.schrammel.dementor_watch.model.WeeklyBudget
 import org.json.JSONObject
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.time.Duration.Companion.minutes
@@ -30,8 +32,21 @@ data class BedtimeSetting(
     val enabled: Boolean,
     val start: LocalTime,
     val end: LocalTime,
+    /**
+     * The nights it runs, by the day the window *starts*.
+     *
+     * A school-night bedtime is the common case and was previously impossible to
+     * express: the window ran all seven days or not at all, which meant a family
+     * either had no bedtime or had a Friday one.
+     */
+    val days: Set<DayOfWeek> = ALL_DAYS,
 ) {
+    /** A bedtime with no nights is off, whatever the switch says. */
+    val isActive: Boolean get() = enabled && days.isNotEmpty()
+
     companion object {
+        val ALL_DAYS: Set<DayOfWeek> = DayOfWeek.entries.toSet()
+
         val OFF = BedtimeSetting(
             enabled = false,
             start = Defaults.BEDTIME_START,
@@ -58,6 +73,7 @@ class LocalPolicyStore(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
     private val contextRuleStore = ContextRuleStore(appContext)
+    private val scheduleStore = ScheduleStore(appContext)
 
     // ---------- the assembled policy ----------
 
@@ -73,6 +89,7 @@ class LocalPolicyStore(context: Context) {
         contextRules = contextRuleStore.rules,
         safetyAllowlist = SafetyAllowlist.of(appContext),
         installPolicy = installPolicy,
+        installWindowUntil = installWindowUntil,
         tamperProtection = tamperProtection,
         dayBoundaryHour = Defaults.DAY_BOUNDARY_HOUR,
     )
@@ -86,24 +103,32 @@ class LocalPolicyStore(context: Context) {
             put(PackageName(pkg), AppRule.Budgeted(budgetOf(minutes)))
         }
         exemptPackages.forEach { pkg -> put(PackageName(pkg), AppRule.AlwaysAllowed) }
+
+        // Last, so an explicit block wins over an exemption. "Ignores limits" and
+        // "is not on this phone" can both be set from different screens, and the
+        // more specific of the two has to be the one that survives.
+        blockedPackages.forEach { pkg -> put(PackageName(pkg), AppRule.Blocked(hidden = false)) }
+        hiddenPackages.forEach { pkg -> put(PackageName(pkg), AppRule.Blocked(hidden = true)) }
     }
 
-    private fun schedules(): List<ScheduleBlock> {
+    private fun schedules(): List<ScheduleBlock> = buildList {
         val setting = bedtime
-        if (!setting.enabled) return emptyList()
-        return listOf(
-            ScheduleBlock(
-                id = ScheduleId(BEDTIME_ID),
-                name = BEDTIME_NAME,
-                days = DayOfWeek.entries.toSet(),
-                start = setting.start,
-                end = setting.end,
-                // Everything on the safety list survives bedtime anyway; this set
-                // is for apps a family additionally permits.
-                allowedPackages = emptySet(),
-                kind = ScheduleBlock.Kind.BEDTIME,
-            ),
-        )
+        if (setting.isActive && setting.start != setting.end) {
+            add(
+                ScheduleBlock(
+                    id = ScheduleId(BEDTIME_ID),
+                    name = appContext.getString(R.string.rules_bedtime_name),
+                    days = setting.days,
+                    start = setting.start,
+                    end = setting.end,
+                    // Everything on the safety list survives bedtime anyway; this
+                    // set is for apps a family additionally permits.
+                    allowedPackages = emptySet(),
+                    kind = ScheduleBlock.Kind.BEDTIME,
+                ),
+            )
+        }
+        addAll(scheduleStore.active())
     }
 
     private fun toDomain(stored: StoredCategory) = Category(
@@ -132,11 +157,18 @@ class LocalPolicyStore(context: Context) {
             enabled = prefs.getBoolean(KEY_BEDTIME_ENABLED, BedtimeSetting.OFF.enabled),
             start = prefs.readTime(KEY_BEDTIME_START, Defaults.BEDTIME_START),
             end = prefs.readTime(KEY_BEDTIME_END, Defaults.BEDTIME_END),
+            // Absent for anyone upgrading from a build where bedtime ran nightly.
+            // Defaulting to every night keeps their bedtime exactly as it was.
+            days = prefs.getStringSet(KEY_BEDTIME_DAYS, null)
+                ?.mapNotNull { stored -> stored.toIntOrNull()?.let(::dayOf) }
+                ?.toSet()
+                ?: BedtimeSetting.ALL_DAYS,
         )
         set(value) = write {
             putBoolean(KEY_BEDTIME_ENABLED, value.enabled)
             putInt(KEY_BEDTIME_START, value.start.toMinuteOfDay())
             putInt(KEY_BEDTIME_END, value.end.toMinuteOfDay())
+            putStringSet(KEY_BEDTIME_DAYS, value.days.map { it.value.toString() }.toSet())
         }
 
     // ---------- categories ----------
@@ -181,6 +213,33 @@ class LocalPolicyStore(context: Context) {
 
     // ---------- device control ----------
 
+    /** Apps a parent has put off-limits. The icon greys out; the data survives. */
+    var blockedPackages: Set<String>
+        get() = prefs.getStringSet(KEY_BLOCKED, emptySet()).orEmpty()
+        set(value) = write { putStringSet(KEY_BLOCKED, value) }
+
+    /** Harsher than blocked: the icon disappears entirely. */
+    var hiddenPackages: Set<String>
+        get() = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
+        set(value) = write { putStringSet(KEY_HIDDEN, value) }
+
+    fun setBlocked(packageName: String, blocked: Boolean) {
+        blockedPackages = if (blocked) blockedPackages + packageName else blockedPackages - packageName
+        if (blocked) hiddenPackages = hiddenPackages - packageName
+    }
+
+    /**
+     * When a parent-opened installation window closes, or null if none is open.
+     *
+     * Stored rather than derived so the audit log and both screens can agree on
+     * when it was opened and when it ran out.
+     */
+    var installWindowUntil: Instant?
+        get() = prefs.getLong(KEY_INSTALL_WINDOW, 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
+        set(value) = write {
+            if (value == null) remove(KEY_INSTALL_WINDOW) else putLong(KEY_INSTALL_WINDOW, value.toEpochMilli())
+        }
+
     var installPolicy: InstallPolicy
         get() = runCatching {
             InstallPolicy.valueOf(prefs.getString(KEY_INSTALL_POLICY, null) ?: "")
@@ -202,6 +261,9 @@ class LocalPolicyStore(context: Context) {
         coerceIn(0, Defaults.MAX_DAILY_LIMIT.inWholeMinutes.toInt())
 
     private fun LocalTime.toMinuteOfDay(): Int = hour * MINUTES_PER_HOUR + minute
+
+    private fun dayOf(value: Int): DayOfWeek? =
+        DayOfWeek.entries.firstOrNull { it.value == value }
 
     private fun SharedPreferences.readTime(key: String, fallback: LocalTime): LocalTime {
         val stored = getInt(key, NOT_SET)
@@ -225,7 +287,6 @@ class LocalPolicyStore(context: Context) {
         const val INITIAL_VERSION = 1L
         const val LOCAL_CHILD_ID = "local"
         const val BEDTIME_ID = "bedtime"
-        const val BEDTIME_NAME = "Bedtime"
         const val NOT_SET = -1
 
         const val MINUTES_PER_HOUR = 60
@@ -236,6 +297,10 @@ class LocalPolicyStore(context: Context) {
         const val KEY_BEDTIME_ENABLED = "bedtime_enabled"
         const val KEY_BEDTIME_START = "bedtime_start_minute_of_day"
         const val KEY_BEDTIME_END = "bedtime_end_minute_of_day"
+        const val KEY_BEDTIME_DAYS = "bedtime_days"
+        const val KEY_BLOCKED = "blocked_packages"
+        const val KEY_HIDDEN = "hidden_packages"
+        const val KEY_INSTALL_WINDOW = "install_window_until"
         const val KEY_EXEMPT = "exempt_packages"
         const val KEY_CATEGORIES = "categories"
         const val KEY_APP_LIMITS = "app_limits"

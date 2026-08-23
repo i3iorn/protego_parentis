@@ -94,6 +94,48 @@
             </intent-filter>
         </activity>
 
+        <!--
+          Asked once, on first launch, and reachable afterwards only behind the
+          PIN. HomeActivity stays the launcher and routes here.
+        -->
+        <activity
+            android:name=".ui.RoleSetupActivity"
+            android:exported="false" />
+
+        <!-- Parent mode. None of these exist on the child's phone. -->
+        <activity
+            android:name=".ui.ParentHomeActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.ParentDeviceActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ParentHomeActivity" />
+
+        <activity
+            android:name=".ui.ParentInboxActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ParentHomeActivity" />
+
+        <activity
+            android:name=".ui.ParentBonusActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ParentHomeActivity" />
+
+        <activity
+            android:name=".ui.ParentSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ParentHomeActivity" />
+
+        <!--
+          The shared history. Deliberately not gated: a record only the parent can
+          read is not a shared record.
+        -->
+        <activity
+            android:name=".ui.AuditActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
         <activity
             android:name=".ui.LimitsActivity"
             android:exported="false"
@@ -111,6 +153,21 @@
 
         <activity
             android:name=".ui.DeviceControlActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.SchedulesActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.ScheduleEditActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.SchedulesActivity" />
+
+        <activity
+            android:name=".ui.AppControlActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />
 

@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The type scale.
+  The theme, the type scale and the surfaces.
 
-  Text sizes were previously bare floats (`textSize = 15f`) repeated across every
-  screen, which meant "body text" had no single definition and drifted between
-  14, 15 and 16 depending on which file it landed in. Naming the roles makes the
-  hierarchy explicit and lets the whole app be restyled from one place.
-
-  Colours are deliberately not set here: they inherit from the AppCompat DayNight
-  theme so the app follows the system light/dark setting.
+  The scale is deliberately widely spaced: the previous 14/15/16/20 range gave no
+  visible hierarchy, so every screen read as one undifferentiated column. Sizes now
+  step 13 / 15 / 17 / 22 / 28 / 40, and weight and colour carry the rest.
 -->
 <resources>
 
@@ -18,64 +14,92 @@
         <item name="colorPrimary">@color/brand</item>
         <item name="colorPrimaryDark">@color/brand_dark</item>
         <item name="colorAccent">@color/brand</item>
-        <item name="android:statusBarColor">?android:attr/colorBackground</item>
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+        <item name="android:navigationBarColor">@color/window_background</item>
     </style>
 
-    <!-- A grouped summary block. -->
-    <!-- parent="" opts out of the implicit parent that a dotted name would otherwise imply. -->
+    <!-- A raised surface holding one idea. parent="" opts out of the implicit
+         parent that a dotted name would otherwise imply. -->
     <style name="Widget.Dementor.Card" parent="">
         <item name="android:background">@drawable/card</item>
         <item name="android:padding">@dimen/card_padding</item>
         <item name="android:orientation">vertical</item>
     </style>
 
+    <!-- A raised surface holding a list of rows. Rows supply their own dividers,
+         so the padding here is horizontal only. -->
+    <style name="Widget.Dementor.Group" parent="">
+        <item name="android:background">@drawable/card</item>
+        <item name="android:paddingLeft">@dimen/card_padding</item>
+        <item name="android:paddingRight">@dimen/card_padding</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
     <!-- The one big number on a screen: time remaining, weekly total. -->
     <style name="TextAppearance.Dementor.Display" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">34sp</item>
+        <item name="android:textSize">40sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- Screen titles. -->
     <style name="TextAppearance.Dementor.Title" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">30sp</item>
+        <item name="android:textSize">28sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- A heading inside a flow of prose, as on the disclosure screen. -->
     <style name="TextAppearance.Dementor.Headline" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">26sp</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- A single value being edited, such as the current slider position. -->
     <style name="TextAppearance.Dementor.Metric" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">24sp</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/brand</item>
     </style>
 
-    <!-- Section headings within a screen. -->
+    <!-- Section headings. Small, spaced capitals in the quieter colour: a label
+         that reads as a label instead of competing with the screen title. -->
     <style name="TextAppearance.Dementor.Section" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">20sp</item>
+        <item name="android:textSize">13sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.09</item>
+        <item name="android:textColor">@color/text_secondary</item>
     </style>
 
     <!-- The heading of a card. -->
     <style name="TextAppearance.Dementor.Subtitle" parent="TextAppearance.AppCompat">
         <item name="android:textSize">18sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- A row in a list of apps or categories. -->
     <style name="TextAppearance.Dementor.ListItem" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">16sp</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <!-- Ordinary running text. -->
     <style name="TextAppearance.Dementor.Body" parent="TextAppearance.AppCompat">
         <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
-    <!-- Explanatory text under a control. -->
+    <!-- Explanatory text under a control. Quieter, so it supports rather than
+         competes with what it is explaining. -->
     <style name="TextAppearance.Dementor.Caption" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:lineSpacingMultiplier">1.25</item>
     </style>
 
 </resources>

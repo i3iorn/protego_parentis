@@ -77,6 +77,7 @@ class PolicyReconcilerTest {
         suspend: Set<PackageName> = emptySet(),
         hide: Set<PackageName> = emptySet(),
         version: Long = 1L,
+        installsBlocked: Boolean = false,
     ) = Enforcement(
         policyVersion = version,
         suspend = suspend.associateWith { Reason.ManuallyBlocked },
@@ -92,6 +93,7 @@ class PolicyReconcilerTest {
         appBudgets = emptyMap(),
         categoryBudgets = emptyMap(),
         activeSchedules = emptyList(),
+        installsBlocked = installsBlocked,
         nextChangeAt = null,
     )
 
@@ -224,24 +226,42 @@ class PolicyReconcilerTest {
     }
 
     @Test
-    fun `gated installs add the install restriction`() {
+    fun `blocked installs add the install restriction`() {
         val port = FakeDevicePolicyPort()
-        PolicyReconciler(port, SELF)
-            .reconcile(policy().copy(installPolicy = InstallPolicy.GATED), enforcement())
+        PolicyReconciler(port, SELF).reconcile(
+            policy().copy(installPolicy = InstallPolicy.GATED),
+            enforcement(installsBlocked = true),
+        )
 
         assertTrue(TamperRestrictions.NO_INSTALL_APPS in port.restrictions)
     }
 
     @Test
-    fun `switching back to notify clears the install restriction`() {
+    fun `un-blocking installs clears the restriction`() {
         val port = FakeDevicePolicyPort()
         val reconciler = PolicyReconciler(port, SELF)
 
-        reconciler.reconcile(policy().copy(installPolicy = InstallPolicy.GATED), enforcement())
-        val result = reconciler.reconcile(policy().copy(installPolicy = InstallPolicy.NOTIFY), enforcement())
+        reconciler.reconcile(policy(), enforcement(installsBlocked = true))
+        val result = reconciler.reconcile(policy(), enforcement(installsBlocked = false))
 
         assertFalse(TamperRestrictions.NO_INSTALL_APPS in port.restrictions)
         assertEquals(setOf(TamperRestrictions.NO_INSTALL_APPS), result.restrictionsCleared)
+    }
+
+    /**
+     * The gate is the engine\'s decision, not this class\'s. A gated policy whose
+     * installation window is open must leave installs alone, and the reconciler
+     * must not second-guess that by reading the policy itself.
+     */
+    @Test
+    fun `a gated policy does not block installs on its own`() {
+        val port = FakeDevicePolicyPort()
+        PolicyReconciler(port, SELF).reconcile(
+            policy().copy(installPolicy = InstallPolicy.GATED),
+            enforcement(installsBlocked = false),
+        )
+
+        assertFalse(TamperRestrictions.NO_INSTALL_APPS in port.restrictions)
     }
 
     @Test

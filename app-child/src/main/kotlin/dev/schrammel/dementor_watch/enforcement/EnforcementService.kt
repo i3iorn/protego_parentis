@@ -19,8 +19,13 @@ import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
+import android.os.BatteryManager
 import dev.schrammel.dementor_watch.model.BudgetLevel
+import dev.schrammel.dementor_watch.model.Heartbeat
+import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.rules.AppReviewStore
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
+import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
@@ -53,6 +58,9 @@ class EnforcementService : Service() {
     private lateinit var goals: GoalCoordinator
     private lateinit var goalNotifier: GoalNotifier
     private lateinit var sync: SyncCoordinator
+    private lateinit var review: AppReviewStore
+    private lateinit var installedApps: InstalledApps
+    private lateinit var requestNotifier: RequestNotifier
 
     /**
      * Fires when the device is unlocked. Registered at runtime because implicit
@@ -68,6 +76,22 @@ class EnforcementService : Service() {
                     .onSuccess { earned -> earned?.let(goalNotifier::notifyEarned) }
                     .onFailure { Log.w(TAG, "Could not check goals on unlock", it) }
             }
+        }
+    }
+
+    /**
+     * Fires when a package is installed or removed.
+     *
+     * Registered at runtime rather than in the manifest: since Android 8 a
+     * manifest-declared receiver does not get `ACTION_PACKAGE_ADDED` at all, and
+     * this service is always running on a child device anyway.
+     */
+    private val onPackagesChanged = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            // Replacing an app is an update, not an arrival. Reporting an update
+            // as a new install would flag half the phone after a Play Store sweep.
+            if (intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true) return
+            handler.post { runCatching { sweepForNewApps() } }
         }
     }
 
@@ -92,6 +116,9 @@ class EnforcementService : Service() {
     override fun onCreate() {
         super.onCreate()
         coordinator = EnforcementCoordinator(this)
+        review = AppReviewStore(this)
+        installedApps = InstalledApps(this)
+        requestNotifier = RequestNotifier(this)
         warnings = WarningNotifier(this)
         goals = GoalCoordinator(this)
         goalNotifier = GoalNotifier(this)
@@ -101,6 +128,16 @@ class EnforcementService : Service() {
             this,
             onUnlocked,
             IntentFilter(Intent.ACTION_USER_PRESENT),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        ContextCompat.registerReceiver(
+            this,
+            onPackagesChanged,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_PACKAGE_ADDED)
+                addAction(Intent.ACTION_PACKAGE_REMOVED)
+                addDataScheme("package")
+            },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
     }
@@ -135,6 +172,7 @@ class EnforcementService : Service() {
         handler.removeCallbacks(tick)
         worker.quitSafely()
         runCatching { unregisterReceiver(onUnlocked) }
+        runCatching { unregisterReceiver(onPackagesChanged) }
         super.onDestroy()
     }
 
@@ -145,6 +183,22 @@ class EnforcementService : Service() {
         if (snapshot == null) {
             updateNotification(getString(R.string.service_needs_permission))
             Diagnostics.record(this, DiagnosticEvent.USAGE_ACCESS_MISSING)
+            // Still say hello. Without this, revoked usage access is indistinguishable
+            // from a phone that has been switched off — and the two want very
+            // different responses from a parent.
+            runCatching {
+                sync.publishHeartbeat(
+                    Heartbeat(
+                        sentAt = now,
+                        policyVersion = 0L,
+                        batteryPercent = batteryPercent(),
+                        managed = coordinator.isDeviceOwner(),
+                        usageAccessGranted = false,
+                        suspendedCount = 0,
+                    ),
+                )
+            }.onFailure { Log.w(TAG, "Could not send heartbeat", it) }
+            sync.pollNow()
             return MAX_INTERVAL_MILLIS
         }
 
@@ -173,12 +227,70 @@ class EnforcementService : Service() {
                 "monitorOnly=${snapshot.monitorOnly}",
         )
 
+        // The broadcast is the fast path; this catches anything installed while
+        // the service was not running, which on a rebooting phone is a real window.
+        runCatching { sweepForNewApps() }
+            .onFailure { Log.w(TAG, "Could not check for new apps", it) }
+
+        // Throttled inside the coordinator: this tick can fire every fifteen
+        // seconds when a limit is close, and a heartbeat that often is a battery bug.
+        runCatching { sync.publishHeartbeat(heartbeatOf(snapshot, now)) }
+            .onFailure { Log.w(TAG, "Could not send heartbeat", it) }
+
         // Piggybacks on the same tick rather than holding a connection open.
         // Failures are reported through the callback and never reach here.
         sync.pollNow()
 
         return delayUntil(snapshot.enforcement.nextChangeAt, now)
     }
+
+    /**
+     * Notices apps that were not on the phone last time we looked (AC-3).
+     *
+     * The very first sweep seeds instead of reporting — see [AppReviewStore]. Runs
+     * on the worker thread; walking the package list is slow.
+     */
+    private fun sweepForNewApps() {
+        // Not redundant with the cache's own receiver: the two are separate
+        // broadcasts with no ordering guarantee between them, and reading a stale
+        // list here would miss the app this sweep was woken for.
+        InstalledApps.invalidate()
+
+        val installed = installedApps.launchable()
+        val fresh = review.noticeInstalled(installed.map { it.pkg.value }.toSet())
+        if (fresh.isEmpty()) return
+
+        fresh.forEach { pkg ->
+            val label = installedApps.labelFor(PackageName(pkg))
+            requestNotifier.notifyNewAppLocally(label)
+            sync.publishAppInstalled(pkg, label)
+        }
+    }
+
+    /**
+     * What the child device tells its parents about itself (TR-2).
+     *
+     * Facts about the app and the phone, never about what was used. The one field
+     * that comes close is the count of suspended apps, which says how much is being
+     * enforced without saying what.
+     */
+    private fun heartbeatOf(snapshot: EnforcementSnapshot, now: Instant) = Heartbeat(
+        sentAt = now,
+        policyVersion = snapshot.policy.version,
+        batteryPercent = batteryPercent(),
+        managed = !snapshot.monitorOnly,
+        // Unconditionally true: a snapshot only exists when usage access is
+        // granted. The other branch of evaluate() sends the false case.
+        usageAccessGranted = true,
+        suspendedCount = snapshot.enforcement.suspend.size,
+    )
+
+    /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
+    private fun batteryPercent(): Int =
+        getSystemService(BatteryManager::class.java)
+            ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            ?.takeIf { it in 0..100 }
+            ?: -1
 
     /**
      * Sleeps until the engine says the decision would change, within bounds.

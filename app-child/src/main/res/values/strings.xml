@@ -383,4 +383,211 @@
     <string name="home_category_row">%1$s: %2$s left</string>
     <string name="home_category_used_up">%1$s: used up</string>
     <string name="home_category_no_limit">%1$s: no limit</string>
+
+    <!-- Choosing which side of the family this install is. -->
+    <string name="role_title">Whose phone is this?</string>
+    <string name="role_intro">Dementor Watch is one app doing two jobs. Pick the one that matches this phone.</string>
+    <string name="role_child_header">The phone with the limits</string>
+    <string name="role_child_body">This phone measures its own screen time and applies the family\'s rules. The person using it can see everything that is measured, and can ask for more time.</string>
+    <string name="role_child_choose">This is the phone with the limits</string>
+    <string name="role_parent_header">A parent\'s phone</string>
+    <string name="role_parent_body">This phone answers requests and can send extra time. It measures nothing and enforces nothing — there is no one to enforce against here.</string>
+    <string name="role_parent_choose">This is a parent\'s phone</string>
+    <string name="role_change_later">You can change this later, but it asks for the PIN first.</string>
+
+    <!-- The parent phone. -->
+    <string name="parent_title">Family</string>
+    <string name="parent_not_connected">Not connected yet</string>
+    <string name="parent_not_connected_hint">Set up the family connection to start receiving requests.</string>
+    <string name="parent_nothing_waiting">Nothing waiting for you</string>
+    <plurals name="parent_waiting">
+        <item quantity="one">%1$d request waiting</item>
+        <item quantity="other">%1$d requests waiting</item>
+    </plurals>
+    <string name="parent_checking">Checking…</string>
+    <string name="parent_checked_at">Last checked at %1$s</string>
+    <string name="parent_row_inbox">Requests</string>
+    <string name="parent_row_inbox_detail">Answer asks for more time</string>
+    <string name="parent_row_bonus">Send extra time</string>
+    <string name="parent_row_bonus_detail">Add minutes without being asked</string>
+    <string name="parent_row_audit">History</string>
+    <string name="parent_row_audit_detail">Everything that has changed, and who changed it</string>
+    <string name="parent_row_sync">Family connection</string>
+    <string name="parent_row_sync_detail">The topic and passphrase this family shares</string>
+    <string name="parent_row_settings">This phone</string>
+    <string name="parent_row_settings_detail">PIN, and switching what this phone is</string>
+
+    <string name="parent_bonus_title">Send extra time</string>
+    <string name="parent_bonus_body">Extra minutes for today, on top of the daily limit. It expires at 4am and does not change the rules.</string>
+    <string name="parent_bonus_note">This adds to the whole device. Limits on a single app or category can only be topped up from the phone itself, which is the only place that knows what is installed.</string>
+    <plurals name="parent_bonus_sent">
+        <item quantity="one">Sent: %1$d extra minute.</item>
+        <item quantity="other">Sent: %1$d extra minutes.</item>
+    </plurals>
+
+    <string name="parent_settings_title">This phone</string>
+    <string name="parent_settings_pin_header">PIN</string>
+    <string name="parent_settings_pin_body">The PIN protects the settings on whichever phone it is set on.</string>
+    <string name="parent_settings_role_header">What this phone is</string>
+    <string name="parent_settings_role_body">This phone answers requests. Switching it makes it the phone with the limits instead.</string>
+    <string name="parent_settings_become_child">Make this the phone with the limits</string>
+    <string name="parent_settings_become_child_confirm">This phone will start measuring its own screen time and applying the family rules. Nothing is deleted.</string>
+
+    <string name="inbox_answered_header">Already answered</string>
+
+    <!-- The shared history. -->
+    <string name="home_open_audit">History</string>
+    <string name="home_open_audit_detail">Every rule change and every answer, with who made it</string>
+    <string name="audit_title">History</string>
+    <string name="audit_intro">Everything that has changed, on both phones. Your parents see exactly this list — there is no separate version.</string>
+    <string name="audit_empty">Nothing has happened yet.</string>
+    <plurals name="audit_retention">
+        <item quantity="one">The most recent entry is kept.</item>
+        <item quantity="other">The most recent %1$d entries are kept.</item>
+    </plurals>
+    <string name="audit_today">Today</string>
+    <string name="audit_yesterday">Yesterday</string>
+    <string name="audit_by_at">%1$s · %2$s</string>
+    <string name="audit_actor_parent">Parent</string>
+    <string name="audit_actor_child">You</string>
+    <string name="audit_actor_system">Automatic</string>
+    <string name="audit_value_on">on</string>
+    <string name="audit_value_off">off</string>
+    <string name="audit_role_child">the phone with the limits</string>
+    <string name="audit_role_parent">a parent\'s phone</string>
+
+    <string name="audit_daily_limit_changed">Daily limit changed from %1$s to %2$s</string>
+    <string name="audit_app_limit_changed">Limit for %1$s changed from %2$s to %3$s</string>
+    <string name="audit_app_exempted">%1$s no longer counts towards limits</string>
+    <string name="audit_app_unexempted">%1$s counts towards limits again</string>
+    <string name="audit_category_saved">Category \"%1$s\" saved with a limit of %2$s</string>
+    <string name="audit_category_deleted">Category \"%1$s\" deleted</string>
+    <string name="audit_bedtime_changed">Bedtime changed from %1$s to %2$s</string>
+    <string name="audit_bedtime_on">Bedtime turned on</string>
+    <string name="audit_bedtime_off">Bedtime turned off</string>
+    <string name="audit_context_rule_saved">Rule \"%1$s\" saved</string>
+    <string name="audit_context_rule_deleted">Rule \"%1$s\" deleted</string>
+    <string name="audit_goal_changed">Goal set to %1$s</string>
+    <string name="audit_goal_prize_changed">The prize was changed</string>
+    <string name="audit_request_raised">Asked for %1$s more on %2$s</string>
+    <string name="audit_request_approved">Approved %1$s more on %2$s</string>
+    <string name="audit_request_denied">Denied %1$s more on %2$s</string>
+    <string name="audit_request_withdrawn">Withdrew a request for %1$s on %2$s</string>
+    <string name="audit_bonus_granted">Gave %1$s extra on %2$s</string>
+    <string name="audit_bonus_cleared">Removed today\'s extra time</string>
+    <string name="audit_pin_changed">The PIN was changed</string>
+    <string name="audit_sync_on">Family connection turned on</string>
+    <string name="audit_sync_off">Family connection turned off</string>
+    <string name="audit_tamper_on">Lockdown turned on</string>
+    <string name="audit_tamper_off">Lockdown turned off</string>
+    <string name="audit_device_released">The phone was handed back</string>
+    <string name="audit_role_changed">This phone became %1$s</string>
+
+    <!-- Named schedule windows (SC-2). -->
+    <string name="rules_bedtime_name">Bedtime</string>
+    <string name="rules_bedtime_nights">Which nights</string>
+    <string name="rules_row_schedules">Schedules</string>
+    <string name="rules_row_schedules_detail">School hours, dinner, homework — windows with their own rules</string>
+    <string name="schedules_title">Schedules</string>
+    <string name="schedules_hint">Windows when the phone stops being interesting. Each one has a name, and that name is what the block screen shows.</string>
+    <string name="schedules_empty">No schedules yet.</string>
+    <string name="schedules_add">Add a schedule</string>
+    <string name="schedules_unnamed">Unnamed</string>
+    <string name="schedules_window">%1$s–%2$s</string>
+    <string name="schedules_row">%1$s · %2$s</string>
+    <string name="schedules_row_off">%1$s · %2$s · off</string>
+    <string name="schedules_edit_title">Schedule</string>
+    <string name="schedules_name_header">Name</string>
+    <string name="schedules_name_hint">School, Dinner, Homework…</string>
+    <string name="schedules_days_header">Days</string>
+    <string name="schedules_window_header">Window</string>
+    <string name="schedules_window_hint">An end earlier than the start runs past midnight into the next day.</string>
+    <string name="schedules_from">From %1$s</string>
+    <string name="schedules_to">Until %1$s</string>
+    <string name="schedules_allowed_header">Apps that stay usable</string>
+    <string name="schedules_allowed_hint">Everything else is paused while the window runs. The phone, messages and maps are always allowed.</string>
+    <string name="schedules_allowed_none">Nothing extra</string>
+    <string name="schedules_allowed_choose">Choose apps</string>
+    <string name="schedules_enabled">Active</string>
+    <string name="schedules_save">Save</string>
+    <string name="schedules_delete">Delete this schedule</string>
+    <string name="schedules_needs_name">Give the schedule a name.</string>
+    <string name="schedules_needs_days">Pick at least one day.</string>
+    <string name="schedules_needs_window">The start and end cannot be the same time.</string>
+
+    <string name="days_every">Every day</string>
+    <string name="days_weekdays">Weekdays</string>
+    <string name="days_weekend">Weekends</string>
+    <string name="days_none">No days</string>
+
+    <!-- New apps and blocking (AC-2, AC-3). -->
+    <string name="rules_row_apps">Apps on this phone</string>
+    <string name="rules_row_apps_detail">Review new arrivals and block anything that should not be here</string>
+    <string name="apps_title">Apps</string>
+    <string name="apps_hint">Blocking an app greys out its icon. Nothing is deleted, and unblocking puts it straight back.</string>
+    <string name="apps_new_header">New</string>
+    <string name="apps_new_hint">These appeared since the last time anyone looked.</string>
+    <string name="apps_all_header">Everything else</string>
+    <string name="apps_none">No apps found.</string>
+    <string name="apps_allow">Allow</string>
+    <string name="apps_block">Block</string>
+    <string name="apps_blocked">Blocked</string>
+    <string name="new_app_notification_title">A new app appeared</string>
+    <string name="new_app_notification_body">%1$s was installed. Allow it or block it.</string>
+
+    <string name="rules_installs_header">New installs</string>
+    <string name="rules_installs_hint">By default anyone can install apps and you are told about it afterwards. Gating means nothing new can be installed until you open the door.</string>
+    <string name="rules_installs_gate">Block new installs</string>
+    <string name="rules_installs_window_shut">Installs are blocked right now.</string>
+    <string name="rules_installs_window_open">Installs are open until %1$s.</string>
+    <plurals name="rules_installs_open">
+        <item quantity="one">Open installs for %1$d minute</item>
+        <item quantity="other">Open installs for %1$d minutes</item>
+    </plurals>
+
+    <!-- The heartbeat and what it says (TR-2). -->
+    <string name="parent_row_device">The other phone</string>
+    <string name="parent_row_device_detail">Whether it is still checking in, and what is new on it</string>
+    <string name="device_title">The other phone</string>
+    <string name="device_healthy">Everything looks fine</string>
+    <string name="device_needs_attention">Something needs a look</string>
+    <string name="device_never_heard">Nothing heard yet</string>
+    <string name="device_never_heard_hint">The other phone has not checked in. It will as soon as both phones share a family connection.</string>
+    <string name="device_last_heard">Last checked in</string>
+    <string name="device_ago">%1$s ago</string>
+    <string name="device_clock_off">Clocks disagree</string>
+    <string name="device_battery">Battery</string>
+    <string name="device_battery_percent">%1$d%%</string>
+    <string name="device_unknown">Unknown</string>
+    <string name="device_enforcing">Enforcing rules</string>
+    <string name="device_yes">Yes</string>
+    <string name="device_monitor_only">Watching only</string>
+    <string name="device_apps_held">Apps paused</string>
+    <string name="device_rules_version">Rules version</string>
+    <string name="device_attention_header">Needs a look</string>
+    <string name="device_new_apps_header">New apps</string>
+    <string name="device_new_apps_hint">Installed on the other phone and waiting for an answer.</string>
+
+    <string name="integrity_notification_title">The other phone has gone quiet</string>
+    <string name="integrity_never_heard">Never heard from</string>
+    <string name="integrity_never_heard_hint">Nothing has arrived from the other phone yet.</string>
+    <string name="integrity_silent">Gone quiet</string>
+    <string name="integrity_silent_hint">Nothing has been heard for over two hours. It may be off, out of signal, or out of battery.</string>
+    <string name="integrity_usage_access">Not measuring</string>
+    <string name="integrity_usage_access_hint">Usage access was turned off, so no screen time is being counted and no limit can apply.</string>
+    <string name="integrity_not_managed">Not enforcing</string>
+    <string name="integrity_not_managed_hint">The app is no longer in charge of that phone. Time is still counted, but nothing is blocked.</string>
+    <string name="integrity_battery_low">Battery low</string>
+    <string name="integrity_battery_low_hint">The phone may be about to switch off.</string>
+
+    <!-- History entries for the new actions. -->
+    <string name="audit_app_blocked">%1$s was blocked</string>
+    <string name="audit_app_unblocked">%1$s was unblocked</string>
+    <string name="audit_app_reviewed">%1$s was reviewed as a new app</string>
+    <string name="audit_schedule_saved">Schedule \"%1$s\" saved for %2$s</string>
+    <string name="audit_schedule_deleted">Schedule \"%1$s\" deleted</string>
+    <string name="audit_install_policy_changed">New installs: %1$s</string>
+    <string name="audit_install_window_opened">Installs opened for %1$s</string>
+    <string name="audit_install_notify">allowed, with a heads-up</string>
+    <string name="audit_install_gated">blocked until opened</string>
 </resources>

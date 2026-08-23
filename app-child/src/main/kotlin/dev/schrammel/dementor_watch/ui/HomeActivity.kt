@@ -23,6 +23,9 @@ import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Reason
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
+import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.RoleStore
+import dev.schrammel.dementor_watch.sync.ParentPollWorker
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.usage.UsageAccess
 import java.time.ZoneId
@@ -44,11 +47,21 @@ class HomeActivity : DementorActivity() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
+    /**
+     * Set when this launch was handed to another screen.
+     *
+     * [finish] during [onCreate] usually skips straight to [onDestroy], but that
+     * is not contractual, and every field below is a lateinit that was never
+     * assigned. One boolean is cheaper than a crash on somebody else's Android.
+     */
+    private var routed = false
+
     /** See `res/values/config.xml`. */
     private val maxRows: Int by lazy { resources.getInteger(R.integer.dashboard_max_rows) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (routeByRole()) return
         setContentView(R.layout.activity_home)
 
         coordinator = EnforcementCoordinator(this)
@@ -63,7 +76,34 @@ class HomeActivity : DementorActivity() {
     }
 
     /**
-     * The five places this screen leads to.
+     * Sends the launch on if this install is not the child's phone.
+     *
+     * This activity stays the launcher so that every existing notification intent
+     * and `parentActivityName` chain keeps working; it just steps aside when the
+     * phone belongs to a parent, or when nobody has said yet whose phone it is.
+     *
+     * Returns true when it has handed off and this screen should build nothing.
+     */
+    private fun routeByRole(): Boolean {
+        val roles = RoleStore(this)
+        val destination = when (roles.role) {
+            null -> RoleSetupActivity.intent(this)
+            DeviceRole.PARENT -> ParentHomeActivity.intent(this)
+            DeviceRole.CHILD -> {
+                // Left over if this phone was ever a parent's. Polling is folded
+                // into the enforcement tick here, so the worker is redundant.
+                ParentPollWorker.cancel(this)
+                return false
+            }
+        }
+        startActivity(destination)
+        routed = true
+        finish()
+        return true
+    }
+
+    /**
+     * The six places this screen leads to.
      *
      * Each row says what is behind it. With five destinations, a column of bare
      * buttons made the reader open one to find out what it was.
@@ -82,6 +122,10 @@ class HomeActivity : DementorActivity() {
                 getString(R.string.home_open_week_detail),
             ) { startActivity(WeekActivity.intent(this)) },
             Triple(
+                getString(R.string.home_open_audit),
+                getString(R.string.home_open_audit_detail),
+            ) { startActivity(AuditActivity.intent(this)) },
+            Triple(
                 getString(R.string.home_open_privacy),
                 getString(R.string.home_open_privacy_detail),
             ) { startActivity(PrivacyActivity.intent(this)) },
@@ -95,14 +139,14 @@ class HomeActivity : DementorActivity() {
             ) { startActivity(Intent(this, RulesActivity::class.java)) },
         )
 
-        destinations.forEachIndexed { index, (title, subtitle, action) ->
-            if (index > 0) navigation.addView(divider())
-            navigation.addView(navigationRow(title, subtitle, action))
-        }
+        navigation.addView(
+            group(destinations.map { (title, subtitle, action) -> navigationRow(title, subtitle, action) }),
+        )
     }
 
     override fun onResume() {
         super.onResume()
+        if (routed) return
         showPendingCelebration()
         requestNotificationPermissionIfNeeded()
         render()
@@ -232,6 +276,7 @@ class HomeActivity : DementorActivity() {
                     Format.duration(budget.used),
                 )
                 bar.visibility = View.GONE
+                tintText(headline, BudgetLevel.NORMAL)
             }
 
             budget.level == BudgetLevel.EXHAUSTED -> {
@@ -240,6 +285,7 @@ class HomeActivity : DementorActivity() {
                 bar.visibility = View.VISIBLE
                 bar.progress = 100
                 tint(bar, BudgetLevel.EXHAUSTED)
+                tintText(headline, BudgetLevel.EXHAUSTED)
             }
 
             else -> {
@@ -255,6 +301,7 @@ class HomeActivity : DementorActivity() {
                 bar.visibility = View.VISIBLE
                 bar.progress = percentUsed(budget.used, budget.allowed + budget.bonus)
                 tint(bar, budget.level)
+                tintText(headline, budget.level)
             }
         }
 
@@ -400,13 +447,23 @@ class HomeActivity : DementorActivity() {
      * State as colour as well as number, so "nearly out" reads at a glance rather
      * than having to be worked out from a figure.
      */
+    private fun colourFor(level: BudgetLevel): Int = when (level) {
+        BudgetLevel.NORMAL -> R.color.state_ok
+        BudgetLevel.NOTICE, BudgetLevel.GRACE -> R.color.state_warning
+        BudgetLevel.EXHAUSTED -> R.color.state_critical
+    }
+
     private fun tint(bar: ProgressBar, level: BudgetLevel) {
-        val colour = when (level) {
-            BudgetLevel.NORMAL -> R.color.state_ok
-            BudgetLevel.NOTICE, BudgetLevel.GRACE -> R.color.state_warning
-            BudgetLevel.EXHAUSTED -> R.color.state_critical
-        }
-        bar.progressTintList = ColorStateList.valueOf(ContextCompat.getColor(this, colour))
+        bar.progressTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, colourFor(level)))
+    }
+
+    /**
+     * The number itself takes the state colour, not only the bar beneath it.
+     * "Nearly out" should be readable from across a room.
+     */
+    private fun tintText(view: TextView, level: BudgetLevel) {
+        view.setTextColor(ContextCompat.getColor(this, colourFor(level)))
     }
 
     private fun percentUsed(used: Duration, total: Duration): Int {

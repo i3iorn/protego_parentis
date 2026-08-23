@@ -51,12 +51,18 @@ class RulesActivity : ParentGatedActivity() {
                 row(R.string.rules_row_app_limits, R.string.rules_row_app_limits_detail) {
                     startActivity(AppLimitsActivity.intent(this))
                 },
+                row(R.string.rules_row_apps, R.string.rules_row_apps_detail) {
+                    startActivity(AppControlActivity.intent(this))
+                },
             ),
         )
 
         fill(
             R.id.group_day,
             listOf(
+                row(R.string.rules_row_schedules, R.string.rules_row_schedules_detail) {
+                    startActivity(SchedulesActivity.intent(this))
+                },
                 row(R.string.rules_row_context, R.string.rules_row_context_detail) {
                     startActivity(ContextRulesActivity.intent(this))
                 },
@@ -109,10 +115,7 @@ class RulesActivity : ParentGatedActivity() {
     private fun fill(containerId: Int, rows: List<View>) {
         val container = findViewById<LinearLayout>(containerId)
         container.removeAllViews()
-        rows.forEachIndexed { index, view ->
-            if (index > 0) container.addView(divider())
-            container.addView(view)
-        }
+        container.addView(group(rows))
     }
 
     override fun onPause() {

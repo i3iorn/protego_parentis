@@ -14,7 +14,11 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.CategoryId
 import dev.schrammel.dementor_watch.model.GrantTarget
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.rules.GrantStore
+import dev.schrammel.dementor_watch.rules.TargetLabels
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import java.time.Instant
 
@@ -118,6 +122,13 @@ class BonusTimeActivity : ParentGatedActivity() {
             now = Instant.now(),
             zone = policy.timeZone,
             dayBoundaryHour = policy.dayBoundaryHour,
+        )
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.BONUS_GRANTED,
+            subject = TargetLabels.describe(this, target),
+            after = Audit.minutes(minutes),
         )
         // Apply immediately: the point of bonus time is that it unblocks now.
         EnforcementService.start(this)

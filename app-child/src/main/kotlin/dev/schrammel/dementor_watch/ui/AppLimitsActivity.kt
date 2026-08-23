@@ -12,6 +12,9 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.usage.AppInfo
 import dev.schrammel.dementor_watch.usage.InstalledApps
@@ -142,7 +145,16 @@ class AppLimitsActivity : ParentGatedActivity() {
             .setTitle(app.label)
             .setView(content)
             .setPositiveButton(R.string.app_limits_save) { _, _ ->
-                store.setAppLimit(app.pkg.value, LimitSlider.minutesFor(bar.progress))
+                val minutes = LimitSlider.minutesFor(bar.progress)
+                store.setAppLimit(app.pkg.value, minutes)
+                Audit.record(
+                    context = this,
+                    actor = AuditActor.PARENT,
+                    action = AuditAction.APP_LIMIT_CHANGED,
+                    subject = app.label,
+                    before = Audit.minutes(current),
+                    after = Audit.minutes(minutes),
+                )
                 onGatedContentVisible()
             }
             .setNegativeButton(android.R.string.cancel, null)

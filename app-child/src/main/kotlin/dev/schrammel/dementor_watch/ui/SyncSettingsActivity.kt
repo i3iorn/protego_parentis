@@ -13,6 +13,9 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.sync.MessageCrypto
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.sync.SyncSettings
@@ -154,6 +157,15 @@ class SyncSettingsActivity : ParentGatedActivity() {
             serverUrl = serverUrl,
             topic = topic.text.toString(),
             passphrase = typedPassphrase,
+        )
+        // Neither the topic nor the passphrase is recorded. That the family is
+        // connected is shared history; the key to it is not.
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.SYNC_CONFIGURED,
+            before = Audit.flag(stored.enabled),
+            after = Audit.flag(enabled.isChecked),
         )
         passphrase.setText("")
         toast(getString(R.string.sync_saved))

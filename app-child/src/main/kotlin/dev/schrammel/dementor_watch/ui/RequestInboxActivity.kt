@@ -17,6 +17,7 @@ import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestId
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.RequestCoordinator
+import dev.schrammel.dementor_watch.rules.TargetLabels
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.ZoneId
@@ -164,13 +165,8 @@ class RequestInboxActivity : ParentGatedActivity() {
             .show()
     }
 
-    private fun describe(target: GrantTarget): String = when (target) {
-        is GrantTarget.Device -> getString(R.string.requests_target_device)
-        is GrantTarget.App -> installedApps.labelFor(target.pkg)
-        is GrantTarget.Category ->
-            policyStore.categories.firstOrNull { it.id == target.id.value }?.name
-                ?: getString(R.string.requests_target_category)
-    }
+    private fun describe(target: GrantTarget): String =
+        TargetLabels.describe(this, target)
 
     private fun body(text: String) = TextView(this).apply {
         this.text = text

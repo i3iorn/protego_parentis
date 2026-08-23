@@ -13,6 +13,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.model.Category
 import dev.schrammel.dementor_watch.model.CategoryId
@@ -166,6 +169,12 @@ class CategoryEditActivity : ParentGatedActivity() {
                         .apply { topMargin = dimen(R.dimen.space_sm) }
                     setOnClickListener {
                         store.deleteCategory(categoryId)
+                        Audit.record(
+                            context = this@CategoryEditActivity,
+                            actor = AuditActor.PARENT,
+                            action = AuditAction.CATEGORY_DELETED,
+                            subject = existing.name,
+                        )
                         finish()
                     }
                 },
@@ -185,14 +194,22 @@ class CategoryEditActivity : ParentGatedActivity() {
             return
         }
 
+        val minutes = LimitSlider.minutesFor(limitBar.progress)
         store.upsertCategory(
             StoredCategory(
                 id = categoryId,
                 name = name,
-                limitMinutes = LimitSlider.minutesFor(limitBar.progress),
+                limitMinutes = minutes,
                 packages = packages.toSet(),
                 subcategories = nested.toSet(),
             ),
+        )
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.CATEGORY_SAVED,
+            subject = name,
+            after = Audit.minutes(minutes),
         )
         finish()
     }

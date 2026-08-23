@@ -13,13 +13,24 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.model.Defaults
+import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.rules.BedtimeSetting
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
+import java.time.Instant
 import java.time.LocalTime
+import java.time.ZoneId
+
+/** Only used to turn the install-window length into an offset. */
+private const val SECONDS_PER_MINUTE = 60L
 
 /**
  * How much, and when.
@@ -38,7 +49,10 @@ class LimitsActivity : ParentGatedActivity() {
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            store.exemptPackages = AppPickerActivity.resultFrom(result.data).toSet()
+            val before = store.exemptPackages
+            val after = AppPickerActivity.resultFrom(result.data).toSet()
+            store.exemptPackages = after
+            recordExemptionChanges(before, after)
             renderExempt()
         }
     }
@@ -97,14 +111,34 @@ class LimitsActivity : ParentGatedActivity() {
                 max = LimitSlider.MAX_STEPS
                 progress = LimitSlider.progressFor(store.dailyLimitMinutes)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    /**
+                     * Where the slider stood when this drag began.
+                     *
+                     * The history gets one entry for the whole gesture. Recording
+                     * every step would write forty rows for one adjustment and bury
+                     * everything else in the log.
+                     */
+                    private var beganAt = store.dailyLimitMinutes
+
                     override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
                         val minutes = LimitSlider.minutesFor(progress)
                         value.text = Format.limit(minutes)
                         if (fromUser) store.dailyLimitMinutes = minutes
                     }
 
-                    override fun onStartTrackingTouch(bar: SeekBar) = Unit
-                    override fun onStopTrackingTouch(bar: SeekBar) = Unit
+                    override fun onStartTrackingTouch(bar: SeekBar) {
+                        beganAt = store.dailyLimitMinutes
+                    }
+
+                    override fun onStopTrackingTouch(bar: SeekBar) {
+                        Audit.record(
+                            context = this@LimitsActivity,
+                            actor = AuditActor.PARENT,
+                            action = AuditAction.DAILY_LIMIT_CHANGED,
+                            before = Audit.minutes(beganAt),
+                            after = Audit.minutes(store.dailyLimitMinutes),
+                        )
+                    }
                 })
             },
         )
@@ -125,34 +159,91 @@ class LimitsActivity : ParentGatedActivity() {
 
         val toggle = CheckBox(context).apply { setText(R.string.rules_bedtime_enable) }
 
+        // Which nights it runs. A school-night bedtime was previously impossible
+        // to express: the window ran every night or not at all.
+        val nights = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(captionText(getString(R.string.rules_bedtime_nights)))
+            addView(
+                DayPicker.build(this@LimitsActivity, store.bedtime.days) { chosen ->
+                    recordBedtime { it.copy(days = chosen) }
+                },
+            )
+        }
+
         fun refresh() {
             val setting = store.bedtime
             toggle.isChecked = setting.enabled
             times.visibility = if (setting.enabled) View.VISIBLE else View.GONE
+            nights.visibility = if (setting.enabled) View.VISIBLE else View.GONE
             start.text = getString(R.string.rules_bedtime_start, Format.time(setting.start))
             end.text = getString(R.string.rules_bedtime_end, Format.time(setting.end))
         }
 
         toggle.setOnCheckedChangeListener { _, checked ->
-            store.bedtime = store.bedtime.copy(enabled = checked)
+            val before = store.bedtime
+            store.bedtime = before.copy(enabled = checked)
+            Audit.record(
+                context = this@LimitsActivity,
+                actor = AuditActor.PARENT,
+                action = AuditAction.BEDTIME_ENABLED,
+                before = Audit.flag(before.enabled),
+                after = Audit.flag(checked),
+            )
             refresh()
         }
         start.setOnClickListener {
-            pickTime(store.bedtime.start) {
-                store.bedtime = store.bedtime.copy(start = it)
+            pickTime(store.bedtime.start) { picked ->
+                recordBedtime { it.copy(start = picked) }
                 refresh()
             }
         }
         end.setOnClickListener {
-            pickTime(store.bedtime.end) {
-                store.bedtime = store.bedtime.copy(end = it)
+            pickTime(store.bedtime.end) { picked ->
+                recordBedtime { it.copy(end = picked) }
                 refresh()
             }
         }
 
         addView(toggle)
         addView(times)
+        addView(nights)
         refresh()
+    }
+
+    /** Saves a bedtime edit and writes the before-and-after into the history. */
+    private fun recordBedtime(edit: (BedtimeSetting) -> BedtimeSetting) {
+        val before = store.bedtime
+        val after = edit(before)
+        store.bedtime = after
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.BEDTIME_CHANGED,
+            before = Audit.timeRange(before.start, before.end),
+            after = Audit.timeRange(after.start, after.end),
+        )
+    }
+
+    /**
+     * One entry per app that joined or left the exempt list.
+     *
+     * A single "exemptions changed" line would be useless: the question anyone
+     * brings to the log is which app stopped counting, not that something did.
+     */
+    private fun recordExemptionChanges(before: Set<String>, after: Set<String>) {
+        val apps = InstalledApps(this)
+        (before + after)
+            .filter { (it in before) != (it in after) }
+            .forEach { pkg ->
+                Audit.record(
+                    context = this,
+                    actor = AuditActor.PARENT,
+                    action = AuditAction.APP_EXEMPTION_CHANGED,
+                    subject = apps.labelFor(PackageName(pkg)),
+                    after = Audit.flag(pkg in after),
+                )
+            }
     }
 
     private fun renderExempt() {
@@ -203,22 +294,24 @@ class CategoriesActivity : ParentGatedActivity() {
         val categories = store.categories.sortedBy { it.name.lowercase() }
         if (categories.isEmpty()) {
             column.addView(bodyText(getString(R.string.rules_no_categories)))
-        }
-        categories.forEachIndexed { index, category ->
-            if (index > 0) column.addView(divider())
+        } else {
             column.addView(
-                navigationRow(
-                    title = category.name,
-                    subtitle = getString(
-                        R.string.rules_category_row,
-                        Format.limit(category.limitMinutes),
-                        resources.getQuantityString(
-                            R.plurals.rules_category_apps,
-                            category.packages.size,
-                            category.packages.size,
-                        ),
-                    ),
-                ) { startActivity(CategoryEditActivity.intent(this, category.id)) },
+                group(
+                    categories.map { category ->
+                        navigationRow(
+                            title = category.name,
+                            subtitle = getString(
+                                R.string.rules_category_row,
+                                Format.limit(category.limitMinutes),
+                                resources.getQuantityString(
+                                    R.plurals.rules_category_apps,
+                                    category.packages.size,
+                                    category.packages.size,
+                                ),
+                            ),
+                        ) { startActivity(CategoryEditActivity.intent(this, category.id)) }
+                    },
+                ),
             )
         }
 
@@ -290,6 +383,12 @@ class GoalActivity : ParentGatedActivity() {
                     // so a goal is never live with nothing to win.
                     if (!checked) {
                         goals.saveGoal(false, LimitSlider.minutesFor(bar.progress), prize.text.toString())
+                        Audit.record(
+                            context = this@GoalActivity,
+                            actor = AuditActor.PARENT,
+                            action = AuditAction.GOAL_CHANGED,
+                            after = Audit.minutes(0),
+                        )
                     }
                 }
             },
@@ -306,7 +405,25 @@ class GoalActivity : ParentGatedActivity() {
                         Toast.makeText(context, R.string.rules_goal_needs_prize, Toast.LENGTH_SHORT).show()
                         return@setOnClickListener
                     }
-                    goals.saveGoal(true, LimitSlider.minutesFor(bar.progress), text)
+                    val minutes = LimitSlider.minutesFor(bar.progress)
+                    val prizeChanged = text != existing.prize
+                    goals.saveGoal(true, minutes, text)
+                    Audit.record(
+                        context = this@GoalActivity,
+                        actor = AuditActor.PARENT,
+                        action = AuditAction.GOAL_CHANGED,
+                        before = Audit.minutes(startingMinutes),
+                        after = Audit.minutes(minutes),
+                    )
+                    // The prize text itself is never recorded. It is meant to be a
+                    // surprise, and a history that spoils it would not be opened twice.
+                    if (prizeChanged) {
+                        Audit.record(
+                            context = this@GoalActivity,
+                            actor = AuditActor.PARENT,
+                            action = AuditAction.GOAL_PRIZE_CHANGED,
+                        )
+                    }
                     Toast.makeText(context, R.string.rules_goal_saved, Toast.LENGTH_SHORT).show()
                 }
             },
@@ -358,12 +475,47 @@ class DeviceControlActivity : ParentGatedActivity() {
                 setText(R.string.rules_tamper_enable)
                 isChecked = store.tamperProtection
                 setOnCheckedChangeListener { _, checked ->
+                    val before = store.tamperProtection
                     store.tamperProtection = checked
+                    Audit.record(
+                        context = this@DeviceControlActivity,
+                        actor = AuditActor.PARENT,
+                        action = AuditAction.TAMPER_PROTECTION_CHANGED,
+                        before = Audit.flag(before),
+                        after = Audit.flag(checked),
+                    )
                     // Applied at once: turning it off is how someone recovers a device.
                     EnforcementService.start(this@DeviceControlActivity)
                 }
             },
         )
+
+        column.addView(sectionHeader(getString(R.string.rules_installs_header)))
+        column.addView(captionText(getString(R.string.rules_installs_hint)))
+        column.addView(
+            CheckBox(this).apply {
+                setText(R.string.rules_installs_gate)
+                isChecked = store.installPolicy == InstallPolicy.GATED
+                setOnCheckedChangeListener { _, gated ->
+                    val chosen = if (gated) InstallPolicy.GATED else InstallPolicy.NOTIFY
+                    store.installPolicy = chosen
+                    // Switching the gate off leaves no window behind, so switching
+                    // it back on is shut rather than mysteriously open.
+                    if (!gated) store.installWindowUntil = null
+                    Audit.record(
+                        context = this@DeviceControlActivity,
+                        actor = AuditActor.PARENT,
+                        action = AuditAction.INSTALL_POLICY_CHANGED,
+                        after = chosen.name,
+                    )
+                    EnforcementService.start(this@DeviceControlActivity)
+                    render()
+                }
+            },
+        )
+        if (store.installPolicy == InstallPolicy.GATED) {
+            column.addView(installWindow(store))
+        }
 
         column.addView(sectionHeader(getString(R.string.rules_release)))
         column.addView(
@@ -373,6 +525,57 @@ class DeviceControlActivity : ParentGatedActivity() {
             },
         )
     }
+
+    /**
+     * Opening the gate for a while.
+     *
+     * Without this, gating installs locks the door from the outside: nobody can
+     * add an app again, including the parent who turned it on. A window that
+     * expires on its own means forgetting to close it is not the same as never
+     * having gated installs at all.
+     */
+    private fun installWindow(store: LocalPolicyStore): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+
+            val until = store.installWindowUntil
+            val open = until != null && Instant.now().isBefore(until)
+            addView(
+                captionText(
+                    if (open) {
+                        getString(
+                            R.string.rules_installs_window_open,
+                            Format.time(
+                                LocalTime.ofInstant(checkNotNull(until), ZoneId.systemDefault()),
+                            ),
+                        )
+                    } else {
+                        getString(R.string.rules_installs_window_shut)
+                    },
+                ),
+            )
+            addView(
+                Button(context).apply {
+                    text = resources.getQuantityString(
+                        R.plurals.rules_installs_open,
+                        Defaults.INSTALL_WINDOW_MINUTES.toInt(),
+                        Defaults.INSTALL_WINDOW_MINUTES.toInt(),
+                    )
+                    setOnClickListener {
+                        store.installWindowUntil = Instant.now()
+                            .plusSeconds(Defaults.INSTALL_WINDOW_MINUTES * SECONDS_PER_MINUTE)
+                        Audit.record(
+                            context = this@DeviceControlActivity,
+                            actor = AuditActor.PARENT,
+                            action = AuditAction.INSTALL_WINDOW_OPENED,
+                            after = Audit.minutes(Defaults.INSTALL_WINDOW_MINUTES.toInt()),
+                        )
+                        EnforcementService.start(this@DeviceControlActivity)
+                        render()
+                    }
+                },
+            )
+        }
 
     private fun confirmRelease(coordinator: EnforcementCoordinator) {
         Background.load(this, { coordinator.isDeviceOwner() }) { owner ->
@@ -384,6 +587,11 @@ class DeviceControlActivity : ParentGatedActivity() {
                 .setTitle(R.string.rules_release_confirm_title)
                 .setMessage(R.string.rules_release_confirm_body)
                 .setPositiveButton(R.string.rules_release) { _, _ ->
+                    Audit.record(
+                        context = this,
+                        actor = AuditActor.PARENT,
+                        action = AuditAction.DEVICE_RELEASED,
+                    )
                     Background.load(this, { coordinator.releaseDevice() }) {
                         Toast.makeText(this, R.string.rules_release_done, Toast.LENGTH_LONG).show()
                         finish()

@@ -17,6 +17,8 @@ import androidx.core.content.edit
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.dpc.PairingStore
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
+import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.ui.dimen
 import dev.schrammel.dementor_watch.ui.styleAs
 
@@ -87,6 +89,11 @@ class ComplianceActivity : DementorActivity() {
             // code entry. Blocking here would strand the device half-provisioned.
             Log.w("DementorSetup", "Continuing without complete pairing details")
         }
+
+        // A device that has just been provisioned as device owner is, by
+        // definition, the phone with the limits. Asking whose phone it is after
+        // that would be a question with only one possible answer.
+        RoleStore(this).choose(DeviceRole.CHILD)
 
         EnforcementService.start(this)
         setResult(RESULT_OK)

@@ -7,22 +7,29 @@
 
     <!-- Brand. A dusk blue: this is an app about evenings and bedtimes, and it
          should not look like an alarm. -->
-    <color name="brand">#3F5D9E</color>
-    <color name="brand_dark">#2C4275</color>
+    <color name="brand">#3A5A93</color>
+    <color name="brand_dark">#2A4270</color>
 
-    <!-- Surfaces drawn on top of the theme background. -->
-    <color name="card">#F2F4F9</color>
-    <color name="card_stroke">#DCE1EC</color>
+    <!-- Surfaces. The window is deliberately a shade darker than the groups sitting
+         on it: content should read as raised, not as painted onto the background. -->
+    <color name="window_background">#E9EDF4</color>
+    <color name="card">#FFFFFF</color>
+    <color name="card_stroke">#CFD7E4</color>
+
+    <!-- Two weights of text. A caption in the same colour as body copy is not a
+         caption, it is just smaller prose. -->
+    <color name="text_primary">#141A26</color>
+    <color name="text_secondary">#5C6779</color>
 
     <!-- Budget state. Separate from the brand: these carry meaning, and reusing
          the brand colour for "you are fine" would make the meaning invisible. -->
-    <color name="state_ok">#2C7357</color>
-    <color name="state_warning">#A2610C</color>
-    <color name="state_critical">#A63446</color>
+    <color name="state_ok">#1F6B4C</color>
+    <color name="state_warning">#8C5206</color>
+    <color name="state_critical">#98283A</color>
 
     <!-- Fill of the day bars in the weekly chart. Deliberately not one of the
          state colours: the chart is history to read, not a status to react to. -->
-    <color name="week_bar_fill">#5C8DDB</color>
-    <color name="week_bar_track">#DCE1EC</color>
+    <color name="week_bar_fill">#4E7FCE</color>
+    <color name="week_bar_track">#D5DDEA</color>
 
 </resources>

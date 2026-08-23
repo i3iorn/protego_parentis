@@ -19,6 +19,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.CategoryId
 import dev.schrammel.dementor_watch.model.Condition
 import dev.schrammel.dementor_watch.model.DeviceTag
@@ -153,7 +156,14 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                     setText(R.string.context_delete)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     setOnClickListener {
+                        val deleted = name
                         store.delete(ruleId)
+                        Audit.record(
+                            context = this@ContextRuleEditActivity,
+                            actor = AuditActor.PARENT,
+                            action = AuditAction.CONTEXT_RULE_DELETED,
+                            subject = deleted,
+                        )
                         finish()
                     }
                 },
@@ -352,6 +362,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 effect = effect,
                 target = target,
             ),
+        )
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.CONTEXT_RULE_SAVED,
+            subject = name.trim(),
         )
         finish()
     }

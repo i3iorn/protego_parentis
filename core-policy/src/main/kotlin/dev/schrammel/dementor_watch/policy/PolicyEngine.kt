@@ -9,6 +9,7 @@ import dev.schrammel.dementor_watch.model.DeviceState
 import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.Grant
 import dev.schrammel.dementor_watch.model.GrantTarget
+import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
 import dev.schrammel.dementor_watch.model.Reason
@@ -153,6 +154,7 @@ object PolicyEngine {
             categoryBudgets = categoryBudgets,
             activeSchedules = activeSchedules,
             activeContextRules = contextOutcome.activeRules,
+            installsBlocked = installsBlocked(policy, now),
             nextChangeAt = nextChangeAt(
                 policy = policy,
                 now = now,
@@ -166,6 +168,19 @@ object PolicyEngine {
                 deviceState = deviceState,
             ),
         )
+    }
+
+    /**
+     * Gated installs, unless a parent has the window open right now.
+     *
+     * A window in the past is the same as no window: it is left in the policy so
+     * the audit log and the parent's screen can both say when it closed, rather
+     * than having it vanish and look as though it was never opened.
+     */
+    private fun installsBlocked(policy: Policy, now: Instant): Boolean {
+        if (policy.installPolicy != InstallPolicy.GATED) return false
+        val until = policy.installWindowUntil ?: return true
+        return !now.isBefore(until)
     }
 
     /**
@@ -218,6 +233,9 @@ object PolicyEngine {
 
         ScheduleResolver.nextEdgeAfter(policy.schedules, nowZdt)?.let(candidates::add)
         liveGrants.forEach { candidates += it.expiresAt }
+        // Otherwise an installation window would stay open until the next tick for
+        // some unrelated reason, which could be five minutes or the 4am reset.
+        policy.installWindowUntil?.let(candidates::add)
 
         val foreground = deviceState.foregroundPackage
         if (foreground != null && !policy.isSafetyExempt(foreground)) {

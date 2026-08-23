@@ -1,7 +1,10 @@
 package dev.schrammel.dementor_watch.rules
 
 import android.content.Context
+import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.enforcement.RequestNotifier
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.GrantId
 import dev.schrammel.dementor_watch.model.GrantTarget
 import dev.schrammel.dementor_watch.model.Request
@@ -81,6 +84,7 @@ class RequestCoordinator(
             expiresAt = now.plusMillis(RequestRules.DEFAULT_LIFETIME.inWholeMilliseconds),
         )
         requests.save(request)
+        record(AuditActor.CHILD, AuditAction.REQUEST_RAISED, request)
         notifier.notifyRequestReceived(request)
         onRaised?.invoke(request)
         return request
@@ -105,6 +109,7 @@ class RequestCoordinator(
         )
         grants.add(grant)
         requests.save(approved)
+        record(AuditActor.PARENT, AuditAction.REQUEST_APPROVED, approved)
         notifier.notifyDecision(approved)
         onDecided?.invoke(approved)
         return true
@@ -119,6 +124,7 @@ class RequestCoordinator(
             note = note?.trim()?.takeIf(String::isNotEmpty),
         )
         requests.save(denied)
+        record(AuditActor.PARENT, AuditAction.REQUEST_DENIED, denied)
         notifier.notifyDecision(denied)
         onDecided?.invoke(denied)
         return true
@@ -127,7 +133,24 @@ class RequestCoordinator(
     fun withdraw(id: RequestId, now: Instant = Instant.now()): Boolean {
         val request = requests.find(id, now)?.takeIf { it.state.isOpen } ?: return false
         requests.save(RequestRules.withdraw(request, now))
+        record(AuditActor.CHILD, AuditAction.REQUEST_WITHDRAWN, request)
         return true
+    }
+
+    /**
+     * Writes the request into the shared history.
+     *
+     * Both sides read the same list, which is the point: a denial the child cannot
+     * find a record of is a denial they will remember differently from the parent.
+     */
+    private fun record(actor: AuditActor, action: AuditAction, request: Request) {
+        Audit.record(
+            context = appContext,
+            actor = actor,
+            action = action,
+            subject = TargetLabels.describe(appContext, request.target),
+            after = Audit.minutes(request.amount.inWholeMinutes.toInt()),
+        )
     }
 
     /** The amounts the compose screen offers, mirroring the bonus-time options. */

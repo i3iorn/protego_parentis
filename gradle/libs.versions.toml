@@ -4,11 +4,19 @@ kotlin = "2.3.20"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 appcompat = "1.6.1"
+json = "20240303"
+work = "2.9.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+# The real org.json, for unit tests. Android ships only stubs that throw, so a
+# store that serialises with JSONObject is otherwise untestable off-device.
+json = { group = "org.json", name = "json", version.ref = "json" }
+# Periodic background polling on a parent phone. The plain runtime rather than
+# -ktx: this project has no coroutines and a synchronous Worker is the right fit.
+androidx-work = { group = "androidx.work", name = "work-runtime", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -18,6 +18,7 @@ import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.policy.request.SubmitDecision
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.RequestCoordinator
+import dev.schrammel.dementor_watch.rules.TargetLabels
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.ZoneId
@@ -45,12 +46,19 @@ class RequestsActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Publishing is fire-and-forget and off the main thread; an offline phone
+        // simply keeps the request local until the next poll drains it.
         val sync = SyncCoordinator(this)
-        // Raising a request tells every parent phone. Publishing is fire-and-forget
-        // and off the main thread; an offline phone simply keeps the request local.
-        coordinator = RequestCoordinator(this, onRaised = sync::publishRequestRaised)
         policyStore = LocalPolicyStore(this)
         installedApps = InstalledApps(this)
+        coordinator = RequestCoordinator(
+            context = this,
+            // Raising a request tells every parent phone. The label goes with it
+            // because a parent's phone has no app list to resolve a package name
+            // against, and "com.instagram.android" is not a question anyone can
+            // answer from a notification.
+            onRaised = { request -> sync.publishRequestRaised(request, describe(request.target)) },
+        )
 
         container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -225,13 +233,8 @@ class RequestsActivity : DementorActivity() {
         }
     }
 
-    private fun describe(target: GrantTarget): String = when (target) {
-        is GrantTarget.Device -> getString(R.string.requests_target_device)
-        is GrantTarget.App -> installedApps.labelFor(target.pkg)
-        is GrantTarget.Category ->
-            policyStore.categories.firstOrNull { it.id == target.id.value }?.name
-                ?: getString(R.string.requests_target_category)
-    }
+    private fun describe(target: GrantTarget): String =
+        TargetLabels.describe(this, target)
 
     // ---------- view helpers ----------
 

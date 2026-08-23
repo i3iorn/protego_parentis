@@ -1,7 +1,6 @@
 package dev.schrammel.dementor_watch.policy.reconcile
 
 import dev.schrammel.dementor_watch.model.Enforcement
-import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
 
@@ -66,9 +65,9 @@ class PolicyReconciler(
             // Only when the family has explicitly asked to lock the device down.
             // Without this, provisioning alone would make the device unresettable.
             if (policy.tamperProtection) addAll(TamperRestrictions.BASELINE)
-            if (policy.installPolicy == InstallPolicy.GATED) {
-                add(TamperRestrictions.NO_INSTALL_APPS)
-            }
+            // Whether the gate is shut right now is the engine's call, not ours —
+            // it depends on the clock, and this class deliberately has none.
+            if (enforcement.installsBlocked) add(TamperRestrictions.NO_INSTALL_APPS)
         }
         val actualRestrictions = port.currentUserRestrictions()
         val restrictionsToAdd = desiredRestrictions - actualRestrictions
