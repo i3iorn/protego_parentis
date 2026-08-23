@@ -11,6 +11,7 @@ import dev.schrammel.dementor_watch.policy.usage.RawUsageEvent
 import dev.schrammel.dementor_watch.policy.usage.UsageEventKind
 import dev.schrammel.dementor_watch.policy.usage.UsageReplay
 import java.time.Instant
+import java.time.LocalDate
 import kotlin.time.Duration
 
 /** Usage for the current policy day, plus whatever is on screen right now. */
@@ -39,14 +40,37 @@ class UsageCollector(context: Context) {
     private val appContext = context.applicationContext
     private val usageStats = appContext.getSystemService(UsageStatsManager::class.java)
 
+    /** Today so far, up to [now]. */
     fun collect(policy: Policy, now: Instant): CollectedUsage {
         val day = PolicyClock.policyDay(now, policy.timeZone, policy.dayBoundaryHour)
         val dayStart = PolicyClock.dayStart(day, policy.timeZone, policy.dayBoundaryHour)
-        val nowMillis = now.toEpochMilli()
 
+        return snapshotFor(policy, day, dayStart.toEpochMilli(), now.toEpochMilli())
+    }
+
+    /**
+     * A complete past day, for the history store.
+     *
+     * Only meaningful for days that have already closed, and only while Android
+     * still holds their events — it keeps roughly a week, which is why backfill is
+     * bounded rather than open-ended.
+     */
+    fun collectDay(policy: Policy, day: LocalDate): UsageSnapshot {
+        val start = PolicyClock.dayStart(day, policy.timeZone, policy.dayBoundaryHour)
+        val end = PolicyClock.dayEnd(day, policy.timeZone, policy.dayBoundaryHour)
+
+        return snapshotFor(policy, day, start.toEpochMilli(), end.toEpochMilli()).snapshot
+    }
+
+    private fun snapshotFor(
+        policy: Policy,
+        day: LocalDate,
+        fromMillis: Long,
+        toMillis: Long,
+    ): CollectedUsage {
         val replayed = UsageReplay.replay(
-            events = readEvents(dayStart.toEpochMilli(), nowMillis),
-            untilMillis = nowMillis,
+            events = readEvents(fromMillis, toMillis),
+            untilMillis = toMillis,
         )
 
         // Safety-exempt apps do not count against the device budget — a long call

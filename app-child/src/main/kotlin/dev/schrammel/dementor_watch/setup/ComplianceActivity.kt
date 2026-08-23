@@ -17,7 +17,8 @@ import androidx.core.content.edit
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.dpc.PairingStore
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
-import dev.schrammel.dementor_watch.ui.dp
+import dev.schrammel.dementor_watch.ui.dimen
+import dev.schrammel.dementor_watch.ui.styleAs
 
 /**
  * The post-provisioning compliance screen.
@@ -41,23 +42,23 @@ class ComplianceActivity : AppCompatActivity() {
     private fun buildLayout(): ScrollView {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
         }
 
         content.addView(
             TextView(this).apply {
                 setText(R.string.compliance_title)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
-                setPadding(0, 0, 0, dp(16))
+                styleAs(R.style.TextAppearance_Dementor_Headline)
+                setPadding(0, 0, 0, dimen(R.dimen.space_lg))
             },
         )
 
         content.addView(
             TextView(this).apply {
                 setText(R.string.compliance_disclosure)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                setLineSpacing(dp(4).toFloat(), 1f)
+                styleAs(R.style.TextAppearance_Dementor_ListItem)
+                setLineSpacing(dimen(R.dimen.space_xxs).toFloat(), 1f)
             },
         )
 
@@ -65,7 +66,7 @@ class ComplianceActivity : AppCompatActivity() {
             Button(this).apply {
                 setText(R.string.compliance_continue)
                 layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                    topMargin = dp(28)
+                    topMargin = dimen(R.dimen.section_spacing)
                 }
                 setOnClickListener { onAcknowledged() }
             },

@@ -14,6 +14,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.model.Defaults
+import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.StoredCategory
 import dev.schrammel.dementor_watch.usage.InstalledApps
@@ -37,6 +39,8 @@ class CategoryEditActivity : AppCompatActivity() {
     private lateinit var limitValue: TextView
     private lateinit var limitBar: SeekBar
     private lateinit var appsSummary: TextView
+
+    private val defaultLimitMinutes = Defaults.CATEGORY_LIMIT.inWholeMinutes.toInt()
 
     private val pickApps = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -63,7 +67,7 @@ class CategoryEditActivity : AppCompatActivity() {
     private fun buildLayout(existing: StoredCategory?): ScrollView {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
         }
 
@@ -78,14 +82,14 @@ class CategoryEditActivity : AppCompatActivity() {
 
         content.addView(heading(getString(R.string.category_limit_header), 20f))
         limitValue = TextView(this).apply {
-            textSize = 24f
-            text = Format.limit(existing?.limitMinutes ?: DEFAULT_LIMIT_MINUTES)
+            styleAs(R.style.TextAppearance_Dementor_Metric)
+            text = Format.limit(existing?.limitMinutes ?: defaultLimitMinutes)
         }
         content.addView(limitValue)
 
         limitBar = SeekBar(this).apply {
             max = LimitSlider.MAX_STEPS
-            progress = LimitSlider.progressFor(existing?.limitMinutes ?: DEFAULT_LIMIT_MINUTES)
+            progress = LimitSlider.progressFor(existing?.limitMinutes ?: defaultLimitMinutes)
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -99,14 +103,14 @@ class CategoryEditActivity : AppCompatActivity() {
         content.addView(limitBar)
 
         content.addView(heading(getString(R.string.category_apps_header), 20f))
-        appsSummary = TextView(this).apply { textSize = 15f }
+        appsSummary = TextView(this).apply { styleAs(R.style.TextAppearance_Dementor_Body) }
         content.addView(appsSummary)
 
         content.addView(
             Button(this).apply {
                 setText(R.string.category_choose_apps)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dp(8) }
+                    .apply { topMargin = dimen(R.dimen.space_sm) }
                 setOnClickListener {
                     pickApps.launch(
                         AppPickerActivity.intent(
@@ -123,7 +127,7 @@ class CategoryEditActivity : AppCompatActivity() {
             Button(this).apply {
                 setText(R.string.category_save)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dp(28) }
+                    .apply { topMargin = dimen(R.dimen.section_spacing) }
                 setOnClickListener { save() }
             },
         )
@@ -133,7 +137,7 @@ class CategoryEditActivity : AppCompatActivity() {
                 Button(this).apply {
                     setText(R.string.category_delete)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                        .apply { topMargin = dp(8) }
+                        .apply { topMargin = dimen(R.dimen.space_sm) }
                     setOnClickListener {
                         store.deleteCategory(categoryId)
                         finish()
@@ -170,7 +174,7 @@ class CategoryEditActivity : AppCompatActivity() {
         appsSummary.text = when {
             packages.isEmpty() -> getString(R.string.category_no_apps)
             else -> packages
-                .map { installedApps.labelFor(dev.schrammel.dementor_watch.model.PackageName(it)) }
+                .map { installedApps.labelFor(PackageName(it)) }
                 .sorted()
                 .joinToString(", ")
         }
@@ -179,12 +183,11 @@ class CategoryEditActivity : AppCompatActivity() {
     private fun heading(text: String, size: Float) = TextView(this).apply {
         this.text = text
         textSize = size
-        setPadding(0, dp(24), 0, dp(6))
+        setPadding(0, dimen(R.dimen.screen_padding), 0, dimen(R.dimen.space_xs))
     }
 
     companion object {
         private const val EXTRA_ID = "categoryId"
-        private const val DEFAULT_LIMIT_MINUTES = 60
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 

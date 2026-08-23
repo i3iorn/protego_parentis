@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The type scale.
+
+  Text sizes were previously bare floats (`textSize = 15f`) repeated across every
+  screen, which meant "body text" had no single definition and drifted between
+  14, 15 and 16 depending on which file it landed in. Naming the roles makes the
+  hierarchy explicit and lets the whole app be restyled from one place.
+
+  Colours are deliberately not set here: they inherit from the AppCompat DayNight
+  theme so the app follows the system light/dark setting.
+-->
+<resources>
+
+    <!-- The one big number on a screen: time remaining, weekly total. -->
+    <style name="TextAppearance.Dementor.Display" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">34sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Screen titles. -->
+    <style name="TextAppearance.Dementor.Title" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">30sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- A heading inside a flow of prose, as on the disclosure screen. -->
+    <style name="TextAppearance.Dementor.Headline" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">26sp</item>
+    </style>
+
+    <!-- A single value being edited, such as the current slider position. -->
+    <style name="TextAppearance.Dementor.Metric" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">24sp</item>
+    </style>
+
+    <!-- Section headings within a screen. -->
+    <style name="TextAppearance.Dementor.Section" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- The heading of a card. -->
+    <style name="TextAppearance.Dementor.Subtitle" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- A row in a list of apps or categories. -->
+    <style name="TextAppearance.Dementor.ListItem" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Ordinary running text. -->
+    <style name="TextAppearance.Dementor.Body" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <!-- Explanatory text under a control. -->
+    <style name="TextAppearance.Dementor.Caption" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">14sp</item>
+    </style>
+
+</resources>

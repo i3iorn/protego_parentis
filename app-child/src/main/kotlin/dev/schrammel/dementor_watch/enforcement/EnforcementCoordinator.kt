@@ -7,6 +7,7 @@ import dev.schrammel.dementor_watch.model.DeviceState
 import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
+import dev.schrammel.dementor_watch.model.UsageSnapshot
 import dev.schrammel.dementor_watch.policy.PolicyEngine
 import dev.schrammel.dementor_watch.policy.reconcile.DeviceReleaser
 import dev.schrammel.dementor_watch.policy.reconcile.PolicyReconciler
@@ -18,6 +19,8 @@ import dev.schrammel.dementor_watch.usage.CollectedUsage
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.usage.UsageAccess
 import dev.schrammel.dementor_watch.usage.UsageCollector
+import dev.schrammel.dementor_watch.usage.UsageHistoryRecorder
+import dev.schrammel.dementor_watch.usage.UsageHistoryStore
 import java.time.Instant
 
 /** One complete evaluation, ready for the UI or the notification. */
@@ -47,11 +50,21 @@ class EnforcementCoordinator(context: Context) {
     private val collector = UsageCollector(appContext)
     private val store = LocalPolicyStore(appContext)
     private val grants = GrantStore(appContext)
+    private val history = UsageHistoryStore(appContext)
+    private val recorder = UsageHistoryRecorder(collector, history)
     private val installedApps = InstalledApps(appContext)
     private val port = AndroidDevicePolicyPort(appContext)
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
 
     fun hasUsageAccess(): Boolean = UsageAccess.isGranted(appContext)
+
+    /** Closed days from history plus today, computed live. */
+    fun historyIncludingToday(now: Instant = Instant.now()): List<UsageSnapshot> {
+        if (!hasUsageAccess()) return emptyList()
+        val policy = store.load()
+        recorder.recordClosedDays(policy, now)
+        return history.all() + collector.collect(policy, now).snapshot
+    }
 
     fun isDeviceOwner(): Boolean = port.isDeviceOwner()
 
@@ -71,6 +84,10 @@ class EnforcementCoordinator(context: Context) {
         if (!hasUsageAccess()) return null
 
         val policy = store.load()
+
+        // Almost always a no-op; acts only when the policy day has rolled over.
+        recorder.recordClosedDays(policy, now)
+
         val usage = collector.collect(policy, now)
         val installed = installedApps.launchable().map { it.pkg }.toSet()
 

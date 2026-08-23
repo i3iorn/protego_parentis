@@ -1,5 +1,6 @@
 package dev.schrammel.dementor_watch.ui
 
+import java.time.LocalTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes as minutesOf
 
@@ -24,5 +25,5 @@ object Format {
     fun limit(minutes: Int): String =
         if (minutes <= 0) "No limit" else duration(minutes.minutesOf)
 
-    fun time(hour: Int, minute: Int): String = "%02d:%02d".format(hour, minute)
+    fun time(value: LocalTime): String = "%02d:%02d".format(value.hour, value.minute)
 }

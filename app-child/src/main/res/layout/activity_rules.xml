@@ -11,121 +11,116 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="@dimen/screen_padding"
         android:visibility="gone">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/rules_title"
-            android:textSize="30sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Title" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="@dimen/section_spacing"
             android:text="@string/rules_daily_limit_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <TextView
             android:id="@+id/limit_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="26sp" />
+            android:layout_marginTop="@dimen/space_xxs"
+            android:textAppearance="@style/TextAppearance.Dementor.Headline" />
 
         <SeekBar
             android:id="@+id/limit_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:max="96" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="@dimen/space_xxs"
             android:text="@string/rules_daily_limit_hint"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.Dementor.Caption" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_categories_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/rules_categories_hint"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.Dementor.Caption" />
 
         <LinearLayout
             android:id="@+id/category_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
 
         <Button
             android:id="@+id/add_category"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:text="@string/rules_add_category" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_exempt_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/rules_exempt_hint"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.Dementor.Caption" />
 
         <TextView
             android:id="@+id/exempt_summary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="15sp" />
+            android:layout_marginTop="@dimen/space_sm"
+            android:textAppearance="@style/TextAppearance.Dementor.Body" />
 
         <Button
             android:id="@+id/choose_exempt"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:text="@string/rules_choose_exempt" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_bedtime_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <CheckBox
             android:id="@+id/bedtime_enabled"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:text="@string/rules_bedtime_enable" />
 
         <LinearLayout
             android:id="@+id/bedtime_times"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:orientation="horizontal"
             tools:ignore="ButtonStyle">
 
@@ -134,7 +129,7 @@
                 android:id="@+id/bedtime_start"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="@dimen/space_sm"
                 android:layout_weight="1" />
 
             <Button
@@ -147,101 +142,97 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_app_limits_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/rules_app_limits_hint"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.Dementor.Caption" />
 
         <Button
             android:id="@+id/open_app_limits"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:text="@string/rules_open_app_limits" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_bonus_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/rules_bonus_hint"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.Dementor.Caption" />
 
         <Button
             android:id="@+id/open_bonus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:text="@string/rules_open_bonus" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_security_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <Button
             android:id="@+id/change_pin"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:text="@string/rules_change_pin" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="@dimen/space_4xl"
             android:text="@string/rules_device_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <TextView
             android:id="@+id/device_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="15sp" />
+            android:layout_marginTop="@dimen/space_xxs"
+            android:textAppearance="@style/TextAppearance.Dementor.Body" />
 
         <CheckBox
             android:id="@+id/tamper_protection"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_md"
             android:text="@string/rules_tamper_enable" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/rules_tamper_hint"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.Dementor.Caption" />
 
         <Button
             android:id="@+id/release_device"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/space_lg"
             android:text="@string/rules_release" />
 
         <Button
             android:id="@+id/done"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="36dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginTop="@dimen/space_5xl"
+            android:layout_marginBottom="@dimen/screen_padding"
             android:text="@string/rules_done" />
     </LinearLayout>
 </ScrollView>

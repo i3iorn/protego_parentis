@@ -8,45 +8,43 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="@dimen/screen_padding">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/home_title"
-            android:textSize="30sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Title" />
 
         <!-- Shown only until usage access is granted. -->
         <LinearLayout
             android:id="@+id/permission_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="@dimen/space_xl"
             android:background="?android:attr/colorBackgroundFloating"
             android:orientation="vertical"
-            android:padding="16dp"
+            android:padding="@dimen/space_lg"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/home_permission_title"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textAppearance="@style/TextAppearance.Dementor.Subtitle" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="@dimen/space_xs"
                 android:text="@string/home_permission_body"
-                android:textSize="15sp" />
+                android:textAppearance="@style/TextAppearance.Dementor.Body" />
 
             <Button
                 android:id="@+id/permission_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="@dimen/space_md"
                 android:text="@string/home_permission_button" />
         </LinearLayout>
 
@@ -54,106 +52,108 @@
             android:id="@+id/summary_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="@dimen/space_xl"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/headline"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="34sp"
-                android:textStyle="bold" />
+                android:textAppearance="@style/TextAppearance.Dementor.Display" />
 
             <ProgressBar
                 android:id="@+id/budget_bar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
-                android:layout_height="10dp"
-                android:layout_marginTop="12dp"
+                android:layout_height="@dimen/budget_bar_height"
+                android:layout_marginTop="@dimen/space_md"
                 android:max="100" />
 
             <TextView
                 android:id="@+id/subline"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textSize="15sp" />
+                android:layout_marginTop="@dimen/space_sm"
+                android:textAppearance="@style/TextAppearance.Dementor.Body" />
 
             <TextView
                 android:id="@+id/mode_note"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:textSize="14sp"
+                android:layout_marginTop="@dimen/space_lg"
+                android:textAppearance="@style/TextAppearance.Dementor.Caption"
                 android:textStyle="italic" />
         </LinearLayout>
+
+        <Button
+            android:id="@+id/open_week"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/home_open_week" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="@dimen/section_spacing"
             android:text="@string/home_rules_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <LinearLayout
             android:id="@+id/rules_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
 
         <Button
             android:id="@+id/edit_rules"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_md"
             android:text="@string/home_edit_rules" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="@dimen/section_spacing"
             android:text="@string/home_categories_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <LinearLayout
             android:id="@+id/category_budgets"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="@dimen/section_spacing"
             android:text="@string/home_would_block_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <LinearLayout
             android:id="@+id/blocked_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="@dimen/section_spacing"
             android:text="@string/home_apps_header"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
         <LinearLayout
             android:id="@+id/app_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginTop="@dimen/space_sm"
+            android:layout_marginBottom="@dimen/screen_padding"
             android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

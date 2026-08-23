@@ -2,6 +2,7 @@ package dev.schrammel.dementor_watch.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.LocalTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -62,9 +63,9 @@ class FormatTest {
 
     @Test
     fun `times are zero padded`() {
-        assertEquals("07:00", Format.time(7, 0))
-        assertEquals("22:30", Format.time(22, 30))
-        assertEquals("00:05", Format.time(0, 5))
+        assertEquals("07:00", Format.time(LocalTime.of(7, 0)))
+        assertEquals("22:30", Format.time(LocalTime.of(22, 30)))
+        assertEquals("00:05", Format.time(LocalTime.of(0, 5)))
     }
 }
 

@@ -40,8 +40,8 @@ class PinActivity : AppCompatActivity() {
 
     private fun buildLayout(): LinearLayout {
         prompt = TextView(this).apply {
-            textSize = 18f
-            setPadding(0, 0, 0, dp(16))
+            styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            setPadding(0, 0, 0, dimen(R.dimen.space_lg))
         }
 
         input = EditText(this).apply {
@@ -52,23 +52,23 @@ class PinActivity : AppCompatActivity() {
 
         val submit = Button(this).apply {
             setText(R.string.pin_continue)
-            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(20) }
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dimen(R.dimen.space_xl) }
             setOnClickListener { onSubmit() }
         }
 
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
 
             addView(
                 TextView(context).apply {
                     setText(R.string.pin_title)
-                    textSize = 28f
+                    styleAs(R.style.TextAppearance_Dementor_Title)
                 },
             )
-            addView(prompt.also { it.setPadding(0, dp(12), 0, dp(16)) })
+            addView(prompt.also { it.setPadding(0, dimen(R.dimen.space_md), 0, dimen(R.dimen.space_lg)) })
             addView(input)
             addView(submit)
         }

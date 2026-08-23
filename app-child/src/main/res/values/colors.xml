@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app otherwise inherits its colours from the AppCompat DayNight theme so it
+  follows the system light/dark setting. Only colours we draw ourselves belong here.
+-->
+<resources>
+
+    <!-- Fill of the day bars in the weekly chart. A muted blue: this is a chart
+         to read, not a status to react to, so it deliberately avoids the
+         red/amber/green vocabulary used for limits. -->
+    <color name="week_bar_fill">#5C8DDB</color>
+
+</resources>

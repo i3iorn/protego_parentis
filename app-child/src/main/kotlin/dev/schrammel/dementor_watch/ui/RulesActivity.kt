@@ -1,6 +1,7 @@
 package dev.schrammel.dementor_watch.ui
 
 import android.app.Activity
+import android.app.TimePickerDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -18,6 +19,7 @@ import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.security.PinLock
 import dev.schrammel.dementor_watch.usage.InstalledApps
+import java.time.LocalTime
 
 /**
  * Local rules editor, behind the parent's PIN.
@@ -126,46 +128,39 @@ class RulesActivity : AppCompatActivity() {
         val end = findViewById<Button>(R.id.bedtime_end)
 
         fun refresh() {
-            times.visibility = if (store.bedtimeEnabled) View.VISIBLE else View.GONE
-            start.text = getString(
-                R.string.rules_bedtime_start,
-                Format.time(store.bedtimeStartHour, store.bedtimeStartMinute),
-            )
-            end.text = getString(
-                R.string.rules_bedtime_end,
-                Format.time(store.bedtimeEndHour, store.bedtimeEndMinute),
-            )
+            val setting = store.bedtime
+            times.visibility = if (setting.enabled) View.VISIBLE else View.GONE
+            enabled.isChecked = setting.enabled
+            start.text = getString(R.string.rules_bedtime_start, Format.time(setting.start))
+            end.text = getString(R.string.rules_bedtime_end, Format.time(setting.end))
         }
 
-        enabled.isChecked = store.bedtimeEnabled
         refresh()
 
         enabled.setOnCheckedChangeListener { _, checked ->
-            store.bedtimeEnabled = checked
+            store.bedtime = store.bedtime.copy(enabled = checked)
             refresh()
         }
         start.setOnClickListener {
-            pickTime(store.bedtimeStartHour, store.bedtimeStartMinute) { hour, minute ->
-                store.bedtimeStartHour = hour
-                store.bedtimeStartMinute = minute
+            pickTime(store.bedtime.start) { picked ->
+                store.bedtime = store.bedtime.copy(start = picked)
                 refresh()
             }
         }
         end.setOnClickListener {
-            pickTime(store.bedtimeEndHour, store.bedtimeEndMinute) { hour, minute ->
-                store.bedtimeEndHour = hour
-                store.bedtimeEndMinute = minute
+            pickTime(store.bedtime.end) { picked ->
+                store.bedtime = store.bedtime.copy(end = picked)
                 refresh()
             }
         }
     }
 
-    private fun pickTime(hour: Int, minute: Int, onPicked: (Int, Int) -> Unit) {
-        android.app.TimePickerDialog(
+    private fun pickTime(current: LocalTime, onPicked: (LocalTime) -> Unit) {
+        TimePickerDialog(
             this,
-            { _, pickedHour, pickedMinute -> onPicked(pickedHour, pickedMinute) },
-            hour,
-            minute,
+            { _, hour, minute -> onPicked(LocalTime.of(hour, minute)) },
+            current.hour,
+            current.minute,
             true,
         ).show()
     }
@@ -287,8 +282,8 @@ class RulesActivity : AppCompatActivity() {
 
     private fun bodyText(text: String) = TextView(this).apply {
         this.text = text
-        textSize = 16f
-        setPadding(0, dp(10), 0, dp(10))
+        styleAs(R.style.TextAppearance_Dementor_ListItem)
+        setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
     }
 
     private companion object {

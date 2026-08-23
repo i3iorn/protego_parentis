@@ -40,7 +40,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var installedApps: InstalledApps
     private lateinit var store: LocalPolicyStore
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
+
+    /** See `res/values/config.xml`. */
+    private val maxRows: Int by lazy { resources.getInteger(R.integer.dashboard_max_rows) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +55,9 @@ class HomeActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.permission_button).setOnClickListener {
             startActivity(UsageAccess.settingsIntent())
+        }
+        findViewById<Button>(R.id.open_week).setOnClickListener {
+            startActivity(WeekActivity.intent(this))
         }
         findViewById<Button>(R.id.edit_rules).setOnClickListener {
             startActivity(Intent(this, RulesActivity::class.java))
@@ -197,15 +203,16 @@ class HomeActivity : AppCompatActivity() {
             ),
         )
 
+        val bedtime = store.bedtime
         container.addView(
             line(
-                if (!store.bedtimeEnabled) {
+                if (!bedtime.enabled) {
                     getString(R.string.home_rule_no_bedtime)
                 } else {
                     getString(
                         R.string.home_rule_bedtime,
-                        Format.time(store.bedtimeStartHour, store.bedtimeStartMinute),
-                        Format.time(store.bedtimeEndHour, store.bedtimeEndMinute),
+                        Format.time(bedtime.start),
+                        Format.time(bedtime.end),
                     )
                 },
             ),
@@ -223,11 +230,14 @@ class HomeActivity : AppCompatActivity() {
 
         // Cap the list: with a device-wide limit hit, every installed app is in
         // here, and a wall of two hundred rows tells the reader nothing.
-        blocked.entries.take(MAX_ROWS).forEach { (pkg, reason) ->
+        blocked.entries.take(maxRows).forEach { (pkg, reason) ->
             container.addView(row(pkg, describe(reason)))
         }
-        if (blocked.size > MAX_ROWS) {
-            container.addView(line("+ ${blocked.size - MAX_ROWS} more"))
+        if (blocked.size > maxRows) {
+            val extra = blocked.size - maxRows
+            container.addView(
+                line(resources.getQuantityString(R.plurals.home_and_more, extra, extra)),
+            )
         }
     }
 
@@ -236,7 +246,7 @@ class HomeActivity : AppCompatActivity() {
         val byPackage = snapshot.usage.snapshot.byPackage
             .entries
             .sortedByDescending { it.value }
-            .take(MAX_ROWS)
+            .take(maxRows)
 
         if (byPackage.isEmpty()) {
             container.addView(line(getString(R.string.home_no_usage)))
@@ -272,8 +282,8 @@ class HomeActivity : AppCompatActivity() {
 
     private fun line(text: String) = TextView(this).apply {
         this.text = text
-        textSize = 15f
-        setPadding(0, dp(4), 0, dp(4))
+        styleAs(R.style.TextAppearance_Dementor_Body)
+        setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_xxs))
     }
 
     private fun row(pkg: PackageName, trailing: String): View {
@@ -281,12 +291,12 @@ class HomeActivity : AppCompatActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, dp(6))
+            setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
 
             addView(
                 ImageView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply {
-                        marginEnd = dp(12)
+                    layoutParams = LinearLayout.LayoutParams(dimen(R.dimen.row_icon_small), dimen(R.dimen.row_icon_small)).apply {
+                        marginEnd = dimen(R.dimen.space_md)
                     }
                     setImageDrawable(
                         runCatching {
@@ -298,14 +308,14 @@ class HomeActivity : AppCompatActivity() {
             addView(
                 TextView(context).apply {
                     text = app.labelFor(pkg)
-                    textSize = 15f
+                    styleAs(R.style.TextAppearance_Dementor_Body)
                     layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
                 },
             )
             addView(
                 TextView(context).apply {
                     text = trailing
-                    textSize = 15f
+                    styleAs(R.style.TextAppearance_Dementor_Body)
                 },
             )
         }
@@ -318,7 +328,7 @@ class HomeActivity : AppCompatActivity() {
 
     private companion object {
         const val REQUEST_NOTIFICATIONS = 1
-        const val MAX_ROWS = 12
+        const val TIME_PATTERN = "HH:mm"
         const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
     }
 }

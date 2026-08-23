@@ -1,15 +1,23 @@
 package dev.schrammel.dementor_watch.ui
 
 import android.content.Context
+import android.widget.TextView
+import androidx.annotation.DimenRes
+import androidx.annotation.StyleRes
 
 /**
- * Density-independent pixels to actual pixels.
+ * Resolves a dimension resource to pixels.
  *
- * These screens are built in code rather than XML, so this conversion appears
- * everywhere. It was previously copy-pasted into every activity.
+ * These screens are built in code rather than XML, so every padding would
+ * otherwise be a bare number repeated across a dozen files. Going through
+ * `res/values/dimens.xml` keeps the spacing scale in one editable place.
  */
-internal fun Context.dp(value: Int): Int =
-    (value * resources.displayMetrics.density).toInt()
+internal fun Context.dimen(@DimenRes id: Int): Int = resources.getDimensionPixelSize(id)
+
+/** Applies one of the roles from `res/values/styles.xml`. */
+internal fun TextView.styleAs(@StyleRes appearance: Int): TextView = apply {
+    setTextAppearance(appearance)
+}
 
 /**
  * The shared configuration of every "how many minutes?" slider.

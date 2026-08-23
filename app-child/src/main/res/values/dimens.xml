@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Spacing scale and component sizes.
+
+  Screens in this app are built in code rather than XML, so without this every
+  padding was a bare number repeated across a dozen files. Changing the rhythm of
+  the UI now means editing one file instead of hunting literals.
+
+  Use the semantic component values where one exists; fall back to the scale.
+-->
+<resources>
+
+    <!-- Spacing scale. Every gap in the app should come from here. -->
+    <dimen name="space_hairline">2dp</dimen>
+    <dimen name="space_xxs">4dp</dimen>
+    <dimen name="space_xs">6dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_lg">16dp</dimen>
+    <dimen name="space_xl">20dp</dimen>
+    <dimen name="space_4xl">32dp</dimen>
+    <dimen name="space_5xl">36dp</dimen>
+
+    <!-- The outer margin of every screen. -->
+    <dimen name="screen_padding">24dp</dimen>
+
+    <!-- Gap above a section heading, which is larger than ordinary spacing so
+         sections read as separate blocks rather than a continuous list. -->
+    <dimen name="section_spacing">28dp</dimen>
+
+    <!-- List rows. Two icon sizes: the dashboard's compact list and the fuller
+         pickers where the icon is the main way to recognise an app. -->
+    <dimen name="row_icon">32dp</dimen>
+    <dimen name="row_icon_small">28dp</dimen>
+
+    <!-- Progress and charts -->
+    <dimen name="budget_bar_height">10dp</dimen>
+    <dimen name="week_bar_height">16dp</dimen>
+    <dimen name="week_day_label_width">44dp</dimen>
+
+</resources>

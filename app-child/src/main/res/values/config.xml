@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Product tuning that a designer or product owner might reasonably want to change
+  without touching Kotlin. Behaviour that is a correctness concern rather than a
+  preference stays in code — see Defaults in core-model.
+-->
+<resources>
+
+    <!-- How many rows a dashboard list shows before it summarises the rest. With
+         a device-wide limit reached, every installed app is technically blocked,
+         and a wall of two hundred rows tells the reader nothing. -->
+    <integer name="dashboard_max_rows">12</integer>
+
+    <!-- The window the weekly view covers, and the window it compares against. -->
+    <integer name="week_length_days">7</integer>
+
+    <!-- Apps listed in "where the time went". -->
+    <integer name="week_top_apps">5</integer>
+
+    <!-- The one-tap bonus amounts a parent is offered, in minutes. -->
+    <integer-array name="bonus_minute_options">
+        <item>10</item>
+        <item>15</item>
+        <item>30</item>
+    </integer-array>
+
+    <!-- Keeps a zero-usage day visible as a sliver in the weekly chart rather
+         than vanishing, so a quiet day still reads as a measured day. -->
+    <item name="week_bar_minimum_fraction" format="float" type="dimen">0.01</item>
+
+</resources>

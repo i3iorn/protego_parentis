@@ -1,5 +1,6 @@
 package dev.schrammel.dementor_watch.policy
 
+import dev.schrammel.dementor_watch.model.Defaults
 import dev.schrammel.dementor_watch.model.ScheduleBlock
 import java.time.Instant
 import java.time.LocalDate
@@ -13,9 +14,6 @@ import java.time.ZonedDateTime
  * has to consider yesterday's window as well as today's.
  */
 object ScheduleResolver {
-
-    /** How far ahead [nextEdgeAfter] looks. Eight days guarantees a full week is covered. */
-    private const val HORIZON_DAYS = 8L
 
     /** The concrete start/end pair for a window starting on [date], or null if it does not run that day. */
     private fun windowStartingOn(block: ScheduleBlock, date: LocalDate, now: ZonedDateTime): Window? {
@@ -50,7 +48,7 @@ object ScheduleResolver {
         val today = now.toLocalDate()
         return blocks.asSequence()
             .flatMap { block ->
-                (-1L..HORIZON_DAYS).asSequence().mapNotNull { offset ->
+                (-1L..Defaults.SCHEDULE_HORIZON_DAYS).asSequence().mapNotNull { offset ->
                     windowStartingOn(block, today.plusDays(offset), now)
                 }
             }

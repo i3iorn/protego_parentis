@@ -41,7 +41,7 @@ class AppLimitsActivity : AppCompatActivity() {
     private fun buildLayout(): ScrollView {
         container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
         }
         return ScrollView(this).apply {
@@ -57,14 +57,14 @@ class AppLimitsActivity : AppCompatActivity() {
         container.addView(
             TextView(this).apply {
                 setText(R.string.app_limits_title)
-                textSize = 28f
+                styleAs(R.style.TextAppearance_Dementor_Title)
             },
         )
         container.addView(
             TextView(this).apply {
                 setText(R.string.app_limits_hint)
-                textSize = 14f
-                setPadding(0, dp(4), 0, dp(12))
+                styleAs(R.style.TextAppearance_Dementor_Caption)
+                setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_md))
             },
         )
 
@@ -80,27 +80,27 @@ class AppLimitsActivity : AppCompatActivity() {
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(8), 0, dp(8))
+            setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
             isClickable = true
 
             addView(
                 ImageView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
-                        .apply { marginEnd = dp(12) }
+                    layoutParams = LinearLayout.LayoutParams(dimen(R.dimen.row_icon), dimen(R.dimen.row_icon))
+                        .apply { marginEnd = dimen(R.dimen.space_md) }
                     setImageDrawable(app.icon)
                 },
             )
             addView(
                 TextView(context).apply {
                     text = app.label
-                    textSize = 16f
+                    styleAs(R.style.TextAppearance_Dementor_ListItem)
                     layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
                 },
             )
             addView(
                 TextView(context).apply {
                     text = if (limitMinutes > 0) Format.limit(limitMinutes) else getString(R.string.app_limits_none)
-                    textSize = 15f
+                    styleAs(R.style.TextAppearance_Dementor_Body)
                 },
             )
 
@@ -109,7 +109,7 @@ class AppLimitsActivity : AppCompatActivity() {
 
     private fun promptForLimit(app: AppInfo, current: Int) {
         val value = TextView(this).apply {
-            textSize = 24f
+            styleAs(R.style.TextAppearance_Dementor_Metric)
             text = Format.limit(current)
         }
         val bar = SeekBar(this).apply {
@@ -126,7 +126,7 @@ class AppLimitsActivity : AppCompatActivity() {
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, 0)
             addView(value)
             addView(bar)

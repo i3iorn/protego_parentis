@@ -42,12 +42,32 @@
     <string name="home_would_block_header">Would be blocked right now</string>
     <string name="home_edit_rules">Change rules</string>
     <string name="home_no_usage">No screen time recorded yet today.</string>
+    <plurals name="home_and_more">
+        <item quantity="one">and %d more</item>
+        <item quantity="other">and %d more</item>
+    </plurals>
     <string name="home_nothing_blocked">Nothing is blocked right now.</string>
     <string name="home_rule_limit">Daily limit: %1$s</string>
     <string name="home_rule_no_limit">No daily limit</string>
     <string name="home_rule_bedtime">Bedtime: %1$s to %2$s</string>
     <string name="home_rule_no_bedtime">No bedtime set</string>
     <string name="home_until">until %1$s</string>
+
+    <string name="home_open_week">See my week</string>
+
+    <!-- My week. -->
+    <string name="week_title">My week</string>
+    <string name="week_no_data">No screen time recorded yet. Come back tomorrow.</string>
+    <string name="week_total_caption">in the last 7 days</string>
+    <string name="week_average">%1$s a day on average</string>
+    <string name="week_more_than_last">%1$s more than the week before</string>
+    <string name="week_less_than_last">%1$s less than the week before</string>
+    <string name="week_same_as_last">The same as the week before</string>
+    <string name="week_no_comparison">Not enough history yet to compare weeks.</string>
+    <string name="week_by_day">Day by day</string>
+    <string name="week_none">none</string>
+    <string name="week_top_apps">Where the time went</string>
+    <string name="week_no_apps">No app time recorded.</string>
 
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>

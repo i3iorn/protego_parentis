@@ -12,9 +12,9 @@ import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
 import dev.schrammel.dementor_watch.model.Reason
 import dev.schrammel.dementor_watch.model.UsageSnapshot
+import dev.schrammel.dementor_watch.model.WarningThresholds
 import java.time.Instant
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 
 /**
  * Decides what the device should look like right now.
@@ -29,12 +29,6 @@ import kotlin.time.Duration.Companion.minutes
  * `setPackagesSuspended` directly.
  */
 object PolicyEngine {
-
-    /** Remaining time at which the teen gets a one-off "ten minutes left" notification. */
-    val NOTICE_THRESHOLD: Duration = 10.minutes
-
-    /** Remaining time at which a persistent banner and a one-tap request appear. */
-    val GRACE_THRESHOLD: Duration = 5.minutes
 
     fun evaluate(
         policy: Policy,
@@ -58,6 +52,7 @@ object PolicyEngine {
             allowed = policy.deviceBudget.forDay(weekday),
             used = usage.deviceTotal,
             bonus = bonusFor(GrantTarget.Device),
+            thresholds = policy.warningThresholds,
         )
         // A category's usage is the sum of its members' time. An app in two
         // categories spends from both — see Category's documentation. Apps that are
@@ -70,6 +65,7 @@ object PolicyEngine {
                 allowed = category.budget.forDay(weekday),
                 used = used,
                 bonus = bonusFor(GrantTarget.Category(category.id)),
+                thresholds = policy.warningThresholds,
             )
         }
 
@@ -89,6 +85,7 @@ object PolicyEngine {
                     allowed = rule.budget.forDay(weekday),
                     used = usage.forPackage(pkg),
                     bonus = bonusFor(GrantTarget.App(pkg)),
+                    thresholds = policy.warningThresholds,
                 )
             }
 
@@ -153,15 +150,20 @@ object PolicyEngine {
     private fun mostRestrictive(reasons: List<Reason>): Reason? =
         reasons.maxWithOrNull(compareBy(nullsLast()) { it.liftsAt })
 
-    private fun statusOf(allowed: Duration, used: Duration, bonus: Duration): BudgetStatus {
+    private fun statusOf(
+        allowed: Duration,
+        used: Duration,
+        bonus: Duration,
+        thresholds: WarningThresholds,
+    ): BudgetStatus {
         if (allowed.isInfinite()) {
             return BudgetStatus(allowed, used, bonus, Duration.INFINITE, BudgetLevel.NORMAL)
         }
         val remaining = (allowed + bonus - used).coerceAtLeast(Duration.ZERO)
         val level = when {
             remaining == Duration.ZERO -> BudgetLevel.EXHAUSTED
-            remaining <= GRACE_THRESHOLD -> BudgetLevel.GRACE
-            remaining <= NOTICE_THRESHOLD -> BudgetLevel.NOTICE
+            remaining <= thresholds.grace -> BudgetLevel.GRACE
+            remaining <= thresholds.notice -> BudgetLevel.NOTICE
             else -> BudgetLevel.NORMAL
         }
         return BudgetStatus(allowed, used, bonus, remaining, level)
@@ -207,7 +209,8 @@ object PolicyEngine {
             if (binding != null) {
                 val remaining = binding.remaining
                 candidates += now.plusMillis(remaining.inWholeMilliseconds)
-                for (threshold in listOf(NOTICE_THRESHOLD, GRACE_THRESHOLD)) {
+                val thresholds = policy.warningThresholds
+                for (threshold in listOf(thresholds.notice, thresholds.grace)) {
                     if (remaining > threshold) {
                         candidates += now.plusMillis((remaining - threshold).inWholeMilliseconds)
                     }

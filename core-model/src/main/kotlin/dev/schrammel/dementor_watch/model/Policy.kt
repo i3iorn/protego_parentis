@@ -61,11 +61,10 @@ data class Policy(
      * provisioning. Enforcement of limits works perfectly well without them.
      */
     val tamperProtection: Boolean = true,
-    /**
-     * Hour of the local day at which usage counters reset. Defaults to 04:00 rather
-     * than midnight so a session running at 23:50 is not split across two days.
-     */
-    val dayBoundaryHour: Int = 4,
+    /** Hour of the local day at which usage counters reset. See [Defaults.DAY_BOUNDARY_HOUR]. */
+    val dayBoundaryHour: Int = Defaults.DAY_BOUNDARY_HOUR,
+    /** How far in advance the teenager is warned. See [WarningThresholds]. */
+    val warningThresholds: WarningThresholds = WarningThresholds.STANDARD,
 ) {
     init {
         require(dayBoundaryHour in 0..23) { "dayBoundaryHour must be 0..23, was $dayBoundaryHour" }

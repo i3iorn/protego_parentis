@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.usage.InstalledApps
 
 /**
@@ -37,15 +38,15 @@ class AppPickerActivity : AppCompatActivity() {
     private fun buildLayout(title: String): ScrollView {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
         }
 
         content.addView(
             TextView(this).apply {
                 text = title
-                textSize = 26f
-                setPadding(0, 0, 0, dp(12))
+                styleAs(R.style.TextAppearance_Dementor_Headline)
+                setPadding(0, 0, 0, dimen(R.dimen.space_md))
             },
         )
 
@@ -66,19 +67,19 @@ class AppPickerActivity : AppCompatActivity() {
     ): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, dp(6), 0, dp(6))
+        setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
 
         addView(
             ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
-                    .apply { marginEnd = dp(12) }
+                layoutParams = LinearLayout.LayoutParams(dimen(R.dimen.row_icon), dimen(R.dimen.row_icon))
+                    .apply { marginEnd = dimen(R.dimen.space_md) }
                 setImageDrawable(icon)
             },
         )
         addView(
             TextView(context).apply {
                 text = label
-                textSize = 16f
+                styleAs(R.style.TextAppearance_Dementor_ListItem)
                 layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
             },
         )

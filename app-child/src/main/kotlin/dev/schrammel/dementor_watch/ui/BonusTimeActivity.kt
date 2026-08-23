@@ -41,7 +41,7 @@ class BonusTimeActivity : AppCompatActivity() {
     private fun buildLayout(): ScrollView {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(24)
+            val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
         }
 
@@ -49,8 +49,8 @@ class BonusTimeActivity : AppCompatActivity() {
         content.addView(
             TextView(this).apply {
                 setText(R.string.bonus_hint)
-                textSize = 14f
-                setPadding(0, dp(4), 0, dp(8))
+                styleAs(R.style.TextAppearance_Dementor_Caption)
+                setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_sm))
             },
         )
 
@@ -64,8 +64,8 @@ class BonusTimeActivity : AppCompatActivity() {
                 content.addView(
                     TextView(this).apply {
                         text = category.name
-                        textSize = 16f
-                        setPadding(0, dp(12), 0, dp(2))
+                        styleAs(R.style.TextAppearance_Dementor_ListItem)
+                        setPadding(0, dimen(R.dimen.space_md), 0, dimen(R.dimen.space_hairline))
                     },
                 )
                 content.addView(
@@ -80,7 +80,7 @@ class BonusTimeActivity : AppCompatActivity() {
             Button(this).apply {
                 setText(R.string.bonus_clear)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dp(32) }
+                    .apply { topMargin = dimen(R.dimen.row_icon) }
                 setOnClickListener {
                     grants.clearAll()
                     EnforcementService.start(this@BonusTimeActivity)
@@ -99,12 +99,12 @@ class BonusTimeActivity : AppCompatActivity() {
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            AMOUNTS.forEach { minutes ->
+            bonusOptions().forEach { minutes ->
                 addView(
                     Button(context).apply {
                         text = getString(R.string.bonus_add_minutes, minutes)
                         layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
-                            .apply { marginEnd = dp(6) }
+                            .apply { marginEnd = dimen(R.dimen.space_xs) }
                         setOnClickListener { onPick(minutes) }
                     },
                 )
@@ -125,17 +125,20 @@ class BonusTimeActivity : AppCompatActivity() {
         toast(resources.getQuantityString(R.plurals.bonus_granted, minutes, minutes))
     }
 
+    /** See `res/values/config.xml`. */
+    private fun bonusOptions(): List<Int> =
+        resources.getIntArray(R.array.bonus_minute_options).toList()
+
     private fun heading(text: String, size: Float) = TextView(this).apply {
         this.text = text
         textSize = size
-        setPadding(0, dp(20), 0, dp(6))
+        setPadding(0, dimen(R.dimen.space_xl), 0, dimen(R.dimen.space_xs))
     }
 
     private fun toast(message: String) =
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
     companion object {
-        private val AMOUNTS = listOf(10, 15, 30)
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 

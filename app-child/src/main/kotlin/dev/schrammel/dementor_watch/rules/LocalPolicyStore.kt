@@ -1,11 +1,14 @@
 package dev.schrammel.dementor_watch.rules
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import dev.schrammel.dementor_watch.model.AppRule
 import dev.schrammel.dementor_watch.model.Category
 import dev.schrammel.dementor_watch.model.CategoryId
 import dev.schrammel.dementor_watch.model.ChildId
+import dev.schrammel.dementor_watch.model.Defaults
+import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Policy
 import dev.schrammel.dementor_watch.model.ScheduleBlock
@@ -18,12 +21,35 @@ import java.time.ZoneId
 import kotlin.time.Duration.Companion.minutes
 
 /**
+ * When the phone becomes uninteresting.
+ *
+ * The three fields travel together deliberately: a start with no end, or an end
+ * saved without its start, is not a state the UI should be able to produce.
+ */
+data class BedtimeSetting(
+    val enabled: Boolean,
+    val start: LocalTime,
+    val end: LocalTime,
+) {
+    companion object {
+        val OFF = BedtimeSetting(
+            enabled = false,
+            start = Defaults.BEDTIME_START,
+            end = Defaults.BEDTIME_END,
+        )
+    }
+}
+
+/**
  * The device's local copy of the rules.
  *
  * Stand-in for what will eventually be Room plus server sync. It is deliberately
  * the same shape as the real thing in one respect that matters: the engine reads
  * its rules from local storage and never from the network, so enforcement keeps
  * working with the phone in airplane mode.
+ *
+ * Every setter bumps the policy version, which is the signal the enforcement
+ * service uses to notice a change and re-evaluate.
  *
  * TODO(M1): replace with Room + Firestore sync, keeping local as the read path.
  */
@@ -32,64 +58,131 @@ class LocalPolicyStore(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    fun load(): Policy {
-        val schedules = buildList {
-            if (bedtimeEnabled) {
-                add(
-                    ScheduleBlock(
-                        id = ScheduleId("bedtime"),
-                        name = "Bedtime",
-                        days = DayOfWeek.entries.toSet(),
-                        start = LocalTime.of(bedtimeStartHour, bedtimeStartMinute),
-                        end = LocalTime.of(bedtimeEndHour, bedtimeEndMinute),
-                        // Everything on the safety list survives bedtime anyway;
-                        // this set is for apps a family additionally permits.
-                        allowedPackages = emptySet(),
-                        kind = ScheduleBlock.Kind.BEDTIME,
-                    ),
-                )
-            }
-        }
+    // ---------- the assembled policy ----------
 
-        // Per-app limits first, then exemptions on top: an exempt app ignores every
-        // limit, so being on both lists must resolve to exempt rather than to a cap.
-        val appRules = buildMap<PackageName, AppRule> {
-            appLimits.forEach { (pkg, minutes) ->
-                if (minutes > 0) {
-                    put(PackageName(pkg), AppRule.Budgeted(WeeklyBudget.flat(minutes.minutes)))
-                }
-            }
-            exemptPackages.forEach { pkg -> put(PackageName(pkg), AppRule.AlwaysAllowed) }
-        }
+    /** Builds the domain [Policy] the engine evaluates. */
+    fun load(): Policy = Policy(
+        version = prefs.getLong(KEY_VERSION, INITIAL_VERSION),
+        childId = ChildId(LOCAL_CHILD_ID),
+        timeZone = ZoneId.systemDefault(),
+        deviceBudget = budgetOf(dailyLimitMinutes),
+        appRules = appRules(),
+        categories = categories.map(::toDomain),
+        schedules = schedules(),
+        safetyAllowlist = SafetyAllowlist.of(appContext),
+        installPolicy = installPolicy,
+        tamperProtection = tamperProtection,
+        dayBoundaryHour = Defaults.DAY_BOUNDARY_HOUR,
+    )
 
-        return Policy(
-            version = prefs.getLong(KEY_VERSION, 1L),
-            childId = ChildId("local"),
-            timeZone = ZoneId.systemDefault(),
-            deviceBudget = if (dailyLimitMinutes <= 0) {
-                WeeklyBudget.UNLIMITED
-            } else {
-                WeeklyBudget.flat(dailyLimitMinutes.minutes)
-            },
-            appRules = appRules,
-            categories = categories.map { stored ->
-                Category(
-                    id = CategoryId(stored.id),
-                    name = stored.name,
-                    budget = if (stored.limitMinutes <= 0) {
-                        WeeklyBudget.UNLIMITED
-                    } else {
-                        WeeklyBudget.flat(stored.limitMinutes.minutes)
-                    },
-                    packages = stored.packages.map(::PackageName).toSet(),
-                )
-            },
-            schedules = schedules,
-            safetyAllowlist = SafetyAllowlist.of(appContext),
-            dayBoundaryHour = DAY_BOUNDARY_HOUR,
-            tamperProtection = tamperProtection,
+    /**
+     * Per-app limits first, then exemptions on top: an exempt app ignores every
+     * limit, so being on both lists must resolve to exempt rather than to a cap.
+     */
+    private fun appRules(): Map<PackageName, AppRule> = buildMap {
+        appLimits.forEach { (pkg, minutes) ->
+            put(PackageName(pkg), AppRule.Budgeted(budgetOf(minutes)))
+        }
+        exemptPackages.forEach { pkg -> put(PackageName(pkg), AppRule.AlwaysAllowed) }
+    }
+
+    private fun schedules(): List<ScheduleBlock> {
+        val setting = bedtime
+        if (!setting.enabled) return emptyList()
+        return listOf(
+            ScheduleBlock(
+                id = ScheduleId(BEDTIME_ID),
+                name = BEDTIME_NAME,
+                days = DayOfWeek.entries.toSet(),
+                start = setting.start,
+                end = setting.end,
+                // Everything on the safety list survives bedtime anyway; this set
+                // is for apps a family additionally permits.
+                allowedPackages = emptySet(),
+                kind = ScheduleBlock.Kind.BEDTIME,
+            ),
         )
     }
+
+    private fun toDomain(stored: StoredCategory) = Category(
+        id = CategoryId(stored.id),
+        name = stored.name,
+        budget = budgetOf(stored.limitMinutes),
+        packages = stored.packages.map(::PackageName).toSet(),
+    )
+
+    /** Zero means "no limit"; the sliders have no other way to express it. */
+    private fun budgetOf(minutes: Int): WeeklyBudget =
+        if (minutes <= 0) WeeklyBudget.UNLIMITED else WeeklyBudget.flat(minutes.minutes)
+
+    // ---------- device limit ----------
+
+    /** Minutes per day, or 0 for no limit. */
+    var dailyLimitMinutes: Int
+        get() = prefs.getInt(KEY_DAILY_LIMIT, Defaults.DAILY_LIMIT.inWholeMinutes.toInt())
+        set(value) = write { putInt(KEY_DAILY_LIMIT, value.clampToDay()) }
+
+    // ---------- bedtime ----------
+
+    var bedtime: BedtimeSetting
+        get() = BedtimeSetting(
+            enabled = prefs.getBoolean(KEY_BEDTIME_ENABLED, BedtimeSetting.OFF.enabled),
+            start = prefs.readTime(KEY_BEDTIME_START, Defaults.BEDTIME_START),
+            end = prefs.readTime(KEY_BEDTIME_END, Defaults.BEDTIME_END),
+        )
+        set(value) = write {
+            putBoolean(KEY_BEDTIME_ENABLED, value.enabled)
+            putInt(KEY_BEDTIME_START, value.start.toMinuteOfDay())
+            putInt(KEY_BEDTIME_END, value.end.toMinuteOfDay())
+        }
+
+    // ---------- categories ----------
+
+    var categories: List<StoredCategory>
+        get() = StoredCategory.listFromJson(prefs.getString(KEY_CATEGORIES, null))
+        set(value) = write { putString(KEY_CATEGORIES, StoredCategory.listToJson(value)) }
+
+    fun upsertCategory(category: StoredCategory) {
+        categories = categories.filterNot { it.id == category.id } + category
+    }
+
+    fun deleteCategory(id: String) {
+        categories = categories.filterNot { it.id == id }
+    }
+
+    // ---------- per-app rules ----------
+
+    /** Per-app daily limits in minutes, keyed by package name. */
+    var appLimits: Map<String, Int>
+        get() {
+            val raw = prefs.getString(KEY_APP_LIMITS, null) ?: return emptyMap()
+            val json = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+            return json.keys().asSequence()
+                .associateWith { json.optInt(it, 0) }
+                .filterValues { it > 0 }
+        }
+        set(value) = write {
+            putString(KEY_APP_LIMITS, JSONObject(value.filterValues { it > 0 }).toString())
+        }
+
+    fun setAppLimit(packageName: String, minutes: Int) {
+        appLimits = appLimits.toMutableMap().apply {
+            if (minutes > 0) put(packageName, minutes.clampToDay()) else remove(packageName)
+        }
+    }
+
+    /** Apps that ignore every limit. */
+    var exemptPackages: Set<String>
+        get() = prefs.getStringSet(KEY_EXEMPT, emptySet()).orEmpty()
+        set(value) = write { putStringSet(KEY_EXEMPT, value) }
+
+    // ---------- device control ----------
+
+    var installPolicy: InstallPolicy
+        get() = runCatching {
+            InstallPolicy.valueOf(prefs.getString(KEY_INSTALL_POLICY, null) ?: "")
+        }.getOrDefault(InstallPolicy.NOTIFY)
+        set(value) = write { putString(KEY_INSTALL_POLICY, value.name) }
 
     /**
      * Locks the device against tampering. Defaults to **off**: turning it on makes
@@ -100,94 +193,50 @@ class LocalPolicyStore(context: Context) {
         get() = prefs.getBoolean(KEY_TAMPER, false)
         set(value) = write { putBoolean(KEY_TAMPER, value) }
 
-    /** Per-app daily limits in minutes, keyed by package name. */
-    var appLimits: Map<String, Int>
-        get() {
-            val raw = prefs.getString(KEY_APP_LIMITS, null) ?: return emptyMap()
-            val json = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
-            return json.keys().asSequence().associateWith { json.optInt(it, 0) }
-                .filterValues { it > 0 }
-        }
-        set(value) = write {
-            putString(KEY_APP_LIMITS, JSONObject(value.filterValues { it > 0 }).toString())
-        }
+    // ---------- plumbing ----------
 
-    fun setAppLimit(packageName: String, minutes: Int) {
-        appLimits = appLimits.toMutableMap().apply {
-            if (minutes > 0) put(packageName, minutes) else remove(packageName)
-        }
+    private fun Int.clampToDay(): Int =
+        coerceIn(0, Defaults.MAX_DAILY_LIMIT.inWholeMinutes.toInt())
+
+    private fun LocalTime.toMinuteOfDay(): Int = hour * MINUTES_PER_HOUR + minute
+
+    private fun SharedPreferences.readTime(key: String, fallback: LocalTime): LocalTime {
+        val stored = getInt(key, NOT_SET)
+        if (stored !in 0 until MINUTES_PER_DAY) return fallback
+        return LocalTime.of(stored / MINUTES_PER_HOUR, stored % MINUTES_PER_HOUR)
     }
-
-    /** Apps that ignore every limit. */
-    var exemptPackages: Set<String>
-        get() = prefs.getStringSet(KEY_EXEMPT, emptySet()).orEmpty()
-        set(value) = write { putStringSet(KEY_EXEMPT, value) }
-
-    var categories: List<StoredCategory>
-        get() = StoredCategory.listFromJson(prefs.getString(KEY_CATEGORIES, null))
-        set(value) = write { putString(KEY_CATEGORIES, StoredCategory.listToJson(value)) }
-
-    fun upsertCategory(category: StoredCategory) {
-        val existing = categories.filterNot { it.id == category.id }
-        categories = existing + category
-    }
-
-    fun deleteCategory(id: String) {
-        categories = categories.filterNot { it.id == id }
-    }
-
-    /** Minutes per day, or 0 for no limit. */
-    var dailyLimitMinutes: Int
-        get() = prefs.getInt(KEY_DAILY_LIMIT, DEFAULT_DAILY_LIMIT_MINUTES)
-        set(value) = write { putInt(KEY_DAILY_LIMIT, value.coerceIn(0, MAX_DAILY_LIMIT_MINUTES)) }
-
-    var bedtimeEnabled: Boolean
-        get() = prefs.getBoolean(KEY_BEDTIME_ENABLED, false)
-        set(value) = write { putBoolean(KEY_BEDTIME_ENABLED, value) }
-
-    var bedtimeStartHour: Int
-        get() = prefs.getInt(KEY_BEDTIME_START_HOUR, 22)
-        set(value) = write { putInt(KEY_BEDTIME_START_HOUR, value.coerceIn(0, 23)) }
-
-    var bedtimeStartMinute: Int
-        get() = prefs.getInt(KEY_BEDTIME_START_MINUTE, 30)
-        set(value) = write { putInt(KEY_BEDTIME_START_MINUTE, value.coerceIn(0, 59)) }
-
-    var bedtimeEndHour: Int
-        get() = prefs.getInt(KEY_BEDTIME_END_HOUR, 7)
-        set(value) = write { putInt(KEY_BEDTIME_END_HOUR, value.coerceIn(0, 23)) }
-
-    var bedtimeEndMinute: Int
-        get() = prefs.getInt(KEY_BEDTIME_END_MINUTE, 0)
-        set(value) = write { putInt(KEY_BEDTIME_END_MINUTE, value.coerceIn(0, 59)) }
 
     /**
-     * Bumping the version on every edit is what lets the service notice a change
-     * and re-evaluate, and it is what the audit log records.
+     * Every write bumps the version. The enforcement service compares it to decide
+     * whether anything needs re-applying, and the audit log records it.
      */
-    private fun write(block: android.content.SharedPreferences.Editor.() -> Unit) {
+    private fun write(block: SharedPreferences.Editor.() -> Unit) {
         prefs.edit {
             block()
-            putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, 1L) + 1L)
+            putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, INITIAL_VERSION) + 1L)
         }
     }
 
     private companion object {
         const val FILE_NAME = "local_policy"
+        const val INITIAL_VERSION = 1L
+        const val LOCAL_CHILD_ID = "local"
+        const val BEDTIME_ID = "bedtime"
+        const val BEDTIME_NAME = "Bedtime"
+        const val NOT_SET = -1
+
+        const val MINUTES_PER_HOUR = 60
+        const val MINUTES_PER_DAY = 24 * 60
+
         const val KEY_VERSION = "version"
         const val KEY_DAILY_LIMIT = "daily_limit_minutes"
         const val KEY_BEDTIME_ENABLED = "bedtime_enabled"
-        const val KEY_BEDTIME_START_HOUR = "bedtime_start_hour"
-        const val KEY_BEDTIME_START_MINUTE = "bedtime_start_minute"
-        const val KEY_BEDTIME_END_HOUR = "bedtime_end_hour"
-        const val KEY_BEDTIME_END_MINUTE = "bedtime_end_minute"
+        const val KEY_BEDTIME_START = "bedtime_start_minute_of_day"
+        const val KEY_BEDTIME_END = "bedtime_end_minute_of_day"
         const val KEY_EXEMPT = "exempt_packages"
         const val KEY_CATEGORIES = "categories"
         const val KEY_APP_LIMITS = "app_limits"
+        const val KEY_INSTALL_POLICY = "install_policy"
         const val KEY_TAMPER = "tamper_protection"
-
-        const val DEFAULT_DAILY_LIMIT_MINUTES = 120
-        const val MAX_DAILY_LIMIT_MINUTES = 24 * 60
-        const val DAY_BOUNDARY_HOUR = 4
     }
 }
