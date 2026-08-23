@@ -18,6 +18,7 @@ import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.sync.MessageCrypto
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
+import dev.schrammel.dementor_watch.sync.isValidTopic
 import dev.schrammel.dementor_watch.sync.SyncSettings
 
 /**
@@ -147,7 +148,7 @@ class SyncSettingsActivity : ParentGatedActivity() {
             )
             return
         }
-        if (enabled.isChecked && topic.text.toString().isBlank()) {
+        if (enabled.isChecked && !isValidTopic(topic.text.toString())) {
             toast(getString(R.string.sync_needs_topic))
             return
         }

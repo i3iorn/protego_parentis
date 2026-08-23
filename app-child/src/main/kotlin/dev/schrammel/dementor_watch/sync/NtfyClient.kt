@@ -82,10 +82,17 @@ class NtfyClient(
         TransportResult.Failed(e.message ?: "could not reach the server")
     }
 
-    /** ntfy streams newline-delimited JSON; one object per line. */
+    /**
+     * ntfy streams newline-delimited JSON; one object per line.
+     *
+     * Lines longer than a family message could plausibly be are dropped without
+     * being parsed. The topic is public and anyone who learns its name can publish
+     * to it — they can read nothing, but a single enormous line would otherwise be
+     * pulled into memory in full before anything looked at its size.
+     */
     private fun readEnvelopes(reader: BufferedReader): List<String> =
         reader.lineSequence()
-            .filter { it.isNotBlank() }
+            .filter { it.isNotBlank() && it.length <= MAX_LINE_CHARS }
             .mapNotNull { line -> runCatching { JSONObject(line) }.getOrNull() }
             .filter { it.optString(FIELD_EVENT) == EVENT_MESSAGE }
             .mapNotNull { it.optString(FIELD_MESSAGE).takeIf(String::isNotBlank) }
@@ -108,6 +115,15 @@ class NtfyClient(
 
         /** A bound, so a flooded topic cannot exhaust memory on the child's phone. */
         const val MAX_MESSAGES_PER_POLL = 200
+
+        /**
+         * The longest line worth reading.
+         *
+         * Comfortably above a real message — the largest this app sends is a
+         * daily summary with a handful of app names — and far below anything that
+         * would trouble the heap.
+         */
+        const val MAX_LINE_CHARS = 16_384
 
         const val FIELD_EVENT = "event"
         const val FIELD_MESSAGE = "message"

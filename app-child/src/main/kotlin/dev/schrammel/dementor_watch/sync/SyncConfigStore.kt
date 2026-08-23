@@ -271,3 +271,16 @@ class SyncConfigStore(context: Context) {
         const val KEY_LAST_ANNOUNCE = "last_announce"
     }
 }
+
+/**
+ * What ntfy accepts in a topic name, and what this app will put in a URL.
+ *
+ * The topic is typed by a person and then interpolated into a path and a query
+ * string. Without this, a topic containing a slash or a question mark produces a
+ * request to somewhere nobody chose — on a server the family also chose, so it is
+ * mostly a way to break your own sync, but a value that reaches a URL unchecked is
+ * not one to leave unchecked.
+ */
+internal fun isValidTopic(value: String): Boolean = TOPIC_PATTERN.matches(value.trim())
+
+private val TOPIC_PATTERN = Regex("^[A-Za-z0-9_-]{1,64}$")

@@ -85,22 +85,31 @@ class BiometricGate(context: Context) {
         runCatching { keyStore().deleteEntry(ALIAS) }
     }
 
-    /** What this phone can currently offer. */
+    /**
+     * What this phone can currently offer.
+     *
+     * A question, with no answer that changes anything and no keystore work to
+     * answer it. It used to reach for a cipher — which is where invalidation is
+     * noticed — so asking whether the option was available could turn it off, and
+     * a screen that asked three times did three rounds of keystore work on the
+     * main thread to render one checkbox. Invalidation is noticed where a cipher
+     * is genuinely needed: at the prompt.
+     */
     fun availability(): BiometricAvailability {
         val verdict = manager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-        return when (verdict) {
-            BiometricManager.BIOMETRIC_SUCCESS -> when {
-                // Retired by the phone since it was set up. Reported until
-                // somebody turns it on again, rather than only on the render that
-                // happened to notice — a setting that switches itself off without
-                // saying so is one people conclude is broken.
-                wasInvalidated -> BiometricAvailability.INVALIDATED
-                !isEnabled || cipher() != null -> BiometricAvailability.READY
-                else -> BiometricAvailability.INVALIDATED
-            }
+        return when {
+            verdict == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                BiometricAvailability.NOT_ENROLLED
 
-            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricAvailability.NOT_ENROLLED
-            else -> BiometricAvailability.UNSUPPORTED
+            verdict != BiometricManager.BIOMETRIC_SUCCESS -> BiometricAvailability.UNSUPPORTED
+
+            // Retired by the phone since it was set up. Reported until somebody
+            // turns it on again, rather than only on the render that happened to
+            // notice — a setting that switches itself off in silence is one people
+            // conclude is broken.
+            wasInvalidated -> BiometricAvailability.INVALIDATED
+
+            else -> BiometricAvailability.READY
         }
     }
 

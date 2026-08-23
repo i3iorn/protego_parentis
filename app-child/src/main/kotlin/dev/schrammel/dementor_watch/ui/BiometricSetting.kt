@@ -24,6 +24,16 @@ import dev.schrammel.dementor_watch.security.RoleStore
  * decision about who can change the rules, and the person most interested in
  * making that decision is the one the rules apply to.
  */
+private fun Activity.recordAndRefresh(wanted: Boolean, onChanged: () -> Unit) {
+    Audit.record(
+        context = this,
+        actor = AuditActor.PARENT,
+        action = AuditAction.BIOMETRIC_UNLOCK_CHANGED,
+        after = Audit.flag(wanted),
+    )
+    onChanged()
+}
+
 internal fun Activity.biometricSetting(onChanged: () -> Unit): LinearLayout {
     val gate = BiometricGate(this)
     val onChildDevice = RoleStore(this).roleOrChild == DeviceRole.CHILD
@@ -62,21 +72,28 @@ internal fun Activity.biometricSetting(onChanged: () -> Unit): LinearLayout {
             CheckBox(context).apply {
                 setText(R.string.biometric_enable)
                 isChecked = gate.isEnabled
-                setOnCheckedChangeListener { _, wanted ->
-                    val applied = if (wanted) gate.enable() else { gate.disable(); false }
-                    if (wanted && !applied) {
-                        // The keystore refused. Say so rather than leaving a switch
-                        // that looks on and does nothing when somebody needs it.
-                        isChecked = false
-                        Toast.makeText(context, R.string.biometric_failed, Toast.LENGTH_LONG).show()
+                setOnCheckedChangeListener { box, wanted ->
+                    if (!wanted) {
+                        gate.disable()
+                        recordAndRefresh(wanted = false, onChanged = onChanged)
                         return@setOnCheckedChangeListener
                     }
-                    Audit.record(
-                        context = this@biometricSetting,
-                        actor = AuditActor.PARENT,
-                        action = AuditAction.BIOMETRIC_UNLOCK_CHANGED,
-                        after = Audit.flag(wanted),
-                    )
+
+                    if (gate.enable()) {
+                        recordAndRefresh(wanted = true, onChanged = onChanged)
+                        return@setOnCheckedChangeListener
+                    }
+
+                    // The keystore refused. Say so rather than leaving a switch
+                    // that looks on and does nothing when somebody needs it.
+                    //
+                    // The listener comes off before the box is put back, because
+                    // setting it here fires this same listener again — which wrote
+                    // a spurious "turned off" line into the shared history and
+                    // re-entered the render it was already inside.
+                    box.setOnCheckedChangeListener(null)
+                    box.isChecked = false
+                    Toast.makeText(context, R.string.biometric_failed, Toast.LENGTH_LONG).show()
                     onChanged()
                 }
             },
