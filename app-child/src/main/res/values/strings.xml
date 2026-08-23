@@ -393,6 +393,7 @@
     <string name="role_parent_header">A parent\'s phone</string>
     <string name="role_parent_body">This phone answers requests and can send extra time. It measures nothing and enforces nothing — there is no one to enforce against here.</string>
     <string name="role_parent_choose">This is a parent\'s phone</string>
+    <string name="role_pin_next">Next you will set a PIN. It protects the rules on this phone, and nothing is saved until it is set.</string>
     <string name="role_change_later">You can change this later, but it asks for the PIN first.</string>
 
     <!-- The parent phone. -->

@@ -400,6 +400,7 @@
     <string name="role_parent_header">En förälders telefon</string>
     <string name="role_parent_body">Den här telefonen svarar på förfrågningar och kan skicka extra tid. Den mäter ingenting och tillämpar inga regler — det finns ingen här att tillämpa dem på.</string>
     <string name="role_parent_choose">Det här är en förälders telefon</string>
+    <string name="role_pin_next">Härnäst väljer du en PIN-kod. Den skyddar reglerna på den här telefonen, och ingenting sparas förrän den är satt.</string>
     <string name="role_change_later">Du kan ändra det här senare, men det kräver PIN-koden.</string>
 
     <!-- Förälderns telefon. -->

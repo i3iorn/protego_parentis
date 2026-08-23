@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import android.util.TypedValue
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -18,7 +19,9 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.dpc.PairingStore
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.PinLock
 import dev.schrammel.dementor_watch.security.RoleStore
+import dev.schrammel.dementor_watch.ui.PinActivity
 import dev.schrammel.dementor_watch.ui.dimen
 import dev.schrammel.dementor_watch.ui.styleAs
 
@@ -35,6 +38,21 @@ import dev.schrammel.dementor_watch.ui.styleAs
  * TODO(M3): let the teen choose their display name and avatar — it is their phone.
  */
 class ComplianceActivity : DementorActivity() {
+
+    /**
+     * Setting the PIN is the last step of provisioning, not a later chore.
+     *
+     * This is the moment a phone becomes managed, and until a PIN exists every
+     * rule on it can be changed by whoever picks it up — which, on this device, is
+     * the person the rules are for. Provisioning does not finish until it is set:
+     * cancelling leaves this screen in place rather than handing over an
+     * unprotected phone.
+     */
+    private val setPin = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == RESULT_OK) finishSetup()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,6 +113,14 @@ class ComplianceActivity : DementorActivity() {
         // that would be a question with only one possible answer.
         RoleStore(this).choose(DeviceRole.CHILD)
 
+        if (PinLock(this).isSet) {
+            finishSetup()
+        } else {
+            setPin.launch(PinActivity.intent(this))
+        }
+    }
+
+    private fun finishSetup() {
         EnforcementService.start(this)
         setResult(RESULT_OK)
         finish()
