@@ -611,6 +611,9 @@
     <string name="devices_renamed">Namnet ändrat. De andra telefonerna ser det snart.</string>
     <string name="devices_waiting">Väntar på godkännande</string>
     <string name="devices_waiting_hint">De här telefonerna känner till lösenfrasen. Kontrollera fingeravtrycket mot det som visas på telefonen själv innan du godkänner.</string>
+    <string name="devices_refused">Avvisade</string>
+    <string name="devices_refused_hint">De här telefonerna bad om att få vara med och nekades. De hålls utanför tills du låter någon fråga igen.</string>
+    <string name="devices_let_ask_again">Låt den fråga</string>
     <string name="devices_trusted">Betrodda</string>
     <string name="devices_none">Inga andra telefoner ännu.</string>
     <string name="devices_unnamed">Namnlös telefon</string>
@@ -683,6 +686,8 @@
     <!-- Telefonens hälsa (LOC-4). -->
     <string name="integrity_switched_off">Avstängd</string>
     <string name="integrity_switched_off_hint">Telefonen sa att den stängdes av. Den hör av sig igen när den startar.</string>
+    <string name="integrity_history">Historiken stämmer inte</string>
+    <string name="integrity_history_hint">Den andra telefonen rapporterade en delad historik som inte längre följer på vad den sa tidigare. Rader har tagits bort eller skrivits om i stället för att läggas till.</string>
     <string name="integrity_battery_notification">Den andra telefonen har lågt batteri och kan snart stängas av.</string>
 
     <string name="audit_web_filter_changed">Webbfiltrering satt till %1$s</string>

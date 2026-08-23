@@ -72,7 +72,11 @@ class ParentPollWorker(
      */
     private fun checkForSilence(context: Context) {
         val store = HeartbeatStore(context)
-        val problems = IntegrityRules.problems(store.latest, Instant.now())
+        val problems = IntegrityRules.problems(
+            heartbeat = store.latest,
+            now = Instant.now(),
+            historyRewritten = store.historySuspect,
+        )
 
         val worth = when {
             IntegrityProblem.SILENT in problems -> if (store.stoppedAfterLastHeartbeat()) {
@@ -84,6 +88,7 @@ class ParentPollWorker(
                 R.string.integrity_silent_hint
             }
 
+            IntegrityProblem.HISTORY_REWRITTEN in problems -> R.string.integrity_history_hint
             IntegrityProblem.BATTERY_LOW in problems -> R.string.integrity_battery_notification
             else -> null
         }

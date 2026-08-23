@@ -14,6 +14,7 @@ import dev.schrammel.dementor_watch.model.Heartbeat
 import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestId
 import dev.schrammel.dementor_watch.model.RequestState
+import dev.schrammel.dementor_watch.policy.IntegrityRules
 import dev.schrammel.dementor_watch.policy.request.RequestRules
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.rules.AppReviewStore
@@ -172,6 +173,8 @@ class SyncCoordinator(context: Context) {
                 FIELD_MANAGED to heartbeat.managed.toString(),
                 FIELD_USAGE_ACCESS to heartbeat.usageAccessGranted.toString(),
                 FIELD_SUSPENDED to heartbeat.suspendedCount.toString(),
+                FIELD_HISTORY_HEAD to heartbeat.historyHead,
+                FIELD_HISTORY_COUNT to heartbeat.historyCount.toString(),
             ),
         )
     }
@@ -249,8 +252,7 @@ class SyncCoordinator(context: Context) {
         }
 
         io.execute {
-            val key = runCatching { MessageCrypto.deriveKey(settings.passphrase, settings.topic) }
-                .getOrNull()
+            val key = keyFor(settings)
             if (key == null) {
                 onFinished(RESULT_BAD_PASSPHRASE)
                 return@execute
@@ -431,7 +433,11 @@ class SyncCoordinator(context: Context) {
                 // Numeric order, or "app10" would sort between "app1" and "app2".
                 .toSortedMap(compareBy { it.removePrefix(FIELD_APP_PREFIX).toIntOrNull() ?: 0 })
                 .values
-                .mapNotNull(::parseAppTime),
+                .mapNotNull(::parseAppTime)
+                // The sender publishes five. A phone that sends five thousand is
+                // either broken or trying it on, and either way this screen is
+                // not the place to find out.
+                .take(MAX_SUMMARY_APPS),
         )
         return true
     }
@@ -456,14 +462,26 @@ class SyncCoordinator(context: Context) {
     }
 
     private fun rememberHeartbeat(message: SyncMessage): Boolean {
-        heartbeats.latest = Heartbeat(
+        val arrived = Heartbeat(
             sentAt = message.sentAt,
             policyVersion = message.longField(FIELD_POLICY_VERSION) ?: 0L,
             batteryPercent = message.longField(FIELD_BATTERY)?.toInt() ?: -1,
             managed = message.field(FIELD_MANAGED).toBoolean(),
             usageAccessGranted = message.field(FIELD_USAGE_ACCESS).toBoolean(),
             suspendedCount = message.longField(FIELD_SUSPENDED)?.toInt() ?: 0,
+            historyHead = message.field(FIELD_HISTORY_HEAD).orEmpty().take(MAX_WIRE_TEXT),
+            historyCount = message.longField(FIELD_HISTORY_COUNT) ?: 0L,
         )
+
+        // Checked before the new heartbeat replaces the old, because the judgement
+        // is about the pair. Once noticed it stays noticed: a rewritten history is
+        // not undone by the next honest entry, and clearing it silently would
+        // hand back exactly what the check was for.
+        if (IntegrityRules.historyRewritten(heartbeats.latest, arrived)) {
+            heartbeats.historySuspect = true
+        }
+
+        heartbeats.latest = arrived
         // The device has spoken, so the next stretch of silence gets its own alert.
         heartbeats.silenceAlerted = false
         return true
@@ -565,13 +583,36 @@ class SyncCoordinator(context: Context) {
      */
     private fun String.clip(): String = take(MAX_WIRE_TEXT)
 
+    /**
+     * The family key, derived once and kept.
+     *
+     * Deriving it stretches the passphrase with 210,000 rounds of PBKDF2, which is
+     * the right cost to pay against someone guessing at the passphrase and quite
+     * the wrong cost to pay every fifteen seconds — which is how often the
+     * enforcement tick polls while a limit is close.
+     *
+     * Cached against the passphrase and topic it was derived from, so changing
+     * either produces a new key rather than a stale one. Only ever touched on the
+     * sync executor, which is single-threaded.
+     */
+    private fun keyFor(settings: SyncSettings): SyncKey? {
+        val identity = settings.passphrase to settings.topic
+        cachedKey?.let { (forIdentity, key) -> if (forIdentity == identity) return key }
+
+        val derived = runCatching {
+            MessageCrypto.deriveKey(settings.passphrase, settings.topic)
+        }.getOrNull() ?: return null
+
+        cachedKey = identity to derived
+        return derived
+    }
+
     private fun publish(type: SyncMessageType, fields: Map<String, String>) {
         val settings = config.load()
         if (!settings.isUsable) return
 
         io.execute {
-            val key = runCatching { MessageCrypto.deriveKey(settings.passphrase, settings.topic) }
-                .getOrNull() ?: return@execute
+            val key = keyFor(settings) ?: return@execute
 
             // Signing can fail on a phone whose keystore has been invalidated.
             // Publishing unsigned would be worse than not publishing: every
@@ -621,6 +662,12 @@ class SyncCoordinator(context: Context) {
         private val io: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "dementor-sync").apply { isDaemon = true }
         }
+        /**
+         * Guarded by [io] being single-threaded; never read from anywhere else.
+         */
+        @Volatile
+        private var cachedKey: Pair<Pair<String, String>, SyncKey>? = null
+
         private const val POLL_OVERLAP_SECONDS = 5L
 
         const val RESULT_NOT_CONFIGURED = "not configured"
@@ -641,11 +688,14 @@ class SyncCoordinator(context: Context) {
         const val FIELD_MANAGED = "managed"
         const val FIELD_USAGE_ACCESS = "usageAccess"
         const val FIELD_SUSPENDED = "suspended"
+        const val FIELD_HISTORY_HEAD = "historyHead"
+        const val FIELD_HISTORY_COUNT = "historyCount"
         const val FIELD_USED = "used"
         const val FIELD_ALLOWED = "allowed"
         const val FIELD_BONUS = "bonus"
         const val FIELD_LEVEL = "level"
         const val FIELD_APP_PREFIX = "app"
+        const val MAX_SUMMARY_APPS = 10
 
         /** Minutes, then the label — so a label containing a digit cannot confuse it. */
         const val APP_SEPARATOR = ':' 

@@ -13,6 +13,7 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.sync.DeviceId
 import dev.schrammel.dementor_watch.sync.KnownDevice
 import dev.schrammel.dementor_watch.sync.PendingDevice
 import dev.schrammel.dementor_watch.sync.RosterStore
@@ -77,6 +78,13 @@ class FamilyDevicesActivity : ParentGatedActivity() {
             column.addView(sectionHeader(getString(R.string.devices_waiting)))
             column.addView(captionText(getString(R.string.devices_waiting_hint)))
             pending.forEach { column.addView(pendingCard(it)) }
+        }
+
+        val refused = roster.refused
+        if (refused.isNotEmpty()) {
+            column.addView(sectionHeader(getString(R.string.devices_refused)))
+            column.addView(captionText(getString(R.string.devices_refused_hint)))
+            column.addView(group(refused.sorted().map(::refusedRow)))
         }
 
         column.addView(sectionHeader(getString(R.string.devices_trusted)))
@@ -149,6 +157,36 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                         }
                     },
                 )
+            },
+        )
+    }
+
+    /**
+     * A device the family turned away, and the way back.
+     *
+     * Rejecting is now permanent until undone, which is the point — but the
+     * commonest stranger in that list is a family member who reinstalled, and a
+     * mistake there must not be a phone that can never rejoin.
+     */
+    private fun refusedRow(id: String): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
+
+        addView(
+            TextView(context).apply {
+                text = id
+                styleAs(R.style.TextAppearance_Dementor_ListItem)
+                layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            },
+        )
+        addView(
+            Button(context).apply {
+                setText(R.string.devices_let_ask_again)
+                setOnClickListener {
+                    roster.unrefuse(FamilyDevicesActivity.idOf(id))
+                    render()
+                }
             },
         )
     }
@@ -311,5 +349,7 @@ class FamilyDevicesActivity : ParentGatedActivity() {
 
     companion object {
         fun intent(context: Context) = Intent(context, FamilyDevicesActivity::class.java)
+
+        private fun idOf(value: String) = DeviceId(value)
     }
 }

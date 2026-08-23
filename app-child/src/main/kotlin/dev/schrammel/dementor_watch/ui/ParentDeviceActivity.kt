@@ -61,7 +61,11 @@ class ParentDeviceActivity : ParentRoleActivity() {
 
         val now = Instant.now()
         val heartbeat = heartbeats.latest
-        val problems = IntegrityRules.problems(heartbeat, now)
+        val problems = IntegrityRules.problems(
+            heartbeat = heartbeat,
+            now = now,
+            historyRewritten = heartbeats.historySuspect,
+        )
 
         column.addView(statusCard(heartbeat, problems, now))
 
@@ -227,6 +231,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
         IntegrityProblem.USAGE_ACCESS_MISSING -> R.string.integrity_usage_access
         IntegrityProblem.NOT_MANAGED -> R.string.integrity_not_managed
         IntegrityProblem.BATTERY_LOW -> R.string.integrity_battery_low
+        IntegrityProblem.HISTORY_REWRITTEN -> R.string.integrity_history
     }
 
     private fun hintFor(problem: IntegrityProblem): Int = when (problem) {
@@ -240,6 +245,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
         IntegrityProblem.USAGE_ACCESS_MISSING -> R.string.integrity_usage_access_hint
         IntegrityProblem.NOT_MANAGED -> R.string.integrity_not_managed_hint
         IntegrityProblem.BATTERY_LOW -> R.string.integrity_battery_low_hint
+        IntegrityProblem.HISTORY_REWRITTEN -> R.string.integrity_history_hint
     }
 
     companion object {

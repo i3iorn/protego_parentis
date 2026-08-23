@@ -76,6 +76,11 @@ object Audit {
             prefs.edit(commit = true) {
                 putString(KEY_LOG, appended.log)
                 putString(KEY_ANCHOR, appended.anchor)
+                // Only ever incremented. Sent to the parents so a history that has
+                // been rebuilt rather than appended to shows up as a count that
+                // went backwards — which is the one thing a local chain cannot
+                // catch on its own.
+                putLong(KEY_TOTAL, prefs.getLong(KEY_TOTAL, 0L) + 1L)
             }
         }
     }
@@ -100,6 +105,23 @@ object Audit {
         )
     }
 
+    /**
+     * The head of the chain and how many entries have ever been written.
+     *
+     * Travels in the heartbeat. A parent's copy of these two numbers lives
+     * somewhere the child cannot rewrite, which is what makes trimming the log
+     * distinguishable from it simply being full.
+     */
+    fun witness(context: Context): Pair<String, Long> {
+        val prefs = prefs(context)
+        val head = AuditLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
+            .lastOrNull()
+            ?.hash
+            ?: prefs.getString(KEY_ANCHOR, null)
+            ?: AuditChain.GENESIS
+        return head to prefs.getLong(KEY_TOTAL, 0L)
+    }
+
     fun minutes(value: Int): String = value.toString()
 
     fun flag(value: Boolean): String = value.toString()
@@ -117,6 +139,9 @@ object Audit {
      * stops an ordinary trim looking exactly like a deleted first page.
      */
     private const val KEY_ANCHOR = "anchor"
+
+    /** Entries ever written, as opposed to entries still stored. */
+    private const val KEY_TOTAL = "total"
 
     private fun prefs(context: Context) = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)

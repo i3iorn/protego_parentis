@@ -76,6 +76,18 @@ class EnforcementCoordinator(context: Context) {
 
     fun isDeviceOwner(): Boolean = port.isDeviceOwner()
 
+    /** See [PolicyReconciler.forgetAppliedRestrictions]. */
+    fun forgetAppliedRestrictions() = reconciler.forgetAppliedRestrictions()
+
+    /**
+     * Whether the last pass could not point the device at its filtering resolver.
+     *
+     * Recorded rather than recomputed, because the rules screen needs to show it
+     * and asking for a fresh evaluation from a screen would mean opening that
+     * screen drove `DevicePolicyManager` — a read with side effects.
+     */
+    fun dnsFailedLastPass(): Boolean = EnforcementStatus(appContext).dnsFailed
+
     /**
      * Hands the device back: lifts every restriction, then relinquishes ownership.
      * See [DeviceReleaser] for why the order matters.
@@ -153,6 +165,8 @@ class EnforcementCoordinator(context: Context) {
 
         val reconcile = if (port.isDeviceOwner()) {
             reconciler.reconcile(policy, enforcement).also { result ->
+                EnforcementStatus(appContext).dnsFailed =
+                    result.invariantViolations.any { it.contains("private DNS") }
                 if (result.invariantViolations.isNotEmpty()) {
                     Diagnostics.record(
                         appContext,

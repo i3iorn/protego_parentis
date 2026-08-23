@@ -20,6 +20,7 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import android.os.BatteryManager
+import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.Heartbeat
 import dev.schrammel.dementor_watch.model.PackageName
@@ -220,6 +221,7 @@ class EnforcementService : Service() {
             // from a phone that has been switched off — and the two want very
             // different responses from a parent.
             runCatching {
+                val (head, count) = Audit.witness(this)
                 sync.publishHeartbeat(
                     Heartbeat(
                         sentAt = now,
@@ -228,6 +230,8 @@ class EnforcementService : Service() {
                         managed = coordinator.isDeviceOwner(),
                         usageAccessGranted = false,
                         suspendedCount = 0,
+                        historyHead = head,
+                        historyCount = count,
                     ),
                 )
             }.onFailure { Log.w(TAG, "Could not send heartbeat", it) }
@@ -302,6 +306,10 @@ class EnforcementService : Service() {
         // broadcasts with no ordering guarantee between them, and reading a stale
         // list here would miss the app this sweep was woken for.
         InstalledApps.invalidate()
+        // A browser that has just been reinstalled may have lost its managed
+        // configuration, and the desired configuration has not changed, so the
+        // reconciler has to be told to push it again rather than diff it away.
+        coordinator.forgetAppliedRestrictions()
 
         val installed = installedApps.launchable()
         val fresh = review.noticeInstalled(installed.map { it.pkg.value }.toSet())
@@ -321,16 +329,21 @@ class EnforcementService : Service() {
      * that comes close is the count of suspended apps, which says how much is being
      * enforced without saying what.
      */
-    private fun heartbeatOf(snapshot: EnforcementSnapshot, now: Instant) = Heartbeat(
-        sentAt = now,
-        policyVersion = snapshot.policy.version,
-        batteryPercent = batteryPercent(),
-        managed = !snapshot.monitorOnly,
-        // Unconditionally true: a snapshot only exists when usage access is
-        // granted. The other branch of evaluate() sends the false case.
-        usageAccessGranted = true,
-        suspendedCount = snapshot.enforcement.suspend.size,
-    )
+    private fun heartbeatOf(snapshot: EnforcementSnapshot, now: Instant): Heartbeat {
+        val (head, count) = Audit.witness(this)
+        return Heartbeat(
+            sentAt = now,
+            policyVersion = snapshot.policy.version,
+            batteryPercent = batteryPercent(),
+            managed = !snapshot.monitorOnly,
+            // Unconditionally true: a snapshot only exists when usage access is
+            // granted. The other branch of evaluate() sends the false case.
+            usageAccessGranted = true,
+            suspendedCount = snapshot.enforcement.suspend.size,
+            historyHead = head,
+            historyCount = count,
+        )
+    }
 
     /**
      * Today's totals, for the parent's one-glance view (RPT-1).

@@ -201,7 +201,12 @@ object PolicyEngine {
     ): Boolean {
         if (!policy.browserPolicy.suspendUnmanagedBrowsers) return false
         if (pkg !in browsers) return false
-        return pkg.value !in MANAGED_BROWSERS
+        if (pkg.value in MANAGED_BROWSERS) return false
+
+        // With no manageable browser on the phone, suspending the rest does not
+        // leave a filtered web — it leaves no web. The switch promises the first,
+        // so it does nothing rather than quietly delivering the second.
+        return browsers.any { it.value in MANAGED_BROWSERS }
     }
 
     /**

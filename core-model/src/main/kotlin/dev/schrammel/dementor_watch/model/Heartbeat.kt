@@ -26,6 +26,19 @@ data class Heartbeat(
     val usageAccessGranted: Boolean,
     /** How many apps the last evaluation was holding suspended. */
     val suspendedCount: Int,
+    /**
+     * The head of the child's history chain, and how many entries have ever been
+     * written to it (TR-3).
+     *
+     * A hash chain kept only on the phone that writes it can always be recomputed
+     * by whoever holds that phone, so trimming the oldest entries away is
+     * indistinguishable from the log simply being full. Sending the head and the
+     * running count to the parents puts a copy somewhere the child cannot rewrite:
+     * a count that goes backwards, or a head that changes without the count
+     * moving, means the record was rebuilt rather than appended to.
+     */
+    val historyHead: String = "",
+    val historyCount: Long = 0L,
 ) {
     val batteryKnown: Boolean get() = batteryPercent in 0..100
 }
@@ -49,6 +62,12 @@ enum class IntegrityProblem {
 
     /** The battery is low enough that the phone may be about to go quiet (LOC-4). */
     BATTERY_LOW,
+
+    /**
+     * The child's shared history no longer follows from what the parents were
+     * previously told it was.
+     */
+    HISTORY_REWRITTEN,
     ;
 
     /**
@@ -59,5 +78,8 @@ enum class IntegrityProblem {
      * dismiss these without reading them.
      */
     val isUrgent: Boolean
-        get() = this == SILENT || this == USAGE_ACCESS_MISSING || this == NOT_MANAGED
+        get() = this == SILENT ||
+            this == USAGE_ACCESS_MISSING ||
+            this == NOT_MANAGED ||
+            this == HISTORY_REWRITTEN
 }

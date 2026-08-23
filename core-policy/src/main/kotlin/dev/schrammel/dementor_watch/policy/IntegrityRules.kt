@@ -28,6 +28,8 @@ object IntegrityRules {
     fun problems(
         heartbeat: Heartbeat?,
         now: Instant,
+        /** Whether the child's history has stopped following from what we were told. */
+        historyRewritten: Boolean = false,
         silenceAfter: Duration = Defaults.HEARTBEAT_SILENCE_MINUTES.minutes,
         lowBatteryPercent: Int = Defaults.LOW_BATTERY_PERCENT,
     ): List<IntegrityProblem> {
@@ -42,7 +44,30 @@ object IntegrityRules {
             if (heartbeat.batteryKnown && heartbeat.batteryPercent <= lowBatteryPercent) {
                 add(IntegrityProblem.BATTERY_LOW)
             }
+            if (historyRewritten) add(IntegrityProblem.HISTORY_REWRITTEN)
         }
+    }
+
+    /**
+     * Whether the history described by [latest] could have grown from [previous].
+     *
+     * An honest log only ever gains entries, so its count rises and its head moves
+     * with it. A count that has gone backwards means entries were removed; a head
+     * that changed while the count stood still means entries were rewritten in
+     * place. Either way the record was rebuilt, not appended to.
+     *
+     * Two things this deliberately does not treat as tampering: a first sighting,
+     * and a count that grew — the head is expected to change then, and it is not
+     * this phone's job to verify a chain it does not hold.
+     */
+    fun historyRewritten(previous: Heartbeat?, latest: Heartbeat): Boolean {
+        if (previous == null) return false
+        // A device that has not reported a history yet says nothing either way.
+        if (previous.historyCount == 0L || latest.historyCount == 0L) return false
+
+        if (latest.historyCount < previous.historyCount) return true
+        return latest.historyCount == previous.historyCount &&
+            latest.historyHead != previous.historyHead
     }
 
     /**

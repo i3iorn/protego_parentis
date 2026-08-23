@@ -43,6 +43,10 @@ class RosterStore(context: Context) {
      */
     fun notice(device: PendingDevice) = synchronized(LOCK) {
         if (devices.any { it.id == device.id }) return@synchronized
+        // Turned away already. Without this, "not mine" lasted until the device
+        // announced again — about a minute — and a phone that kept announcing
+        // could push the one the family was waiting for out of a capped list.
+        if (device.id.value in refused) return@synchronized
 
         val existing = pending.filterNot { it.id == device.id }
         writePending((existing + device).takeLast(MAX_PENDING))
@@ -68,14 +72,34 @@ class RosterStore(context: Context) {
             device
         }
 
+    /** Turns a device away and remembers doing so, until [unrefuse]. */
     fun reject(id: DeviceId) = synchronized(LOCK) {
         writePending(pending.filterNot { it.id == id })
+        prefs.edit { putStringSet(KEY_REFUSED, refused + id.value) }
+    }
+
+    /** Devices this family has turned away. */
+    val refused: Set<String>
+        get() = prefs.getStringSet(KEY_REFUSED, emptySet()).orEmpty()
+
+    /**
+     * Lets a device ask again.
+     *
+     * Rejecting is the right default for a phone nobody recognises, and it has to
+     * be reversible: the commonest reason for a stranger in the list is a family
+     * member reinstalling, and a mistake there would otherwise be permanent.
+     */
+    fun unrefuse(id: DeviceId) = synchronized(LOCK) {
+        prefs.edit { putStringSet(KEY_REFUSED, refused - id.value) }
     }
 
     /** Removes a device's trust. It can ask again, and be looked at again. */
     fun revoke(id: DeviceId) = synchronized(LOCK) {
         writeKnown(devices.filterNot { it.id == id })
         writePending(pending.filterNot { it.id == id })
+        // Not added to the refused list: removing a device is usually a prelude to
+        // adding it back, and a removal that also made it invisible would look
+        // like the app had broken.
     }
 
     /**
@@ -195,6 +219,7 @@ class RosterStore(context: Context) {
         const val FILE_NAME = "roster"
         const val KEY_KNOWN = "known"
         const val KEY_PENDING = "pending"
+        const val KEY_REFUSED = "refused"
 
         /** Enough for a large family plus a few reinstalls; not enough to flood. */
         const val MAX_PENDING = 10

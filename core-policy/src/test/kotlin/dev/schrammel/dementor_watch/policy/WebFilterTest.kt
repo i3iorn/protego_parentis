@@ -142,6 +142,21 @@ class WebFilterTest {
         assertTrue(enforcement.suspend.isEmpty())
     }
 
+    /**
+     * With no manageable browser on the phone, pausing the rest leaves no web at
+     * all — which is not what the switch says it does.
+     */
+    @Test
+    fun `browsers are left alone when none of them can be managed`() {
+        val enforcement = evaluate(
+            policy(browser = BrowserPolicy(suspendUnmanagedBrowsers = true)),
+            installed = setOf(firefox),
+            browsers = setOf(firefox),
+        )
+
+        assertTrue(enforcement.suspend.isEmpty())
+    }
+
     /** The safety allowlist outranks web filtering, as it outranks everything. */
     @Test
     fun `a safety-exempt browser is never suspended`() {

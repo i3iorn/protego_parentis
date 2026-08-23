@@ -20,9 +20,21 @@ data class DnsFilter(
 ) {
     init {
         require(host.isNotBlank()) { "a DNS filter needs a hostname" }
-        require(!host.contains('/') && !host.contains(' ')) {
+        // A hostname, not a URL and not a line of text. Checked here rather than
+        // trusted from the editor, because this value is handed straight to the
+        // platform and a hostname nobody validated is a filter nobody has.
+        require(host.none { it.isWhitespace() || it.isISOControl() }) {
+            "a DNS hostname cannot contain whitespace or control characters"
+        }
+        require(!host.contains('/') && !host.contains(':')) {
             "private DNS takes a hostname, not a URL: '$host'"
         }
+        require(host.length <= MAX_HOSTNAME_LENGTH) { "hostname is too long" }
+    }
+
+    private companion object {
+        /** The DNS limit, and a bound on what can be pushed at the platform. */
+        const val MAX_HOSTNAME_LENGTH = 253
     }
 }
 

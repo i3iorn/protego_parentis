@@ -79,6 +79,18 @@ class HeartbeatStore(context: Context) {
     }
 
     /**
+     * Whether the child's history has stopped adding up.
+     *
+     * Sticky once set. A rewritten record is not made honest again by the next
+     * honest entry, and clearing this on the following heartbeat would hand back
+     * exactly what the check exists to catch. Cleared only by re-approving the
+     * device, which is a person deciding to trust it again.
+     */
+    var historySuspect: Boolean
+        get() = prefs.getBoolean(KEY_HISTORY_SUSPECT, false)
+        set(value) = prefs.edit { putBoolean(KEY_HISTORY_SUSPECT, value) }
+
+    /**
      * Whether a "this phone has gone quiet" alert has already been raised for the
      * current stretch of silence, so it fires once rather than every fifteen
      * minutes until somebody looks at their phone.
@@ -99,5 +111,6 @@ class HeartbeatStore(context: Context) {
         const val KEY_SUSPENDED = "suspended"
         const val KEY_ALERTED = "silenceAlerted"
         const val KEY_STOPPED_AT = "stoppedAt"
+        const val KEY_HISTORY_SUSPECT = "historySuspect"
     }
 }

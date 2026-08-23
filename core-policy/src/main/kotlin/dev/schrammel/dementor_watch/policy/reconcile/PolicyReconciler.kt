@@ -2,6 +2,7 @@ package dev.schrammel.dementor_watch.policy.reconcile
 
 import dev.schrammel.dementor_watch.model.Enforcement
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.model.RestrictionValue
 import dev.schrammel.dementor_watch.model.Policy
 
 /**
@@ -28,7 +29,18 @@ class PolicyReconciler(
      * "someone else set nothing". Losing it across a process restart costs one
      * redundant clear, which is harmless.
      */
-    private var managedLast: Set<PackageName> = emptySet()
+    private var managedLast: Map<PackageName, Map<String, RestrictionValue>> = emptyMap()
+
+    /**
+     * Forgets what was pushed, so the next pass pushes it again.
+     *
+     * Called when a package is installed or replaced: a browser that has just been
+     * reinstalled may have lost the configuration it was given, and nothing else
+     * would notice, because the desired configuration has not changed.
+     */
+    fun forgetAppliedRestrictions() {
+        managedLast = emptyMap()
+    }
 
     fun reconcile(policy: Policy, enforcement: Enforcement): ReconcileResult {
         if (!port.isDeviceOwner()) {
@@ -109,18 +121,21 @@ class PolicyReconciler(
             }
         }
 
-        // Managed configuration is pushed unconditionally rather than diffed:
-        // reading it back reports what this app last set, not what the browser is
-        // acting on, so a diff would skip a re-push after the browser was updated.
+        // Diffed against what this pass last pushed rather than against the
+        // device: reading it back reports what this app set, which cannot tell
+        // "we set nothing" from "nobody set anything". Pushing every tick instead
+        // would mean a binder call every fifteen seconds while a limit is close.
         enforcement.appRestrictions.forEach { (pkg, restrictions) ->
-            port.setApplicationRestrictions(pkg, restrictions)
+            if (managedLast[pkg] != restrictions) {
+                port.setApplicationRestrictions(pkg, restrictions)
+            }
         }
         // A package that was managed and no longer is has its configuration
         // cleared, or yesterday's blocklist would outlive the rule that set it.
-        (managedLast - enforcement.appRestrictions.keys).forEach { pkg ->
+        (managedLast.keys - enforcement.appRestrictions.keys).forEach { pkg ->
             port.setApplicationRestrictions(pkg, emptyMap())
         }
-        managedLast = enforcement.appRestrictions.keys
+        managedLast = enforcement.appRestrictions
 
         // --- self-protection ---
         // Tied to the same switch: if the device is not locked down, the app must

@@ -604,6 +604,9 @@
     <string name="devices_renamed">Renamed. The other phones will see it shortly.</string>
     <string name="devices_waiting">Waiting to be approved</string>
     <string name="devices_waiting_hint">These phones know the passphrase. Check the fingerprint against the one shown on the phone itself before approving.</string>
+    <string name="devices_refused">Turned away</string>
+    <string name="devices_refused_hint">These phones asked to join and were refused. They stay out until you let one ask again.</string>
+    <string name="devices_let_ask_again">Let it ask</string>
     <string name="devices_trusted">Trusted</string>
     <string name="devices_none">No other phones yet.</string>
     <string name="devices_unnamed">Unnamed phone</string>
@@ -676,6 +679,8 @@
     <!-- Device health (LOC-4). -->
     <string name="integrity_switched_off">Switched off</string>
     <string name="integrity_switched_off_hint">The phone said it was switching off. It will check in again when it comes back.</string>
+    <string name="integrity_history">History does not add up</string>
+    <string name="integrity_history_hint">The other phone reported a shared history that no longer follows from what it told us before. Entries were removed or rewritten rather than added.</string>
     <string name="integrity_battery_notification">The other phone is low on battery and may switch off soon.</string>
 
     <string name="audit_web_filter_changed">Web filtering set to %1$s</string>

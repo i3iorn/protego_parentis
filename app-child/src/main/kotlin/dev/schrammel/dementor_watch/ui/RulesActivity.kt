@@ -110,15 +110,14 @@ class RulesActivity : ParentGatedActivity() {
     private fun showDeviceStatus() {
         Background.load(this, {
             val coordinator = EnforcementCoordinator(this)
-            // A filtering server the phone refused is the one setting here whose
-            // failure is invisible: the screen would otherwise say it is filtered.
-            coordinator.isDeviceOwner() to coordinator.evaluate()?.reconcile
-                ?.invariantViolations
-                ?.any { it.contains("private DNS") }
+            // Read, not recomputed. Asking for a fresh evaluation here would mean
+            // opening this screen drove DevicePolicyManager, which is a side
+            // effect no one asked a status line to have.
+            coordinator.isDeviceOwner() to coordinator.dnsFailedLastPass()
         }) { (owner, dnsFailed) ->
             val status = findViewById<TextView>(R.id.device_status)
             when {
-                dnsFailed == true -> status.setText(R.string.rules_dns_failed)
+                dnsFailed -> status.setText(R.string.rules_dns_failed)
                 owner -> status.setText(R.string.rules_device_status_owner)
                 else -> status.setText(R.string.rules_device_status_monitor)
             }
