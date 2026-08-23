@@ -22,7 +22,7 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 189 tests run without a phone.
+in the wrong place — that separation is what lets 196 tests run without a phone.
 
 ---
 
@@ -135,7 +135,7 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-189 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
+196 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
 and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
@@ -144,6 +144,7 @@ and cover the things that are easy to get quietly wrong:
 - an app in several categories spending from each of them
 - the safety allowlist surviving every possible restriction
 - screen-off ending open sessions, so a face-down phone accrues nothing
+- screen-on resuming them again, so unlocking back into the same app keeps counting
 - gaps in history filling as real zeros, so a day off is not mistaken for a day
   that was never measured
 - an approved request always producing a grant that matches what was asked for
@@ -199,13 +200,16 @@ the tamper-protection switch rather than something the app can do on its own.
 | Product behaviour — day boundary, default limits, warning thresholds, history retention | `core-model/.../model/Defaults.kt` |
 | Per-family behaviour that varies — budgets, categories, bedtime, warning thresholds | the `Policy` object itself |
 | Spacing and component sizes | `app-child/res/values/dimens.xml` |
-| The type scale | `app-child/res/values/styles.xml` |
-| Colours we draw ourselves | `app-child/res/values/colors.xml` |
+| The type scale, the theme, card styling | `app-child/res/values/styles.xml` |
+| Colours we draw ourselves | `app-child/res/values/colors.xml` (+ `values-night/`) |
 | UI tuning — list caps, week length, bonus amounts | `app-child/res/values/config.xml` |
 | All user-visible text | `app-child/res/values/strings.xml` |
 
 There should be no bare dimension, text size or tuning number anywhere in Kotlin
 or layout XML. If you need one, add it to the right file above and reference it.
+
+Every colour name in `values/colors.xml` must also exist in `values-night/`, or
+the app crashes at inflate time in dark mode.
 
 ## Conventions
 

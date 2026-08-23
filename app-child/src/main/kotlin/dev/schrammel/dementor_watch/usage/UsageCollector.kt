@@ -104,15 +104,24 @@ class UsageCollector(context: Context) {
 
     private fun kindOf(eventType: Int): UsageEventKind? = when (eventType) {
         UsageEvents.Event.ACTIVITY_RESUMED -> UsageEventKind.APP_RESUMED
-        UsageEvents.Event.ACTIVITY_PAUSED,
-        UsageEvents.Event.ACTIVITY_STOPPED,
-        -> UsageEventKind.APP_PAUSED
+
+        // ACTIVITY_STOPPED is deliberately not treated as a close. Moving between
+        // two screens of one app emits pause(first), resume(second), stop(first),
+        // so a stop would end the session immediately after it reopened and the
+        // app would stop being counted while still on screen.
+        UsageEvents.Event.ACTIVITY_PAUSED -> UsageEventKind.APP_PAUSED
 
         // Android does not reliably pause the foreground app when the screen goes
         // off. Without these, a phone left face-down accrues hours.
         UsageEvents.Event.SCREEN_NON_INTERACTIVE,
         UsageEvents.Event.KEYGUARD_SHOWN,
         -> UsageEventKind.SCREEN_OFF
+
+        // The mirror image, and just as necessary: unlocking back into the app you
+        // were already using does not always emit a fresh resume.
+        UsageEvents.Event.SCREEN_INTERACTIVE,
+        UsageEvents.Event.KEYGUARD_HIDDEN,
+        -> UsageEventKind.SCREEN_ON
 
         UsageEvents.Event.DEVICE_SHUTDOWN -> UsageEventKind.SHUTDOWN
 

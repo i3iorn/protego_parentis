@@ -33,6 +33,11 @@
     <dimen name="row_icon">32dp</dimen>
     <dimen name="row_icon_small">28dp</dimen>
 
+    <!-- Surfaces -->
+    <dimen name="card_radius">12dp</dimen>
+    <dimen name="card_padding">16dp</dimen>
+    <dimen name="bar_radius">4dp</dimen>
+
     <!-- Progress and charts -->
     <dimen name="budget_bar_height">10dp</dimen>
     <dimen name="week_bar_height">16dp</dimen>

@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
@@ -35,12 +34,9 @@ class WeekActivity : AppCompatActivity() {
     private lateinit var installedApps: InstalledApps
     private lateinit var container: LinearLayout
 
-    /** Both come from `res/values/config.xml` and `res/values/colors.xml`. */
+    /** See `res/values/config.xml`. */
     private val minimumBarFraction: Float by lazy {
         ResourcesCompat.getFloat(resources, R.dimen.week_bar_minimum_fraction)
-    }
-    private val barColor: Int by lazy {
-        ContextCompat.getColor(this, R.color.week_bar_fill)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -149,10 +145,11 @@ class WeekActivity : AppCompatActivity() {
                             orientation = LinearLayout.HORIZONTAL
                             layoutParams = LinearLayout.LayoutParams(0, dimen(R.dimen.week_bar_height), 1f)
                                 .apply { marginEnd = dimen(R.dimen.space_md) }
+                            setBackgroundResource(R.drawable.week_bar_track)
 
                             addView(
                                 View(context).apply {
-                                    setBackgroundColor(barColor)
+                                    setBackgroundResource(R.drawable.week_bar_fill)
                                     layoutParams = LinearLayout.LayoutParams(
                                         0,
                                         ViewGroup.LayoutParams.MATCH_PARENT,

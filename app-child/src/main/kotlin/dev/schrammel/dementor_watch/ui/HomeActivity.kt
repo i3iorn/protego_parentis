@@ -2,6 +2,7 @@ package dev.schrammel.dementor_watch.ui
 
 import android.Manifest
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Gravity
@@ -170,6 +171,7 @@ class HomeActivity : AppCompatActivity() {
                 subline.text = getString(R.string.home_resets)
                 bar.visibility = View.VISIBLE
                 bar.progress = 100
+                tint(bar, BudgetLevel.EXHAUSTED)
             }
 
             else -> {
@@ -184,6 +186,7 @@ class HomeActivity : AppCompatActivity() {
                 )
                 bar.visibility = View.VISIBLE
                 bar.progress = percentUsed(budget.used, budget.allowed + budget.bonus)
+                tint(bar, budget.level)
             }
         }
 
@@ -322,6 +325,19 @@ class HomeActivity : AppCompatActivity() {
                 },
             )
         }
+    }
+
+    /**
+     * State as colour as well as number, so "nearly out" reads at a glance rather
+     * than having to be worked out from a figure.
+     */
+    private fun tint(bar: ProgressBar, level: BudgetLevel) {
+        val colour = when (level) {
+            BudgetLevel.NORMAL -> R.color.state_ok
+            BudgetLevel.NOTICE, BudgetLevel.GRACE -> R.color.state_warning
+            BudgetLevel.EXHAUSTED -> R.color.state_critical
+        }
+        bar.progressTintList = ColorStateList.valueOf(ContextCompat.getColor(this, colour))
     }
 
     private fun percentUsed(used: Duration, total: Duration): Int {

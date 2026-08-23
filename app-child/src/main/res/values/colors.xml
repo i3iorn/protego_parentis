@@ -1,13 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The app otherwise inherits its colours from the AppCompat DayNight theme so it
-  follows the system light/dark setting. Only colours we draw ourselves belong here.
+  Light values. The dark equivalents live in values-night/colors.xml, and every
+  name here must exist there too or the app will crash at inflate time in dark mode.
 -->
 <resources>
 
-    <!-- Fill of the day bars in the weekly chart. A muted blue: this is a chart
-         to read, not a status to react to, so it deliberately avoids the
-         red/amber/green vocabulary used for limits. -->
+    <!-- Brand. A dusk blue: this is an app about evenings and bedtimes, and it
+         should not look like an alarm. -->
+    <color name="brand">#3F5D9E</color>
+    <color name="brand_dark">#2C4275</color>
+
+    <!-- Surfaces drawn on top of the theme background. -->
+    <color name="card">#F2F4F9</color>
+    <color name="card_stroke">#DCE1EC</color>
+
+    <!-- Budget state. Separate from the brand: these carry meaning, and reusing
+         the brand colour for "you are fine" would make the meaning invisible. -->
+    <color name="state_ok">#2C7357</color>
+    <color name="state_warning">#A2610C</color>
+    <color name="state_critical">#A63446</color>
+
+    <!-- Fill of the day bars in the weekly chart. Deliberately not one of the
+         state colours: the chart is history to read, not a status to react to. -->
     <color name="week_bar_fill">#5C8DDB</color>
+    <color name="week_bar_track">#DCE1EC</color>
 
 </resources>

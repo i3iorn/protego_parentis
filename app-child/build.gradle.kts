@@ -13,8 +13,8 @@ android {
         applicationId = "dev.schrammel.dementor_watch"
         minSdk = 33
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.9-test"
+        versionCode = 10
+        versionName = "0.10-test"
 
     }
 

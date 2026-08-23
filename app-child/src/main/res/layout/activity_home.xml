@@ -22,9 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_xl"
-            android:background="?android:attr/colorBackgroundFloating"
-            android:orientation="vertical"
-            android:padding="@dimen/space_lg"
+            style="@style/Widget.Dementor.Card"
             android:visibility="gone">
 
             <TextView
@@ -50,10 +48,10 @@
 
         <LinearLayout
             android:id="@+id/summary_card"
+            style="@style/Widget.Dementor.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xl"
-            android:orientation="vertical">
+            android:layout_marginTop="@dimen/space_xl">
 
             <TextView
                 android:id="@+id/headline"

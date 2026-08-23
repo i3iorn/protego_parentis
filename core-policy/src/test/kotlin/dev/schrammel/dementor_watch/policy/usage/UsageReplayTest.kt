@@ -23,6 +23,10 @@ class UsageReplayTest {
     private fun screenOff(at: Long) =
         RawUsageEvent(UsageEventKind.SCREEN_OFF, "android", at)
 
+    private fun screenOn(at: Long) =
+        RawUsageEvent(UsageEventKind.SCREEN_ON, "android", at)
+
+
     // ---------- basics ----------
 
     @Test
@@ -106,6 +110,128 @@ class UsageReplayTest {
         )
 
         assertEquals(5.minutes, result.totals[PackageName(game)])
+    }
+
+    // ---------- regressions: usage silently stopping ----------
+
+    @Test
+    fun `unlocking back into the same app keeps counting`() {
+        // The reported bug. Android does not always emit a fresh resume when you
+        // unlock straight back into the app you were already using, so the session
+        // stayed closed and the app stopped being counted until you switched apps.
+        val result = UsageReplay.replay(
+            listOf(
+                resumed(game, minute(0)),
+                screenOff(minute(10)),
+                screenOn(minute(40)),
+            ),
+            untilMillis = minute(50),
+        )
+
+        // Ten minutes before the screen went off, ten after it came back.
+        assertEquals(20.minutes, result.totals[PackageName(game)])
+        assertEquals(PackageName(game), result.openPackage)
+    }
+
+    @Test
+    fun `time on the lock screen before unlocking is not counted`() {
+        // The screen comes on at 40 and the keyguard is dismissed at 45. Only the
+        // time after unlocking is real use.
+        val result = UsageReplay.replay(
+            listOf(
+                resumed(game, minute(0)),
+                screenOff(minute(10)),
+                screenOn(minute(40)),
+                screenOn(minute(45)),
+            ),
+            untilMillis = minute(50),
+        )
+
+        assertEquals(15.minutes, result.totals[PackageName(game)])
+    }
+
+    @Test
+    fun `waking to a different app does not revive the old one`() {
+        val result = UsageReplay.replay(
+            listOf(
+                resumed(game, minute(0)),
+                screenOff(minute(10)),
+                screenOn(minute(40)),
+                resumed(youtube, minute(41)),
+            ),
+            untilMillis = minute(50),
+        )
+
+        assertEquals(11.minutes, result.totals[PackageName(game)])
+        assertEquals(9.minutes, result.totals[PackageName(youtube)])
+    }
+
+    @Test
+    fun `leaving an app before locking means it does not come back on wake`() {
+        val result = UsageReplay.replay(
+            listOf(
+                resumed(game, minute(0)),
+                paused(game, minute(10)),
+                screenOff(minute(11)),
+                screenOn(minute(40)),
+            ),
+            untilMillis = minute(50),
+        )
+
+        assertEquals(10.minutes, result.totals[PackageName(game)])
+        assertNull(result.openPackage)
+    }
+
+    @Test
+    fun `waking with nothing previously open counts nothing`() {
+        val result = UsageReplay.replay(
+            listOf(screenOn(minute(10))),
+            untilMillis = minute(50),
+        )
+
+        assertEquals(emptyMap<PackageName, Duration>(), result.totals)
+    }
+
+    @Test
+    fun `moving between screens of one app keeps counting`() {
+        // Navigating within an app emits pause(first activity) immediately
+        // followed by resume(second). The session must survive that.
+        //
+        // The other half of this fix is in the collector: ACTIVITY_STOPPED is no
+        // longer mapped to a close at all. Android emits it for the *outgoing*
+        // activity after the incoming one resumes, so it used to shut the session
+        // down again a moment after it reopened.
+        val result = UsageReplay.replay(
+            listOf(
+                resumed(game, minute(0)),
+                paused(game, minute(10)),
+                resumed(game, minute(10)),
+            ),
+            untilMillis = minute(30),
+        )
+
+        assertEquals(30.minutes, result.totals[PackageName(game)])
+        assertEquals(PackageName(game), result.openPackage)
+    }
+
+    @Test
+    fun `a full lock and unlock cycle matches wall clock time`() {
+        // Belt and braces: the total across a realistic session must not exceed
+        // the time the screen was actually on.
+        val result = UsageReplay.replay(
+            listOf(
+                resumed(game, minute(0)),
+                resumed(youtube, minute(5)),
+                screenOff(minute(15)),
+                screenOn(minute(60)),
+                resumed(game, minute(61)),
+                screenOff(minute(70)),
+            ),
+            untilMillis = minute(120),
+        )
+
+        val total = result.totals.values.fold(Duration.ZERO, Duration::plus)
+        assertEquals(25.minutes, total)
     }
 
     @Test

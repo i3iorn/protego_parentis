@@ -12,6 +12,23 @@
 -->
 <resources>
 
+    <!-- The app theme. DayNight so the app follows the system light/dark setting;
+         no action bar because every screen draws its own title. -->
+    <style name="Theme.DementorWatch" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand</item>
+        <item name="colorPrimaryDark">@color/brand_dark</item>
+        <item name="colorAccent">@color/brand</item>
+        <item name="android:statusBarColor">?android:attr/colorBackground</item>
+    </style>
+
+    <!-- A grouped summary block. -->
+    <!-- parent="" opts out of the implicit parent that a dotted name would otherwise imply. -->
+    <style name="Widget.Dementor.Card" parent="">
+        <item name="android:background">@drawable/card</item>
+        <item name="android:padding">@dimen/card_padding</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
     <!-- The one big number on a screen: time remaining, weekly total. -->
     <style name="TextAppearance.Dementor.Display" parent="TextAppearance.AppCompat">
         <item name="android:textSize">34sp</item>
