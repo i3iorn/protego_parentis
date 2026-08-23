@@ -120,6 +120,9 @@ object AuditText {
 
             AuditAction.PIN_CHANGED -> context.getString(R.string.audit_pin_changed)
 
+            AuditAction.BIOMETRIC_UNLOCK_CHANGED ->
+                context.getString(R.string.audit_biometric_changed, after)
+
             AuditAction.WEB_FILTER_CHANGED ->
                 context.getString(R.string.audit_web_filter_changed, webProfile(context, entry.after))
 

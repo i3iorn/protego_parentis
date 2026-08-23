@@ -13,8 +13,8 @@ android {
         applicationId = "dev.schrammel.dementor_watch"
         minSdk = 33
         targetSdk = 37
-        versionCode = 25
-        versionName = "0.25-test"
+        versionCode = 26
+        versionName = "0.26-test"
 
     }
 
@@ -39,6 +39,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.work)
+    implementation(libs.androidx.biometric)
     testImplementation(libs.junit)
     testImplementation(libs.json)
 }

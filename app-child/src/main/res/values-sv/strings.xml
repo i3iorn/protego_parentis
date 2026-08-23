@@ -693,4 +693,21 @@
 
     <string name="audit_web_filter_changed">Webbfiltrering satt till %1$s</string>
     <string name="audit_browser_policy_changed">Webbläsarinställningen \"%1$s\" slogs %2$s</string>
+
+    <!-- Upplåsning med fingeravtryck eller ansikte (TR-4). -->
+    <string name="pin_biometric_title">Lås upp reglerna</string>
+    <string name="pin_biometric_subtitle">Använd fingeravtryck eller ansikte i stället för PIN-koden.</string>
+    <string name="pin_biometric_use_pin">Använd PIN-kod</string>
+    <string name="pin_biometric_retry">Använd fingeravtryck eller ansikte</string>
+
+    <string name="biometric_header">Fingeravtryck eller ansikte</string>
+    <string name="biometric_enable">Tillåt fingeravtryck eller ansikte i stället för PIN-koden</string>
+    <string name="biometric_body">Ett snabbare sätt in för den som håller i telefonen. PIN-koden fortsätter fungera, och är vägen in om det här slutar fungera.</string>
+    <string name="biometric_warning_child">Var försiktig på den här telefonen. Varje fingeravtryck och ansikte som är registrerat på den öppnar reglerna — även ditt barns, eftersom det är deras telefon. Låt det här vara avstängt om inte bara en förälder är registrerad här.</string>
+    <string name="biometric_none">Inget fingeravtryck och inget ansikte är registrerat på den här telefonen ännu. Lägg till ett i telefonens egna inställningar först.</string>
+    <string name="biometric_unsupported">Den här telefonen har ingen läsare för fingeravtryck eller ansikte som appen kan lita på.</string>
+    <string name="biometric_invalidated">Avstängt av telefonen, eftersom de registrerade fingeravtrycken eller ansiktena ändrades. Använd PIN-koden och slå på det igen om du fortfarande vill ha det.</string>
+    <string name="biometric_failed">Telefonen ville inte ställa in det här. PIN-koden fungerar fortfarande.</string>
+
+    <string name="audit_biometric_changed">Upplåsning med fingeravtryck eller ansikte slogs %1$s</string>
 </resources>

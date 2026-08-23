@@ -53,6 +53,9 @@ class ParentSettingsActivity : ParentGatedActivity() {
             },
         )
 
+        column.addView(sectionHeader(getString(R.string.biometric_header)))
+        column.addView(biometricSetting { render() })
+
         column.addView(sectionHeader(getString(R.string.parent_settings_role_header)))
         column.addView(bodyText(getString(R.string.parent_settings_role_body)))
         column.addView(

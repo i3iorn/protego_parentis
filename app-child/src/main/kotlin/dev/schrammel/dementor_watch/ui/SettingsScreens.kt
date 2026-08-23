@@ -468,6 +468,9 @@ class DeviceControlActivity : ParentGatedActivity() {
             },
         )
 
+        column.addView(sectionHeader(getString(R.string.biometric_header)))
+        column.addView(biometricSetting { render() })
+
         column.addView(sectionHeader(getString(R.string.rules_tamper_enable)))
         column.addView(captionText(getString(R.string.rules_tamper_hint)))
         column.addView(

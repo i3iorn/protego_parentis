@@ -686,4 +686,21 @@
 
     <string name="audit_web_filter_changed">Web filtering set to %1$s</string>
     <string name="audit_browser_policy_changed">Browser setting \"%1$s\" turned %2$s</string>
+
+    <!-- Unlocking with a fingerprint or a face (TR-4). -->
+    <string name="pin_biometric_title">Unlock the rules</string>
+    <string name="pin_biometric_subtitle">Use your fingerprint or face instead of the PIN.</string>
+    <string name="pin_biometric_use_pin">Use PIN</string>
+    <string name="pin_biometric_retry">Use fingerprint or face</string>
+
+    <string name="biometric_header">Fingerprint or face</string>
+    <string name="biometric_enable">Allow fingerprint or face instead of the PIN</string>
+    <string name="biometric_body">A quicker way in for whoever holds this phone. The PIN keeps working, and stays the way back in if this stops working.</string>
+    <string name="biometric_warning_child">Careful on this phone. Any fingerprint or face registered on it will open the rules — including your child\'s, because it is their phone. Leave this off unless only a parent is registered here.</string>
+    <string name="biometric_none">No fingerprint or face is registered on this phone yet. Add one in the phone\'s own settings first.</string>
+    <string name="biometric_unsupported">This phone has no fingerprint or face reader the app can rely on.</string>
+    <string name="biometric_invalidated">Turned off by the phone, because the registered fingerprints or faces changed. Use the PIN, then turn it on again if you still want it.</string>
+    <string name="biometric_failed">The phone would not set this up. The PIN still works.</string>
+
+    <string name="audit_biometric_changed">Fingerprint or face unlock turned %1$s</string>
 </resources>

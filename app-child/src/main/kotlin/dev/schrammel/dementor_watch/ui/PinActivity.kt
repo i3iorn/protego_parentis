@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
@@ -12,12 +13,15 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
+import dev.schrammel.dementor_watch.security.BiometricGate
 import dev.schrammel.dementor_watch.security.PinAttempts
 import dev.schrammel.dementor_watch.security.PinLock
 import kotlin.time.Duration
@@ -34,6 +38,11 @@ import kotlin.time.Duration
  * is confirmed. An earlier version cleared the stored PIN *before* asking for the
  * replacement, so backing out at that moment left the app with no PIN at all — and
  * invited whoever opened a settings screen next to set their own.
+ *
+ * A fingerprint or face can stand in for the PIN when the family has turned that
+ * on, but only for unlocking. Choosing or confirming a new PIN always needs the
+ * PIN itself: a biometric cannot tell you what to set, and letting one authorise
+ * the change would mean whoever the phone recognises could replace the code.
  */
 class PinActivity : DementorActivity() {
 
@@ -42,6 +51,7 @@ class PinActivity : DementorActivity() {
 
     private lateinit var lock: PinLock
     private lateinit var attempts: PinAttempts
+    private lateinit var biometrics: BiometricGate
 
     private lateinit var prompt: TextView
     private lateinit var input: EditText
@@ -49,10 +59,14 @@ class PinActivity : DementorActivity() {
     private var step = Step.UNLOCK
     private var chosen: String? = null
 
+    /** Null until the layout is built; absent entirely when nothing is on offer. */
+    private var biometricButton: Button? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lock = PinLock(this)
         attempts = PinAttempts(this)
+        biometrics = BiometricGate(this)
 
         // The PIN screen must not appear in the recents thumbnail.
         window.setFlags(
@@ -68,6 +82,53 @@ class PinActivity : DementorActivity() {
 
         setContentView(buildLayout())
         updatePrompt()
+
+        // Offered immediately rather than behind a tap: on a phone where this is
+        // on, it is the expected way in, and making someone ask for it twice is
+        // slower than typing the PIN would have been.
+        if (canOfferBiometrics()) showBiometricPrompt()
+    }
+
+    /**
+     * Only for unlocking, and only while the PIN is not throttled.
+     *
+     * The throttle exists to make guessing expensive; a second door with no
+     * throttle on it would make the first one decorative.
+     */
+    private fun canOfferBiometrics(): Boolean =
+        step == Step.UNLOCK &&
+            biometrics.canUnlock() &&
+            attempts.lockoutRemaining() <= Duration.ZERO
+
+    private fun showBiometricPrompt() {
+        val cipher = biometrics.cipher() ?: return
+
+        BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    attempts.recordSuccess()
+                    succeed()
+                }
+
+                override fun onAuthenticationError(code: Int, message: CharSequence) {
+                    // Cancelling is not a failure, and it must not count towards
+                    // the PIN throttle: the screen simply waits for the code.
+                    biometricButton?.visibility =
+                        if (canOfferBiometrics()) View.VISIBLE else View.GONE
+                }
+            },
+        ).authenticate(
+            biometrics.promptInfo(
+                title = getString(R.string.pin_biometric_title),
+                subtitle = getString(R.string.pin_biometric_subtitle),
+                cancel = getString(R.string.pin_biometric_use_pin),
+            ),
+            BiometricPrompt.CryptoObject(cipher),
+        )
     }
 
     private fun buildLayout(): LinearLayout {
@@ -104,6 +165,19 @@ class PinActivity : DementorActivity() {
                     setOnClickListener { onSubmit() }
                 },
             )
+
+            if (step == Step.UNLOCK && biometrics.canUnlock()) {
+                addView(
+                    Button(context).apply {
+                        setText(R.string.pin_biometric_retry)
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                            .apply { topMargin = dimen(R.dimen.space_sm) }
+                        visibility = View.GONE
+                        setOnClickListener { showBiometricPrompt() }
+                        biometricButton = this
+                    },
+                )
+            }
         }
     }
 
