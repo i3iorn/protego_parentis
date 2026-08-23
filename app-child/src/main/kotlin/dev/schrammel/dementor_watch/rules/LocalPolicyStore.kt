@@ -57,6 +57,7 @@ class LocalPolicyStore(context: Context) {
 
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private val contextRuleStore = ContextRuleStore(appContext)
 
     // ---------- the assembled policy ----------
 
@@ -69,7 +70,7 @@ class LocalPolicyStore(context: Context) {
         appRules = appRules(),
         categories = categories.map(::toDomain),
         schedules = schedules(),
-        contextRules = ContextRuleStore(appContext).rules,
+        contextRules = contextRuleStore.rules,
         safetyAllowlist = SafetyAllowlist.of(appContext),
         installPolicy = installPolicy,
         tamperProtection = tamperProtection,

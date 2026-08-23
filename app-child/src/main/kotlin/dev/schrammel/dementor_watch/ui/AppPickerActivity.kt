@@ -11,18 +11,22 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.usage.InstalledApps
 
 /**
  * Multi-select list of installed apps.
  *
- * Shared by "apps with no limit" and by category membership, because both are the
- * same question — pick some apps — and duplicating the list twice would mean two
- * places to fix when it grows search or sorting.
+ * Shared by "apps with no limit", category membership and rule targets, because
+ * all three are the same question — pick some apps.
+ *
+ * Parent-gated even though it is only ever launched from screens that are already
+ * gated. Relying on the caller was not enough: left on top of the task it could be
+ * resumed straight from recents, and the result is delivered to the caller before
+ * the caller re-checks the PIN, so a selection changed here would already have
+ * been applied by the time anything asked who was holding the phone.
  */
-class AppPickerActivity : AppCompatActivity() {
+class AppPickerActivity : ParentGatedActivity() {
 
     private val selected = linkedSetOf<String>()
 
@@ -33,7 +37,12 @@ class AppPickerActivity : AppCompatActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
 
         setContentView(buildLayout(title))
+    }
 
+    override fun onGatedContentVisible() {
+        authenticated = true
+        if (loaded) return
+        loaded = true
         // Loading every launchable app's label and icon is the slowest thing this
         // screen does, so the list arrives after the frame rather than blocking it.
         Background.load(this, { InstalledApps(this).launchable() }) { apps ->
@@ -42,6 +51,8 @@ class AppPickerActivity : AppCompatActivity() {
     }
 
     private lateinit var content: LinearLayout
+    private var loaded = false
+    private var authenticated = false
 
     private fun buildLayout(title: String): ScrollView {
         content = LinearLayout(this).apply {
@@ -103,10 +114,14 @@ class AppPickerActivity : AppCompatActivity() {
     }
 
     override fun finish() {
-        setResult(
-            Activity.RESULT_OK,
-            Intent().putStringArrayListExtra(EXTRA_SELECTED, ArrayList(selected)),
-        )
+        // No result unless a parent actually got in. Backing out of the PIN must
+        // not hand the caller a selection to apply.
+        if (authenticated) {
+            setResult(
+                Activity.RESULT_OK,
+                Intent().putStringArrayListExtra(EXTRA_SELECTED, ArrayList(selected)),
+            )
+        }
         super.finish()
     }
 

@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
@@ -28,7 +27,7 @@ import kotlin.time.Duration
  * for supervision. Seven days is deliberate: long enough to show a pattern,
  * short enough that a bad Tuesday does not feel permanent.
  */
-class WeekActivity : AppCompatActivity() {
+class WeekActivity : DementorActivity() {
 
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var installedApps: InstalledApps

@@ -12,7 +12,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import dev.schrammel.dementor_watch.ui.DementorActivity
 import androidx.core.content.edit
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.dpc.PairingStore
@@ -32,7 +32,7 @@ import dev.schrammel.dementor_watch.ui.styleAs
  * TODO(M2): request usage access, notification, and battery-exemption grants.
  * TODO(M3): let the teen choose their display name and avatar — it is their phone.
  */
-class ComplianceActivity : AppCompatActivity() {
+class ComplianceActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

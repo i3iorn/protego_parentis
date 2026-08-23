@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.CategoryId
 import dev.schrammel.dementor_watch.model.GrantTarget
@@ -32,7 +31,7 @@ import kotlin.time.Duration
  * reason field is required, because a bare "+15 minutes" gives a parent nothing
  * to decide on and turns the feature into a slot machine.
  */
-class RequestsActivity : AppCompatActivity() {
+class RequestsActivity : DementorActivity() {
 
     private lateinit var coordinator: RequestCoordinator
     private lateinit var policyStore: LocalPolicyStore

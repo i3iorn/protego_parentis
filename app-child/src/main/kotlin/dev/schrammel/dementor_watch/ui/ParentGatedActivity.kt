@@ -4,7 +4,6 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.security.ParentSession
 
 /**
@@ -17,7 +16,7 @@ import dev.schrammel.dementor_watch.security.ParentSession
  * Subclasses build their UI as normal and override [onParentAuthenticated] for
  * anything that must wait until the parent is confirmed.
  */
-abstract class ParentGatedActivity : AppCompatActivity() {
+abstract class ParentGatedActivity : DementorActivity() {
 
     private var awaitingPin = false
 

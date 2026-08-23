@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
@@ -33,7 +32,7 @@ import kotlin.time.Duration
  * replacement, so backing out at that moment left the app with no PIN at all — and
  * invited whoever opened a settings screen next to set their own.
  */
-class PinActivity : AppCompatActivity() {
+class PinActivity : DementorActivity() {
 
     /** Where we are in the sequence; which sequence depends on how we were launched. */
     private enum class Step { UNLOCK, VERIFY_EXISTING, CHOOSE_NEW, CONFIRM_NEW }

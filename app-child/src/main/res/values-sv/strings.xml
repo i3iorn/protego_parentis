@@ -138,8 +138,6 @@
     <string name="places_no_fix">Ingen plats tillgänglig än. Öppna en kartapp en stund och försök igen.</string>
     <string name="places_delete">Ta bort</string>
     <string name="places_delete_warning">Alla regler som använder platsen tas också bort, så inget blir kvar som pekar på en plats som inte finns.</string>
-    <string name="rules_context_header">Regler</string>
-    <string name="rules_open_context">Var och när regler gäller</string>
     <string name="home_context_active">Gäller nu: %1$s</string>
 
     <!-- Integritet och logg. -->
@@ -196,8 +194,6 @@
     <string name="sync_test">Testa anslutningen</string>
     <string name="sync_testing">Kontrollerar…</string>
     <string name="sync_test_result">Resultat: %1$s</string>
-    <string name="rules_sync_header">Föräldrars telefoner</string>
-    <string name="rules_open_sync">Ställ in föräldrars telefoner</string>
 
     <!-- Kategorier i kategorier. -->
     <string name="category_nested_header">Kategorier inuti den här</string>
@@ -275,8 +271,37 @@
     <string name="inbox_approve">Godkänn</string>
     <string name="inbox_deny">Neka</string>
     <string name="inbox_note_hint">Lägg till en kommentar (frivilligt)</string>
-    <string name="rules_requests_header">Förfrågningar</string>
-    <string name="rules_open_inbox">Svara på förfrågningar</string>
+
+    <!-- Navigering. Varje rad säger vad som finns bakom den. -->
+    <string name="home_open_requests_detail">Be om mer tid och se svaren</string>
+    <string name="home_open_week_detail">Dina senaste sju dagar</string>
+    <string name="home_open_privacy_detail">Exakt vad som mäts och vad som skickas</string>
+    <string name="home_language_detail">Byt språk i appen</string>
+    <string name="home_edit_rules_detail">Gränser och inställningar, bakom förälderns PIN-kod</string>
+
+    <string name="limits_title">Gränser</string>
+    <string name="rules_group_limits">Hur mycket</string>
+    <string name="rules_group_day">Hur dagen fungerar</string>
+    <string name="rules_group_family">Familj</string>
+    <string name="rules_group_device">Den här telefonen</string>
+    <string name="rules_row_limits">Daglig gräns och läggdags</string>
+    <string name="rules_row_limits_detail">Tiden, lugna timmar och appar som struntar i båda</string>
+    <string name="rules_row_categories">Kategorier</string>
+    <string name="rules_row_categories_detail">Gruppera appar och ge varje grupp en egen gräns</string>
+    <string name="rules_row_app_limits">Gränser för enskilda appar</string>
+    <string name="rules_row_app_limits_detail">En gräns för en enskild app</string>
+    <string name="rules_row_context">Var och när regler gäller</string>
+    <string name="rules_row_context_detail">Regler för ett Wi-Fi-nätverk, en plats eller att vara nära någon</string>
+    <string name="rules_row_goal">Mål och belöning</string>
+    <string name="rules_row_goal_detail">Något att förtjäna genom att hålla sig under en gräns</string>
+    <string name="rules_row_bonus">Extratid</string>
+    <string name="rules_row_bonus_detail">Extra minuter bara för i dag</string>
+    <string name="rules_row_requests">Förfrågningar</string>
+    <string name="rules_row_requests_detail">Svara på förfrågningar om mer tid</string>
+    <string name="rules_row_sync">Föräldrars telefoner</string>
+    <string name="rules_row_sync_detail">Skicka förfrågningar och svar till en annan telefon</string>
+    <string name="rules_row_device">Säkerhet och kontroll</string>
+    <string name="rules_row_device_detail">PIN-kod, nedlåsning och att lämna tillbaka telefonen</string>
 
     <!-- Regler. -->
     <string name="rules_title">Ändra regler</string>
@@ -286,11 +311,10 @@
     <string name="rules_bedtime_enable">Slå på läggdags</string>
     <string name="rules_bedtime_start">Börjar  %1$s</string>
     <string name="rules_bedtime_end">Slutar  %1$s</string>
-    <string name="rules_done">Klar</string>
     <string name="rules_categories_header">Kategorier</string>
     <string name="rules_categories_hint">Varje kategori har sin egen dagliga gräns. En app kan ligga i flera — tiden räknas mot varje kategori den tillhör.</string>
     <string name="rules_no_categories">Inga kategorier än.</string>
-    <string name="rules_category_row">%1$s — %2$s · %3$s</string>
+    <string name="rules_category_row">%1$s · %2$s</string>
     <plurals name="rules_category_apps">
         <item quantity="one">%d app</item>
         <item quantity="other">%d appar</item>
@@ -300,12 +324,6 @@
     <string name="rules_exempt_hint">De struntar i den dagliga gränsen, läggdags och alla kategorier.</string>
     <string name="rules_no_exempt">Inga valda.</string>
     <string name="rules_choose_exempt">Välj appar</string>
-    <string name="rules_app_limits_header">Gränser för enskilda appar</string>
-    <string name="rules_app_limits_hint">En gräns för en enskild app, utöver de kategorier den ligger i.</string>
-    <string name="rules_open_app_limits">Sätt appgränser</string>
-    <string name="rules_bonus_header">Extratid</string>
-    <string name="rules_bonus_hint">Extra tid bara för i dag. Den ändrar aldrig själva gränserna.</string>
-    <string name="rules_open_bonus">Ge extratid</string>
     <string name="rules_security_header">Säkerhet</string>
     <string name="rules_change_pin">Byt PIN-kod</string>
     <string name="rules_device_header">Kontroll över telefonen</string>

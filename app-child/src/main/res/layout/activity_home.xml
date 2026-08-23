@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The teen's dashboard.
+
+  Ordered by what someone opening the app actually wants to know: how much time is
+  left, then why, then where to go. The summary is a card so it reads as one
+  answer rather than three stacked sentences, and navigation is a list of labelled
+  rows rather than a column of identical buttons.
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,21 +16,24 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/screen_padding">
+        android:paddingLeft="@dimen/screen_padding"
+        android:paddingTop="@dimen/space_sm"
+        android:paddingRight="@dimen/screen_padding"
+        android:paddingBottom="@dimen/space_4xl">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:paddingBottom="@dimen/space_lg"
             android:text="@string/home_title"
             android:textAppearance="@style/TextAppearance.Dementor.Title" />
 
         <!-- Shown only until usage access is granted. -->
         <LinearLayout
             android:id="@+id/permission_card"
+            style="@style/Widget.Dementor.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xl"
-            style="@style/Widget.Dementor.Card"
             android:visibility="gone">
 
             <TextView
@@ -46,12 +57,12 @@
                 android:text="@string/home_permission_button" />
         </LinearLayout>
 
+        <!-- The one answer the screen exists to give. -->
         <LinearLayout
             android:id="@+id/summary_card"
             style="@style/Widget.Dementor.Card"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_xl">
+            android:layout_height="wrap_content">
 
             <TextView
                 android:id="@+id/headline"
@@ -78,37 +89,17 @@
                 android:id="@+id/mode_note"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_lg"
-                android:textAppearance="@style/TextAppearance.Dementor.Caption"
-                android:textStyle="italic" />
+                android:layout_marginTop="@dimen/space_md"
+                android:textAppearance="@style/TextAppearance.Dementor.Caption" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/open_privacy"
-            android:layout_width="wrap_content"
+        <!-- Navigation. Built in code so each row carries a description. -->
+        <LinearLayout
+            android:id="@+id/navigation"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/space_lg"
-            android:text="@string/home_open_privacy" />
-
-        <Button
-            android:id="@+id/open_language"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg" />
-
-        <Button
-            android:id="@+id/open_requests"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
-            android:text="@string/home_open_requests" />
-
-        <Button
-            android:id="@+id/open_week"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
-            android:text="@string/home_open_week" />
+            android:orientation="vertical" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -121,15 +112,7 @@
             android:id="@+id/rules_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
-
-        <Button
-            android:id="@+id/edit_rules"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_md"
-            android:text="@string/home_edit_rules" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -142,7 +125,6 @@
             android:id="@+id/category_budgets"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
 
         <TextView
@@ -156,7 +138,6 @@
             android:id="@+id/blocked_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
             android:orientation="vertical" />
 
         <TextView
@@ -170,8 +151,6 @@
             android:id="@+id/app_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_sm"
-            android:layout_marginBottom="@dimen/screen_padding"
             android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

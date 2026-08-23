@@ -32,7 +32,6 @@ class SyncCoordinator(context: Context) {
     private val config = SyncConfigStore(appContext)
     private val requests = RequestCoordinator(appContext)
 
-    private val io: ExecutorService = Executors.newSingleThreadExecutor()
 
     fun settings(): SyncSettings = config.load()
 
@@ -207,6 +206,17 @@ class SyncCoordinator(context: Context) {
 
     companion object {
         private const val TAG = "DementorSync"
+
+        /**
+         * Shared, and deliberately not per-instance.
+         *
+         * Several screens construct a coordinator, one of them on every resume.
+         * A per-instance executor meant a leaked thread each time. Single-threaded
+         * so concurrent polls cannot interleave writes to the replay-guard state.
+         */
+        private val io: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "dementor-sync").apply { isDaemon = true }
+        }
         private const val POLL_OVERLAP_SECONDS = 5L
 
         const val RESULT_NOT_CONFIGURED = "not configured"

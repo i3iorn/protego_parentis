@@ -19,7 +19,6 @@
     <dimen name="space_lg">16dp</dimen>
     <dimen name="space_xl">20dp</dimen>
     <dimen name="space_4xl">32dp</dimen>
-    <dimen name="space_5xl">36dp</dimen>
 
     <!-- The outer margin of every screen. -->
     <dimen name="screen_padding">24dp</dimen>

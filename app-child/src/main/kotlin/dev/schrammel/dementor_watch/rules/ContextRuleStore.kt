@@ -179,7 +179,10 @@ class ContextRuleStore(context: Context) {
             is RuleEffect.Allow -> put(KEY_KIND, ALLOW)
             is RuleEffect.SetDeviceBudget -> {
                 put(KEY_KIND, BUDGET)
-                put(KEY_MINUTES, effect.budget.default.inWholeMinutes)
+                // Clamped: an infinite duration is Long.MAX_VALUE minutes, which
+                // narrows to a negative Int on the way back in and would be
+                // rejected by WeeklyBudget, silently losing the rule.
+                put(KEY_MINUTES, effect.budget.default.inWholeMinutes.coerceIn(0L, MAX_MINUTES))
             }
         }
     }
@@ -188,7 +191,7 @@ class ContextRuleStore(context: Context) {
         BLOCK -> RuleEffect.Block
         ALLOW -> RuleEffect.Allow
         BUDGET -> RuleEffect.SetDeviceBudget(
-            WeeklyBudget.flat(json.optLong(KEY_MINUTES, 0L).toInt().minutes),
+            WeeklyBudget.flat(json.optLong(KEY_MINUTES, 0L).coerceIn(0L, MAX_MINUTES).toInt().minutes),
         )
 
         else -> null
@@ -258,6 +261,9 @@ class ContextRuleStore(context: Context) {
     private companion object {
         const val FILE_NAME = "context_rules"
         const val MAX_DEPTH = 12
+
+        /** A day. Anything larger is not a daily limit. */
+        const val MAX_MINUTES = 24L * 60L
 
         const val KEY_RULES = "rules"
         const val KEY_PLACES = "places"

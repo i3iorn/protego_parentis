@@ -11,8 +11,8 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -39,7 +39,15 @@ import java.time.Instant
  */
 class EnforcementService : Service() {
 
-    private val handler = Handler(Looper.getMainLooper())
+    /**
+     * The tick runs here, not on the main looper.
+     *
+     * One pass replays a day of usage events, walks the installed-app list, drives
+     * DevicePolicyManager and writes several preference files. On the main thread
+     * that blocked every screen in the app and risked a foreground-service ANR.
+     */
+    private val worker = HandlerThread("dementor-enforcement").apply { start() }
+    private val handler = Handler(worker.looper)
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var warnings: WarningNotifier
     private lateinit var goals: GoalCoordinator
@@ -53,9 +61,13 @@ class EnforcementService : Service() {
     private val onUnlocked = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != Intent.ACTION_USER_PRESENT) return
-            runCatching { goals.refresh() }
-                .onSuccess { earned -> earned?.let(goalNotifier::notifyEarned) }
-                .onFailure { Log.w(TAG, "Could not check goals on unlock", it) }
+            // A broadcast arrives on the main thread, and checking goals reads
+            // history off disk. Hand it to the worker rather than block the unlock.
+            handler.post {
+                runCatching { goals.refresh() }
+                    .onSuccess { earned -> earned?.let(goalNotifier::notifyEarned) }
+                    .onFailure { Log.w(TAG, "Could not check goals on unlock", it) }
+            }
         }
     }
 
@@ -121,6 +133,7 @@ class EnforcementService : Service() {
     override fun onDestroy() {
         Diagnostics.record(this, DiagnosticEvent.SERVICE_STOPPED)
         handler.removeCallbacks(tick)
+        worker.quitSafely()
         runCatching { unregisterReceiver(onUnlocked) }
         super.onDestroy()
     }

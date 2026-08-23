@@ -95,6 +95,26 @@
         </activity>
 
         <activity
+            android:name=".ui.LimitsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.CategoriesActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.GoalActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.DeviceControlActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
             android:name=".ui.ContextRulesActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

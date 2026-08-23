@@ -131,8 +131,6 @@
     <string name="places_no_fix">No location available yet. Open a maps app for a moment, then try again.</string>
     <string name="places_delete">Delete</string>
     <string name="places_delete_warning">Any rule that uses this place is deleted too, so nothing is left pointing at a place that no longer exists.</string>
-    <string name="rules_context_header">Rules</string>
-    <string name="rules_open_context">Where and when rules apply</string>
     <string name="home_context_active">Active now: %1$s</string>
 
     <!-- Privacy and diagnostics. -->
@@ -189,8 +187,6 @@
     <string name="sync_test">Test connection</string>
     <string name="sync_testing">Checking…</string>
     <string name="sync_test_result">Result: %1$s</string>
-    <string name="rules_sync_header">Parent phones</string>
-    <string name="rules_open_sync">Set up parent phones</string>
 
     <!-- Nested categories. -->
     <string name="category_nested_header">Categories inside this one</string>
@@ -268,8 +264,37 @@
     <string name="inbox_approve">Approve</string>
     <string name="inbox_deny">Turn down</string>
     <string name="inbox_note_hint">Add a note (optional)</string>
-    <string name="rules_requests_header">Requests</string>
-    <string name="rules_open_inbox">Answer requests</string>
+
+    <!-- Navigation labels. Each says what is behind it. -->
+    <string name="home_open_requests_detail">Ask for more time and see the answers</string>
+    <string name="home_open_week_detail">Your last seven days</string>
+    <string name="home_open_privacy_detail">Exactly what is measured and what is sent</string>
+    <string name="home_language_detail">Change the language of this app</string>
+    <string name="home_edit_rules_detail">Limits and settings, behind the parent PIN</string>
+
+    <string name="limits_title">Limits</string>
+    <string name="rules_group_limits">How much</string>
+    <string name="rules_group_day">How the day works</string>
+    <string name="rules_group_family">Family</string>
+    <string name="rules_group_device">This device</string>
+    <string name="rules_row_limits">Daily limit and bedtime</string>
+    <string name="rules_row_limits_detail">The allowance, quiet hours, and apps that ignore both</string>
+    <string name="rules_row_categories">Categories</string>
+    <string name="rules_row_categories_detail">Group apps and give each group its own limit</string>
+    <string name="rules_row_app_limits">Single app limits</string>
+    <string name="rules_row_app_limits_detail">A limit for one app on its own</string>
+    <string name="rules_row_context">Where and when rules apply</string>
+    <string name="rules_row_context_detail">Rules for a Wi-Fi network, a place, or being near someone</string>
+    <string name="rules_row_goal">Goal and prize</string>
+    <string name="rules_row_goal_detail">Something to earn by staying under a target</string>
+    <string name="rules_row_bonus">Bonus time</string>
+    <string name="rules_row_bonus_detail">Extra minutes for today only</string>
+    <string name="rules_row_requests">Requests</string>
+    <string name="rules_row_requests_detail">Answer requests for more time</string>
+    <string name="rules_row_sync">Parent phones</string>
+    <string name="rules_row_sync_detail">Send requests and answers to another phone</string>
+    <string name="rules_row_device">Security and control</string>
+    <string name="rules_row_device_detail">PIN, lockdown, and handing the phone back</string>
 
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>
@@ -279,11 +304,10 @@
     <string name="rules_bedtime_enable">Turn on bedtime</string>
     <string name="rules_bedtime_start">Starts  %1$s</string>
     <string name="rules_bedtime_end">Ends  %1$s</string>
-    <string name="rules_done">Done</string>
     <string name="rules_categories_header">Categories</string>
     <string name="rules_categories_hint">Each category has its own daily limit. An app can be in more than one — its time counts against every category it belongs to.</string>
     <string name="rules_no_categories">No categories yet.</string>
-    <string name="rules_category_row">%1$s — %2$s · %3$s</string>
+    <string name="rules_category_row">%1$s · %2$s</string>
     <plurals name="rules_category_apps">
         <item quantity="one">%d app</item>
         <item quantity="other">%d apps</item>
@@ -293,12 +317,6 @@
     <string name="rules_exempt_hint">These ignore the daily limit, bedtime, and every category.</string>
     <string name="rules_no_exempt">None chosen.</string>
     <string name="rules_choose_exempt">Choose apps</string>
-    <string name="rules_app_limits_header">Single app limits</string>
-    <string name="rules_app_limits_hint">A limit for one app on its own, on top of any category it is in.</string>
-    <string name="rules_open_app_limits">Set app limits</string>
-    <string name="rules_bonus_header">Bonus time</string>
-    <string name="rules_bonus_hint">Extra time for today only. It never changes the limits themselves.</string>
-    <string name="rules_open_bonus">Give bonus time</string>
     <string name="rules_security_header">Security</string>
     <string name="rules_change_pin">Change PIN</string>
     <string name="rules_device_header">Device control</string>

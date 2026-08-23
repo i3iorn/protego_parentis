@@ -9,7 +9,6 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.GoalAchievement
 import dev.schrammel.dementor_watch.rules.GoalStore
@@ -25,7 +24,7 @@ import java.time.format.FormatStyle
  *
  * The prize text is whatever the parent wrote and is shown verbatim.
  */
-class CelebrationActivity : AppCompatActivity() {
+class CelebrationActivity : DementorActivity() {
 
     private lateinit var store: GoalStore
 

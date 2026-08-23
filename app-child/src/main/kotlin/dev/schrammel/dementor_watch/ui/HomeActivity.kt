@@ -12,7 +12,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
@@ -36,7 +35,7 @@ import kotlin.time.Duration
  * Shows exactly what a parent would see, in the same detail — that symmetry is
  * the product's central promise, so this screen hides nothing and softens nothing.
  */
-class HomeActivity : AppCompatActivity() {
+class HomeActivity : DementorActivity() {
 
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var installedApps: InstalledApps
@@ -60,21 +59,45 @@ class HomeActivity : AppCompatActivity() {
         findViewById<Button>(R.id.permission_button).setOnClickListener {
             startActivity(UsageAccess.settingsIntent())
         }
-        findViewById<Button>(R.id.open_privacy).setOnClickListener {
-            startActivity(PrivacyActivity.intent(this))
-        }
-        findViewById<Button>(R.id.open_language).apply {
-            text = getString(R.string.home_language, LanguagePicker.currentLabel(this@HomeActivity))
-            setOnClickListener { LanguagePicker.show(this@HomeActivity) }
-        }
-        findViewById<Button>(R.id.open_requests).setOnClickListener {
-            startActivity(RequestsActivity.intent(this))
-        }
-        findViewById<Button>(R.id.open_week).setOnClickListener {
-            startActivity(WeekActivity.intent(this))
-        }
-        findViewById<Button>(R.id.edit_rules).setOnClickListener {
-            startActivity(Intent(this, RulesActivity::class.java))
+        buildNavigation()
+    }
+
+    /**
+     * The five places this screen leads to.
+     *
+     * Each row says what is behind it. With five destinations, a column of bare
+     * buttons made the reader open one to find out what it was.
+     */
+    private fun buildNavigation() {
+        val navigation = findViewById<LinearLayout>(R.id.navigation)
+        navigation.removeAllViews()
+
+        val destinations = listOf(
+            Triple(
+                getString(R.string.home_open_requests),
+                getString(R.string.home_open_requests_detail),
+            ) { startActivity(RequestsActivity.intent(this)) },
+            Triple(
+                getString(R.string.home_open_week),
+                getString(R.string.home_open_week_detail),
+            ) { startActivity(WeekActivity.intent(this)) },
+            Triple(
+                getString(R.string.home_open_privacy),
+                getString(R.string.home_open_privacy_detail),
+            ) { startActivity(PrivacyActivity.intent(this)) },
+            Triple(
+                getString(R.string.home_language, LanguagePicker.currentLabel(this)),
+                getString(R.string.home_language_detail),
+            ) { LanguagePicker.show(this) },
+            Triple(
+                getString(R.string.home_edit_rules),
+                getString(R.string.home_edit_rules_detail),
+            ) { startActivity(Intent(this, RulesActivity::class.java)) },
+        )
+
+        destinations.forEachIndexed { index, (title, subtitle, action) ->
+            if (index > 0) navigation.addView(divider())
+            navigation.addView(navigationRow(title, subtitle, action))
         }
     }
 

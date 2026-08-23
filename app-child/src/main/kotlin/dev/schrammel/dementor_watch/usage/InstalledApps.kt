@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.model.PackageName
 
 data class AppInfo(
@@ -103,11 +104,16 @@ class InstalledApps(context: Context) {
                 addAction(Intent.ACTION_PACKAGE_REPLACED)
                 addDataScheme("package")
             }
-            context.registerReceiver(
+            // Explicitly not exported. These are protected system broadcasts and so
+            // are exempt from the rule that bites from API 34, but stating it is
+            // free and removes the need to be right about the exemption.
+            ContextCompat.registerReceiver(
+                context,
                 object : BroadcastReceiver() {
                     override fun onReceive(context: Context?, intent: Intent?) = invalidate()
                 },
                 filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED,
             )
         }
     }

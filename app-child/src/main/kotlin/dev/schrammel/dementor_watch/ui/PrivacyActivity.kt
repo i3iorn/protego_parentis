@@ -8,7 +8,6 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
@@ -24,7 +23,7 @@ import dev.schrammel.dementor_watch.sync.SyncCoordinator
  * it, and what is never collected at all. The last list is the one that matters
  * most to a teenager, and it is the one most parental control apps cannot write.
  */
-class PrivacyActivity : AppCompatActivity() {
+class PrivacyActivity : DementorActivity() {
 
     private lateinit var container: LinearLayout
 
@@ -107,7 +106,7 @@ class PrivacyActivity : AppCompatActivity() {
  * is not something anyone should be asked to do, and the log is built to contain
  * nothing that would make reading it uncomfortable — see [Diagnostics].
  */
-class DiagnosticsActivity : AppCompatActivity() {
+class DiagnosticsActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
