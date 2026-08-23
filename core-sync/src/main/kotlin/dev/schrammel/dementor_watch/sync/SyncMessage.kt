@@ -21,6 +21,14 @@ enum class SyncMessageType {
 
     /** Parent → child: that new app is fine, or it is not. */
     APP_DECIDED,
+
+    /**
+     * Either → everyone: this is who I am.
+     *
+     * Carries a name and a public key so the other phones can offer to enrol it.
+     * The only message type whose sender is, by definition, not yet trusted.
+     */
+    DEVICE_ANNOUNCE,
 }
 
 /**
@@ -37,9 +45,21 @@ enum class SyncMessageType {
 data class SyncMessage(
     val id: String,
     val type: SyncMessageType,
+    /**
+     * The sender's device id — the fingerprint of [senderKey].
+     *
+     * Not a name and not a choice: a device that claims an id whose fingerprint
+     * does not match the key it signed with is refused. See [RosterRules].
+     */
     val sender: String,
     val sentAt: Instant,
     val fields: Map<String, String> = emptyMap(),
+    /** SPKI public key, base64. Absent only on messages from a build before signing. */
+    val senderKey: String? = null,
+    /** What the sender says it is. Believed only while enrolling it. */
+    val senderRole: SyncRole? = null,
+    /** What the sender calls itself, for showing in a list of family devices. */
+    val senderName: String? = null,
 ) {
     fun field(name: String): String? = fields[name]?.takeIf(String::isNotBlank)
 

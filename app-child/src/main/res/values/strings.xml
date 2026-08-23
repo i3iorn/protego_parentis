@@ -590,4 +590,40 @@
     <string name="audit_install_window_opened">Installs opened for %1$s</string>
     <string name="audit_install_notify">allowed, with a heads-up</string>
     <string name="audit_install_gated">blocked until opened</string>
+
+    <!-- The family roster: which phones are trusted, and as what. -->
+    <string name="rules_row_devices">Family devices</string>
+    <string name="rules_row_devices_detail">Which phones are trusted, and which are waiting to be</string>
+    <string name="devices_title">Family devices</string>
+    <string name="devices_intro">Every phone in the family has its own identity. A phone can only answer requests once it has been approved here, so knowing the passphrase is no longer enough on its own.</string>
+    <string name="devices_this_phone">This phone</string>
+    <string name="devices_fingerprint">Fingerprint</string>
+    <string name="devices_no_identity">Not available</string>
+    <string name="devices_fingerprint_hint">Read this out when approving this phone on another one. If the codes differ, do not approve it.</string>
+    <string name="devices_rename_this">Rename this phone</string>
+    <string name="devices_renamed">Renamed. The other phones will see it shortly.</string>
+    <string name="devices_waiting">Waiting to be approved</string>
+    <string name="devices_waiting_hint">These phones know the passphrase. Check the fingerprint against the one shown on the phone itself before approving.</string>
+    <string name="devices_trusted">Trusted</string>
+    <string name="devices_none">No other phones yet.</string>
+    <string name="devices_unnamed">Unnamed phone</string>
+    <string name="devices_role">Role</string>
+    <string name="devices_role_child">the phone with the limits</string>
+    <string name="devices_role_parent">a parent\'s phone</string>
+    <string name="devices_approve">Approve</string>
+    <string name="devices_approve_body">Approve only if the fingerprint %1$s is showing on that phone. It will be trusted as %2$s.</string>
+    <string name="devices_reject">Not mine</string>
+    <string name="devices_row_detail">%1$s · %2$s</string>
+    <string name="devices_name_hint">Mum\'s phone, Dad\'s phone…</string>
+    <string name="devices_rename">Rename</string>
+    <string name="devices_manage_body">Fingerprint %1$s, trusted as %2$s.</string>
+    <string name="devices_revoke">Remove</string>
+    <string name="devices_revoke_body">%1$s will stop being trusted. It can ask again, and you can look at it again.</string>
+
+    <string name="audit_intact">History adds up</string>
+    <string name="audit_intact_hint">Every entry follows from the one before it, so nothing has been changed or removed outside the app.</string>
+    <string name="audit_broken">History has been changed</string>
+    <string name="audit_broken_hint">Some entries no longer follow from the ones before them. Something edited or removed part of this record outside the app.</string>
+    <string name="audit_device_approved">Approved %1$s as %2$s</string>
+    <string name="audit_device_revoked">Removed %1$s from the family</string>
 </resources>

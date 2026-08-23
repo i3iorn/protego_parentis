@@ -84,6 +84,9 @@ class RulesActivity : ParentGatedActivity() {
                 row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
                     startActivity(SyncSettingsActivity.intent(this))
                 },
+                row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
+                    startActivity(FamilyDevicesActivity.intent(this))
+                },
             ),
         )
 

@@ -197,6 +197,11 @@
             android:parentActivityName=".ui.PrivacyActivity" />
 
         <activity
+            android:name=".ui.FamilyDevicesActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
             android:name=".ui.SyncSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

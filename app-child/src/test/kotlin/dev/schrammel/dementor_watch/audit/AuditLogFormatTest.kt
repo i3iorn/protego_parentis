@@ -2,8 +2,10 @@ package dev.schrammel.dementor_watch.audit
 
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.model.AuditChain
 import dev.schrammel.dementor_watch.model.AuditEntry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -49,25 +51,52 @@ class AuditLogFormatTest {
 
     @Test
     fun `appends newest last and keeps order`() {
-        var raw: String? = null
-        repeat(3) { index ->
-            raw = AuditLogFormat.append(raw, entry(id = "e$index", at = Instant.ofEpochSecond(index.toLong())))
+        var log = AuditLogFormat.append(null, AuditChain.GENESIS, entry(id = "e0"))
+        (1 until 3).forEach { index ->
+            log = AuditLogFormat.append(log.log, log.anchor, entry(id = "e$index"))
         }
 
-        assertEquals(listOf("e0", "e1", "e2"), AuditLogFormat.decodeAll(raw).map { it.id })
+        assertEquals(listOf("e0", "e1", "e2"), AuditLogFormat.decodeAll(log.log).map { it.id })
+    }
+
+    /** Every appended entry links to the one before it, with no help from callers. */
+    @Test
+    fun `appending builds a verifiable chain`() {
+        var log = AuditLogFormat.append(null, AuditChain.GENESIS, entry(id = "e0"))
+        (1 until 6).forEach { index ->
+            log = AuditLogFormat.append(log.log, log.anchor, entry(id = "e$index"))
+        }
+
+        assertTrue(AuditChain.verify(AuditLogFormat.decodeAll(log.log), log.anchor).isIntact)
     }
 
     @Test
     fun `drops the oldest entries once the cap is reached`() {
-        var raw: String? = null
-        repeat(AuditLogFormat.MAX_ENTRIES + 10) { index ->
-            raw = AuditLogFormat.append(raw, entry(id = "e$index"))
+        var log = AuditLogFormat.append(null, AuditChain.GENESIS, entry(id = "e0"))
+        (1 until AuditLogFormat.MAX_ENTRIES + 10).forEach { index ->
+            log = AuditLogFormat.append(log.log, log.anchor, entry(id = "e$index"))
         }
 
-        val decoded = AuditLogFormat.decodeAll(raw)
+        val decoded = AuditLogFormat.decodeAll(log.log)
         assertEquals(AuditLogFormat.MAX_ENTRIES, decoded.size)
         assertEquals("e10", decoded.first().id)
         assertEquals("e${AuditLogFormat.MAX_ENTRIES + 9}", decoded.last().id)
+    }
+
+    /**
+     * Trimming moves the point the chain starts from. Without carrying the anchor
+     * forward, an ordinary trim would be indistinguishable from someone deleting
+     * the first page of the history.
+     */
+    @Test
+    fun `a trimmed log still verifies against its anchor`() {
+        var log = AuditLogFormat.append(null, AuditChain.GENESIS, entry(id = "e0"))
+        (1 until AuditLogFormat.MAX_ENTRIES + 5).forEach { index ->
+            log = AuditLogFormat.append(log.log, log.anchor, entry(id = "e$index"))
+        }
+
+        assertNotEquals(AuditChain.GENESIS, log.anchor)
+        assertTrue(AuditChain.verify(AuditLogFormat.decodeAll(log.log), log.anchor).isIntact)
     }
 
     /**

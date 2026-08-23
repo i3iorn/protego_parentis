@@ -168,6 +168,8 @@ class SyncSettingsActivity : ParentGatedActivity() {
             after = Audit.flag(enabled.isChecked),
         )
         passphrase.setText("")
+        // The other phones cannot enrol this one until they have heard from it.
+        sync.announceSelf(force = true)
         toast(getString(R.string.sync_saved))
     }
 

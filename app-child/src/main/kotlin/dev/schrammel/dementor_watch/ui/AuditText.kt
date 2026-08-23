@@ -8,6 +8,7 @@ import dev.schrammel.dementor_watch.model.AuditEntry
 import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.model.ValueKind
 import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.sync.SyncRole
 import java.time.LocalTime
 
 /**
@@ -118,6 +119,15 @@ object AuditText {
 
             AuditAction.PIN_CHANGED -> context.getString(R.string.audit_pin_changed)
 
+            AuditAction.DEVICE_APPROVED -> context.getString(
+                R.string.audit_device_approved,
+                subject,
+                deviceRole(context, entry.after),
+            )
+
+            AuditAction.DEVICE_REVOKED ->
+                context.getString(R.string.audit_device_revoked, subject)
+
             AuditAction.SYNC_CONFIGURED -> context.getString(
                 if (entry.after.toBoolean()) {
                     R.string.audit_sync_on
@@ -180,6 +190,14 @@ object AuditText {
             R.string.audit_install_gated
         } else {
             R.string.audit_install_notify
+        },
+    )
+
+    private fun deviceRole(context: Context, raw: String?): String = context.getString(
+        if (raw == SyncRole.PARENT.name) {
+            R.string.devices_role_parent
+        } else {
+            R.string.devices_role_child
         },
     )
 

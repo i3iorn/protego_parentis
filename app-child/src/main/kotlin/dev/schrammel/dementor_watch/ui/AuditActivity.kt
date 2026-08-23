@@ -9,6 +9,7 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.audit.AuditLogFormat
 import dev.schrammel.dementor_watch.model.AuditEntry
+import dev.schrammel.dementor_watch.model.ChainCheck
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -38,6 +39,8 @@ class AuditActivity : DementorActivity() {
         column.addView(screenTitle(getString(R.string.audit_title)))
         column.addView(bodyText(getString(R.string.audit_intro)))
 
+        column.addView(integrityCard())
+
         val entries = Audit.entries(this)
         if (entries.isEmpty()) {
             column.addView(bodyText(getString(R.string.audit_empty)))
@@ -63,6 +66,34 @@ class AuditActivity : DementorActivity() {
             ),
         )
         showColumn(column)
+    }
+
+    /**
+     * Whether the stored history still adds up.
+     *
+     * Shown rather than kept internal, because the point of chaining the entries
+     * is that both sides can see the answer. A record whose integrity is only
+     * known to the app is one nobody has a reason to believe.
+     */
+    private fun integrityCard(): LinearLayout = card {
+        val check = Audit.check(this@AuditActivity)
+        addView(
+            TextView(this@AuditActivity).apply {
+                setText(
+                    if (check.isIntact) R.string.audit_intact else R.string.audit_broken,
+                )
+                styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            },
+        )
+        addView(
+            captionText(
+                if (check is ChainCheck.Broken) {
+                    getString(R.string.audit_broken_hint)
+                } else {
+                    getString(R.string.audit_intact_hint)
+                },
+            ),
+        )
     }
 
     private fun dayLabel(day: LocalDate): String = when (day) {

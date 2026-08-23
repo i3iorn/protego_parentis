@@ -22,6 +22,7 @@ import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.RequestCoordinator
 import dev.schrammel.dementor_watch.rules.TargetLabels
 import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.KeystoreSigner
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.sync.MessageCrypto
@@ -44,6 +45,12 @@ import java.util.concurrent.Executors
  * collects questions. Each ignores the messages meant for the other rather than
  * trying to be useful with them.
  *
+ * Encryption alone was not enough to decide *who* sent something: the
+ * passphrase is shared, so a child who obtained it could publish an approval
+ * of their own request. Every message now also carries a per-device signature,
+ * and the sender's role is read from an enrolled roster rather than from the
+ * message — see [RosterRules].
+ *
  * All network work happens on a background executor. The methods here return
  * immediately; nothing blocks the caller.
  */
@@ -52,6 +59,8 @@ class SyncCoordinator(context: Context) {
     private val appContext = context.applicationContext
     private val config = SyncConfigStore(appContext)
     private val roles = RoleStore(appContext)
+    private val roster = RosterStore(appContext)
+    private val signer = KeystoreSigner()
 
     // Both sides construct one of these and only one side ever uses it, so
     // neither store is touched on a phone that has no business holding it.
@@ -68,6 +77,23 @@ class SyncCoordinator(context: Context) {
     }
 
     fun suggestTopic(): String = config.suggestTopic()
+
+    /** This phone's fingerprint, for reading aloud when enrolling it elsewhere. */
+    fun deviceId(): DeviceId? = runCatching { signer.deviceId }.getOrNull()
+
+    /**
+     * Introduces this phone to the family (DEVICE_ANNOUNCE).
+     *
+     * Sent on a slow repeat rather than once, because the phone that needs to hear
+     * it may not have been configured when the first one went out. Costs one
+     * message an hour and removes a whole class of "why can it not see my phone".
+     */
+    fun announceSelf(force: Boolean = false) {
+        val now = Instant.now()
+        if (!force && !config.announceDue(now)) return
+        config.recordAnnouncedAt(now)
+        publish(SyncMessageType.DEVICE_ANNOUNCE, emptyMap())
+    }
 
     /**
      * Announces a new request to every parent phone.
@@ -238,14 +264,15 @@ class SyncCoordinator(context: Context) {
             is DecryptResult.Failed -> return false
         }
 
-        val message = SyncCodec.decode(plaintext) ?: return false
-        val settings = config.load()
+        val payload = MessageSignatures.split(plaintext) ?: return false
+        val message = SyncCodec.decode(payload.body) ?: return false
 
         // Our own messages come back from the topic; ignore them.
-        if (message.sender == settings.deviceName) return false
+        if (message.sender == config.load().deviceId) return false
 
+        val now = Instant.now()
         val seen = config.seenMessageIds()
-        val admission = ReplayGuard.admit(message, Instant.now(), seen)
+        val admission = ReplayGuard.admit(message, now, seen)
         if (admission is Admission.Reject) {
             Log.w(TAG, "Refused message ${message.id}: ${admission.reason}")
             Diagnostics.record(
@@ -255,6 +282,39 @@ class SyncCoordinator(context: Context) {
             )
             return false
         }
+
+        // Who is speaking, decided from the roster rather than from the message.
+        when (val admittance = RosterRules.admit(message, payload, roster.devices, now)) {
+            is Admittance.Refused -> {
+                Log.w(TAG, "Refused message ${message.id}: ${admittance.reason}")
+                Diagnostics.record(
+                    appContext,
+                    DiagnosticEvent.SYNC_SENDER_REFUSED,
+                    mapOf("reason" to admittance.reason.ordinal.toLong()),
+                )
+                return false
+            }
+
+            is Admittance.Unknown -> {
+                // Correctly signed by a stranger. Offered for enrolment, acted on
+                // by nobody: a device nobody has vouched for changes nothing.
+                //
+                // Deliberately not marked as seen. The message that prompts an
+                // approval is usually the request the family is waiting on, and
+                // marking it here would mean approving the phone and then finding
+                // nothing to answer.
+                roster.notice(admittance.device)
+                Diagnostics.record(appContext, DiagnosticEvent.SYNC_DEVICE_PENDING)
+                return false
+            }
+
+            is Admittance.Accepted -> roster.observed(
+                id = admittance.device.id,
+                name = message.senderName,
+                at = now,
+            )
+        }
+
         config.rememberSeen(ReplayGuard.remember(seen, message.id))
 
         return when (roles.roleOrChild) {
@@ -263,15 +323,22 @@ class SyncCoordinator(context: Context) {
         }
     }
 
+    private fun syncRole(): SyncRole = when (roles.roleOrChild) {
+        DeviceRole.CHILD -> SyncRole.CHILD
+        DeviceRole.PARENT -> SyncRole.PARENT
+    }
+
     private fun applyAsChild(message: SyncMessage): Boolean = when (message.type) {
         SyncMessageType.REQUEST_DECIDED -> applyDecision(message)
         SyncMessageType.BONUS_GRANTED -> applyBonus(message)
         SyncMessageType.APP_DECIDED -> applyAppDecision(message)
         // A child phone is the only source of these; hearing one back means a
         // second child device shares the family topic, which is not supported yet.
+        // An announcement has already done its work in the roster by this point.
         SyncMessageType.REQUEST_RAISED,
         SyncMessageType.HEARTBEAT,
         SyncMessageType.APP_INSTALLED,
+        SyncMessageType.DEVICE_ANNOUNCE,
         -> false
     }
 
@@ -283,7 +350,11 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.HEARTBEAT -> rememberHeartbeat(message)
         SyncMessageType.APP_INSTALLED -> rememberNewApp(message)
         // Sent by a parent, including possibly this one. Nothing to do with it.
-        SyncMessageType.BONUS_GRANTED, SyncMessageType.APP_DECIDED -> false
+        // An announcement has already done its work in the roster by this point.
+        SyncMessageType.BONUS_GRANTED,
+        SyncMessageType.APP_DECIDED,
+        SyncMessageType.DEVICE_ANNOUNCE,
+        -> false
     }
 
     /**
@@ -427,15 +498,29 @@ class SyncCoordinator(context: Context) {
             val key = runCatching { MessageCrypto.deriveKey(settings.passphrase, settings.topic) }
                 .getOrNull() ?: return@execute
 
-            val message = SyncMessage(
-                id = UUID.randomUUID().toString(),
-                type = type,
-                sender = settings.deviceName,
-                sentAt = Instant.now(),
-                fields = fields,
-            )
+            // Signing can fail on a phone whose keystore has been invalidated.
+            // Publishing unsigned would be worse than not publishing: every
+            // receiver refuses it anyway, and the sender would think it had spoken.
+            val signed = runCatching {
+                val message = SyncMessage(
+                    id = UUID.randomUUID().toString(),
+                    type = type,
+                    sender = signer.deviceId.value,
+                    sentAt = Instant.now(),
+                    fields = fields,
+                    senderKey = signer.publicKeyBase64,
+                    senderRole = syncRole(),
+                    senderName = settings.deviceName,
+                )
+                MessageSignatures.sign(signer, SyncCodec.encode(message))
+            }.getOrElse {
+                Log.w(TAG, "Could not sign; nothing published", it)
+                Diagnostics.record(appContext, DiagnosticEvent.SYNC_PUBLISH_FAILED)
+                return@execute
+            }
+
             val sent = NtfyClient(settings.serverUrl, settings.topic)
-                .publish(MessageCrypto.seal(key, SyncCodec.encode(message)))
+                .publish(MessageCrypto.seal(key, signed))
             Diagnostics.record(
                 appContext,
                 if (sent is TransportResult.Ok) {

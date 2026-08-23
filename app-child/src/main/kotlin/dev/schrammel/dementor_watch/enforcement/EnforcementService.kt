@@ -247,6 +247,11 @@ class EnforcementService : Service() {
         runCatching { sync.publishHeartbeat(heartbeatOf(snapshot, now)) }
             .onFailure { Log.w(TAG, "Could not send heartbeat", it) }
 
+        // Introduces this phone to any parent that has not enrolled it yet.
+        // Throttled inside the coordinator to once an hour.
+        runCatching { sync.announceSelf() }
+            .onFailure { Log.w(TAG, "Could not announce this device", it) }
+
         // Piggybacks on the same tick rather than holding a connection open.
         // Failures are reported through the callback and never reach here.
         sync.pollNow()

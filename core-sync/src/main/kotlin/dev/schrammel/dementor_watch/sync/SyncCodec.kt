@@ -22,6 +22,9 @@ object SyncCodec {
     private const val KEY_TYPE = "type"
     private const val KEY_SENDER = "sender"
     private const val KEY_SENT_AT = "sentAt"
+    private const val KEY_SENDER_KEY = "senderKey"
+    private const val KEY_SENDER_ROLE = "senderRole"
+    private const val KEY_SENDER_NAME = "senderName"
     private const val FIELD_PREFIX = "f."
 
     fun encode(message: SyncMessage): String = buildString {
@@ -29,6 +32,13 @@ object SyncCodec {
         appendLine("$KEY_TYPE$FIELD_SEPARATOR${message.type.name}")
         appendLine("$KEY_SENDER$FIELD_SEPARATOR${escape(message.sender)}")
         appendLine("$KEY_SENT_AT$FIELD_SEPARATOR${message.sentAt.toEpochMilli()}")
+        // Part of the body, so the signature covers them. A sender that could
+        // change its own role or key after signing would defeat the roster.
+        message.senderKey?.let { appendLine("$KEY_SENDER_KEY$FIELD_SEPARATOR$it") }
+        message.senderRole?.let { appendLine("$KEY_SENDER_ROLE$FIELD_SEPARATOR${it.name}") }
+        message.senderName?.let {
+            appendLine("$KEY_SENDER_NAME$FIELD_SEPARATOR${escape(it)}")
+        }
         message.fields.forEach { (name, value) ->
             appendLine("$FIELD_PREFIX${escape(name)}$FIELD_SEPARATOR${escape(value)}")
         }
@@ -61,6 +71,9 @@ object SyncCodec {
             fields = entries
                 .filterKeys { it.startsWith(FIELD_PREFIX) }
                 .mapKeys { (key, _) -> unescape(key.removePrefix(FIELD_PREFIX)) },
+            senderKey = entries[KEY_SENDER_KEY]?.takeIf(String::isNotBlank),
+            senderRole = SyncRole.parse(entries[KEY_SENDER_ROLE]),
+            senderName = entries[KEY_SENDER_NAME]?.takeIf(String::isNotBlank),
         )
     }
 

@@ -82,6 +82,8 @@ enum class AuditAction(val valueKind: ValueKind) {
     // ---------- the device itself ----------
     PIN_CHANGED(ValueKind.NONE),
     SYNC_CONFIGURED(ValueKind.FLAG),
+    DEVICE_APPROVED(ValueKind.TOKEN),
+    DEVICE_REVOKED(ValueKind.NONE),
     INSTALL_POLICY_CHANGED(ValueKind.TOKEN),
     INSTALL_WINDOW_OPENED(ValueKind.MINUTES),
     TAMPER_PROTECTION_CHANGED(ValueKind.FLAG),
@@ -110,4 +112,15 @@ data class AuditEntry(
     val subject: String? = null,
     val before: String? = null,
     val after: String? = null,
+    /**
+     * The hash of the entry before this one, and this one's own.
+     *
+     * Together they chain the history, so an entry edited or removed outside the
+     * app breaks every link after it and the screen can say so. See [AuditChain].
+     *
+     * Defaulted so callers building an entry do not have to think about it; the
+     * recorder fills both in before anything is stored.
+     */
+    val previousHash: String = AuditChain.GENESIS,
+    val hash: String = "",
 )

@@ -107,6 +107,10 @@ class ParentHomeActivity : ParentRoleActivity() {
                         getString(R.string.parent_row_audit_detail),
                     ) { startActivity(AuditActivity.intent(this)) },
                     navigationRow(
+                        getString(R.string.rules_row_devices),
+                        getString(R.string.rules_row_devices_detail),
+                    ) { startActivity(FamilyDevicesActivity.intent(this)) },
+                    navigationRow(
                         getString(R.string.parent_row_sync),
                         getString(R.string.parent_row_sync_detail),
                     ) { startActivity(SyncSettingsActivity.intent(this)) },

@@ -1,10 +1,13 @@
 package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
+import android.os.Build
 import androidx.core.content.edit
 import dev.schrammel.dementor_watch.model.Defaults
 import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.KeystoreSigner
 import dev.schrammel.dementor_watch.security.RoleStore
+import dev.schrammel.dementor_watch.security.SecretVault
 import dev.schrammel.dementor_watch.sync.SyncSettings.Companion.DEFAULT_SERVER
 import java.time.Instant
 import java.util.UUID
@@ -15,7 +18,14 @@ data class SyncSettings(
     val serverUrl: String,
     val topic: String,
     val passphrase: String,
-    /** Identifies this phone in messages, so a parent can tell who said what. */
+    /**
+     * This phone's identity on the topic: the fingerprint of its signing key.
+     *
+     * Not a preference and not editable. [deviceName] is what people read;
+     * this is what the other phones check.
+     */
+    val deviceId: String,
+    /** What the family calls this phone. Shown on every other phone's device list. */
     val deviceName: String,
 ) {
     /**
@@ -35,12 +45,16 @@ data class SyncSettings(
 }
 
 /**
- * Stores the sync settings and the replay-guard state.
+ * Stores the sync settings, the replay-guard state and this phone's name.
  *
- * The passphrase is kept in the app's private preferences. That protects it from
- * other apps but not from someone holding an unlocked, rooted phone — which is
- * why compromise of a device means changing the passphrase everywhere, and why
- * the settings screen sits behind the parent PIN.
+ * The passphrase is kept sealed by [SecretVault] rather than in plain text. That
+ * does not put it beyond a rooted phone's owner — they can ask this app to
+ * decrypt — but it does stop the secret being copied off the device and used from
+ * somewhere else, which is the difference between one compromised handset and a
+ * permanently compromised family.
+ *
+ * The signing key underneath [SyncSettings.deviceId] is stronger still: it is
+ * generated non-exportable inside the keystore and cannot leave the phone at all.
  */
 class SyncConfigStore(context: Context) {
 
@@ -51,19 +65,34 @@ class SyncConfigStore(context: Context) {
         enabled = prefs.getBoolean(KEY_ENABLED, false),
         serverUrl = prefs.getString(KEY_SERVER, null)?.trimEnd('/') ?: DEFAULT_SERVER,
         topic = prefs.getString(KEY_TOPIC, null).orEmpty(),
-        passphrase = prefs.getString(KEY_PASSPHRASE, null).orEmpty(),
+        passphrase = passphrase(),
+        deviceId = deviceId(),
         deviceName = deviceName(),
     )
+
+    /**
+     * This phone's fingerprint, computed once per process.
+     *
+     * Reading it means a call into the keystore, and `load()` is called from
+     * screen renders. It never changes while the app is running — a new identity
+     * means a reinstall — so caching it keeps a binder call off the main thread.
+     */
+    private fun deviceId(): String {
+        cachedDeviceId?.let { return it }
+        val value = runCatching { KeystoreSigner().deviceId.value }.getOrDefault("")
+        cachedDeviceId = value
+        return value
+    }
 
     fun save(enabled: Boolean, serverUrl: String, topic: String, passphrase: String) {
         prefs.edit {
             putBoolean(KEY_ENABLED, enabled)
             putString(KEY_SERVER, serverUrl.trim().trimEnd('/').ifBlank { DEFAULT_SERVER })
             putString(KEY_TOPIC, topic.trim())
-            // Only overwrite when something was actually typed, so reopening the
-            // screen and saving does not wipe a stored passphrase.
-            if (passphrase.isNotBlank()) putString(KEY_PASSPHRASE, passphrase)
         }
+        // Only overwrite when something was actually typed, so reopening the
+        // screen and saving does not wipe a stored passphrase.
+        if (passphrase.isNotBlank()) storePassphrase(passphrase)
     }
 
     /**
@@ -76,6 +105,84 @@ class SyncConfigStore(context: Context) {
      */
     fun suggestTopic(): String = "dementor-" + UUID.randomUUID().toString().replace("-", "")
 
+    // ---------- the passphrase ----------
+
+    /**
+     * Reads the passphrase, migrating a plain-text one written by an older build.
+     *
+     * The migration runs once, on the first read after upgrading, and removes the
+     * plain-text copy as it goes. Leaving both would mean the sealed version
+     * protected nothing.
+     */
+    private fun passphrase(): String {
+        prefs.getString(KEY_PASSPHRASE_LEGACY, null)?.takeIf(String::isNotBlank)?.let { legacy ->
+            storePassphrase(legacy)
+            prefs.edit { remove(KEY_PASSPHRASE_LEGACY) }
+            return legacy
+        }
+        val sealed = prefs.getString(KEY_PASSPHRASE_SEALED, null) ?: return ""
+
+        // Cached against the sealed text, so a passphrase changed on another
+        // screen is picked up while an unchanged one costs no keystore call.
+        // The plain value lives no longer than the process, and only ever in a
+        // process that could decrypt it again anyway.
+        cachedPassphrase?.let { (forSealed, plain) -> if (forSealed == sealed) return plain }
+
+        val plain = SecretVault.open(sealed).orEmpty()
+        cachedPassphrase = sealed to plain
+        return plain
+    }
+
+    /**
+     * Seals and stores the passphrase.
+     *
+     * If the keystore refuses — it does, occasionally, on devices whose lock
+     * screen has been reset — the passphrase is not written at all. Falling back
+     * to plain text would silently undo the whole point of this; the family sees
+     * sync as unconfigured and types it again.
+     */
+    private fun storePassphrase(value: String) {
+        val sealed = SecretVault.seal(value)
+        prefs.edit {
+            if (sealed == null) remove(KEY_PASSPHRASE_SEALED) else putString(KEY_PASSPHRASE_SEALED, sealed)
+            remove(KEY_PASSPHRASE_LEGACY)
+        }
+        cachedPassphrase = sealed?.let { it to value }
+    }
+
+    /** Whether the phone can keep a passphrase at all, so a screen can say so. */
+    fun canKeepSecrets(): Boolean = SecretVault.isAvailable()
+
+    // ---------- this phone's name ----------
+
+    /**
+     * What the family calls this phone.
+     *
+     * Defaulted from the hardware model rather than left blank: "Pixel 7" is a
+     * better starting point than an empty field, and a parent looking at three
+     * pending devices needs something to tell them apart before they have named
+     * anything.
+     */
+    var deviceName: String
+        get() = deviceName()
+        set(value) {
+            val trimmed = value.trim().take(MAX_NAME_LENGTH)
+            if (trimmed.isEmpty()) return
+            prefs.edit { putString(KEY_DEVICE_NAME, trimmed) }
+        }
+
+    private fun deviceName(): String {
+        prefs.getString(KEY_DEVICE_NAME, null)?.takeIf(String::isNotBlank)?.let { return it }
+
+        val suffix = when (RoleStore(appContext).roleOrChild) {
+            DeviceRole.CHILD -> ""
+            DeviceRole.PARENT -> " (parent)"
+        }
+        val generated = (Build.MODEL?.takeIf(String::isNotBlank) ?: "Phone") + suffix
+        prefs.edit { putString(KEY_DEVICE_NAME, generated) }
+        return generated
+    }
+
     // ---------- replay guard state ----------
 
     fun seenMessageIds(): List<String> =
@@ -85,8 +192,7 @@ class SyncConfigStore(context: Context) {
         prefs.edit { putString(KEY_SEEN, ids.joinToString(SEPARATOR)) }
     }
 
-    fun lastPolledAt(): Instant =
-        Instant.ofEpochMilli(prefs.getLong(KEY_LAST_POLL, 0L))
+    fun lastPolledAt(): Instant = Instant.ofEpochMilli(prefs.getLong(KEY_LAST_POLL, 0L))
 
     fun recordPolledAt(at: Instant) {
         prefs.edit { putLong(KEY_LAST_POLL, at.toEpochMilli()) }
@@ -112,38 +218,56 @@ class SyncConfigStore(context: Context) {
         prefs.edit { putLong(KEY_LAST_HEARTBEAT, at.toEpochMilli()) }
     }
 
+    // ---------- announcements ----------
+
     /**
-     * A stable name for this phone in messages.
+     * Whether to introduce this phone again.
      *
-     * Generated once and then never changed, including if the role is switched
-     * afterwards: the name is how the replay guard and the echo check recognise
-     * this device, so a name that moves would mean a phone acting on its own
-     * messages.
+     * Repeated on a slow cycle rather than sent once, because the phone that needs
+     * to hear it may not have been configured yet when the first one went out.
      */
-    private fun deviceName(): String {
-        prefs.getString(KEY_DEVICE_NAME, null)?.let { return it }
-        val prefix = when (RoleStore(appContext).roleOrChild) {
-            DeviceRole.CHILD -> "child"
-            DeviceRole.PARENT -> "parent"
-        }
-        val generated = prefix + "-" + UUID.randomUUID().toString().take(DEVICE_NAME_LENGTH)
-        prefs.edit { putString(KEY_DEVICE_NAME, generated) }
-        return generated
+    fun announceDue(now: Instant): Boolean {
+        val last = prefs.getLong(KEY_LAST_ANNOUNCE, 0L)
+        if (last <= 0L) return true
+        val elapsed = now.toEpochMilli() - last
+        return elapsed < 0L || elapsed >= ANNOUNCE_INTERVAL_MINUTES * MILLIS_PER_MINUTE
+    }
+
+    fun recordAnnouncedAt(at: Instant) {
+        prefs.edit { putLong(KEY_LAST_ANNOUNCE, at.toEpochMilli()) }
+    }
+
+    /** Forces the next tick to introduce this phone, after a settings change. */
+    fun announceSoon() {
+        prefs.edit { remove(KEY_LAST_ANNOUNCE) }
     }
 
     private companion object {
+        /** Process-wide: every screen builds its own store. */
+        @Volatile
+        var cachedDeviceId: String? = null
+
+        @Volatile
+        var cachedPassphrase: Pair<String, String>? = null
+
         const val FILE_NAME = "sync"
         const val SEPARATOR = ","
-        const val DEVICE_NAME_LENGTH = 8
+        const val MAX_NAME_LENGTH = 40
+        const val MILLIS_PER_MINUTE = 60_000L
+        const val ANNOUNCE_INTERVAL_MINUTES = 60L
 
         const val KEY_ENABLED = "enabled"
         const val KEY_SERVER = "server"
         const val KEY_TOPIC = "topic"
-        const val KEY_PASSPHRASE = "passphrase"
+
+        /** Written by builds before the vault existed; migrated away on first read. */
+        const val KEY_PASSPHRASE_LEGACY = "passphrase"
+        const val KEY_PASSPHRASE_SEALED = "passphrase_sealed"
+
         const val KEY_DEVICE_NAME = "device_name"
         const val KEY_SEEN = "seen_ids"
         const val KEY_LAST_POLL = "last_poll"
         const val KEY_LAST_HEARTBEAT = "last_heartbeat"
-        const val MILLIS_PER_MINUTE = 60_000L
+        const val KEY_LAST_ANNOUNCE = "last_announce"
     }
 }

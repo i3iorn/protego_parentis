@@ -2,20 +2,26 @@ package dev.schrammel.dementor_watch.audit
 
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.model.AuditChain
 import dev.schrammel.dementor_watch.model.AuditEntry
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 
+/** A log after an entry was added, and the anchor the chain now starts from. */
+data class Appended(val log: String, val anchor: String)
+
 /**
  * How the shared history is written to disk.
  *
- * Kept apart from [Audit] so the awkward parts — the cap, the ordering, tolerating
- * a file written by a newer build — can be tested without a device.
+ * Kept apart from [Audit] so the awkward parts — the cap, the ordering, the hash
+ * chain, tolerating a file written by a newer build — can be tested without a
+ * device.
  *
  * Decoding treats stored text as suspect. A row that no longer parses is dropped
  * rather than thrown, because losing one line of history is a great deal better
- * than an app that cannot open its own log.
+ * than an app that cannot open its own log. A dropped row does break the chain,
+ * which is the correct outcome: something in the file is not what it was.
  */
 object AuditLogFormat {
 
@@ -26,9 +32,29 @@ object AuditLogFormat {
      */
     const val MAX_ENTRIES = 500
 
-    /** Appends [entry], returning the new file contents. Newest is stored last. */
-    fun append(raw: String?, entry: AuditEntry): String =
-        encode(decodeAll(raw).takeLast(MAX_ENTRIES - 1) + entry)
+    /**
+     * Appends [entry], chaining it to whatever is already stored.
+     *
+     * Returns the new anchor as well as the new log: trimming the oldest entry
+     * moves the point the chain starts from, and losing that would make an
+     * ordinary trim indistinguishable from someone deleting the first page.
+     */
+    fun append(raw: String?, anchor: String, entry: AuditEntry): Appended {
+        val existing = decodeAll(raw)
+        val previousHash = existing.lastOrNull()?.hash ?: anchor
+
+        val linked = entry.copy(
+            previousHash = previousHash,
+            hash = AuditChain.link(entry, previousHash),
+        )
+
+        val combined = existing + linked
+        if (combined.size <= MAX_ENTRIES) return Appended(encode(combined), anchor)
+
+        val dropped = combined.size - MAX_ENTRIES
+        val kept = combined.drop(dropped)
+        return Appended(encode(kept), combined[dropped - 1].hash)
+    }
 
     /** Every entry, oldest first. */
     fun decodeAll(raw: String?): List<AuditEntry> {
@@ -50,6 +76,8 @@ object AuditLogFormat {
         entry.subject?.let { put(KEY_SUBJECT, it) }
         entry.before?.let { put(KEY_BEFORE, it) }
         entry.after?.let { put(KEY_AFTER, it) }
+        put(KEY_PREVIOUS_HASH, entry.previousHash)
+        put(KEY_HASH, entry.hash)
     }
 
     private fun fromJson(json: JSONObject): AuditEntry? {
@@ -74,6 +102,8 @@ object AuditLogFormat {
             subject = json.optString(KEY_SUBJECT).takeIf(String::isNotBlank),
             before = json.optString(KEY_BEFORE).takeIf(String::isNotBlank),
             after = json.optString(KEY_AFTER).takeIf(String::isNotBlank),
+            previousHash = json.optString(KEY_PREVIOUS_HASH).ifBlank { AuditChain.GENESIS },
+            hash = json.optString(KEY_HASH),
         )
     }
 
@@ -84,4 +114,6 @@ object AuditLogFormat {
     private const val KEY_SUBJECT = "subject"
     private const val KEY_BEFORE = "before"
     private const val KEY_AFTER = "after"
+    private const val KEY_PREVIOUS_HASH = "prev"
+    private const val KEY_HASH = "hash"
 }

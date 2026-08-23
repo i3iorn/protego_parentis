@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.core.content.edit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.model.AuditChain
 import dev.schrammel.dementor_watch.model.AuditEntry
+import dev.schrammel.dementor_watch.model.ChainCheck
 import java.time.Instant
 import java.time.LocalTime
 import java.util.UUID
@@ -64,16 +66,39 @@ object Audit {
         )
         synchronized(lock) {
             val prefs = prefs(context)
-            val updated = AuditLogFormat.append(prefs.getString(KEY_LOG, null), entry)
+            val appended = AuditLogFormat.append(
+                raw = prefs.getString(KEY_LOG, null),
+                anchor = prefs.getString(KEY_ANCHOR, null) ?: AuditChain.GENESIS,
+                entry = entry,
+            )
             // commit, not apply: a crash between recording an action and the write
             // landing would leave the history disagreeing with what the app did.
-            prefs.edit(commit = true) { putString(KEY_LOG, updated) }
+            prefs.edit(commit = true) {
+                putString(KEY_LOG, appended.log)
+                putString(KEY_ANCHOR, appended.anchor)
+            }
         }
     }
 
     /** Newest first, the way the screen reads it. */
     fun entries(context: Context): List<AuditEntry> =
         AuditLogFormat.decodeAll(prefs(context).getString(KEY_LOG, null)).asReversed()
+
+    /**
+     * Whether the stored history still adds up (TR-3).
+     *
+     * Each entry is chained to the one before it, so an edit made outside this app
+     * — a text editor on a rooted phone, a restored backup, a corrupted write —
+     * breaks every link after it. The screen shows the result, because a history
+     * whose integrity is never checked is one nobody has any reason to believe.
+     */
+    fun check(context: Context): ChainCheck {
+        val prefs = prefs(context)
+        return AuditChain.verify(
+            entries = AuditLogFormat.decodeAll(prefs.getString(KEY_LOG, null)),
+            anchor = prefs.getString(KEY_ANCHOR, null) ?: AuditChain.GENESIS,
+        )
+    }
 
     fun minutes(value: Int): String = value.toString()
 
@@ -83,6 +108,15 @@ object Audit {
 
     private const val FILE_NAME = "audit"
     private const val KEY_LOG = "log"
+
+    /**
+     * The hash the chain continues from.
+     *
+     * Not always the genesis value: the log is capped, so once old entries age out
+     * the chain resumes from the hash of the last one dropped. Keeping it is what
+     * stops an ordinary trim looking exactly like a deleted first page.
+     */
+    private const val KEY_ANCHOR = "anchor"
 
     private fun prefs(context: Context) = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)

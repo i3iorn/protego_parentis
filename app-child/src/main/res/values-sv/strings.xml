@@ -597,4 +597,40 @@
     <string name="audit_install_window_opened">Installationer öppnade i %1$s</string>
     <string name="audit_install_notify">tillåtna, med besked</string>
     <string name="audit_install_gated">spärrade tills de öppnas</string>
+
+    <!-- Familjens enheter: vilka telefoner som är betrodda, och som vad. -->
+    <string name="rules_row_devices">Familjens enheter</string>
+    <string name="rules_row_devices_detail">Vilka telefoner som är betrodda, och vilka som väntar</string>
+    <string name="devices_title">Familjens enheter</string>
+    <string name="devices_intro">Varje telefon i familjen har en egen identitet. En telefon kan bara svara på förfrågningar när den godkänts här, så det räcker inte längre att känna till lösenfrasen.</string>
+    <string name="devices_this_phone">Den här telefonen</string>
+    <string name="devices_fingerprint">Fingeravtryck</string>
+    <string name="devices_no_identity">Inte tillgängligt</string>
+    <string name="devices_fingerprint_hint">Läs upp den här koden när du godkänner telefonen på en annan. Om koderna skiljer sig, godkänn inte.</string>
+    <string name="devices_rename_this">Byt namn på den här telefonen</string>
+    <string name="devices_renamed">Namnet ändrat. De andra telefonerna ser det snart.</string>
+    <string name="devices_waiting">Väntar på godkännande</string>
+    <string name="devices_waiting_hint">De här telefonerna känner till lösenfrasen. Kontrollera fingeravtrycket mot det som visas på telefonen själv innan du godkänner.</string>
+    <string name="devices_trusted">Betrodda</string>
+    <string name="devices_none">Inga andra telefoner ännu.</string>
+    <string name="devices_unnamed">Namnlös telefon</string>
+    <string name="devices_role">Roll</string>
+    <string name="devices_role_child">telefonen med gränserna</string>
+    <string name="devices_role_parent">en förälders telefon</string>
+    <string name="devices_approve">Godkänn</string>
+    <string name="devices_approve_body">Godkänn bara om fingeravtrycket %1$s visas på den telefonen. Den blir betrodd som %2$s.</string>
+    <string name="devices_reject">Inte min</string>
+    <string name="devices_row_detail">%1$s · %2$s</string>
+    <string name="devices_name_hint">Mammas telefon, pappas telefon…</string>
+    <string name="devices_rename">Byt namn</string>
+    <string name="devices_manage_body">Fingeravtryck %1$s, betrodd som %2$s.</string>
+    <string name="devices_revoke">Ta bort</string>
+    <string name="devices_revoke_body">%1$s slutar vara betrodd. Den kan fråga igen, och du kan titta på den igen.</string>
+
+    <string name="audit_intact">Historiken stämmer</string>
+    <string name="audit_intact_hint">Varje rad följer på den föregående, så ingenting har ändrats eller tagits bort utanför appen.</string>
+    <string name="audit_broken">Historiken har ändrats</string>
+    <string name="audit_broken_hint">Några rader följer inte längre på de föregående. Något har ändrat eller tagit bort delar av den här historiken utanför appen.</string>
+    <string name="audit_device_approved">Godkände %1$s som %2$s</string>
+    <string name="audit_device_revoked">Tog bort %1$s ur familjen</string>
 </resources>

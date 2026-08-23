@@ -40,6 +40,12 @@ enum class DiagnosticEvent {
     /** A message decrypted but was refused — stale, duplicated, or a bad clock. */
     SYNC_MESSAGE_REFUSED,
 
+    /** Signed by a device that is not enrolled, or not permitted to say that. */
+    SYNC_SENDER_REFUSED,
+
+    /** A correctly signed stranger asked to join the family. */
+    SYNC_DEVICE_PENDING,
+
     BOOT_COMPLETED,
 }
 

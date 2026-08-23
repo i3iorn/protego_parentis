@@ -46,6 +46,10 @@ class ParentPollWorker(
         // pollNow hands its work to the sync executor and returns at once, while
         // a Worker must not return until the work is done or the process may be
         // killed mid-poll. Waiting here is the correct shape for this API.
+        // A parent phone has no enforcement tick, so this is where it introduces
+        // itself to the child device that has to enrol it.
+        sync.announceSelf()
+
         val finished = CountDownLatch(1)
         sync.pollNow { finished.countDown() }
 
