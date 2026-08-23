@@ -109,6 +109,7 @@ class LocalPolicyStore(context: Context) {
         name = stored.name,
         budget = budgetOf(stored.limitMinutes),
         packages = stored.packages.map(::PackageName).toSet(),
+        subcategories = stored.subcategories.map(::CategoryId).toSet(),
     )
 
     /** Zero means "no limit"; the sliders have no other way to express it. */

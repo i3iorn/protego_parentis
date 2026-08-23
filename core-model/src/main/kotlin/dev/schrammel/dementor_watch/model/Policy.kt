@@ -74,9 +74,6 @@ data class Policy(
 
     fun ruleFor(pkg: PackageName): AppRule = appRules[pkg] ?: AppRule.Allowed
 
-    /** Every category [pkg] belongs to. May be empty, or more than one. */
-    fun categoriesFor(pkg: PackageName): List<Category> = categories.filter { it.contains(pkg) }
-
     /**
      * True when [pkg] must never be restricted by anything. Enforced as an invariant
      * in the engine rather than left to parents to configure correctly.

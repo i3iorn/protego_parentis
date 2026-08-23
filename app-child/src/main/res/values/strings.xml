@@ -71,6 +71,41 @@
 
     <string name="home_open_requests">Ask for more time</string>
 
+    <!-- Sync with parent phones. -->
+    <string name="sync_title">Parent phones</string>
+    <string name="sync_explainer">Requests and answers are sent through a shared topic. Every message is encrypted on this phone before it is sent, so the server can never read it. Add a parent phone by entering the same server, topic and passphrase there.</string>
+    <string name="sync_enable">Send to parent phones</string>
+    <string name="sync_server_label">Server</string>
+    <string name="sync_topic_label">Topic</string>
+    <string name="sync_topic_hint">Anyone who knows this can see that messages exist, though not what they say. Use the generated one.</string>
+    <string name="sync_generate_topic">Generate a topic</string>
+    <string name="sync_passphrase_label">Passphrase</string>
+    <plurals name="sync_passphrase_hint">
+        <item quantity="one">At least %d character. This is what keeps messages private. Use the same one on every phone.</item>
+        <item quantity="other">At least %d characters. This is what keeps messages private. Use the same one on every phone.</item>
+    </plurals>
+    <string name="sync_passphrase_empty">Not set yet</string>
+    <string name="sync_passphrase_set">Saved. Type to replace it.</string>
+    <plurals name="sync_passphrase_too_short">
+        <item quantity="one">Use at least %d character.</item>
+        <item quantity="other">Use at least %d characters.</item>
+    </plurals>
+    <string name="sync_needs_https">The server address must start with https://</string>
+    <string name="sync_needs_topic">Enter or generate a topic first.</string>
+    <string name="sync_save">Save</string>
+    <string name="sync_saved">Saved.</string>
+    <string name="sync_test">Test connection</string>
+    <string name="sync_testing">Checking…</string>
+    <string name="sync_test_result">Result: %1$s</string>
+    <string name="rules_sync_header">Parent phones</string>
+    <string name="rules_open_sync">Set up parent phones</string>
+
+    <!-- Nested categories. -->
+    <string name="category_nested_header">Categories inside this one</string>
+    <string name="category_nested_hint">Their apps count towards this category too.</string>
+    <string name="category_no_nested">None.</string>
+    <string name="category_choose_nested">Choose categories</string>
+
     <!-- Goals and prizes. -->
     <string name="goal_channel_name">Goals</string>
     <string name="goal_channel_description">Tells you when you have earned a prize.</string>

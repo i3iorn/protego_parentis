@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
+import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
 import java.time.Instant
@@ -41,6 +42,7 @@ class EnforcementService : Service() {
     private lateinit var warnings: WarningNotifier
     private lateinit var goals: GoalCoordinator
     private lateinit var goalNotifier: GoalNotifier
+    private lateinit var sync: SyncCoordinator
 
     /**
      * Fires when the device is unlocked. Registered at runtime because implicit
@@ -78,6 +80,7 @@ class EnforcementService : Service() {
         warnings = WarningNotifier(this)
         goals = GoalCoordinator(this)
         goalNotifier = GoalNotifier(this)
+        sync = SyncCoordinator(this)
         createNotificationChannel()
         ContextCompat.registerReceiver(
             this,
@@ -136,6 +139,10 @@ class EnforcementService : Service() {
                 "wouldSuspend=${snapshot.enforcement.suspend.size} " +
                 "monitorOnly=${snapshot.monitorOnly}",
         )
+
+        // Piggybacks on the same tick rather than holding a connection open.
+        // Failures are reported through the callback and never reach here.
+        sync.pollNow()
 
         return delayUntil(snapshot.enforcement.nextChangeAt, now)
     }

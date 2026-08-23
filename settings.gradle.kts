@@ -28,6 +28,7 @@ rootProject.name = "dementor_watch"
 include(":core-model")
 include(":core-policy")
 include(":core-provisioning")
+include(":core-sync")
 
 // The Device Policy Controller that runs on the teen's phone.
 // This is the module that produces the installable APK.

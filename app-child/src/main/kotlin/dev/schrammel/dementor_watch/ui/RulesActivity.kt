@@ -51,6 +51,9 @@ class RulesActivity : ParentGatedActivity() {
         findViewById<Button>(R.id.open_app_limits).setOnClickListener {
             startActivity(AppLimitsActivity.intent(this))
         }
+        findViewById<Button>(R.id.open_sync).setOnClickListener {
+            startActivity(SyncSettingsActivity.intent(this))
+        }
         findViewById<Button>(R.id.open_inbox).setOnClickListener {
             startActivity(RequestInboxActivity.intent(this))
         }

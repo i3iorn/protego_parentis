@@ -16,12 +16,15 @@ data class StoredCategory(
     val name: String,
     val limitMinutes: Int,
     val packages: Set<String>,
+    /** Ids of categories nested inside this one. */
+    val subcategories: Set<String> = emptySet(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put(KEY_ID, id)
         put(KEY_NAME, name)
         put(KEY_LIMIT, limitMinutes)
         put(KEY_PACKAGES, JSONArray(packages.toList()))
+        put(KEY_SUBCATEGORIES, JSONArray(subcategories.toList()))
     }
 
     companion object {
@@ -29,18 +32,24 @@ data class StoredCategory(
         private const val KEY_NAME = "name"
         private const val KEY_LIMIT = "limitMinutes"
         private const val KEY_PACKAGES = "packages"
+        private const val KEY_SUBCATEGORIES = "subcategories"
 
         fun fromJson(json: JSONObject): StoredCategory? {
             val id = json.optString(KEY_ID).takeIf { it.isNotBlank() } ?: return null
             val name = json.optString(KEY_NAME).takeIf { it.isNotBlank() } ?: return null
-            val packages = json.optJSONArray(KEY_PACKAGES)?.let { array ->
-                (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
-            }.orEmpty()
+            fun strings(key: String): List<String> =
+                json.optJSONArray(key)?.let { array ->
+                    (0 until array.length())
+                        .mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
+                }.orEmpty()
+
+            val packages = strings(KEY_PACKAGES)
             return StoredCategory(
                 id = id,
                 name = name,
                 limitMinutes = json.optInt(KEY_LIMIT, 0),
                 packages = packages.toSet(),
+                subcategories = strings(KEY_SUBCATEGORIES).toSet(),
             )
         }
 

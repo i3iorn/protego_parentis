@@ -23,7 +23,16 @@ import kotlin.time.Duration.Companion.minutes
  * splitting them would allow a request marked approved with no time actually
  * granted, which is the one outcome guaranteed to destroy trust in the feature.
  */
-class RequestCoordinator(context: Context) {
+class RequestCoordinator(
+    context: Context,
+    /**
+     * Called when a request is raised, so it can be forwarded to the parent
+     * phones. A callback rather than a direct dependency because the sync layer
+     * also calls back into this class, and wiring them together directly would
+     * be a construction loop.
+     */
+    private val onRaised: ((Request) -> Unit)? = null,
+) {
 
     private val appContext = context.applicationContext
     private val requests = RequestStore(appContext)
@@ -67,6 +76,7 @@ class RequestCoordinator(context: Context) {
         )
         requests.save(request)
         notifier.notifyRequestReceived(request)
+        onRaised?.invoke(request)
         return request
     }
 

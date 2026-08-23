@@ -1,0 +1,116 @@
+package dev.schrammel.dementor_watch.sync
+
+import android.util.Log
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.net.HttpURLConnection
+import java.net.URL
+import java.time.Instant
+import java.util.concurrent.TimeUnit
+
+/** What a publish or poll attempt did. */
+sealed interface TransportResult<out T> {
+    data class Ok<T>(val value: T) : TransportResult<T>
+    data class Failed(val message: String) : TransportResult<Nothing>
+}
+
+/**
+ * Talks to an ntfy topic over plain HTTP.
+ *
+ * Deliberately thin, and deliberately unaware of what it is carrying: bodies are
+ * already-sealed envelopes from `MessageCrypto`. The server is treated as a dumb
+ * relay that can read nothing and is trusted with nothing.
+ *
+ * Polling rather than a streaming subscription. A held-open connection on a
+ * child's phone is a battery and reconnection problem, and the app already wakes
+ * on a schedule for enforcement — piggybacking on that is far simpler than
+ * managing a socket across doze, network changes and process death.
+ *
+ * Every call blocks; callers must be off the main thread.
+ */
+class NtfyClient(
+    private val serverUrl: String,
+    private val topic: String,
+) {
+
+    /** Publishes one already-encrypted envelope. */
+    fun publish(envelope: String): TransportResult<Unit> = try {
+        val connection = open("$serverUrl/$topic", method = "POST")
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "text/plain")
+        // ntfy would otherwise try to render our ciphertext as a notification
+        // title on any device that happens to be subscribed with its own app.
+        connection.setRequestProperty("X-Title", "Dementor Watch")
+        connection.outputStream.use { it.write(envelope.toByteArray(Charsets.UTF_8)) }
+
+        val code = connection.responseCode
+        connection.disconnect()
+
+        if (code in 200..299) {
+            TransportResult.Ok(Unit)
+        } else {
+            TransportResult.Failed("server returned $code")
+        }
+    } catch (e: Exception) {
+        // Offline is the normal case, not an error worth shouting about.
+        Log.d(TAG, "Publish failed", e)
+        TransportResult.Failed(e.message ?: "could not reach the server")
+    }
+
+    /**
+     * Fetches envelopes published since [since].
+     *
+     * Uses ntfy's poll mode, which returns everything available and closes rather
+     * than streaming. Anything that is not a message body we recognise is skipped
+     * — the topic is public and will contain other traffic.
+     */
+    fun poll(since: Instant): TransportResult<List<String>> = try {
+        val seconds = since.epochSecond.coerceAtLeast(0)
+        val connection = open("$serverUrl/$topic/json?poll=1&since=$seconds", method = "GET")
+
+        val code = connection.responseCode
+        if (code !in 200..299) {
+            connection.disconnect()
+            TransportResult.Failed("server returned $code")
+        } else {
+            val envelopes = connection.inputStream.bufferedReader().use(::readEnvelopes)
+            connection.disconnect()
+            TransportResult.Ok(envelopes)
+        }
+    } catch (e: Exception) {
+        Log.d(TAG, "Poll failed", e)
+        TransportResult.Failed(e.message ?: "could not reach the server")
+    }
+
+    /** ntfy streams newline-delimited JSON; one object per line. */
+    private fun readEnvelopes(reader: BufferedReader): List<String> =
+        reader.lineSequence()
+            .filter { it.isNotBlank() }
+            .mapNotNull { line -> runCatching { JSONObject(line) }.getOrNull() }
+            .filter { it.optString(FIELD_EVENT) == EVENT_MESSAGE }
+            .mapNotNull { it.optString(FIELD_MESSAGE).takeIf(String::isNotBlank) }
+            .take(MAX_MESSAGES_PER_POLL)
+            .toList()
+
+    private fun open(url: String, method: String): HttpURLConnection =
+        (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = TIMEOUT_MILLIS
+            readTimeout = TIMEOUT_MILLIS
+            // No redirects: a redirect off our configured host would send traffic
+            // somewhere we did not choose.
+            instanceFollowRedirects = false
+        }
+
+    private companion object {
+        const val TAG = "DementorSync"
+        val TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(15).toInt()
+
+        /** A bound, so a flooded topic cannot exhaust memory on the child's phone. */
+        const val MAX_MESSAGES_PER_POLL = 200
+
+        const val FIELD_EVENT = "event"
+        const val FIELD_MESSAGE = "message"
+        const val EVENT_MESSAGE = "message"
+    }
+}

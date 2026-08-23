@@ -13,8 +13,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.dementor_watch.R
+import androidx.appcompat.app.AlertDialog
+import dev.schrammel.dementor_watch.model.Category
+import dev.schrammel.dementor_watch.model.CategoryId
 import dev.schrammel.dementor_watch.model.Defaults
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.model.WeeklyBudget
+import dev.schrammel.dementor_watch.policy.CategoryHierarchy
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.StoredCategory
 import dev.schrammel.dementor_watch.usage.InstalledApps
@@ -33,11 +38,13 @@ class CategoryEditActivity : ParentGatedActivity() {
 
     private var categoryId: String = ""
     private var packages = linkedSetOf<String>()
+    private var nested = linkedSetOf<String>()
 
     private lateinit var nameInput: EditText
     private lateinit var limitValue: TextView
     private lateinit var limitBar: SeekBar
     private lateinit var appsSummary: TextView
+    private lateinit var nestedSummary: TextView
 
     private val defaultLimitMinutes = Defaults.CATEGORY_LIMIT.inWholeMinutes.toInt()
 
@@ -58,9 +65,11 @@ class CategoryEditActivity : ParentGatedActivity() {
 
         categoryId = existing?.id ?: UUID.randomUUID().toString()
         packages = LinkedHashSet(existing?.packages.orEmpty())
+        nested = LinkedHashSet(existing?.subcategories.orEmpty())
 
         setContentView(buildLayout(existing))
         refreshAppsSummary()
+        refreshNestedSummary()
     }
 
     private fun buildLayout(existing: StoredCategory?): ScrollView {
@@ -122,6 +131,24 @@ class CategoryEditActivity : ParentGatedActivity() {
             },
         )
 
+        content.addView(heading(getString(R.string.category_nested_header), 20f))
+        content.addView(
+            TextView(this).apply {
+                setText(R.string.category_nested_hint)
+                styleAs(R.style.TextAppearance_Dementor_Caption)
+            },
+        )
+        nestedSummary = TextView(this).apply { styleAs(R.style.TextAppearance_Dementor_Body) }
+        content.addView(nestedSummary)
+        content.addView(
+            Button(this).apply {
+                setText(R.string.category_choose_nested)
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                    .apply { topMargin = dimen(R.dimen.space_sm) }
+                setOnClickListener { chooseNested() }
+            },
+        )
+
         content.addView(
             Button(this).apply {
                 setText(R.string.category_save)
@@ -164,9 +191,78 @@ class CategoryEditActivity : ParentGatedActivity() {
                 name = name,
                 limitMinutes = LimitSlider.minutesFor(limitBar.progress),
                 packages = packages.toSet(),
+                subcategories = nested.toSet(),
             ),
         )
         finish()
+    }
+
+    /**
+     * Offers every other category, minus any whose selection would create a loop.
+     *
+     * Refusing up front rather than accepting and silently ignoring it later: a
+     * parent who builds "Fun holds Games, Games holds Fun" should be told, not
+     * left with a hierarchy that quietly does something else.
+     */
+    private fun chooseNested() {
+        val all = store.categories.filter { it.id != categoryId }
+        if (all.isEmpty()) {
+            Toast.makeText(this, R.string.category_no_nested, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Evaluate against the hierarchy as it would be with this edit applied.
+        val pending = store.categories.map { candidate ->
+            if (candidate.id == categoryId) candidate.copy(subcategories = nested) else candidate
+        }.map(::toDomain)
+
+        val selectable = all.filterNot { candidate ->
+            CategoryHierarchy.wouldCreateCycle(
+                categories = pending,
+                parent = CategoryId(categoryId),
+                child = CategoryId(candidate.id),
+            )
+        }
+        if (selectable.isEmpty()) {
+            Toast.makeText(this, R.string.category_no_nested, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val names = selectable.map { it.name }.toTypedArray()
+        val checked = selectable.map { it.id in nested }.toBooleanArray()
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.category_nested_header)
+            .setMultiChoiceItems(names, checked) { _, index, isChecked ->
+                val id = selectable[index].id
+                if (isChecked) nested += id else nested -= id
+            }
+            .setPositiveButton(android.R.string.ok) { _, _ -> refreshNestedSummary() }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                // Restore, since the listener has already mutated the set.
+                nested = LinkedHashSet(
+                    store.categories.firstOrNull { it.id == categoryId }?.subcategories.orEmpty(),
+                )
+                refreshNestedSummary()
+            }
+            .show()
+    }
+
+    private fun toDomain(stored: StoredCategory) = Category(
+        id = CategoryId(stored.id),
+        name = stored.name,
+        budget = WeeklyBudget.UNLIMITED,
+        packages = stored.packages.map(::PackageName).toSet(),
+        subcategories = stored.subcategories.map(::CategoryId).toSet(),
+    )
+
+    private fun refreshNestedSummary() {
+        val byId = store.categories.associateBy { it.id }
+        nestedSummary.text = nested
+            .mapNotNull { byId[it]?.name }
+            .sorted()
+            .joinToString(", ")
+            .ifBlank { getString(R.string.category_no_nested) }
     }
 
     private fun refreshAppsSummary() {

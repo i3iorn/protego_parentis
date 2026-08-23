@@ -94,15 +94,13 @@ class PolicyTest {
     }
 
     @Test
-    fun `an app can belong to several categories`() {
+    fun `a category reports its own members`() {
+        // Nested membership is resolved by CategoryHierarchy, which is tested
+        // separately; this covers only direct membership.
         val games = Category(CategoryId("games"), "Games", WeeklyBudget.UNLIMITED, setOf(GAME))
-        val social = Category(CategoryId("social"), "Social", WeeklyBudget.UNLIMITED, setOf(GAME, CHAT))
 
-        val subject = policy(categories = listOf(games, social))
-
-        assertEquals(listOf(games, social), subject.categoriesFor(GAME))
-        assertEquals(listOf(social), subject.categoriesFor(CHAT))
-        assertEquals(emptyList<Category>(), subject.categoriesFor(DIALER))
+        assertTrue(games.contains(GAME))
+        assertFalse(games.contains(CHAT))
     }
 }
 

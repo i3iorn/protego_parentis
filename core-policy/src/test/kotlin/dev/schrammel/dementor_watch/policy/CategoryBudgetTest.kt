@@ -233,6 +233,89 @@ class CategoryBudgetTest {
         assertEquals(emptyMap<Any, Any>(), result.suspend)
     }
 
+    // ---------- nested categories ----------
+
+    @Test
+    fun `a parent category is spent by time in a nested one`() {
+        val result = PolicyEngine.evaluate(
+            policy = policy(
+                categories = listOf(
+                    Category(
+                        id = CategoryId("fun"),
+                        name = "Fun",
+                        budget = WeeklyBudget.flat(30.minutes),
+                        subcategories = setOf(games),
+                    ),
+                    category(games, "Games", 3.hours, setOf(GAME)),
+                ),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", byPackage = mapOf(GAME to 30.minutes)),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        // The roomy inner category is fine; the tighter outer one has run out.
+        assertEquals(BudgetLevel.NORMAL, result.categoryBudgets.getValue(games).level)
+        assertEquals(BudgetLevel.EXHAUSTED, result.categoryBudgets.getValue(CategoryId("fun")).level)
+
+        val reason = result.suspend[GAME]
+        assertTrue(reason is Reason.CategoryBudgetExhausted)
+        assertEquals("Fun", (reason as Reason.CategoryBudgetExhausted).categoryName)
+    }
+
+    @Test
+    fun `an app reachable twice does not drain a parent twice as fast`() {
+        val result = PolicyEngine.evaluate(
+            policy = policy(
+                categories = listOf(
+                    Category(
+                        id = CategoryId("fun"),
+                        name = "Fun",
+                        budget = WeeklyBudget.flat(1.hours),
+                        subcategories = setOf(games, social),
+                    ),
+                    category(games, "Games", 3.hours, setOf(GAME)),
+                    category(social, "Social", 3.hours, setOf(GAME, YOUTUBE)),
+                ),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", byPackage = mapOf(GAME to 20.minutes)),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        // Twenty minutes, counted once, not forty.
+        assertEquals(40.minutes, result.categoryBudgets.getValue(CategoryId("fun")).remaining)
+    }
+
+    @Test
+    fun `a loop between categories does not hang enforcement`() {
+        val result = PolicyEngine.evaluate(
+            policy = policy(
+                categories = listOf(
+                    Category(
+                        id = CategoryId("fun"),
+                        name = "Fun",
+                        budget = WeeklyBudget.flat(1.hours),
+                        subcategories = setOf(games),
+                    ),
+                    Category(
+                        id = games,
+                        name = "Games",
+                        budget = WeeklyBudget.flat(1.hours),
+                        packages = setOf(GAME),
+                        subcategories = setOf(CategoryId("fun")),
+                    ),
+                ),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", byPackage = mapOf(GAME to 10.minutes)),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        assertEquals(50.minutes, result.categoryBudgets.getValue(games).remaining)
+        assertEquals(50.minutes, result.categoryBudgets.getValue(CategoryId("fun")).remaining)
+    }
+
     // ---------- warning scheduling ----------
 
     @Test

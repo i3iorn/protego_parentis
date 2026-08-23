@@ -54,11 +54,15 @@ object PolicyEngine {
             bonus = bonusFor(GrantTarget.Device),
             thresholds = policy.warningThresholds,
         )
+        // Nesting is followed once here and reused throughout: a parent category
+        // owns its children's apps too, and a loop is broken rather than followed.
+        val hierarchy = CategoryHierarchy.resolve(policy.categories)
+
         // A category's usage is the sum of its members' time. An app in two
         // categories spends from both — see Category's documentation. Apps that are
         // exempt from limits do not consume a category's allowance either.
         val categoryBudgets = policy.categories.associate { category ->
-            val used = category.packages
+            val used = hierarchy.packagesIn(category.id)
                 .filterNot { policy.isSafetyExempt(it) }
                 .fold(Duration.ZERO) { acc, pkg -> acc + usage.forPackage(pkg) }
             category.id to statusOf(
@@ -105,8 +109,10 @@ object PolicyEngine {
                 if (deviceBudget.isExhausted) add(Reason.DeviceBudgetExhausted(dayEnd))
                 if (appBudgets[pkg]?.isExhausted == true) add(Reason.AppBudgetExhausted(pkg, dayEnd))
 
-                // Every category the app belongs to is enforced independently.
-                for (category in policy.categoriesFor(pkg)) {
+                // Every category the app belongs to is enforced independently,
+                // including the ones it belongs to only through nesting.
+                for (category in policy.categories) {
+                    if (pkg !in hierarchy.packagesIn(category.id)) continue
                     if (categoryBudgets[category.id]?.isExhausted != true) continue
                     add(Reason.CategoryBudgetExhausted(category.id, category.name, dayEnd))
                 }
@@ -137,6 +143,7 @@ object PolicyEngine {
                 deviceBudget = deviceBudget,
                 appBudgets = appBudgets,
                 categoryBudgets = categoryBudgets,
+                hierarchy = hierarchy,
                 deviceState = deviceState,
             ),
         )
@@ -185,6 +192,7 @@ object PolicyEngine {
         deviceBudget: BudgetStatus,
         appBudgets: Map<PackageName, BudgetStatus>,
         categoryBudgets: Map<CategoryId, BudgetStatus>,
+        hierarchy: ResolvedHierarchy,
         deviceState: DeviceState,
     ): Instant? {
         val candidates = mutableListOf(dayEnd)
@@ -199,9 +207,9 @@ object PolicyEngine {
             val covering = buildList {
                 add(deviceBudget)
                 appBudgets[foreground]?.let(::add)
-                policy.categoriesFor(foreground).forEach { category ->
-                    categoryBudgets[category.id]?.let(::add)
-                }
+                policy.categories
+                    .filter { foreground in hierarchy.packagesIn(it.id) }
+                    .forEach { category -> categoryBudgets[category.id]?.let(::add) }
             }
             val binding = covering
                 .filterNot { it.isUnlimited || it.isExhausted }
