@@ -22,6 +22,7 @@ import dev.schrammel.dementor_watch.enforcement.EnforcementSnapshot
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Reason
+import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.usage.UsageAccess
@@ -40,6 +41,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var installedApps: InstalledApps
     private lateinit var store: LocalPolicyStore
+    private lateinit var goals: GoalCoordinator
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
@@ -53,6 +55,7 @@ class HomeActivity : AppCompatActivity() {
         coordinator = EnforcementCoordinator(this)
         installedApps = InstalledApps(this)
         store = LocalPolicyStore(this)
+        goals = GoalCoordinator(this)
 
         findViewById<Button>(R.id.permission_button).setOnClickListener {
             startActivity(UsageAccess.settingsIntent())
@@ -70,10 +73,21 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (showPendingCelebration()) return
         requestNotificationPermissionIfNeeded()
         render()
         // Safe to call repeatedly; the service ignores a duplicate start.
         if (coordinator.hasUsageAccess()) EnforcementService.start(this)
+    }
+
+    /**
+     * Opening the app is the other way a prize gets seen, for anyone who swiped the
+     * notification away. Returns true when the celebration took over the screen.
+     */
+    private fun showPendingCelebration(): Boolean {
+        val earned = runCatching { goals.refresh() }.getOrNull() ?: return false
+        startActivity(CelebrationActivity.intent(this))
+        return true
     }
 
     /**

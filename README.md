@@ -22,7 +22,7 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 196 tests run without a phone.
+in the wrong place — that separation is what lets 207 tests run without a phone.
 
 ---
 
@@ -135,7 +135,7 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-196 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
+207 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
 and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
@@ -148,6 +148,7 @@ and cover the things that are easy to get quietly wrong:
 - gaps in history filling as real zeros, so a day off is not mistaken for a day
   that was never measured
 - an approved request always producing a grant that matches what was asked for
+- a goal never being awarded for days that predate it, including backfilled ones
 
 There are **no instrumentation tests** yet. Every `DevicePolicyManager` interaction
 is exercised through a fake (`FakeDevicePolicyPort`), which proves the logic but
@@ -159,7 +160,8 @@ largest untested area in the project.
 ## Current state
 
 Working: usage measurement, device/category/per-app limits, bedtime, exempt apps,
-bonus time, the warning ladder, PIN-protected rules, the teen dashboard, the
+bonus time, daily goals with a parent-written prize, the warning ladder,
+PIN-protected rules, the teen dashboard, the
 weekly view with local history, the request and approval loop, device owner
 enforcement and release.
 

@@ -71,6 +71,25 @@
 
     <string name="home_open_requests">Ask for more time</string>
 
+    <!-- Goals and prizes. -->
+    <string name="goal_channel_name">Goals</string>
+    <string name="goal_channel_description">Tells you when you have earned a prize.</string>
+    <string name="goal_notification_title">You earned your prize</string>
+    <string name="goal_notification_body">%1$s yesterday, under your %2$s goal. Tap to see it.</string>
+    <string name="celebration_headline">Nice one</string>
+    <string name="celebration_summary">You used %1$s on %3$s, under your goal of %2$s.</string>
+    <string name="celebration_prize_label">YOUR PRIZE</string>
+    <string name="celebration_prize_missing">Your parent has not written a prize yet.</string>
+    <string name="celebration_dismiss">Thanks</string>
+
+    <string name="rules_goal_header">Goal and prize</string>
+    <string name="rules_goal_hint">Stay under this for a whole day and the prize shows up the next morning.</string>
+    <string name="rules_goal_enable">Set a daily goal</string>
+    <string name="rules_goal_prize_hint">The prize. Anything you like \u2014 a promise, a treat, a note.</string>
+    <string name="rules_goal_saved">Goal saved.</string>
+    <string name="rules_goal_needs_prize">Write a prize first.</string>
+    <string name="rules_goal_save">Save goal</string>
+
     <!-- Request notifications. -->
     <string name="request_channel_incoming_name">Requests</string>
     <string name="request_channel_incoming_description">Tells you when someone asks for more time.</string>

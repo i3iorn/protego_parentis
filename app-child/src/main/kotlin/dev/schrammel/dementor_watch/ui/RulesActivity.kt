@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
@@ -14,6 +15,7 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.security.PinLock
 import dev.schrammel.dementor_watch.usage.InstalledApps
@@ -56,6 +58,7 @@ class RulesActivity : ParentGatedActivity() {
             startActivity(BonusTimeActivity.intent(this))
         }
         setUpExempt()
+        setUpGoal()
         setUpPin()
         setUpDeviceControl()
 
@@ -218,6 +221,55 @@ class RulesActivity : ParentGatedActivity() {
         }
     }
 
+    // ---------- goal and prize ----------
+
+    private fun setUpGoal() {
+        val goals = GoalCoordinator(this)
+        val enabled = findViewById<CheckBox>(R.id.goal_enabled)
+        val settings = findViewById<View>(R.id.goal_settings)
+        val value = findViewById<TextView>(R.id.goal_target_value)
+        val bar = findViewById<SeekBar>(R.id.goal_target_bar)
+        val prize = findViewById<EditText>(R.id.goal_prize)
+
+        val existing = goals.goal()
+        enabled.isChecked = existing.enabled
+        settings.visibility = if (existing.enabled) View.VISIBLE else View.GONE
+
+        val startingMinutes = existing.maxUsage.inWholeMinutes.toInt()
+            .takeIf { it > 0 } ?: DEFAULT_GOAL_MINUTES
+        bar.progress = LimitSlider.progressFor(startingMinutes)
+        value.text = Format.limit(startingMinutes)
+        prize.setText(existing.prize)
+
+        enabled.setOnCheckedChangeListener { _, checked ->
+            settings.visibility = if (checked) View.VISIBLE else View.GONE
+            // Switching off applies at once. Switching on waits for a prize to be
+            // written, so a goal is never live with nothing to win.
+            if (!checked) {
+                goals.saveGoal(false, LimitSlider.minutesFor(bar.progress), prize.text.toString())
+            }
+        }
+
+        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                value.text = Format.limit(LimitSlider.minutesFor(progress))
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
+        })
+
+        findViewById<Button>(R.id.goal_save).setOnClickListener {
+            val text = prize.text.toString().trim()
+            if (text.isEmpty()) {
+                toast(getString(R.string.rules_goal_needs_prize))
+                return@setOnClickListener
+            }
+            goals.saveGoal(true, LimitSlider.minutesFor(bar.progress), text)
+            toast(getString(R.string.rules_goal_saved))
+        }
+    }
+
     // ---------- device control ----------
 
     private fun setUpDeviceControl() {
@@ -267,5 +319,7 @@ class RulesActivity : ParentGatedActivity() {
     }
 
     private companion object {
+        /** A sensible starting target when a family first sets a goal. */
+        const val DEFAULT_GOAL_MINUTES = 60
     }
 }

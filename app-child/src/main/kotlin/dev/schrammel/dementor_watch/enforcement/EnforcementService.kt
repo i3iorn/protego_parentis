@@ -4,8 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
@@ -13,8 +15,10 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.BudgetLevel
+import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
 import java.time.Instant
@@ -35,6 +39,21 @@ class EnforcementService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var warnings: WarningNotifier
+    private lateinit var goals: GoalCoordinator
+    private lateinit var goalNotifier: GoalNotifier
+
+    /**
+     * Fires when the device is unlocked. Registered at runtime because implicit
+     * broadcasts of this kind cannot be declared in the manifest.
+     */
+    private val onUnlocked = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != Intent.ACTION_USER_PRESENT) return
+            runCatching { goals.refresh() }
+                .onSuccess { earned -> earned?.let(goalNotifier::notifyEarned) }
+                .onFailure { Log.w(TAG, "Could not check goals on unlock", it) }
+        }
+    }
 
     private val tick = object : Runnable {
         override fun run() {
@@ -57,7 +76,15 @@ class EnforcementService : Service() {
         super.onCreate()
         coordinator = EnforcementCoordinator(this)
         warnings = WarningNotifier(this)
+        goals = GoalCoordinator(this)
+        goalNotifier = GoalNotifier(this)
         createNotificationChannel()
+        ContextCompat.registerReceiver(
+            this,
+            onUnlocked,
+            IntentFilter(Intent.ACTION_USER_PRESENT),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -86,6 +113,7 @@ class EnforcementService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(tick)
+        runCatching { unregisterReceiver(onUnlocked) }
         super.onDestroy()
     }
 
