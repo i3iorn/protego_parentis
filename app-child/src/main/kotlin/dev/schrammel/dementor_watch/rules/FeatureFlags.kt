@@ -63,6 +63,9 @@ enum class Feature(
     /** Asking where the phone is. */
     LOCATION,
 
+    /** Messages between the phones in the family. */
+    CHAT,
+
     // ---------- not offered ----------
 
     /** The emergency button. Safety overrides everything, including tidiness. */

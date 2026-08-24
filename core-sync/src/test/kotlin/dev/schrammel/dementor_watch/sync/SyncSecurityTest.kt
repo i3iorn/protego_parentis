@@ -159,12 +159,63 @@ class ReplayGuardTest {
 
     private val now: Instant = Instant.parse("2026-08-23T18:00:00Z")
 
-    private fun message(id: String = "m-1", sentAt: Instant = now) = SyncMessage(
+    private fun message(
+        id: String = "m-1",
+        sentAt: Instant = now,
+        type: SyncMessageType = SyncMessageType.BONUS_GRANTED,
+    ) = SyncMessage(
         id = id,
-        type = SyncMessageType.BONUS_GRANTED,
+        type = type,
         sender = "parent",
         sentAt = sentAt,
     )
+
+    @Test
+    fun `conversation survives a phone that was asleep, commands do not`() {
+        val threeHoursAgo = now.minusSeconds(3 * 60 * 60)
+
+        // A parent whose phone dozed all afternoon should still see what was said.
+        assertTrue(
+            ReplayGuard.admit(
+                message(sentAt = threeHoursAgo, type = SyncMessageType.CHAT_MESSAGE),
+                now,
+                emptySet(),
+            ).isAccepted,
+        )
+        // The same age, for something that would actually do something, is refused.
+        assertEquals(
+            Admission.Reject(RejectReason.TOO_OLD),
+            ReplayGuard.admit(message(sentAt = threeHoursAgo), now, emptySet()),
+        )
+    }
+
+    @Test
+    fun `even a message has an outer limit`() {
+        val ancient = now.minusSeconds(
+            ReplayGuard.CONVERSATION_WINDOW.inWholeSeconds + 60,
+        )
+        assertEquals(
+            Admission.Reject(RejectReason.TOO_OLD),
+            ReplayGuard.admit(
+                message(sentAt = ancient, type = SyncMessageType.CHAT_MESSAGE),
+                now,
+                emptySet(),
+            ),
+        )
+    }
+
+    @Test
+    fun `a replayed message is still refused, whatever its age`() {
+        // The longer window is safe only because this stays true.
+        assertEquals(
+            Admission.Reject(RejectReason.ALREADY_SEEN),
+            ReplayGuard.admit(
+                message(id = "c-1", type = SyncMessageType.CHAT_MESSAGE),
+                now,
+                setOf("c-1"),
+            ),
+        )
+    }
 
     @Test
     fun `a fresh unseen message is accepted`() {

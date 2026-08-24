@@ -92,6 +92,8 @@ class NotificationSettingsActivity : DementorActivity() {
 
         NotificationKind.REQUEST_RECEIVED,
         NotificationKind.NEW_APP,
+        // A conversation has two ends, so this one is offered at both.
+        NotificationKind.CHAT_MESSAGE,
         -> true
 
         NotificationKind.AUTO_APPROVED,
@@ -169,6 +171,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.DEVICE_HEALTH -> R.string.notify_health
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place
         NotificationKind.EMERGENCY -> R.string.notify_emergency
+        NotificationKind.CHAT_MESSAGE -> R.string.chat_title
     }
 
     private fun detailOf(kind: NotificationKind): Int = when (kind) {
@@ -180,6 +183,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.NEW_APP -> R.string.notify_new_app_detail
         NotificationKind.DEVICE_HEALTH -> R.string.notify_health_detail
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place_detail
+        NotificationKind.CHAT_MESSAGE -> R.string.notify_chat_detail
         // Not reachable: these four are never shown with a switch.
         NotificationKind.LOCATED,
         NotificationKind.LOCKED,

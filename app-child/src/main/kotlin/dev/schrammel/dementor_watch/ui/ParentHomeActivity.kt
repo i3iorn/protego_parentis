@@ -130,6 +130,13 @@ class ParentHomeActivity : ParentRoleActivity() {
                         },
                     )
                 }
+                if (on.isEnabled(Feature.CHAT)) {
+                    add(
+                        row(R.string.chat_title, R.string.chat_row_detail) {
+                            startActivity(ChatActivity.intent(this@ParentHomeActivity))
+                        },
+                    )
+                }
                 add(row(R.string.parent_row_lock, R.string.parent_row_lock_detail) { confirmLock() })
                 // Gated: locating is answered by the other phone, so a row left
                 // here after the feature was put away would ask a question that

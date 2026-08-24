@@ -127,6 +127,7 @@ class FeatureSettingsActivity : ParentGatedActivity() {
         Feature.WEB_FILTER -> R.string.rules_row_web
         Feature.WEB_ACTIVITY -> R.string.rules_row_web_activity
         Feature.LOCATION -> R.string.parent_row_locate
+        Feature.CHAT -> R.string.chat_title
         Feature.EMERGENCY -> R.string.sos_button
         Feature.HISTORY -> R.string.audit_title
         Feature.TRANSPARENCY -> R.string.privacy_title
@@ -146,6 +147,7 @@ class FeatureSettingsActivity : ParentGatedActivity() {
         Feature.WEB_FILTER -> R.string.rules_row_web_detail
         Feature.WEB_ACTIVITY -> R.string.rules_row_web_activity_detail
         Feature.LOCATION -> R.string.features_location_detail
+        Feature.CHAT -> R.string.features_chat_detail
         Feature.EMERGENCY -> R.string.features_emergency_reason
         Feature.HISTORY -> R.string.features_history_reason
         Feature.TRANSPARENCY -> R.string.features_transparency_reason

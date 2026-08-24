@@ -76,6 +76,16 @@ enum class SyncMessageType {
     DEVICE_VOUCHED,
 
     /**
+     * Either → everyone: a message somebody typed.
+     *
+     * The only type whose payload is words a person wrote rather than a number or
+     * a decision. It is carried, stored and shown as text and nothing else — see
+     * [dev.schrammel.dementor_watch.model.ChatText] for what that is worth and
+     * what it deliberately refuses.
+     */
+    CHAT_MESSAGE,
+
+    /**
      * Either → everyone: this is who I am.
      *
      * Carries a name and a public key so the other phones can offer to enrol it.

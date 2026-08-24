@@ -32,5 +32,9 @@ object FamilyData {
         NewAppStore(context).forgetAll()
         DailySummaryStore(context).latest = null
         FamilyEventStore(context).forgetAll()
+        // The conversation goes with the family. A phone that has left holding a
+        // transcript of what was said inside it is the dossier problem again, in
+        // the most personal form this app has.
+        ChatStore(context).forgetAll()
     }
 }

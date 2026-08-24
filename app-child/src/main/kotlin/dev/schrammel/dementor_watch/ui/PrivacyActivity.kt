@@ -8,6 +8,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
+import dev.schrammel.dementor_watch.rules.Feature
+import dev.schrammel.dementor_watch.rules.FeatureFlags
 import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 
@@ -69,6 +71,12 @@ class PrivacyActivity : DementorActivity() {
             // about coordinates never leaving the device, so it says so at length
             // rather than in passing.
             claim(R.string.privacy_location_header, R.string.privacy_location_body)
+            // Said plainly rather than left implied. Messages are the one thing
+            // on this list the child chose to send — but "I typed it" is not the
+            // same as "I know where it is kept", and both ends keep a copy.
+            if (FeatureFlags(this).isEnabled(Feature.CHAT)) {
+                claim(R.string.privacy_chat_header, R.string.privacy_chat_body)
+            }
             // The most intimate thing that leaves this phone, and it was missing
             // from the one screen whose whole job is to say what leaves it.
             if (WebFilterStore(this).countVisits) {

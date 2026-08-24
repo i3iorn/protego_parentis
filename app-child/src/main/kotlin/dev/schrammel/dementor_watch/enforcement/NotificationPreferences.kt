@@ -57,6 +57,17 @@ enum class NotificationKind(
 
     /** An emergency. Never silenced. */
     EMERGENCY(optional = false),
+
+    // ---------- on either phone ----------
+
+    /**
+     * Somebody in the family said something.
+     *
+     * Silenceable, and on both sides. A message is not something being done to
+     * anyone — it is the one part of this app that is just two people talking, so
+     * the ordinary rules for a chat apply rather than the ones about monitoring.
+     */
+    CHAT_MESSAGE(optional = true),
 }
 
 /**

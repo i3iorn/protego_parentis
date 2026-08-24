@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.ui.ChatActivity
 import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.sync.IncomingRequest
@@ -162,6 +163,25 @@ class RequestNotifier(context: Context) {
      * phone that locks itself with no explanation looks broken, and finding out
      * why should not require unlocking it again.
      */
+    /**
+     * A message arrived.
+     *
+     * The sender's name is shown; the message itself is the body. Both have been
+     * through the sanitiser before reaching here — a notification is drawn by the
+     * system, outside this app's own screens, so anything that could misrepresent
+     * itself there is out of reach once it is posted.
+     */
+    fun notifyChat(sender: String, text: String) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_CHAT,
+            kind = NotificationKind.CHAT_MESSAGE,
+            title = sender,
+            body = text,
+            destination = Intent(appContext, ChatActivity::class.java),
+        )
+    }
+
     fun notifyLocked() {
         post(
             channel = CHANNEL_DECISION,
@@ -330,5 +350,6 @@ class RequestNotifier(context: Context) {
         const val NOTIFICATION_PLACE = 10
         const val NOTIFICATION_SOS = 11
         const val NOTIFICATION_SOS_CLEARED = 12
+        const val NOTIFICATION_CHAT = 13
     }
 }

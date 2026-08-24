@@ -131,6 +131,12 @@ object RosterRules {
 
         // Either side introduces itself; that is the point of it.
         SyncMessageType.DEVICE_ANNOUNCE -> null
+
+        // A conversation both sides can start. Note what this does *not* relax:
+        // the sender still has to be on the roster, still has to sign, and its id
+        // still has to be the fingerprint of the key it signed with. "Either role
+        // may send this" is not "anyone may send this".
+        SyncMessageType.CHAT_MESSAGE -> null
     }
 
     /**

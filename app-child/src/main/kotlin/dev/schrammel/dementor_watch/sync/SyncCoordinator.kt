@@ -7,8 +7,10 @@ import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.enforcement.RequestNotifier
+import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.model.ChatText
 import dev.schrammel.dementor_watch.model.GrantTarget
 import dev.schrammel.dementor_watch.model.Heartbeat
 import dev.schrammel.dementor_watch.model.Request
@@ -76,6 +78,7 @@ class SyncCoordinator(context: Context) {
     private val heartbeats by lazy { HeartbeatStore(appContext) }
     private val summaries by lazy { DailySummaryStore(appContext) }
     private val family by lazy { FamilyEventStore(appContext) }
+    private val chat by lazy { ChatStore(appContext) }
     private val notifier by lazy { RequestNotifier(appContext) }
 
     fun settings(): SyncSettings = config.load()
@@ -312,6 +315,44 @@ class SyncCoordinator(context: Context) {
     )
 
     /** Says the phone is going off, so silence can be told apart from shutdown. */
+    /**
+     * Sends a message somebody typed.
+     *
+     * Sanitised here rather than only in the screen that collected it. Doing it on
+     * the way out means what the sender sees in their own history is exactly what
+     * the other phones will show, and there is no path that publishes text this
+     * app would refuse to display.
+     *
+     * Returns the stored message, or null when there was nothing worth sending.
+     */
+    fun publishChat(raw: String): ChatMessage? {
+        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return null
+        // Checked before anything is stored. publish() quietly does nothing on an
+        // unconfigured phone, which for every other message is right — but here it
+        // would leave the sender looking at their own message in a conversation
+        // nobody else is ever going to receive.
+        val settings = config.load()
+        if (!settings.isUsable) return null
+
+        val text = ChatText.sanitise(raw) ?: return null
+
+        val id = UUID.randomUUID().toString()
+        val mine = ChatMessage(
+            id = id,
+            text = text,
+            mine = true,
+            sender = settings.deviceName,
+            at = Instant.now(),
+        )
+        chat.add(mine)
+        publish(
+            type = SyncMessageType.CHAT_MESSAGE,
+            fields = mapOf(FIELD_TEXT to text),
+            id = id,
+        )
+        return mine
+    }
+
     fun publishStopping() = publish(SyncMessageType.DEVICE_STOPPING, emptyMap())
 
     /**
@@ -500,6 +541,7 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.LOCK_NOW -> applyLockNow()
         SyncMessageType.LOCATE_REQUEST -> applyLocateRequest()
         SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
+        SyncMessageType.CHAT_MESSAGE -> rememberChat(message)
         // A child phone is the only source of these; hearing one back means a
         // second child device shares the family topic, which is not supported yet.
         // An announcement has already done its work in the roster by this point.
@@ -534,6 +576,7 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.SOS_RAISED -> rememberSos(message, raised = true)
         SyncMessageType.SOS_CLEARED -> rememberSos(message, raised = false)
         SyncMessageType.WEB_SUMMARY -> rememberWebSummary(message)
+        SyncMessageType.CHAT_MESSAGE -> rememberChat(message)
         // Sent by a parent, including possibly this one. Nothing to do with it.
         // An announcement has already done its work in the roster by this point.
         SyncMessageType.BONUS_GRANTED,
@@ -658,6 +701,45 @@ class SyncCoordinator(context: Context) {
         family.recordSos(raised, message.sentAt)
         if (raised) notifier.notifySos(moved = false) else notifier.notifySosCleared()
         return true
+    }
+
+    /**
+     * Files a message that arrived, and says so once.
+     *
+     * Three things happen in order and the order matters. The text is sanitised
+     * again — the sender did it too, but the sender is another phone and that is
+     * precisely the thing this device cannot take on trust. The store then refuses
+     * a message it already holds, which is what stops the same message being
+     * announced on every poll for as long as the relay keeps it. Only a message
+     * that was genuinely new gets a notification.
+     *
+     * The sender's name goes through the sanitiser as well. It is chosen on the
+     * sending device, so it is attacker-controlled text in exactly the way the
+     * message body is, and it is shown right next to it — a name carrying a
+     * direction override could make one person's words appear to be another's.
+     */
+    private fun rememberChat(message: SyncMessage): Boolean {
+        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return false
+
+        val text = ChatText.sanitise(message.field(FIELD_TEXT).orEmpty()) ?: return false
+        // The roster's name, not the one the message carries. A device chooses
+        // its own name and may send a different one with every message; the roster
+        // holds what the family agreed to when it was let in.
+        val claimed = roster.devices.firstOrNull { it.id.value == message.sender }?.name
+        val sender = claimed?.let(ChatText::sanitise)
+            ?: appContext.getString(R.string.chat_unknown_sender)
+
+        val added = chat.add(
+            ChatMessage(
+                id = message.id,
+                text = text,
+                mine = false,
+                sender = sender,
+                at = message.sentAt,
+            ),
+        )
+        if (added) notifier.notifyChat(sender, text)
+        return added
     }
 
     private fun rememberWebSummary(message: SyncMessage): Boolean {
@@ -926,7 +1008,20 @@ class SyncCoordinator(context: Context) {
         return derived
     }
 
-    private fun publish(type: SyncMessageType, fields: Map<String, String>) {
+    /**
+     * [id] is a parameter only because of the chat.
+     *
+     * Every other message is filed by its effect, so nobody minds what it is
+     * called. A chat message is stored on the sending phone the moment it is
+     * typed, and then arrives back off the relay like any other; giving both the
+     * same id is what makes the store recognise the echo instead of showing the
+     * message twice.
+     */
+    private fun publish(
+        type: SyncMessageType,
+        fields: Map<String, String>,
+        id: String = UUID.randomUUID().toString(),
+    ) {
         val settings = config.load()
         if (!settings.isUsable) return
 
@@ -938,7 +1033,7 @@ class SyncCoordinator(context: Context) {
             // receiver refuses it anyway, and the sender would think it had spoken.
             val signed = runCatching {
                 val message = SyncMessage(
-                    id = UUID.randomUUID().toString(),
+                    id = id,
                     type = type,
                     sender = signer.deviceId.value,
                     sentAt = Instant.now(),
@@ -1027,6 +1122,7 @@ class SyncCoordinator(context: Context) {
         const val FIELD_ARRIVED = "arrived"
         const val FIELD_BLOCKED_COUNT = "blockedCount"
         const val FIELD_DOMAIN_PREFIX = "domain"
+        const val FIELD_TEXT = "text"
         const val MAX_SUMMARY_DOMAINS = 40
 
         /** Minutes, then the label — so a label containing a digit cannot confuse it. */

@@ -38,6 +38,10 @@
     <dimen name="bar_radius">4dp</dimen>
     <dimen name="divider_height">1dp</dimen>
 
+    <!-- How far a chat bubble is kept from the far edge, so a conversation
+         reads as two sides rather than one column of full-width blocks. -->
+    <dimen name="chat_bubble_inset">48dp</dimen>
+
     <!-- Progress and charts -->
     <dimen name="budget_bar_height">10dp</dimen>
     <dimen name="week_bar_height">16dp</dimen>

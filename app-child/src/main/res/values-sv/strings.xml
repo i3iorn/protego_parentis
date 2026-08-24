@@ -923,4 +923,24 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
     <string name="rules_protection_header">Skydd</string>
     <string name="rules_release_header">Lämna tillbaka telefonen</string>
     <string name="rules_release_body">Avslutar hela uppgörelsen på den här telefonen. Allt hävs och appen släpper kontrollen.</string>
+
+    <!-- Meddelanden mellan telefonerna i familjen. Bara text och emoji. -->
+    <string name="chat_title">Meddelanden</string>
+    <string name="chat_row_detail">Säg något till resten av familjen</string>
+    <string name="chat_hint">Skriv något</string>
+    <string name="chat_send">Skicka</string>
+    <string name="chat_me">Du</string>
+    <string name="chat_attribution">%1$s · %2$s</string>
+    <string name="chat_empty">Inget än. Det som sägs här är text och emoji — bilder och filer går inte att skicka, med flit.</string>
+    <string name="chat_clear">Rensa</string>
+    <string name="chat_clear_confirm">Tar bort konversationen från den här telefonen. De andra telefonerna behåller sin egen kopia, och ingen annans rörs.</string>
+    <string name="chat_unknown_sender">Någon i familjen</string>
+
+    <string name="notify_chat_detail">När någon skickar ett meddelande.</string>
+    <string name="features_chat_detail">Korta meddelanden mellan telefonerna i familjen. Text och emoji, inget annat.</string>
+
+    <string name="privacy_chat_header">Meddelanden du skickar</string>
+    <string name="privacy_chat_body">Det du skriver i Meddelanden går till de andra telefonerna i familjen, krypterat som allt annat. Båda ändarna behåller de senaste par hundra meddelandena tills någon rensar dem. Bara text och emoji kan skickas — det finns inget sätt att skicka en bild, en fil eller en länk som öppnar något.</string>
+
+    <string name="chat_no_family">Telefonen är inte ansluten till någon familj än, så det finns ingen att skriva till.</string>
 </resources>

@@ -256,6 +256,12 @@
             android:parentActivityName=".ui.RulesActivity" />
 
         <activity
+            android:name=".ui.ChatActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ui.FeatureSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

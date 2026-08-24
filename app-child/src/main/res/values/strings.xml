@@ -916,4 +916,24 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
     <string name="rules_protection_header">Protection</string>
     <string name="rules_release_header">Handing this phone back</string>
     <string name="rules_release_body">Ends the whole arrangement on this phone. Everything is lifted and this app gives up control.</string>
+
+    <!-- Messages between the phones in the family. Text and emoji only. -->
+    <string name="chat_title">Messages</string>
+    <string name="chat_row_detail">Say something to the rest of the family</string>
+    <string name="chat_hint">Write something</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_me">You</string>
+    <string name="chat_attribution">%1$s · %2$s</string>
+    <string name="chat_empty">Nothing yet. Whatever is said here is text and emoji — pictures and files cannot be sent, on purpose.</string>
+    <string name="chat_clear">Clear</string>
+    <string name="chat_clear_confirm">Removes the conversation from this phone only. The other phones keep their own copy, and nobody else\'s is touched.</string>
+    <string name="chat_unknown_sender">Someone in the family</string>
+
+    <string name="notify_chat_detail">When somebody sends a message.</string>
+    <string name="features_chat_detail">Short messages between the phones in the family. Text and emoji, nothing else.</string>
+
+    <string name="privacy_chat_header">Messages you send</string>
+    <string name="privacy_chat_body">Anything typed in Messages goes to the other phones in the family, encrypted like everything else. Both ends keep the last few hundred messages until somebody clears them. Only text and emoji can be sent — there is no way to send a picture, a file or a link that opens anything.</string>
+
+    <string name="chat_no_family">This phone is not connected to a family yet, so there is nobody to write to.</string>
 </resources>

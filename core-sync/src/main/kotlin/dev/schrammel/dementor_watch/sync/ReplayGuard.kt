@@ -2,6 +2,7 @@ package dev.schrammel.dementor_watch.sync
 
 import java.time.Instant
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 /** Why a message that decrypted correctly is still not acted on. */
@@ -52,14 +53,39 @@ object ReplayGuard {
      */
     val CLOCK_SKEW_ALLOWANCE: Duration = 5.minutes
 
+    /**
+     * How old a *message* may be, as opposed to an instruction.
+     *
+     * The freshness window exists because replaying a captured message makes
+     * something happen: time is granted, a phone locks, a position is asked for.
+     * A chat message does none of that. Its entire effect is a row in a list, and
+     * the store that holds it already refuses an id it has seen, so replaying one
+     * achieves precisely nothing.
+     *
+     * Holding conversation to the command window would mean something worse than a
+     * weak defence — it would mean a parent whose phone spent the afternoon in doze
+     * opens the app to a conversation with holes in it, and never finds out that
+     * anything was missing. Silent loss is the wrong failure for the one feature
+     * here that is two people talking.
+     *
+     * A day, because that is the outer edge of what a relay keeps anyway.
+     */
+    val CONVERSATION_WINDOW: Duration = 24.hours
+
     /** How many recent ids to remember. Bounded so the store cannot grow forever. */
     const val REMEMBERED_IDS = 200
+
+    /** The window that applies to [type]. Commands are held to the short one. */
+    fun freshnessFor(type: SyncMessageType): Duration = when (type) {
+        SyncMessageType.CHAT_MESSAGE -> CONVERSATION_WINDOW
+        else -> FRESHNESS_WINDOW
+    }
 
     fun admit(message: SyncMessage, now: Instant, seenIds: Collection<String>): Admission {
         if (message.id in seenIds) return Admission.Reject(RejectReason.ALREADY_SEEN)
 
         val age = now.toEpochMilli() - message.sentAt.toEpochMilli()
-        if (age > FRESHNESS_WINDOW.inWholeMilliseconds) {
+        if (age > freshnessFor(message.type).inWholeMilliseconds) {
             return Admission.Reject(RejectReason.TOO_OLD)
         }
         if (-age > CLOCK_SKEW_ALLOWANCE.inWholeMilliseconds) {

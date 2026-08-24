@@ -135,6 +135,13 @@ class HomeActivity : DementorActivity() {
                         },
                     )
                 }
+                if (on.isEnabled(Feature.CHAT)) {
+                    add(
+                        row(R.string.chat_title, R.string.chat_row_detail) {
+                            startActivity(ChatActivity.intent(this@HomeActivity))
+                        },
+                    )
+                }
                 add(
                     row(R.string.home_open_week, R.string.home_open_week_detail) {
                         startActivity(WeekActivity.intent(this@HomeActivity))
