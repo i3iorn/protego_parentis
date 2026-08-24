@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dementor Watch — Privacy Policy</title>
+<!--
+  Google Play requires a privacy policy at a public, stable URL, and the URL has
+  to keep working for as long as the app is listed. This file is committed beside
+  the app so the policy and the code it describes change together; a policy hosted
+  somewhere the source is not is a policy that quietly stops being true.
+
+  BEFORE PUBLISHING: replace every {{PLACEHOLDER}} below. Play reviewers do read
+  these, and a policy with an unfilled contact address is a rejection.
+-->
+<style>
+  :root {
+    --ink: #141a26;
+    --ink-quiet: #5c6779;
+    --ground: #ffffff;
+    --rule: #cfd7e4;
+    --accent: #3a5a93;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e8edf6;
+      --ink-quiet: #9aa7bd;
+      --ground: #141a26;
+      --rule: #2c3648;
+      --accent: #8fb0e6;
+    }
+  }
+  body {
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 5rem;
+    max-width: 42rem;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 1.8rem; line-height: 1.2; margin: 0 0 .25rem; text-wrap: balance; }
+  h2 { font-size: 1.15rem; margin: 2.5rem 0 .5rem; text-wrap: balance; }
+  .updated { color: var(--ink-quiet); font-size: .9rem; margin: 0 0 2rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .35rem 0; }
+  a { color: var(--accent); }
+  .lede { font-size: 1.05rem; }
+  code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: .1em .35em; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Dementor Watch — Privacy Policy</h1>
+<p class="updated">Last updated {{DATE}} · Applies to Dementor Watch version 1.0.0 and later</p>
+
+<p class="lede">Dementor Watch is a screen-time app for a family. It runs on a
+young person's phone and on their parents' phones. It is built on the principle
+that the person being monitored can see exactly what is being collected about
+them, so this document says the same things the app's own
+<strong>“What leaves this phone”</strong> screen says — in the same detail.</p>
+
+<h2>Who is responsible</h2>
+<p>{{DEVELOPER NAME}}, contact <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+<p><strong>We do not operate a server and we do not receive your data.</strong>
+There is no Dementor Watch account, no sign-up and no back end belonging to us.
+Nothing in this app sends anything to the developer, at any time, for any reason.</p>
+
+<h2>What is measured on the phone</h2>
+<ul>
+  <li>Which apps are opened and for how long.</li>
+  <li>Total screen time per day.</li>
+  <li>Which of the family's rules applied, and when.</li>
+</ul>
+<p>All of this is worked out on the device and stored on the device. It is
+readable by the person using that phone, in the app, at any time.</p>
+
+<h2>What is never collected</h2>
+<p>The app does not read, store or transmit: messages, photos, keystrokes, screen
+contents, call logs, contacts, browsing history within a site, or the contents of
+any other app. It has no access to any of these and asks for no permission that
+would give it access.</p>
+
+<h2>What is sent to the family's other phones</h2>
+<p>Only what the family has switched on. Depending on the settings, that can be:</p>
+<ul>
+  <li><strong>Requests and answers</strong> — how many minutes were asked for,
+      what for, the reason the young person wrote, and whether the answer was yes
+      or no.</li>
+  <li><strong>A daily summary</strong> — today's total, how much of the limit is
+      left, and the five most-used apps with how long each was open. No timestamps
+      and no history.</li>
+  <li><strong>Location, only on request</strong> — a single position, sent when a
+      parent asks for it or when the young person raises an emergency. The young
+      person is notified every single time it is asked for, and every request is
+      written into the shared history both sides can read. No trail is kept: a
+      parent's phone holds one position, the most recent, with no history behind
+      it.</li>
+  <li><strong>Arrivals and departures</strong> — the name of a saved place
+      (“Arrived at School”) and no coordinates at all.</li>
+  <li><strong>Sites reached</strong>, if counting is switched on — the domain
+      names looked up today and how many times each. No addresses within a site,
+      no times of day, nothing about page contents. Resets daily; no history is
+      kept on either phone.</li>
+  <li><strong>Messages</strong> — text and emoji typed in the app's Messages
+      screen. Pictures, files and attachments cannot be sent; the app has no
+      mechanism for it.</li>
+  <li><strong>Device health</strong> — whether the phone is still checking in and
+      its battery level.</li>
+</ul>
+
+<h2>How it travels, and who can read it</h2>
+<p>Every message is encrypted on the sending phone with AES-256-GCM, using a key
+derived from a passphrase the family chooses and that only the family's phones
+hold. Each phone also signs its messages with a private key generated inside the
+device's hardware-backed keystore, which cannot be exported from it.</p>
+<p>Messages travel through a public relay — by default
+<a href="https://ntfy.sh">ntfy.sh</a>, operated by a third party, and changeable
+to any server the family prefers, including one they run themselves. <strong>The
+relay carries ciphertext and cannot read any of it.</strong> It is a postbox, not
+a recipient. Its operator's own privacy policy governs whatever connection
+metadata it keeps; we have no arrangement with them and no access to it.</p>
+<p>If the family has not connected any parent phone, the app contacts no server at
+all.</p>
+
+<h2>Children's data</h2>
+<p>This app is installed on a young person's phone by their parent or guardian,
+who sets it up and consents on their behalf. It is designed so that the young
+person can see everything that is collected about them and everything that is
+sent:</p>
+<ul>
+  <li>The “What leaves this phone” screen states every category, in full, and
+      cannot be hidden or switched off.</li>
+  <li>The shared history records every rule change, every request, every answer
+      and every location request, with who made it, and is readable by the young
+      person as well as by the parents.</li>
+  <li>Notifications telling the young person that they were located, or that a
+      parent locked the phone, cannot be silenced.</li>
+</ul>
+<p>No profile is built, no data is sold or shared with anyone, and nothing is used
+for advertising. There is no advertising in this app.</p>
+
+<h2>Third parties</h2>
+<p>None. The app contains no analytics, no crash reporting service, no advertising
+SDK and no social SDK. Its only network connection is to the relay the family
+chose, carrying encrypted family messages.</p>
+
+<h2>How long data is kept, and how to delete it</h2>
+<ul>
+  <li>Screen-time records and the shared history stay on the phone that made them.
+      Uninstalling the app removes them.</li>
+  <li>Messages: the most recent few hundred, on each phone. Either side can clear
+      their own copy from the Messages screen at any time.</li>
+  <li>Leaving a family, from the family connection screen, erases everything that
+      arrived from the other phones — positions, arrivals, sites, requests, device
+      keys and names.</li>
+  <li>Relayed messages expire on the relay according to its own retention, and are
+      unreadable there in any case.</li>
+</ul>
+<p>There is no account to delete, because there is no account.</p>
+
+<h2>Permissions, and why each one exists</h2>
+<ul>
+  <li><strong>Usage access</strong> — to measure screen time. This is the app's
+      core function and it cannot work without it.</li>
+  <li><strong>Location, including in the background</strong> — to answer a
+      parent's explicit request for a position, to notice arrivals at saved places,
+      and to apply rules that depend on where the phone is. The young person is
+      notified of every position request. No coordinates leave the phone for any
+      other reason.</li>
+  <li><strong>See all installed apps</strong> — to show the family which apps are
+      on the phone, apply per-app limits, and flag newly installed apps. The list
+      never leaves the device.</li>
+  <li><strong>VPN</strong> — used only to withhold internet from specific apps the
+      family has blocked. It routes nothing anywhere: blocked traffic is dropped on
+      the device. No traffic is inspected, logged or forwarded.</li>
+  <li><strong>Device administration / device owner</strong> — to apply the limits
+      the family set: suspending apps, locking the screen when asked, and
+      preventing the app being removed or the rules bypassed.</li>
+  <li><strong>Notifications, boot completion, foreground service</strong> — to
+      warn before time runs out, and to keep measuring after a restart.</li>
+</ul>
+
+<h2>Changes to this policy</h2>
+<p>Material changes will be published here and reflected in the app's own
+transparency screen before they take effect. The date at the top says when this
+version was written.</p>
+
+<h2>Contact</h2>
+<p><a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a></p>
+
+</body>
+</html>

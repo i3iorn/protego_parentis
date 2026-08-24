@@ -288,3 +288,25 @@ the app crashes at inflate time in dark mode.
   arbitrary but is protecting against a specific failure.
 - Every safety-relevant behaviour has a test named after the behaviour, not the
   method.
+
+## Publishing
+
+Everything the Play Console asks for lives in `play/`, and the order to do it in
+is in [`docs/RELEASING.md`](docs/RELEASING.md).
+
+| What | Where |
+| --- | --- |
+| Signing the release, building the bundle, the on-device pass | `docs/RELEASING.md` |
+| Store text, both languages, with a length checker | `play/listing-*.md`, `play/check_listing.py` |
+| Icon and feature graphic, and the script that draws them | `play/*.png`, `play/make_graphics.py` |
+| Data safety form answers, with the code each one comes from | `play/data-safety.md` |
+| Sensitive-permission declaration texts | `play/declarations.md` |
+| The privacy policy, to be hosted somewhere public | `play/privacy-policy.html` |
+
+The release build is minified; `app-child/proguard-rules.pro` says what is kept
+and why. It has to be run on a device before it goes anywhere — that is the one
+build difference that can break something the debug build did fine.
+
+Release signing reads `keystore.properties` from the repository root. The file is
+not in the repository and never should be; a release build without it fails with
+an explanation rather than quietly producing something Play will reject.
