@@ -46,6 +46,9 @@ enum class DiagnosticEvent {
     /** A correctly signed stranger asked to join the family. */
     SYNC_DEVICE_PENDING,
 
+    /** A screen asked for something in the background and did not get it. */
+    SCREEN_LOAD_FAILED,
+
     BOOT_COMPLETED,
 }
 

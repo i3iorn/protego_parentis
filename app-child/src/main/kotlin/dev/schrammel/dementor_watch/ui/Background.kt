@@ -3,6 +3,9 @@ package dev.schrammel.dementor_watch.ui
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
+import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import java.util.concurrent.Executors
 
 /**
@@ -17,6 +20,8 @@ import java.util.concurrent.Executors
  * dependency, and what is needed here is one background thread and a way home.
  */
 object Background {
+
+    private const val TAG = "Background"
 
     /**
      * Single-threaded on purpose. The work queued here reads and writes the same
@@ -38,7 +43,17 @@ object Background {
             val result = runCatching(work)
             main.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
-                result.onSuccess(onResult)
+                result
+                    .onSuccess(onResult)
+                    // A failure used to end here in silence: the callback never
+                    // ran, so the screen kept whatever it had — which on a first
+                    // load is nothing at all. A blank screen with no message and
+                    // no log line is the hardest kind of fault to be told about,
+                    // because whoever is looking at it has nothing to report.
+                    .onFailure { failure ->
+                        Log.w(TAG, "Background work failed", failure)
+                        Diagnostics.record(activity, DiagnosticEvent.SCREEN_LOAD_FAILED)
+                    }
             }
         }
     }

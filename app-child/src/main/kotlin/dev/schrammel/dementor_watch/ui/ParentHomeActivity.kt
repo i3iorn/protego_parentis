@@ -102,6 +102,17 @@ class ParentHomeActivity : ParentRoleActivity() {
             },
         )
 
+        // A placeholder now, filled in when the answer arrives. Reading the
+        // roster touches preference files, and the alternative — holding the
+        // whole screen back until it returns — would make the common case, a
+        // family that is fine, wait for news that there is nothing to report.
+        val banner = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(banner)
+        Background.load(this, { FamilyStatus.read(this) }) { snapshot ->
+            familyBanner(snapshot) { startActivity(FamilyDevicesActivity.intent(this)) }
+                ?.let(banner::addView)
+        }
+
         column.addView(sectionHeader(getString(R.string.parent_today_header)))
         column.addView(todayCard())
 
@@ -298,6 +309,7 @@ class ParentHomeActivity : ParentRoleActivity() {
      * what the other phone is doing right now.
      */
     private fun confirmLock() {
+        if (!reachable()) return
         AlertDialog.Builder(this)
             .setTitle(R.string.parent_lock_confirm_title)
             .setMessage(R.string.parent_lock_confirm_body)
@@ -317,9 +329,28 @@ class ParentHomeActivity : ParentRoleActivity() {
      * every time regardless — which is what makes it reasonable to ask at all.
      */
     private fun locate() {
+        if (!reachable()) return
         sync.publishLocateRequest()
         Audit.record(this, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
         Toast.makeText(this, R.string.parent_locate_sent, Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Whether there is anywhere for a command to go.
+     *
+     * Both of these publish and forget — the other phone picks the message up when
+     * it next checks in, so there is no synchronous answer to report. That is fine
+     * as long as there is a family to publish to. Without one, publish() quietly
+     * does nothing while the toast said "Sent", which is a lie about the one kind
+     * of action a parent most needs to be able to trust.
+     *
+     * It cannot promise delivery, and does not try to. It only refuses to claim
+     * something was sent when there was nobody to send it to.
+     */
+    private fun reachable(): Boolean {
+        if (sync.settings().isUsable) return true
+        Toast.makeText(this, R.string.parent_not_connected_action, Toast.LENGTH_LONG).show()
+        return false
     }
 
     private fun statusLine(configured: Boolean): String = when {

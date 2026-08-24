@@ -61,6 +61,16 @@ enum class NotificationKind(
     // ---------- on either phone ----------
 
     /**
+     * A phone is waiting to be let into the family.
+     *
+     * On both sides, because both sides approve: a parent approves the phone with
+     * the limits, and the person setting that phone up approves the founding
+     * parent. Without this the pending list sat on a settings screen nobody had
+     * been sent to, and the family looked broken instead of unfinished.
+     */
+    DEVICE_PENDING(optional = true),
+
+    /**
      * Somebody in the family said something.
      *
      * Silenceable, and on both sides. A message is not something being done to

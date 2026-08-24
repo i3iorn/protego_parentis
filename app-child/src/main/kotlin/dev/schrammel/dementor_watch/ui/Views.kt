@@ -111,6 +111,54 @@ internal fun Activity.actionButton(): Button = Button(this).apply {
     }
 }
 
+/**
+ * The card that says a family is not finished being set up.
+ *
+ * Null when there is nothing to say, which is the usual case — a family that works
+ * should not carry a permanent card explaining that it works.
+ *
+ * [onOpen] always leads to the devices screen, because in every state that
+ * produces a card, that is the screen with the button on it.
+ */
+internal fun Activity.familyBanner(snapshot: FamilySnapshot, onOpen: () -> Unit): View? {
+    val title: String
+    val detail: String
+
+    when (snapshot.state) {
+        FamilyState.SOMEONE_WAITING -> {
+            title = resources.getQuantityString(
+                R.plurals.family_waiting_title,
+                snapshot.waiting,
+                snapshot.waiting,
+            )
+            detail = getString(R.string.family_waiting_detail)
+        }
+
+        FamilyState.NOT_YET_PAIRED -> {
+            title = getString(R.string.family_unpaired_title)
+            detail = getString(R.string.family_unpaired_detail)
+        }
+
+        FamilyState.ALONE, FamilyState.READY -> return null
+    }
+
+    return card {
+        addView(
+            TextView(context).apply {
+                text = title
+                styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            },
+        )
+        addView(captionText(detail))
+        addView(
+            actionButton().apply {
+                setText(R.string.family_open_devices)
+                setOnClickListener { onOpen() }
+            },
+        )
+    }
+}
+
 internal fun Activity.bodyText(text: String): TextView = TextView(this).apply {
     this.text = text
     styleAs(R.style.TextAppearance_Dementor_Body)

@@ -41,15 +41,26 @@ class RosterStore(context: Context) {
      * otherwise fill it with invented devices until the real one is impossible to
      * find. Newest wins, so a genuine device announcing now is always visible.
      */
-    fun notice(device: PendingDevice) = synchronized(LOCK) {
-        if (devices.any { it.id == device.id }) return@synchronized
+    /**
+     * Returns true only when this device was not already waiting.
+     *
+     * A stranger announces itself about once a minute for as long as it is trying
+     * to join, so every poll passes the same device through here again. The caller
+     * uses this to tell a first appearance from the fortieth — a notification that
+     * fired on each one would be switched off before the family got round to
+     * approving anything.
+     */
+    fun notice(device: PendingDevice): Boolean = synchronized(LOCK) {
+        if (devices.any { it.id == device.id }) return@synchronized false
         // Turned away already. Without this, "not mine" lasted until the device
         // announced again — about a minute — and a phone that kept announcing
         // could push the one the family was waiting for out of a capped list.
-        if (device.id.value in refused) return@synchronized
+        if (device.id.value in refused) return@synchronized false
 
         val existing = pending.filterNot { it.id == device.id }
+        val isNew = existing.size == pending.size
         writePending((existing + device).takeLast(MAX_PENDING))
+        return@synchronized isNew
     }
 
     /**

@@ -509,8 +509,15 @@ class SyncCoordinator(context: Context) {
                 // approval is usually the request the family is waiting on, and
                 // marking it here would mean approving the phone and then finding
                 // nothing to answer.
-                roster.notice(admittance.device)
+                val noticed = roster.notice(admittance.device)
                 Diagnostics.record(appContext, DiagnosticEvent.SYNC_DEVICE_PENDING)
+                // Only when this phone is the one that can do something about it,
+                // and only the first time. Every poll sees the same stranger again
+                // for as long as they keep announcing themselves, and a phone that
+                // buzzed once a minute about it would be turned off by the evening.
+                if (noticed && Enrolment.mayApprove(syncRole(), roster.parents().size)) {
+                    notifier.notifyDevicePending()
+                }
                 return false
             }
 

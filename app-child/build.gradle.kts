@@ -31,8 +31,8 @@ android {
         applicationId = "dev.schrammel.dementor_watch"
         minSdk = 33
         targetSdk = 37
-        versionCode = 36
-        versionName = "1.1.0"
+        versionCode = 37
+        versionName = "1.1.1"
     }
 
     signingConfigs {

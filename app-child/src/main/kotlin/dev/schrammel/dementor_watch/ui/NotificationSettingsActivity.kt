@@ -94,6 +94,9 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.NEW_APP,
         // A conversation has two ends, so this one is offered at both.
         NotificationKind.CHAT_MESSAGE,
+        // So does approving a phone: a parent lets in the managed phone, and
+        // whoever sets that phone up lets in the founding parent.
+        NotificationKind.DEVICE_PENDING,
         -> true
 
         NotificationKind.AUTO_APPROVED,
@@ -172,6 +175,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place
         NotificationKind.EMERGENCY -> R.string.notify_emergency
         NotificationKind.CHAT_MESSAGE -> R.string.chat_title
+        NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending
     }
 
     private fun detailOf(kind: NotificationKind): Int = when (kind) {
@@ -184,6 +188,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.DEVICE_HEALTH -> R.string.notify_health_detail
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place_detail
         NotificationKind.CHAT_MESSAGE -> R.string.notify_chat_detail
+        NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending_detail
         // Not reachable: these four are never shown with a switch.
         NotificationKind.LOCATED,
         NotificationKind.LOCKED,

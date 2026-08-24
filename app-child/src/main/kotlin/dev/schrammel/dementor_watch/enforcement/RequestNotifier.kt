@@ -6,7 +6,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.app.TaskStackBuilder
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.ui.FamilyDevicesActivity
 import dev.schrammel.dementor_watch.ui.ChatActivity
 import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestState
@@ -182,6 +184,26 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * Somebody wants in.
+     *
+     * Deliberately says nothing about which phone, beyond that there is one. The
+     * name a device announces is chosen on that device, so repeating it in a
+     * notification would let whoever is asking write the words a parent reads
+     * while deciding. The fingerprint that actually identifies it is on the
+     * screen this leads to, next to the phone it belongs to.
+     */
+    fun notifyDevicePending() {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_DEVICE_PENDING,
+            kind = NotificationKind.DEVICE_PENDING,
+            title = appContext.getString(R.string.family_pending_notification_title),
+            body = appContext.getString(R.string.family_pending_notification_body),
+            destination = FamilyDevicesActivity.intent(appContext),
+        )
+    }
+
     fun notifyLocked() {
         post(
             channel = CHANNEL_DECISION,
@@ -320,15 +342,35 @@ class RequestNotifier(context: Context) {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                 .setAutoCancel(!ongoing)
                 .setOngoing(ongoing)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        appContext,
-                        id,
-                        destination.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                    ),
-                )
+                .setContentIntent(openFor(destination, id))
                 .build(),
+        )
+    }
+
+    /**
+     * Opens [destination] with the screens above it already on the stack.
+     *
+     * Built from `parentActivityName` in the manifest, so a notification about a
+     * request opens the inbox with the home screen underneath it — and back goes
+     * home rather than out of the app. That is what someone expects, and it is
+     * what happens when they reach the same screen by tapping through.
+     *
+     * Falls back to the plain intent if the stack cannot be built, because a
+     * notification that opens the right screen with the wrong back behaviour is
+     * still far better than one that does not open.
+     */
+    private fun openFor(destination: Intent, id: Int): PendingIntent? {
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+
+        return runCatching {
+            TaskStackBuilder.create(appContext)
+                .addNextIntentWithParentStack(destination)
+                .getPendingIntent(id, flags)
+        }.getOrNull() ?: PendingIntent.getActivity(
+            appContext,
+            id,
+            destination.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            flags,
         )
     }
 
@@ -351,5 +393,6 @@ class RequestNotifier(context: Context) {
         const val NOTIFICATION_SOS = 11
         const val NOTIFICATION_SOS_CLEARED = 12
         const val NOTIFICATION_CHAT = 13
+        const val NOTIFICATION_DEVICE_PENDING = 14
     }
 }

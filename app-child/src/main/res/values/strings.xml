@@ -1033,4 +1033,28 @@
     <string name="pair_find_detail">Ask this phone for the family code</string>
     <string name="pair_find_waiting">Waiting. Check the other phone shows this code:\n\n%1$s</string>
     <string name="pair_find_refused">That did not work. Either the other phone said no, or whatever answered was not it.</string>
+
+    <!--
+      The step that used to be invisible. Joining a family is not the end of it:
+      a phone that knows the code and the passphrase is a stranger in a queue
+      until somebody approves it on another phone. Both phones have to do it, and
+      that is the part people get wrong.
+    -->
+    <plurals name="family_waiting_title">
+        <item quantity="one">A phone is waiting to be let in</item>
+        <item quantity="other">%1$d phones are waiting to be let in</item>
+    </plurals>
+    <string name="family_waiting_detail">Nothing will arrive from it until you approve it — check its fingerprint first.</string>
+    <string name="family_unpaired_title">Not paired yet</string>
+    <string name="family_unpaired_detail">This phone has joined the family but has not approved any other phone, and may still be waiting to be approved on one. Both phones have to do it. Until then nothing is sent or received.</string>
+    <string name="family_open_devices">Open family devices</string>
+    <string name="family_pending_notification_title">A phone wants to join the family</string>
+    <string name="family_pending_notification_body">Check its fingerprint before you let it in.</string>
+
+    <string name="notify_device_pending">Phones asking to join</string>
+    <string name="notify_device_pending_detail">When a phone wants into the family and needs approving.</string>
+
+    <string name="requests_not_sent">That did not send. Asking may have been switched off on this phone.</string>
+
+    <string name="parent_not_connected_action">This phone is not connected to a family, so there is nowhere to send that.</string>
 </resources>

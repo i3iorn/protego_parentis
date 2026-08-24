@@ -57,6 +57,17 @@
                 android:text="@string/home_permission_button" />
         </LinearLayout>
 
+        <!--
+          Shown only while the family is unfinished: a phone waiting to be
+          approved, or one that has approved nobody yet. Above the summary,
+          because until it is dealt with nothing else on this screen can arrive.
+        -->
+        <LinearLayout
+            android:id="@+id/family_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
         <!-- The one answer the screen exists to give. -->
         <LinearLayout
             android:id="@+id/summary_card"

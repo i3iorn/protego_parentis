@@ -203,9 +203,27 @@ class HomeActivity : DementorActivity() {
     private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
         navigationRow(getString(titleRes), getString(detailRes), onClick)
 
+    /**
+     * Whether the family is finished being set up.
+     *
+     * Shown on the child's phone too, not just the parent's. On a phone being set
+     * up for the first time this device is the one that approves the founding
+     * parent, and the person doing it is standing right there — telling only the
+     * parent's phone would be telling the wrong half of the room.
+     */
+    private fun renderFamilyBanner() {
+        val holder = findViewById<LinearLayout>(R.id.family_banner)
+        holder.removeAllViews()
+        Background.load(this, { FamilyStatus.read(this) }) { snapshot ->
+            familyBanner(snapshot) { startActivity(FamilyDevicesActivity.intent(this)) }
+                ?.let(holder::addView)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         if (routed) return
+        renderFamilyBanner()
         showPendingCelebration()
         requestNotificationPermissionIfNeeded()
         render()

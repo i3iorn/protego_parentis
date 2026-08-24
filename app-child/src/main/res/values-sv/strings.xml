@@ -1031,4 +1031,23 @@
     <string name="pair_find_detail">Fråga den här telefonen efter familjekoden</string>
     <string name="pair_find_waiting">Väntar. Kolla att den andra telefonen visar den här koden:\n\n%1$s</string>
     <string name="pair_find_refused">Det gick inte. Antingen sa den andra telefonen nej, eller så var det inte den som svarade.</string>
+
+    <!-- Steget som tidigare var osynligt. -->
+    <plurals name="family_waiting_title">
+        <item quantity="one">En telefon väntar på att släppas in</item>
+        <item quantity="other">%1$d telefoner väntar på att släppas in</item>
+    </plurals>
+    <string name="family_waiting_detail">Ingenting kommer från den förrän du godkänner den — kolla dess fingeravtryck först.</string>
+    <string name="family_unpaired_title">Inte ihopkopplad än</string>
+    <string name="family_unpaired_detail">Telefonen har gått med i familjen men har inte godkänt någon annan telefon, och väntar kanske själv på att bli godkänd på en. Båda telefonerna måste göra det. Tills dess skickas och tas ingenting emot.</string>
+    <string name="family_open_devices">Öppna familjens enheter</string>
+    <string name="family_pending_notification_title">En telefon vill gå med i familjen</string>
+    <string name="family_pending_notification_body">Kolla dess fingeravtryck innan du släpper in den.</string>
+
+    <string name="notify_device_pending">Telefoner som vill gå med</string>
+    <string name="notify_device_pending_detail">När en telefon vill in i familjen och behöver godkännas.</string>
+
+    <string name="requests_not_sent">Det skickades inte. Att fråga kan ha stängts av på den här telefonen.</string>
+
+    <string name="parent_not_connected_action">Telefonen är inte ansluten till någon familj, så det finns ingenstans att skicka det.</string>
 </resources>

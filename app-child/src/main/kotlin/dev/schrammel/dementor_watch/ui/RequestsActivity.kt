@@ -171,7 +171,17 @@ class RequestsActivity : DementorActivity() {
             )
 
             is SubmitDecision.Allowed -> {
-                coordinator.submit(target, amount, reason)
+                // The return value is checked rather than assumed. submit() has
+                // its own refusals — asking can be switched off entirely, and the
+                // rules are re-checked there — so a screen left open from before a
+                // change can reach this line and get nothing. It used to say
+                // "Sent" regardless, which is the worst possible answer: the one
+                // that stops anybody asking again.
+                val raised = coordinator.submit(target, amount, reason)
+                if (raised == null) {
+                    toast(getString(R.string.requests_not_sent))
+                    return
+                }
                 reasonInput.setText("")
                 toast(getString(R.string.requests_sent))
                 render()
