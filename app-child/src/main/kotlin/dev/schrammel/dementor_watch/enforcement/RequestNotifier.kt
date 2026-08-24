@@ -33,6 +33,7 @@ class RequestNotifier(context: Context) {
     private val appContext = context.applicationContext
     private val notifications =
         checkNotNull(appContext.getSystemService(NotificationManager::class.java))
+    private val preferences = NotificationPreferences(appContext)
 
     init {
         notifications.createNotificationChannel(
@@ -71,6 +72,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_INCOMING,
+            kind = NotificationKind.REQUEST_RECEIVED,
             title = appContext.getString(R.string.request_notification_title),
             body = appContext.resources.getQuantityString(
                 R.plurals.request_notification_body,
@@ -93,6 +95,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_INCOMING,
+            kind = NotificationKind.REQUEST_RECEIVED,
             title = appContext.getString(R.string.request_notification_title),
             body = appContext.resources.getQuantityString(
                 R.plurals.request_notification_body,
@@ -115,6 +118,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_NEW_APP,
+            kind = NotificationKind.NEW_APP,
             title = appContext.getString(R.string.new_app_notification_title),
             body = appContext.getString(R.string.new_app_notification_body, app.label),
             destination = ParentDeviceActivity.intent(appContext),
@@ -126,6 +130,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_NEW_APP,
+            kind = NotificationKind.NEW_APP,
             title = appContext.getString(R.string.new_app_notification_title),
             body = appContext.getString(R.string.new_app_notification_body, label),
             destination = AppControlActivity.intent(appContext),
@@ -143,6 +148,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_SILENT,
+            kind = NotificationKind.DEVICE_HEALTH,
             title = appContext.getString(R.string.integrity_notification_title),
             body = body,
             destination = ParentDeviceActivity.intent(appContext),
@@ -160,6 +166,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_LOCKED,
+            kind = NotificationKind.LOCKED,
             title = appContext.getString(R.string.locked_notification_title),
             body = appContext.getString(R.string.locked_notification_body),
             destination = AuditActivity.intent(appContext),
@@ -178,6 +185,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_LOCATED,
+            kind = NotificationKind.LOCATED,
             title = appContext.getString(R.string.located_notification_title),
             body = appContext.getString(R.string.located_notification_body),
             destination = AuditActivity.intent(appContext),
@@ -189,6 +197,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_AUTO_APPROVED,
+            kind = NotificationKind.AUTO_APPROVED,
             title = appContext.getString(R.string.auto_notification_title),
             body = appContext.getString(R.string.auto_notification_body, ruleName),
             destination = ParentInboxActivity.intent(appContext),
@@ -200,6 +209,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_PLACE,
+            kind = NotificationKind.PLACE_TRANSITION,
             title = appContext.getString(
                 if (arrived) R.string.place_arrived_title else R.string.place_left_title,
             ),
@@ -223,6 +233,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_SOS,
             id = NOTIFICATION_SOS,
+            kind = NotificationKind.EMERGENCY,
             title = appContext.getString(R.string.sos_notification_title),
             body = appContext.getString(
                 if (moved) R.string.sos_notification_moved else R.string.sos_notification_body,
@@ -237,6 +248,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_SOS_CLEARED,
+            kind = NotificationKind.EMERGENCY,
             title = appContext.getString(R.string.sos_cleared_title),
             body = appContext.getString(R.string.sos_cleared_body),
             destination = ParentDeviceActivity.intent(appContext),
@@ -258,6 +270,7 @@ class RequestNotifier(context: Context) {
         post(
             channel = CHANNEL_DECISION,
             id = NOTIFICATION_DECISION,
+            kind = NotificationKind.REQUEST_ANSWERED,
             title = appContext.getString(R.string.request_decision_title),
             body = withNote,
             destination = RequestsActivity.intent(appContext),
@@ -267,11 +280,17 @@ class RequestNotifier(context: Context) {
     private fun post(
         channel: String,
         id: Int,
+        kind: NotificationKind,
         title: String,
         body: String,
         destination: Intent,
         ongoing: Boolean = false,
     ) {
+        // One gate, on the way out, rather than a check at each of eleven call
+        // sites — the one that gets forgotten would be a notification a family
+        // switched off and still received.
+        if (!preferences.isEnabled(kind)) return
+
         notifications.notify(
             id,
             NotificationCompat.Builder(appContext, channel)

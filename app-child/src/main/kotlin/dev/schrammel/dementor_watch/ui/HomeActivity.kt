@@ -21,6 +21,8 @@ import dev.schrammel.dementor_watch.enforcement.EnforcementSnapshot
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.model.Reason
+import dev.schrammel.dementor_watch.rules.Feature
+import dev.schrammel.dementor_watch.rules.FeatureFlags
 import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.security.DeviceRole
@@ -115,36 +117,63 @@ class HomeActivity : DementorActivity() {
         val navigation = findViewById<LinearLayout>(R.id.navigation)
         navigation.removeAllViews()
 
-        val destinations = listOf(
-            Triple(
-                getString(R.string.home_open_requests),
-                getString(R.string.home_open_requests_detail),
-            ) { startActivity(RequestsActivity.intent(this)) },
-            Triple(
-                getString(R.string.home_open_week),
-                getString(R.string.home_open_week_detail),
-            ) { startActivity(WeekActivity.intent(this)) },
-            Triple(
-                getString(R.string.web_activity_title),
-                getString(R.string.rules_row_web_activity_detail),
-            ) { startActivity(WebActivityActivity.intent(this)) },
-            Triple(
-                getString(R.string.home_open_audit),
-                getString(R.string.home_open_audit_detail),
-            ) { startActivity(AuditActivity.intent(this)) },
-            Triple(
-                getString(R.string.home_open_privacy),
-                getString(R.string.home_open_privacy_detail),
-            ) { startActivity(PrivacyActivity.intent(this)) },
-            Triple(
-                getString(R.string.home_language, LanguagePicker.currentLabel(this)),
-                getString(R.string.home_language_detail),
-            ) { LanguagePicker.show(this) },
-            Triple(
-                getString(R.string.home_edit_rules),
-                getString(R.string.home_edit_rules_detail),
-            ) { startActivity(Intent(this, RulesActivity::class.java)) },
-        )
+        val on = FeatureFlags(this)
+        val destinations = buildList {
+            if (on.isEnabled(Feature.REQUESTS)) {
+                add(
+                    Triple(
+                        getString(R.string.home_open_requests),
+                        getString(R.string.home_open_requests_detail),
+                    ) { startActivity(RequestsActivity.intent(this@HomeActivity)) },
+                )
+            }
+            add(
+                Triple(
+                    getString(R.string.home_open_week),
+                    getString(R.string.home_open_week_detail),
+                ) { startActivity(WeekActivity.intent(this@HomeActivity)) },
+            )
+            if (on.isEnabled(Feature.WEB_ACTIVITY)) {
+                add(
+                    Triple(
+                        getString(R.string.web_activity_title),
+                        getString(R.string.rules_row_web_activity_detail),
+                    ) { startActivity(WebActivityActivity.intent(this@HomeActivity)) },
+                )
+            }
+            // The history and the what-is-shared screen are never hidden. They are
+            // what a child is owed in exchange for the rest of this.
+            add(
+                Triple(
+                    getString(R.string.home_open_audit),
+                    getString(R.string.home_open_audit_detail),
+                ) { startActivity(AuditActivity.intent(this@HomeActivity)) },
+            )
+            add(
+                Triple(
+                    getString(R.string.home_open_privacy),
+                    getString(R.string.home_open_privacy_detail),
+                ) { startActivity(PrivacyActivity.intent(this@HomeActivity)) },
+            )
+            add(
+                Triple(
+                    getString(R.string.notify_title),
+                    getString(R.string.notify_row_detail),
+                ) { startActivity(NotificationSettingsActivity.intent(this@HomeActivity)) },
+            )
+            add(
+                Triple(
+                    getString(R.string.home_language, LanguagePicker.currentLabel(this@HomeActivity)),
+                    getString(R.string.home_language_detail),
+                ) { LanguagePicker.show(this@HomeActivity) },
+            )
+            add(
+                Triple(
+                    getString(R.string.home_edit_rules),
+                    getString(R.string.home_edit_rules_detail),
+                ) { startActivity(Intent(this@HomeActivity, RulesActivity::class.java)) },
+            )
+        }
 
         navigation.addView(
             group(destinations.map { (title, subtitle, action) -> navigationRow(title, subtitle, action) }),

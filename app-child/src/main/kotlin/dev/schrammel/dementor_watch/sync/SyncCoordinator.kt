@@ -21,6 +21,8 @@ import dev.schrammel.dementor_watch.context.LocationSharing
 import dev.schrammel.dementor_watch.context.PlaceTransition
 import dev.schrammel.dementor_watch.context.Position
 import dev.schrammel.dementor_watch.rules.AppReviewStore
+import dev.schrammel.dementor_watch.rules.Feature
+import dev.schrammel.dementor_watch.rules.FeatureFlags
 import dev.schrammel.dementor_watch.rules.GrantStore
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.RequestCoordinator
@@ -572,8 +574,18 @@ class SyncCoordinator(context: Context) {
      * they are looked for.
      */
     private fun applyLocateRequest(): Boolean {
+        // Told either way. A locate that was refused still happened, and a child
+        // who hears only about the answered ones has been told something
+        // misleading about how often they are looked for.
         notifier.notifyLocated()
         Audit.record(appContext, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
+
+        // Turned off means turned off, not hidden. A parent who put this away and
+        // found their old phone still answering would be right to feel misled.
+        if (!FeatureFlags(appContext).isEnabled(Feature.LOCATION)) {
+            Log.i(TAG, "Asked for a position while locating is switched off")
+            return true
+        }
 
         val position = LocationSharing(appContext).locate()
         if (position == null) {

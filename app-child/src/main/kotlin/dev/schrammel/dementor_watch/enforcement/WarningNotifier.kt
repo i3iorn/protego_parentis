@@ -63,6 +63,10 @@ class WarningNotifier(context: Context) {
             BudgetLevel.EXHAUSTED -> appContext.getString(R.string.warn_exhausted)
         }
 
+        // Silenced by choice rather than by not being built: a family that would
+        // rather not be warned still gets the limit, just not the countdown.
+        if (!NotificationPreferences(appContext).isEnabled(NotificationKind.TIME_WARNING)) return
+
         notifications.notify(
             NOTIFICATION_ID,
             NotificationCompat.Builder(appContext, CHANNEL_ID)

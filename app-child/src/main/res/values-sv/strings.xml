@@ -863,4 +863,55 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
 
     <string name="privacy_web_header">Sajterna telefonen når</string>
     <string name="privacy_web_body">Medan räkningen är på får dina föräldrar veta vilka sajter telefonen slagit upp i dag och hur många gånger var — inga adresser inuti en sajt, inga klockslag, och ingenting om vad som fanns på dem. Det är samma lista som du ser på surfsidan. Den nollställs varje dag och ingen historik sparas, varken här eller hos dem.</string>
+
+    <!-- Vilka aviseringar telefonen skickar. -->
+    <string name="notify_title">Aviseringar</string>
+    <string name="notify_row_detail">Vad telefonen berättar om</string>
+    <string name="notify_intro">Vad telefonen avbryter dig för. Bara de sorter den faktiskt kan skicka listas här.</string>
+    <string name="notify_choose_header">Du bestämmer</string>
+    <string name="notify_always_header">Alltid på</string>
+    <string name="notify_always_hint">De här säger att något gjorts med telefonen, eller att någon behöver hjälp. En app som bevakar en person och kan tillsägas att sluta nämna det har blivit en annan app, så här finns ingen knapp.</string>
+    <string name="notify_system_header">Androids egna inställningar</string>
+    <string name="notify_system_hint">Android kan tysta hela kategorier, och appen kan inte gå förbi det. Är något på här men ändå tyst, titta där.</string>
+    <string name="notify_system_open">Öppna Androids aviseringsinställningar</string>
+
+    <string name="notify_time_warning">Tiden tar slut</string>
+    <string name="notify_time_warning_detail">Tio minuter kvar, och sedan fem.</string>
+    <string name="notify_request_answered">Svar på det du bett om</string>
+    <string name="notify_request_answered_detail">När en förfrågan godkänns eller nekas.</string>
+    <string name="notify_goal">Belöningar</string>
+    <string name="notify_goal_detail">När du förtjänat något. Skärmen visas ändå.</string>
+    <string name="notify_located">Någon frågade var du är</string>
+    <string name="notify_located_reason">Du får veta varje gång, och det går inte att stänga av. Att få veta är skillnaden mellan det här och att bli spårad.</string>
+    <string name="notify_locked">En förälder låste telefonen</string>
+    <string name="notify_locked_reason">En telefon som låser sig utan förklaring ser trasig ut. Det här är förklaringen.</string>
+    <string name="notify_request_received">Förfrågningar</string>
+    <string name="notify_request_received_detail">Någon ber om mer tid.</string>
+    <string name="notify_auto">Automatiska svar</string>
+    <string name="notify_auto_detail">När en av dina regler svarar åt dig.</string>
+    <string name="notify_new_app">Nya appar</string>
+    <string name="notify_new_app_detail">När en app dyker upp som ingen tittat på.</string>
+    <string name="notify_health">Den andra telefonen</string>
+    <string name="notify_health_detail">Tystnat, avstängd eller nästan slut på batteri.</string>
+    <string name="notify_place">Kommer och går</string>
+    <string name="notify_place_detail">Framme vid eller lämnar en sparad plats.</string>
+    <string name="notify_emergency">Nödlägen</string>
+    <string name="notify_emergency_reason">Ett nödläge som ingen hör är funktionen som misslyckas i det enda ögonblick som räknas.</string>
+
+    <!-- Vilka delar av appen familjen använder. -->
+    <string name="features_title">Delar ni använder</string>
+    <string name="features_row_detail">Lägg undan det den här familjen inte behöver</string>
+    <string name="features_intro">Inställningarna har vuxit förbi vad någon enskild familj använder. Stäng av det du inte vill ha, så försvinner dess skärmar — både hos dig och hos dem.</string>
+    <string name="features_still_apply">Att lägga undan något döljer dess skärmar. Regler du redan skapat fortsätter gälla — ta bort dem först om du vill bli av med dem.</string>
+    <string name="features_choose_header">Du bestämmer</string>
+    <string name="features_always_header">Alltid kvar</string>
+    <string name="features_always_hint">De här handlar inte om ordning och reda. De är det som gör resten till något en person rimligen kan gå med på.</string>
+    <string name="features_requests_detail">Att be om mer tid, och att svara. Utan det finns inget sätt att fråga.</string>
+    <string name="features_location_detail">Att fråga var telefonen är. Att stänga av gör att den slutar svara, inte bara döljer knappen.</string>
+    <string name="features_emergency_reason">Säkerhet går före ordning och reda. Det finns ingen version av appen där en inställningsskärm kan ta bort sättet att be om hjälp.</string>
+    <string name="features_history_reason">Varje regeländring och varje svar, läsbart för den de gäller. Halva skälet till att något av det här är acceptabelt.</string>
+    <string name="features_transparency_reason">Skärmen som säger exakt vad som samlas in. Att dölja den skulle göra det här till något annat.</string>
+
+    <string name="audit_feature_on">Påslaget: %1$s</string>
+    <string name="audit_feature_off">Undanlagt: %1$s</string>
 </resources>

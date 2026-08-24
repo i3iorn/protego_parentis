@@ -61,6 +61,9 @@ class RequestCoordinator(
 
     fun pending(now: Instant = Instant.now()): List<Request> = requests.pending(now)
 
+    /** Whether asking is available on this phone at all. */
+    fun isAvailable(): Boolean = FeatureFlags(appContext).isEnabled(Feature.REQUESTS)
+
     /** Whether the child may ask for [target] right now, and why not if they may not. */
     fun canSubmit(target: GrantTarget, now: Instant = Instant.now()): SubmitDecision =
         RequestRules.canSubmit(
@@ -80,6 +83,10 @@ class RequestCoordinator(
         reason: String,
         now: Instant = Instant.now(),
     ): Request? {
+        // Checked here rather than only in the UI: a notification action or a
+        // screen left open from before the feature was put away would otherwise
+        // still get a request through.
+        if (!isAvailable()) return null
         if (!canSubmit(target, now).isAllowed) return null
 
         val request = Request(
@@ -114,6 +121,10 @@ class RequestCoordinator(
      * would mean the machine had taken away the right to ask.
      */
     private fun autoApprove(request: Request, now: Instant): Request? {
+        // Put away separately from requests themselves, so a family can keep the
+        // asking and drop the automation.
+        if (!FeatureFlags(appContext).isEnabled(Feature.AUTO_APPROVE)) return null
+
         val decision = AutoApprovalRules.decide(
             request = request,
             rules = autoRules.rules,

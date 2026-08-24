@@ -256,6 +256,16 @@
             android:parentActivityName=".ui.RulesActivity" />
 
         <activity
+            android:name=".ui.FeatureSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.NotificationSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
             android:name=".ui.SyncBackendActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

@@ -40,6 +40,10 @@ class GoalNotifier(context: Context) {
     }
 
     fun notifyEarned(achievement: GoalAchievement) {
+        // The celebration screen still appears on the next unlock; this is only
+        // whether the phone also buzzes about it.
+        if (!NotificationPreferences(appContext).isEnabled(NotificationKind.GOAL_EARNED)) return
+
         notifications.notify(
             NOTIFICATION_ID,
             NotificationCompat.Builder(appContext, CHANNEL_ID)

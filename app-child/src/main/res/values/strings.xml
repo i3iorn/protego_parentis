@@ -856,4 +856,55 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
 
     <string name="privacy_web_header">The sites this phone reaches</string>
     <string name="privacy_web_body">While counting is on, your parents are sent the sites this phone looked up today and how many times each — no addresses within a site, no times of day, and nothing about what was on them. It is the same list you see on the browsing screen. It resets every day and no history is kept, on this phone or theirs.</string>
+
+    <!-- Which notifications this phone sends. -->
+    <string name="notify_title">Notifications</string>
+    <string name="notify_row_detail">What this phone tells you about</string>
+    <string name="notify_intro">What this phone will interrupt you for. Only the kinds it can actually send are listed.</string>
+    <string name="notify_choose_header">Up to you</string>
+    <string name="notify_always_header">Always on</string>
+    <string name="notify_always_hint">These say that something was done to this phone, or that somebody needs help. An app that watches a person and can be told to stop mentioning it has become a different app, so there is no switch here.</string>
+    <string name="notify_system_header">Android\'s own settings</string>
+    <string name="notify_system_hint">Android can silence whole categories, and this app cannot override that. If something is off here and still quiet, look there.</string>
+    <string name="notify_system_open">Open Android\'s notification settings</string>
+
+    <string name="notify_time_warning">Time running out</string>
+    <string name="notify_time_warning_detail">Ten minutes left, and then five.</string>
+    <string name="notify_request_answered">Answers to what you asked</string>
+    <string name="notify_request_answered_detail">When a request is approved or turned down.</string>
+    <string name="notify_goal">Prizes</string>
+    <string name="notify_goal_detail">When you have earned something. The screen still appears either way.</string>
+    <string name="notify_located">Somebody asked where you are</string>
+    <string name="notify_located_reason">You are told every time, and it cannot be switched off. Being told is the difference between this and being tracked.</string>
+    <string name="notify_locked">A parent locked this phone</string>
+    <string name="notify_locked_reason">A phone that locks itself with no explanation looks broken. This is the explanation.</string>
+    <string name="notify_request_received">Requests</string>
+    <string name="notify_request_received_detail">Somebody is asking for more time.</string>
+    <string name="notify_auto">Automatic answers</string>
+    <string name="notify_auto_detail">When one of your rules answers a request for you.</string>
+    <string name="notify_new_app">New apps</string>
+    <string name="notify_new_app_detail">When an app appears that nobody has looked at.</string>
+    <string name="notify_health">The other phone</string>
+    <string name="notify_health_detail">Gone quiet, switched off, or nearly out of battery.</string>
+    <string name="notify_place">Coming and going</string>
+    <string name="notify_place_detail">Arriving at or leaving a saved place.</string>
+    <string name="notify_emergency">Emergencies</string>
+    <string name="notify_emergency_reason">An emergency nobody hears is the feature failing at the only moment it matters.</string>
+
+    <!-- Which parts of the app this family uses. -->
+    <string name="features_title">Parts you use</string>
+    <string name="features_row_detail">Put away the parts this family does not need</string>
+    <string name="features_intro">The settings have grown past what any one family uses. Turn off what you do not want and its screens disappear, from your phone and from theirs.</string>
+    <string name="features_still_apply">Putting something away hides its screens. Rules you have already made keep working — delete them first if you want them gone.</string>
+    <string name="features_choose_header">Up to you</string>
+    <string name="features_always_header">Always there</string>
+    <string name="features_always_hint">These are not tidiness. They are what makes the rest of this something a person can reasonably agree to.</string>
+    <string name="features_requests_detail">Asking for more time, and answering. Without it there is no way to ask.</string>
+    <string name="features_location_detail">Asking where the phone is. Turning it off stops it answering, not just hiding the button.</string>
+    <string name="features_emergency_reason">Safety comes before tidiness. There is no version of this app where a settings screen can remove the way to call for help.</string>
+    <string name="features_history_reason">Every rule change and every answer, readable by the person they apply to. Half the reason any of this is acceptable.</string>
+    <string name="features_transparency_reason">The screen that says exactly what is collected. Hiding it would make this something else.</string>
+
+    <string name="audit_feature_on">Turned on: %1$s</string>
+    <string name="audit_feature_off">Put away: %1$s</string>
 </resources>

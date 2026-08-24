@@ -8,6 +8,8 @@ import android.widget.TextView
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
+import dev.schrammel.dementor_watch.rules.Feature
+import dev.schrammel.dementor_watch.rules.FeatureFlags
 
 /**
  * The parent's hub.
@@ -39,70 +41,131 @@ class RulesActivity : ParentGatedActivity() {
     }
 
     private fun buildGroups() {
+        val on = FeatureFlags(this)
+
         fill(
             R.id.group_limits,
-            listOf(
-                row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
-                    startActivity(Intent(this, LimitsActivity::class.java))
-                },
-                row(R.string.rules_row_categories, R.string.rules_row_categories_detail) {
-                    startActivity(Intent(this, CategoriesActivity::class.java))
-                },
-                row(R.string.rules_row_app_limits, R.string.rules_row_app_limits_detail) {
-                    startActivity(AppLimitsActivity.intent(this))
-                },
-                row(R.string.rules_row_apps, R.string.rules_row_apps_detail) {
-                    startActivity(AppControlActivity.intent(this))
-                },
-                row(R.string.rules_row_web, R.string.rules_row_web_detail) {
-                    startActivity(WebFilterActivity.intent(this))
-                },
-                row(R.string.rules_row_web_activity, R.string.rules_row_web_activity_detail) {
-                    startActivity(WebActivityActivity.intent(this))
-                },
-            ),
+            buildList {
+                // The daily limit is the reason the app exists; it has no switch.
+                add(
+                    row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
+                        startActivity(Intent(this@RulesActivity, LimitsActivity::class.java))
+                    },
+                )
+                if (on.isEnabled(Feature.CATEGORIES)) {
+                    add(
+                        row(R.string.rules_row_categories, R.string.rules_row_categories_detail) {
+                            startActivity(Intent(this@RulesActivity, CategoriesActivity::class.java))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.APP_LIMITS)) {
+                    add(
+                        row(R.string.rules_row_app_limits, R.string.rules_row_app_limits_detail) {
+                            startActivity(AppLimitsActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.APP_CONTROL)) {
+                    add(
+                        row(R.string.rules_row_apps, R.string.rules_row_apps_detail) {
+                            startActivity(AppControlActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.WEB_FILTER)) {
+                    add(
+                        row(R.string.rules_row_web, R.string.rules_row_web_detail) {
+                            startActivity(WebFilterActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.WEB_ACTIVITY)) {
+                    add(
+                        row(
+                            R.string.rules_row_web_activity,
+                            R.string.rules_row_web_activity_detail,
+                        ) { startActivity(WebActivityActivity.intent(this@RulesActivity)) },
+                    )
+                }
+            },
         )
 
         fill(
             R.id.group_day,
-            listOf(
-                row(R.string.rules_row_schedules, R.string.rules_row_schedules_detail) {
-                    startActivity(SchedulesActivity.intent(this))
-                },
-                row(R.string.rules_row_context, R.string.rules_row_context_detail) {
-                    startActivity(ContextRulesActivity.intent(this))
-                },
-                row(R.string.rules_row_places_alerts, R.string.rules_row_places_alerts_detail) {
-                    startActivity(PlaceAlertsActivity.intent(this))
-                },
-                row(R.string.rules_row_goal, R.string.rules_row_goal_detail) {
-                    startActivity(Intent(this, GoalActivity::class.java))
-                },
-                row(R.string.rules_row_bonus, R.string.rules_row_bonus_detail) {
-                    startActivity(BonusTimeActivity.intent(this))
-                },
-            ),
+            buildList {
+                if (on.isEnabled(Feature.SCHEDULES)) {
+                    add(
+                        row(R.string.rules_row_schedules, R.string.rules_row_schedules_detail) {
+                            startActivity(SchedulesActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.CONTEXT_RULES)) {
+                    add(
+                        row(R.string.rules_row_context, R.string.rules_row_context_detail) {
+                            startActivity(ContextRulesActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.PLACES)) {
+                    add(
+                        row(
+                            R.string.rules_row_places_alerts,
+                            R.string.rules_row_places_alerts_detail,
+                        ) { startActivity(PlaceAlertsActivity.intent(this@RulesActivity)) },
+                    )
+                }
+                if (on.isEnabled(Feature.GOALS)) {
+                    add(
+                        row(R.string.rules_row_goal, R.string.rules_row_goal_detail) {
+                            startActivity(Intent(this@RulesActivity, GoalActivity::class.java))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.BONUS)) {
+                    add(
+                        row(R.string.rules_row_bonus, R.string.rules_row_bonus_detail) {
+                            startActivity(BonusTimeActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+            },
         )
 
         fill(
             R.id.group_family,
-            listOf(
-                row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
-                    startActivity(RequestInboxActivity.intent(this))
-                },
-                row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
-                    startActivity(AutoApprovalActivity.intent(this))
-                },
-                row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
-                    startActivity(JoinFamilyActivity.intent(this))
-                },
-                row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
-                    startActivity(FamilyDevicesActivity.intent(this))
-                },
-                row(R.string.backend_title, R.string.backend_row_detail) {
-                    startActivity(SyncBackendActivity.intent(this))
-                },
-            ),
+            buildList {
+                if (on.isEnabled(Feature.REQUESTS)) {
+                    add(
+                        row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
+                            startActivity(RequestInboxActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.REQUESTS) && on.isEnabled(Feature.AUTO_APPROVE)) {
+                    add(
+                        row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
+                            startActivity(AutoApprovalActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
+                add(
+                    row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
+                        startActivity(JoinFamilyActivity.intent(this@RulesActivity))
+                    },
+                )
+                add(
+                    row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
+                        startActivity(FamilyDevicesActivity.intent(this@RulesActivity))
+                    },
+                )
+                add(
+                    row(R.string.backend_title, R.string.backend_row_detail) {
+                        startActivity(SyncBackendActivity.intent(this@RulesActivity))
+                    },
+                )
+            },
         )
 
         fill(
@@ -110,6 +173,12 @@ class RulesActivity : ParentGatedActivity() {
             listOf(
                 row(R.string.rules_row_device, R.string.rules_row_device_detail) {
                     startActivity(Intent(this, DeviceControlActivity::class.java))
+                },
+                row(R.string.features_title, R.string.features_row_detail) {
+                    startActivity(FeatureSettingsActivity.intent(this))
+                },
+                row(R.string.notify_title, R.string.notify_row_detail) {
+                    startActivity(NotificationSettingsActivity.intent(this))
                 },
             ),
         )

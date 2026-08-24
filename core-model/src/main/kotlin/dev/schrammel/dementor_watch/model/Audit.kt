@@ -94,6 +94,7 @@ enum class AuditAction(val valueKind: ValueKind) {
     BIOMETRIC_UNLOCK_CHANGED(ValueKind.FLAG),
     SYNC_CONFIGURED(ValueKind.FLAG),
     SYNC_BACKEND_CHANGED(ValueKind.TOKEN),
+    FEATURE_CHANGED(ValueKind.FLAG),
     WEB_FILTER_CHANGED(ValueKind.TOKEN),
     BROWSER_POLICY_CHANGED(ValueKind.FLAG),
     DEVICE_APPROVED(ValueKind.TOKEN),
