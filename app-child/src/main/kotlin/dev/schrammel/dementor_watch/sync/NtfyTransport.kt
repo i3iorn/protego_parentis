@@ -8,14 +8,8 @@ import java.net.URL
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-/** What a publish or poll attempt did. */
-sealed interface TransportResult<out T> {
-    data class Ok<T>(val value: T) : TransportResult<T>
-    data class Failed(val message: String) : TransportResult<Nothing>
-}
-
 /**
- * Talks to an ntfy topic over plain HTTP.
+ * Carries a family's messages over an ntfy topic.
  *
  * Deliberately thin, and deliberately unaware of what it is carrying: bodies are
  * already-sealed envelopes from `MessageCrypto`. The server is treated as a dumb
@@ -28,13 +22,15 @@ sealed interface TransportResult<out T> {
  *
  * Every call blocks; callers must be off the main thread.
  */
-class NtfyClient(
+class NtfyTransport(
     private val serverUrl: String,
     private val topic: String,
-) {
+) : FamilyTransport {
+
+    override val kind: TransportKind = TransportKind.NTFY
 
     /** Publishes one already-encrypted envelope. */
-    fun publish(envelope: String): TransportResult<Unit> = try {
+    override fun publish(envelope: String): TransportResult<Unit> = try {
         val connection = open("$serverUrl/$topic", method = "POST")
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "text/plain")
@@ -64,7 +60,7 @@ class NtfyClient(
      * than streaming. Anything that is not a message body we recognise is skipped
      * — the topic is public and will contain other traffic.
      */
-    fun poll(since: Instant): TransportResult<List<String>> = try {
+    override fun poll(since: Instant): TransportResult<List<String>> = try {
         val seconds = since.epochSecond.coerceAtLeast(0)
         val connection = open("$serverUrl/$topic/json?poll=1&since=$seconds", method = "GET")
 

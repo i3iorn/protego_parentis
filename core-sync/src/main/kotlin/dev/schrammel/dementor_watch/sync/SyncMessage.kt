@@ -65,6 +65,17 @@ enum class SyncMessageType {
     WEB_SUMMARY,
 
     /**
+     * Parent → everyone: I have let this device in.
+     *
+     * The whole enrolment model rests on this one message. A parent approving a
+     * new phone tells the rest of the family, and everyone who already trusts the
+     * voucher adds it. The child never approves anybody — its roster is written
+     * by the parents, which is the right way round: deciding who may set the rules
+     * is not a job for the person the rules are about.
+     */
+    DEVICE_VOUCHED,
+
+    /**
      * Either → everyone: this is who I am.
      *
      * Carries a name and a public key so the other phones can offer to enrol it.

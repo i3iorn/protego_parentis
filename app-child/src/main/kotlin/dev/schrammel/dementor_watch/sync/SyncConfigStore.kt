@@ -15,6 +15,8 @@ import java.util.UUID
 /** Everything needed to reach the family's topic. */
 data class SyncSettings(
     val enabled: Boolean,
+    /** Which backend carries this family's messages. */
+    val transport: TransportKind,
     val serverUrl: String,
     val topic: String,
     val passphrase: String,
@@ -38,6 +40,10 @@ data class SyncSettings(
             serverUrl.startsWith("https://") &&
             topic.isNotBlank() &&
             passphrase.isNotBlank()
+
+    /** The half of the settings a person can pass to another person. */
+    fun token(): FamilyToken? =
+        runCatching { FamilyToken(transport, serverUrl, topic) }.getOrNull()
 
     companion object {
         const val DEFAULT_SERVER = "https://ntfy.sh"
@@ -63,6 +69,8 @@ class SyncConfigStore(context: Context) {
 
     fun load(): SyncSettings = SyncSettings(
         enabled = prefs.getBoolean(KEY_ENABLED, false),
+        transport = TransportKind.parse(prefs.getString(KEY_TRANSPORT, null))
+            ?: TransportKind.NTFY,
         serverUrl = prefs.getString(KEY_SERVER, null)?.trimEnd('/') ?: DEFAULT_SERVER,
         topic = prefs.getString(KEY_TOPIC, null).orEmpty(),
         passphrase = passphrase(),
@@ -84,9 +92,33 @@ class SyncConfigStore(context: Context) {
         return value
     }
 
-    fun save(enabled: Boolean, serverUrl: String, topic: String, passphrase: String) {
+    /**
+     * Joins a family, or leaves one.
+     *
+     * Takes a token rather than three loose strings, so a caller cannot pair a
+     * server with the wrong backend — the token is the unit a family is described
+     * in, and it either parses as a whole or not at all.
+     */
+    fun join(token: FamilyToken, passphrase: String) {
+        save(
+            enabled = true,
+            transport = token.kind,
+            serverUrl = token.serverUrl,
+            topic = token.topic,
+            passphrase = passphrase,
+        )
+    }
+
+    fun save(
+        enabled: Boolean,
+        transport: TransportKind,
+        serverUrl: String,
+        topic: String,
+        passphrase: String,
+    ) {
         prefs.edit {
             putBoolean(KEY_ENABLED, enabled)
+            putString(KEY_TRANSPORT, transport.name)
             putString(KEY_SERVER, serverUrl.trim().trimEnd('/').ifBlank { DEFAULT_SERVER })
             putString(KEY_TOPIC, topic.trim())
         }
@@ -148,6 +180,21 @@ class SyncConfigStore(context: Context) {
             remove(KEY_PASSPHRASE_LEGACY)
         }
         cachedPassphrase = sealed?.let { it to value }
+    }
+
+    /**
+     * Forgets the family's passphrase.
+     *
+     * Separate from [save], which deliberately ignores a blank one so that
+     * reopening a screen and saving does not wipe what is stored. Leaving is the
+     * one case where blank means blank.
+     */
+    fun forgetPassphrase() {
+        prefs.edit {
+            remove(KEY_PASSPHRASE_SEALED)
+            remove(KEY_PASSPHRASE_LEGACY)
+        }
+        cachedPassphrase = null
     }
 
     /** Whether the phone can keep a passphrase at all, so a screen can say so. */
@@ -259,6 +306,7 @@ class SyncConfigStore(context: Context) {
         const val KEY_ENABLED = "enabled"
         const val KEY_SERVER = "server"
         const val KEY_TOPIC = "topic"
+        const val KEY_TRANSPORT = "transport"
 
         /** Written by builds before the vault existed; migrated away on first read. */
         const val KEY_PASSPHRASE_LEGACY = "passphrase"
@@ -271,16 +319,3 @@ class SyncConfigStore(context: Context) {
         const val KEY_LAST_ANNOUNCE = "last_announce"
     }
 }
-
-/**
- * What ntfy accepts in a topic name, and what this app will put in a URL.
- *
- * The topic is typed by a person and then interpolated into a path and a query
- * string. Without this, a topic containing a slash or a question mark produces a
- * request to somewhere nobody chose — on a server the family also chose, so it is
- * mostly a way to break your own sync, but a value that reaches a URL unchecked is
- * not one to leave unchecked.
- */
-internal fun isValidTopic(value: String): Boolean = TOPIC_PATTERN.matches(value.trim())
-
-private val TOPIC_PATTERN = Regex("^[A-Za-z0-9_-]{1,64}$")

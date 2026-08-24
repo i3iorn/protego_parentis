@@ -19,7 +19,10 @@ import dev.schrammel.dementor_watch.sync.PendingDevice
 import dev.schrammel.dementor_watch.sync.RosterStore
 import dev.schrammel.dementor_watch.sync.SyncConfigStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
+import dev.schrammel.dementor_watch.sync.Enrolment
 import dev.schrammel.dementor_watch.sync.SyncRole
+import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.security.RoleStore
 
 private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
 private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
@@ -36,6 +39,17 @@ private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
  * PIN-gated. On the child's device that is obvious. On a parent's phone it
  * matters just as much: approving a device is the act that lets it start
  * answering requests.
+ *
+ * **Who may approve.** Parents. Not the child's phone — if the phone under
+ * management could admit a parent device, whoever holds that phone could admit one
+ * of their own and answer their own requests, and the roster would be protecting
+ * nothing. A parent approving here tells the rest of the family, and every phone
+ * that already trusts them enrols the newcomer without anybody touching it.
+ *
+ * The single exception is the founding parent, who cannot be vouched for because
+ * there is nobody yet to do the vouching. That one enrolment happens here, on the
+ * child's phone, behind the PIN, by whoever is setting it up — and once it has a
+ * parent this screen never offers to approve again.
  */
 class FamilyDevicesActivity : ParentGatedActivity() {
 
@@ -73,7 +87,16 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         column.addView(sectionHeader(getString(R.string.devices_this_phone)))
         column.addView(thisPhone())
 
-        val pending = roster.pending
+        val mayApprove = Enrolment.mayApprove(role(), roster.parents().size)
+
+        if (!mayApprove) {
+            // Said plainly rather than by an absent button: a screen that lists
+            // phones waiting and offers nothing looks broken.
+            column.addView(sectionHeader(getString(R.string.devices_waiting)))
+            column.addView(bodyText(getString(R.string.devices_parents_decide)))
+        }
+
+        val pending = if (mayApprove) roster.pending else emptyList()
         if (pending.isNotEmpty()) {
             column.addView(sectionHeader(getString(R.string.devices_waiting)))
             column.addView(captionText(getString(R.string.devices_waiting_hint)))
@@ -255,6 +278,14 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                         subject = approved.name,
                         after = approved.role.name,
                     )
+                    // Tell the family, so nobody else has to do this again —
+                    // this is what makes one parent's approval enough.
+                    //
+                    // Only from a parent. A vouch from the managed phone is
+                    // refused by every recipient as coming from the wrong role,
+                    // which is the whole point of the rule; publishing one anyway
+                    // would be a message that reads like it did something.
+                    if (role() == SyncRole.PARENT) sync.publishVouch(approved)
                 }
                 render()
             }
@@ -338,6 +369,11 @@ class FamilyDevicesActivity : ParentGatedActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun role(): SyncRole = when (RoleStore(this).roleOrChild) {
+        DeviceRole.CHILD -> SyncRole.CHILD
+        DeviceRole.PARENT -> SyncRole.PARENT
     }
 
     private fun roleName(role: SyncRole): String = getString(

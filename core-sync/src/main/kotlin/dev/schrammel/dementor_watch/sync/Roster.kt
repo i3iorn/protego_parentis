@@ -15,6 +15,30 @@ data class KnownDevice(
     val lastHeardAt: Instant? = null,
 )
 
+/**
+ * One parent telling the family it has let a device in.
+ *
+ * Carries the key as well as the id, so a receiver enrols exactly the device that
+ * was approved rather than the next one to claim that name.
+ */
+data class Vouch(
+    val id: DeviceId,
+    val name: String,
+    val role: SyncRole,
+    val publicKey: String,
+) {
+    /**
+     * Whether the key really is the one this id names.
+     *
+     * A vouch is acted on without a human looking at it, so the one check a human
+     * would have made — that the fingerprint matches the key — has to be made here
+     * instead. Without it a trusted parent could enrol a device under an id that
+     * belongs to somebody else.
+     */
+    fun isConsistent(): Boolean =
+        Fingerprints.decodeKey(publicKey)?.let { Fingerprints.of(it) == id } == true
+}
+
 /** A validly-signed device that nobody has approved yet. */
 data class PendingDevice(
     val id: DeviceId,
@@ -99,6 +123,11 @@ object RosterRules {
         SyncMessageType.APP_DECIDED -> SyncRole.PARENT
         SyncMessageType.LOCK_NOW -> SyncRole.PARENT
         SyncMessageType.LOCATE_REQUEST -> SyncRole.PARENT
+
+        // Only a parent may let somebody in. A child device that obtained the
+        // passphrase can sign this perfectly well and is refused, which is the
+        // point of the roster existing at all.
+        SyncMessageType.DEVICE_VOUCHED -> SyncRole.PARENT
 
         // Either side introduces itself; that is the point of it.
         SyncMessageType.DEVICE_ANNOUNCE -> null

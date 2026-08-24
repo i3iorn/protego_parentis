@@ -78,8 +78,26 @@ class SyncCoordinator(context: Context) {
 
     fun settings(): SyncSettings = config.load()
 
-    fun saveSettings(enabled: Boolean, serverUrl: String, topic: String, passphrase: String) {
-        config.save(enabled, serverUrl, topic, passphrase)
+    /** Joins the family described by [token]. */
+    fun join(token: FamilyToken, passphrase: String) {
+        config.join(token, passphrase)
+        config.announceSoon()
+    }
+
+    /** Leaves, keeping nothing behind that could reconnect or decrypt on its own. */
+    fun leave() {
+        config.save(
+            enabled = false,
+            transport = TransportKind.NTFY,
+            serverUrl = SyncSettings.DEFAULT_SERVER,
+            // Not a usable topic, which is the point: FamilyToken refuses it, so
+            // nothing can rebuild a connection out of what is left behind.
+            topic = "",
+            passphrase = "",
+        )
+        // save() ignores a blank passphrase on purpose, so leaving has to say so
+        // explicitly or the family's key stays on a phone that has left it.
+        config.forgetPassphrase()
     }
 
     fun suggestTopic(): String = config.suggestTopic()
@@ -289,6 +307,24 @@ class SyncCoordinator(context: Context) {
     /** Says the phone is going off, so silence can be told apart from shutdown. */
     fun publishStopping() = publish(SyncMessageType.DEVICE_STOPPING, emptyMap())
 
+    /**
+     * Tells the family that this phone has let a device in.
+     *
+     * Sent by a parent as it approves, and acted on by everyone who already
+     * trusts the sender. This is how a second parent's phone becomes usable
+     * without anyone touching the child's device — and it is the whole reason the
+     * child no longer has an approve button.
+     */
+    fun publishVouch(device: KnownDevice) = publish(
+        type = SyncMessageType.DEVICE_VOUCHED,
+        fields = mapOf(
+            FIELD_VOUCHED_ID to device.id.value,
+            FIELD_VOUCHED_KEY to device.publicKey,
+            FIELD_VOUCHED_ROLE to device.role.name,
+            FIELD_TARGET_LABEL to device.name,
+        ),
+    )
+
     /** A parent's answer about a new app. */
     fun publishAppDecision(packageName: String, blocked: Boolean) = publish(
         type = SyncMessageType.APP_DECIDED,
@@ -319,7 +355,7 @@ class SyncCoordinator(context: Context) {
                 return@execute
             }
 
-            val client = NtfyClient(settings.serverUrl, settings.topic)
+            val client = Transports.of(settings)
             // A little overlap on the window, because ntfy filters by whole
             // seconds and a message published in the same second as the last poll
             // would otherwise be missed. The replay guard removes the duplicates.
@@ -432,6 +468,7 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.APP_DECIDED -> applyAppDecision(message)
         SyncMessageType.LOCK_NOW -> applyLockNow()
         SyncMessageType.LOCATE_REQUEST -> applyLocateRequest()
+        SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
         // A child phone is the only source of these; hearing one back means a
         // second child device shares the family topic, which is not supported yet.
         // An announcement has already done its work in the roster by this point.
@@ -457,6 +494,7 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.REQUEST_DECIDED -> settleRequest(message)
         SyncMessageType.HEARTBEAT -> rememberHeartbeat(message)
         SyncMessageType.APP_INSTALLED -> rememberNewApp(message)
+        SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
         SyncMessageType.DAILY_SUMMARY -> rememberSummary(message)
         SyncMessageType.DEVICE_STOPPING -> rememberStopping(message)
         SyncMessageType.REQUEST_AUTO_APPROVED -> settleAutoApproved(message)
@@ -601,6 +639,40 @@ class SyncCoordinator(context: Context) {
             after = Audit.flag(blocked),
         )
         EnforcementService.start(appContext)
+        return true
+    }
+
+    /**
+     * Enrols a device an already-trusted parent has vouched for.
+     *
+     * Reaching here means the sender was accepted by the roster, which for this
+     * message type means an enrolled parent. What is left to check is the vouch
+     * itself — see [Enrolment.shouldAccept]: nothing human looks at one, so the
+     * fingerprint check a person would have made happens in code instead.
+     */
+    private fun applyVouch(message: SyncMessage): Boolean {
+        val vouch = Vouch(
+            id = DeviceId(message.field(FIELD_VOUCHED_ID) ?: return false),
+            name = message.field(FIELD_TARGET_LABEL).orEmpty().clip(),
+            role = SyncRole.parse(message.field(FIELD_VOUCHED_ROLE)) ?: return false,
+            publicKey = message.field(FIELD_VOUCHED_KEY) ?: return false,
+        )
+
+        val self = runCatching { signer.deviceId }.getOrNull() ?: return false
+        if (!Enrolment.shouldAccept(vouch, self)) {
+            Diagnostics.record(appContext, DiagnosticEvent.SYNC_SENDER_REFUSED)
+            return false
+        }
+        if (roster.devices.any { it.id == vouch.id }) return false
+
+        roster.enrol(vouch)
+        Audit.record(
+            context = appContext,
+            actor = AuditActor.PARENT,
+            action = AuditAction.DEVICE_APPROVED,
+            subject = vouch.name.ifBlank { vouch.id.value },
+            after = vouch.role.name,
+        )
         return true
     }
 
@@ -818,8 +890,7 @@ class SyncCoordinator(context: Context) {
                 return@execute
             }
 
-            val sent = NtfyClient(settings.serverUrl, settings.topic)
-                .publish(MessageCrypto.seal(key, signed))
+            val sent = Transports.of(settings).publish(MessageCrypto.seal(key, signed))
             Diagnostics.record(
                 appContext,
                 if (sent is TransportResult.Ok) {
@@ -881,6 +952,9 @@ class SyncCoordinator(context: Context) {
         const val MAX_SUMMARY_APPS = 10
 
         const val FIELD_RULE_NAME = "ruleName"
+        const val FIELD_VOUCHED_ID = "vouchedId"
+        const val FIELD_VOUCHED_KEY = "vouchedKey"
+        const val FIELD_VOUCHED_ROLE = "vouchedRole"
         const val FIELD_LATITUDE = "lat"
         const val FIELD_LONGITUDE = "lon"
         const val FIELD_ACCURACY = "accuracy"

@@ -94,7 +94,7 @@ class RulesActivity : ParentGatedActivity() {
                     startActivity(AutoApprovalActivity.intent(this))
                 },
                 row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
-                    startActivity(SyncSettingsActivity.intent(this))
+                    startActivity(JoinFamilyActivity.intent(this))
                 },
                 row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
                     startActivity(FamilyDevicesActivity.intent(this))

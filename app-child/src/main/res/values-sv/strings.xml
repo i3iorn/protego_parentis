@@ -7,7 +7,7 @@
 
   app_name översätts inte — produktnamnet är detsamma på alla språk.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Notis som alltid syns. -->
     <string name="service_channel_name">Skärmtid</string>
@@ -169,31 +169,10 @@
     <string name="home_language">Språk: %1$s</string>
 
     <!-- Synk med föräldrarnas telefoner. -->
-    <string name="sync_title">Föräldrars telefoner</string>
-    <string name="sync_explainer">Förfrågningar och svar skickas via ett delat ämne. Varje meddelande krypteras på den här telefonen innan det skickas, så servern kan aldrig läsa det. Lägg till en förälders telefon genom att ange samma server, ämne och lösenfras där.</string>
-    <string name="sync_enable">Skicka till föräldrars telefoner</string>
-    <string name="sync_server_label">Server</string>
-    <string name="sync_topic_label">Ämne</string>
-    <string name="sync_topic_hint">Den som känner till det här kan se att meddelanden finns, men inte vad de innehåller. Använd det som genereras.</string>
-    <string name="sync_generate_topic">Skapa ett ämne</string>
-    <string name="sync_passphrase_label">Lösenfras</string>
-    <plurals name="sync_passphrase_hint">
-        <item quantity="one">Minst %d tecken. Det är den som håller meddelandena privata. Använd samma på alla telefoner.</item>
-        <item quantity="other">Minst %d tecken. Det är den som håller meddelandena privata. Använd samma på alla telefoner.</item>
-    </plurals>
-    <string name="sync_passphrase_empty">Inte satt än</string>
-    <string name="sync_passphrase_set">Sparad. Skriv för att byta.</string>
     <plurals name="sync_passphrase_too_short">
         <item quantity="one">Använd minst %d tecken.</item>
         <item quantity="other">Använd minst %d tecken.</item>
     </plurals>
-    <string name="sync_needs_https">Serveradressen måste börja med https://</string>
-    <string name="sync_needs_topic">Ange eller skapa ett ämne först.</string>
-    <string name="sync_save">Spara</string>
-    <string name="sync_saved">Sparat.</string>
-    <string name="sync_test">Testa anslutningen</string>
-    <string name="sync_testing">Kontrollerar…</string>
-    <string name="sync_test_result">Resultat: %1$s</string>
 
     <!-- Kategorier i kategorier. -->
     <string name="category_nested_header">Kategorier inuti den här</string>
@@ -834,4 +813,26 @@
     <string name="privacy_location_body">Din position skickas bara när en förälder frågar efter den, eller när du skickar ett nödläge. Du får veta varje enskild gång någon frågar, och varje fråga står i den delade historiken. Ingenting sparar ett spår: föräldrarnas telefoner håller en position, den senaste, och ingen historik bakom den.
 
 Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och ingen position alls.</string>
+
+    <!-- Att gå med i en familj. -->
+    <string name="join_title">Gå med i en familj</string>
+    <string name="join_intro">Ange familjekoden från en telefon som redan är med, och lösenfrasen familjen valt. Att gå med ger inte telefonen något inflytande ännu — en förälder godkänner den på sin egen telefon först.</string>
+    <string name="join_token_header">Familjekod</string>
+    <string name="join_token_hint" tools:ignore="Typos">DW1-XXXXXXXX-XXXX</string>
+    <string name="join_passphrase_header">Familjens lösenfras</string>
+    <string name="join_passphrase_hint">Den familjen valt</string>
+    <string name="join_action">Gå med</string>
+    <string name="join_bad_token">Koden känns inte igen. Kontrollera den mot telefonen du kopierade den från.</string>
+    <string name="join_done">Med i familjen. En förälder måste godkänna telefonen innan den kan göra något.</string>
+    <string name="join_start_header">Eller starta en ny familj</string>
+    <string name="join_start_hint">Välj en lösenfras ovan först. Alla som går med behöver den, och den är det enda som håller familjens meddelanden privata — välj något långt.</string>
+    <string name="join_start">Starta en ny familj</string>
+    <string name="join_connected_title">Den här familjen</string>
+    <string name="join_code_hint">Läs upp koden för nästa telefon som ska gå med. Den är ingen hemlighet i sig — det är lösenfrasen som låser upp något.</string>
+    <string name="join_backend">Skickas via</string>
+    <string name="join_server">Server</string>
+    <string name="join_leave">Lämna familjen</string>
+    <string name="join_leave_confirm">Telefonen slutar skicka och ta emot. Ingenting på den raderas, och den kan gå med igen med koden och lösenfrasen.</string>
+
+    <string name="devices_parents_decide">En förälder godkänner nya telefoner, på sin egen telefon. Inget att göra här.</string>
 </resources>

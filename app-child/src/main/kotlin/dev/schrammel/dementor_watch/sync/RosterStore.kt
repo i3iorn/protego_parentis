@@ -73,6 +73,34 @@ class RosterStore(context: Context) {
         }
 
     /** Turns a device away and remembers doing so, until [unrefuse]. */
+    /**
+     * Enrols a device on a trusted parent's word, with no pending entry.
+     *
+     * The other path through this class asks a person to compare a fingerprint;
+     * this one has already had that done, on the phone that vouched. Everything
+     * that made it safe there — the comparison, the PIN — happened once, and this
+     * is the family being told the outcome.
+     */
+    fun enrol(vouch: Vouch, now: Instant = Instant.now()) = synchronized(LOCK) {
+        if (devices.any { it.id == vouch.id }) return@synchronized
+
+        writeKnown(
+            devices + KnownDevice(
+                id = vouch.id,
+                name = vouch.name.ifBlank { vouch.id.value },
+                role = vouch.role,
+                publicKey = vouch.publicKey,
+                approvedAt = now,
+                lastHeardAt = null,
+            ),
+        )
+        // No longer waiting for anybody, and no longer turned away either: the
+        // family has spoken, and a stale row in either list would only confuse
+        // whoever opens the screen next.
+        writePending(pending.filterNot { it.id == vouch.id })
+        prefs.edit { putStringSet(KEY_REFUSED, refused - vouch.id.value) }
+    }
+
     fun reject(id: DeviceId) = synchronized(LOCK) {
         writePending(pending.filterNot { it.id == id })
         prefs.edit { putStringSet(KEY_REFUSED, refused + id.value) }

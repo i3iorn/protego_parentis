@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- The product name is the same in every language. -->
     <string name="app_name" translatable="false">Dementor Watch</string>
 
@@ -162,31 +162,10 @@
     <string name="home_language">Language: %1$s</string>
 
     <!-- Sync with parent phones. -->
-    <string name="sync_title">Parent phones</string>
-    <string name="sync_explainer">Requests and answers are sent through a shared topic. Every message is encrypted on this phone before it is sent, so the server can never read it. Add a parent phone by entering the same server, topic and passphrase there.</string>
-    <string name="sync_enable">Send to parent phones</string>
-    <string name="sync_server_label">Server</string>
-    <string name="sync_topic_label">Topic</string>
-    <string name="sync_topic_hint">Anyone who knows this can see that messages exist, though not what they say. Use the generated one.</string>
-    <string name="sync_generate_topic">Generate a topic</string>
-    <string name="sync_passphrase_label">Passphrase</string>
-    <plurals name="sync_passphrase_hint">
-        <item quantity="one">At least %d character. This is what keeps messages private. Use the same one on every phone.</item>
-        <item quantity="other">At least %d characters. This is what keeps messages private. Use the same one on every phone.</item>
-    </plurals>
-    <string name="sync_passphrase_empty">Not set yet</string>
-    <string name="sync_passphrase_set">Saved. Type to replace it.</string>
     <plurals name="sync_passphrase_too_short">
         <item quantity="one">Use at least %d character.</item>
         <item quantity="other">Use at least %d characters.</item>
     </plurals>
-    <string name="sync_needs_https">The server address must start with https://</string>
-    <string name="sync_needs_topic">Enter or generate a topic first.</string>
-    <string name="sync_save">Save</string>
-    <string name="sync_saved">Saved.</string>
-    <string name="sync_test">Test connection</string>
-    <string name="sync_testing">Checking…</string>
-    <string name="sync_test_result">Result: %1$s</string>
 
     <!-- Nested categories. -->
     <string name="category_nested_header">Categories inside this one</string>
@@ -827,4 +806,26 @@ If you are in danger, call emergency services first — this app is not a substi
     <string name="privacy_location_body">Your position is sent only when a parent asks for it, or when you send an emergency. You are told every single time it is asked for, and every ask is in the shared history. Nothing keeps a trail: your parents\' phones hold one position, the most recent, and no history behind it.
 
 Arrivals and departures send the name of the place — \"Arrived at School\" — and no position at all.</string>
+
+    <!-- Joining a family. -->
+    <string name="join_title">Join a family</string>
+    <string name="join_intro">Enter the family code from a phone that is already in the family, and the passphrase that family chose. Joining does not give this phone any say yet — a parent approves it on their own phone first.</string>
+    <string name="join_token_header">Family code</string>
+    <string name="join_token_hint" tools:ignore="Typos">DW1-XXXXXXXX-XXXX</string>
+    <string name="join_passphrase_header">Family passphrase</string>
+    <string name="join_passphrase_hint">The one the family chose</string>
+    <string name="join_action">Join</string>
+    <string name="join_bad_token">That code was not recognised. Check it against the phone you copied it from.</string>
+    <string name="join_done">Joined. A parent has to approve this phone before it can do anything.</string>
+    <string name="join_start_header">Or start a new family</string>
+    <string name="join_start_hint">Pick a passphrase above first. Everyone who joins will need it, and it is the only thing keeping the family\'s messages private — choose something long.</string>
+    <string name="join_start">Start a new family</string>
+    <string name="join_connected_title">This family</string>
+    <string name="join_code_hint">Read this code out to the next phone joining. It is not a secret on its own — the passphrase is what unlocks anything.</string>
+    <string name="join_backend">Carried over</string>
+    <string name="join_server">Server</string>
+    <string name="join_leave">Leave this family</string>
+    <string name="join_leave_confirm">This phone stops sending and receiving. Nothing on it is deleted, and it can join again with the code and passphrase.</string>
+
+    <string name="devices_parents_decide">A parent approves new phones, on their own phone. Nothing to do here.</string>
 </resources>
