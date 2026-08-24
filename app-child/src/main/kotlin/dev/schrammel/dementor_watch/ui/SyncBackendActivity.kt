@@ -1,0 +1,234 @@
+package dev.schrammel.dementor_watch.ui
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.text.InputType
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.sync.FamilyToken
+import dev.schrammel.dementor_watch.sync.FamilyTokens
+import dev.schrammel.dementor_watch.sync.SyncConfigStore
+import dev.schrammel.dementor_watch.sync.SyncCoordinator
+import dev.schrammel.dementor_watch.sync.TransportKind
+
+private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
+private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
+
+/**
+ * Where the family's messages are carried.
+ *
+ * The default sends them through ntfy.sh, a public relay. It cannot read a word of
+ * them — everything is sealed and signed before it leaves the phone — but it does
+ * see that a topic exists, roughly how large its messages are and when they move.
+ * A family who would rather not hand a stranger even that can point this at their
+ * own server, and this screen is where.
+ *
+ * The awkward part, and the reason for the confirmation: **the whole family has to
+ * move together.** A phone left on the old server is not broken in any way it can
+ * notice — it goes on publishing to a topic nobody is reading and hearing nothing
+ * back, which looks exactly like a quiet week. So changing this produces a new
+ * family code, and the screen says plainly that every other phone needs it.
+ *
+ * The topic and the passphrase do not change. They are the family's identity;
+ * this is only its address.
+ */
+class SyncBackendActivity : ParentGatedActivity() {
+
+    private lateinit var config: SyncConfigStore
+    private lateinit var sync: SyncCoordinator
+    private lateinit var column: LinearLayout
+    private lateinit var serverInput: EditText
+
+    private var chosen: TransportKind = TransportKind.NTFY
+
+    /** Null until a test has been run in this visit. */
+    private var testResult: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        config = SyncConfigStore(this)
+        sync = SyncCoordinator(this)
+
+        val settings = config.load()
+        chosen = settings.transport
+        serverInput = EditText(this).apply {
+            hint = getString(R.string.backend_server_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            setText(settings.serverUrl)
+        }
+
+        column = contentColumn()
+        showColumn(column)
+    }
+
+    override fun onGatedContentVisible() = render()
+
+    override fun onGatedContentHidden() {
+        column.removeAllViews()
+    }
+
+    private fun render() {
+        column.removeAllViews()
+        column.addView(screenTitle(getString(R.string.backend_title)))
+        column.addView(bodyText(getString(R.string.backend_intro)))
+
+        val settings = config.load()
+        if (!settings.isUsable) {
+            // Nothing to move. Changing the address of a family this phone has not
+            // joined would write settings that the next join overwrites anyway.
+            column.addView(bodyText(getString(R.string.backend_not_connected)))
+            return
+        }
+
+        column.addView(sectionHeader(getString(R.string.backend_kind_header)))
+        column.addView(kinds())
+
+        column.addView(sectionHeader(getString(R.string.backend_server_header)))
+        column.addView(serverInput)
+        column.addView(captionText(getString(R.string.backend_server_hint_detail)))
+
+        column.addView(
+            Button(this).apply {
+                setText(R.string.backend_test)
+                setOnClickListener { test() }
+            },
+        )
+        testResult?.let { column.addView(captionText(it)) }
+
+        column.addView(
+            Button(this).apply {
+                setText(R.string.backend_save)
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                    .apply { topMargin = dimen(R.dimen.space_md) }
+                setOnClickListener { confirmMove() }
+            },
+        )
+        column.addView(captionText(getString(R.string.backend_move_warning)))
+    }
+
+    /**
+     * The backends this build knows.
+     *
+     * One, today. Shown as a list anyway rather than hidden until there are two,
+     * because the honest thing for this screen to say is what carries the family's
+     * messages — and "ntfy, and that is the only choice" is a truer answer than a
+     * screen that never mentions it.
+     */
+    private fun kinds(): RadioGroup = RadioGroup(this).apply {
+        orientation = RadioGroup.VERTICAL
+
+        TransportKind.entries.forEachIndexed { index, kind ->
+            addView(
+                RadioButton(context).apply {
+                    id = index + 1
+                    text = labelFor(kind)
+                    isChecked = kind == chosen
+                    setOnCheckedChangeListener { _, checkedNow ->
+                        if (checkedNow) chosen = kind
+                    }
+                },
+            )
+        }
+    }
+
+    private fun labelFor(kind: TransportKind): String = when (kind) {
+        TransportKind.NTFY -> getString(R.string.backend_ntfy)
+    }
+
+    /**
+     * Tries the address before committing to it.
+     *
+     * Worth a button of its own: a mistyped server produces a family that looks
+     * connected and hears nothing, which is indistinguishable from a quiet week
+     * and will not be noticed for days.
+     */
+    private fun test() {
+        val token = proposed() ?: return
+        testResult = getString(R.string.backend_testing)
+        render()
+
+        sync.testReachable(token) { result ->
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                testResult = getString(R.string.backend_test_result, result)
+                render()
+            }
+        }
+    }
+
+    private fun proposed(): FamilyToken? {
+        val settings = config.load()
+        val server = serverInput.text.toString().trim().trimEnd('/')
+
+        return runCatching { FamilyToken(chosen, server, settings.topic) }
+            .getOrElse {
+                Toast.makeText(this, R.string.backend_bad_server, Toast.LENGTH_LONG).show()
+                null
+            }
+    }
+
+    private fun confirmMove() {
+        val token = proposed() ?: return
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.backend_save)
+            .setMessage(getString(R.string.backend_move_confirm, FamilyTokens.encode(token)))
+            .setPositiveButton(R.string.backend_save) { _, _ -> move(token) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun move(token: FamilyToken) {
+        config.move(token)
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.SYNC_BACKEND_CHANGED,
+            subject = token.serverUrl,
+            after = token.kind.name,
+        )
+        // Say hello at the new address at once, so the other phones that have
+        // already moved find this one waiting rather than an hour later.
+        sync.announceSelf(force = true)
+        showNewCode(token)
+    }
+
+    /**
+     * The code every other phone now needs.
+     *
+     * Shown rather than merely mentioned, and selectable, because a family halfway
+     * through a move has one phone that can reach the others and several that
+     * cannot — this is the only thing that gets them back together.
+     */
+    private fun showNewCode(token: FamilyToken) {
+        val code = TextView(this).apply {
+            text = FamilyTokens.encode(token)
+            styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            setTextIsSelectable(true)
+            val pad = dimen(R.dimen.screen_padding)
+            setPadding(pad, pad, pad, 0)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.backend_moved_title)
+            .setView(code)
+            .setMessage(R.string.backend_moved_body)
+            .setPositiveButton(android.R.string.ok) { _, _ -> render() }
+            .show()
+    }
+
+    companion object {
+        fun intent(context: Context) = Intent(context, SyncBackendActivity::class.java)
+    }
+}

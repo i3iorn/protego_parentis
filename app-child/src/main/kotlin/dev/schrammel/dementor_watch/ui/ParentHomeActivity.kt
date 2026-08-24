@@ -139,6 +139,10 @@ class ParentHomeActivity : ParentRoleActivity() {
                         getString(R.string.parent_row_sync_detail),
                     ) { startActivity(JoinFamilyActivity.intent(this)) },
                     navigationRow(
+                        getString(R.string.backend_title),
+                        getString(R.string.backend_row_detail),
+                    ) { startActivity(SyncBackendActivity.intent(this)) },
+                    navigationRow(
                         getString(R.string.home_language, LanguagePicker.currentLabel(this)),
                         getString(R.string.home_language_detail),
                     ) { LanguagePicker.show(this) },

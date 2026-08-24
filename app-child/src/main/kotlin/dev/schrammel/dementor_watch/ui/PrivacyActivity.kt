@@ -10,6 +10,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
+import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 
 /**
@@ -69,6 +70,11 @@ class PrivacyActivity : DementorActivity() {
             // about coordinates never leaving the device, so it says so at length
             // rather than in passing.
             section(R.string.privacy_location_header, R.string.privacy_location_body)
+            // The most intimate thing that leaves this phone, and it was missing
+            // from the one screen whose whole job is to say what leaves it.
+            if (WebFilterStore(this).countVisits) {
+                section(R.string.privacy_web_header, R.string.privacy_web_body)
+            }
         } else {
             section(R.string.privacy_sent_header, R.string.privacy_sent_off)
         }

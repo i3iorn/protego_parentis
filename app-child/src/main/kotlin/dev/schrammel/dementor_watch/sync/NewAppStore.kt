@@ -47,6 +47,11 @@ class NewAppStore(context: Context) {
         write(decode(prefs.getString(KEY_APPS, null)).filterNot { it.packageName == packageName })
     }
 
+    /** Forgets every app heard about. */
+    fun forgetAll() = synchronized(LOCK) {
+        prefs.edit { clear() }
+    }
+
     private fun write(apps: List<NewApp>) {
         prefs.edit {
             putString(

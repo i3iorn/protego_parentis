@@ -828,4 +828,32 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
     <string name="join_leave_confirm">This phone stops sending and receiving. Nothing on it is deleted, and it can join again with the code and passphrase.</string>
 
     <string name="devices_parents_decide">A parent approves new phones, on their own phone. Nothing to do here.</string>
+
+    <!-- Where the family's messages are carried. -->
+    <string name="backend_title">Where messages go</string>
+    <string name="backend_row_detail">The relay that carries this family\'s messages</string>
+    <string name="backend_intro">Messages are sealed and signed before they leave this phone, so whatever carries them cannot read a word. It does see that a family exists and when it is busy. If you would rather not give a stranger even that, point this at your own server.</string>
+    <string name="backend_not_connected">This phone is not in a family yet. Join one first, and then you can choose where its messages go.</string>
+    <string name="backend_kind_header">Carried by</string>
+    <string name="backend_ntfy">ntfy — the only one this version can use</string>
+    <string name="backend_server_header">Server</string>
+    <string name="backend_server_hint">https://ntfy.example.com</string>
+    <string name="backend_server_hint_detail">Must be https. The default is the public ntfy.sh; anything self-hosted that speaks ntfy works here.</string>
+    <string name="backend_bad_server">That is not a usable server address. It has to start with https:// and have no path after the host.</string>
+    <string name="backend_test">Try it</string>
+    <string name="backend_testing">Trying…</string>
+    <string name="backend_test_result">Result: %1$s</string>
+    <string name="backend_save">Move the family</string>
+    <string name="backend_move_warning">Every phone in the family has to move. One left behind carries on publishing where nobody is listening, which looks exactly like a quiet week — it will not tell you it is lost.</string>
+    <string name="backend_move_confirm">This phone will start using the new address straight away. Every other phone needs this code:
+
+%1$s</string>
+    <string name="backend_moved_title">Moved</string>
+    <string name="backend_moved_body">Give this code to every other phone in the family. Until they have it, they cannot hear this one.</string>
+    <string name="audit_backend_changed">Messages now go through %1$s</string>
+
+    <string name="join_no_keystore">This phone will not store the passphrase securely, so it has not been saved. That usually clears after the screen lock is set up again.</string>
+
+    <string name="privacy_web_header">The sites this phone reaches</string>
+    <string name="privacy_web_body">While counting is on, your parents are sent the sites this phone looked up today and how many times each — no addresses within a site, no times of day, and nothing about what was on them. It is the same list you see on the browsing screen. It resets every day and no history is kept, on this phone or theirs.</string>
 </resources>

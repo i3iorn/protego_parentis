@@ -98,6 +98,11 @@ class SyncCoordinator(context: Context) {
         // save() ignores a blank passphrase on purpose, so leaving has to say so
         // explicitly or the family's key stays on a phone that has left it.
         config.forgetPassphrase()
+        // And everything the family told us. Clearing the connection alone left a
+        // parent's phone holding the child's last position, their recent arrivals
+        // and the sites they had reached — a dossier on a phone that had walked
+        // away from the family.
+        FamilyData.forget(appContext)
     }
 
     fun suggestTopic(): String = config.suggestTopic()
@@ -335,6 +340,30 @@ class SyncCoordinator(context: Context) {
     )
 
     /**
+     * Tries an address without moving to it.
+     *
+     * Reaching a server proves only that it answers — the family is not there yet
+     * and nothing will be readable. That is still worth knowing: the failure this
+     * catches is a mistyped host, which otherwise produces a family that looks
+     * connected, hears nothing, and is indistinguishable from a quiet week.
+     */
+    fun testReachable(token: FamilyToken, onFinished: (String) -> Unit) {
+        io.execute {
+            val transport = Transports.of(
+                config.load().copy(
+                    transport = token.kind,
+                    serverUrl = token.serverUrl,
+                    topic = token.topic,
+                ),
+            )
+            when (val result = transport.poll(Instant.now().minusSeconds(POLL_OVERLAP_SECONDS))) {
+                is TransportResult.Ok -> onFinished("reachable")
+                is TransportResult.Failed -> onFinished(result.message)
+            }
+        }
+    }
+
+    /**
      * Fetches and applies anything the other phones have sent.
      *
      * Runs on the executor and reports back through [onFinished] so a screen can
@@ -561,7 +590,30 @@ class SyncCoordinator(context: Context) {
     private fun settleAutoApproved(message: SyncMessage): Boolean {
         val id = message.field(FIELD_REQUEST_ID) ?: return false
         val rule = message.field(FIELD_RULE_NAME)?.clip()
-        inbox.settle(id, RequestState.APPROVED, rule)
+
+        // A request answered by a standing rule never sat pending, so it was
+        // never published as a request and this phone has never heard of it.
+        // Recorded here as already-answered, or a parent's history of what was
+        // granted would have a hole exactly where the automation was.
+        if (!inbox.settle(id, RequestState.APPROVED, rule)) {
+            val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it > 0 }
+                ?: return false
+            inbox.remember(
+                IncomingRequest(
+                    id = id,
+                    label = message.field(FIELD_TARGET_LABEL).orEmpty().clip(),
+                    minutes = minutes,
+                    reason = rule.orEmpty(),
+                    raisedAt = message.sentAt,
+                    // Settled the moment it was asked, so it has no window in
+                    // which anybody could have answered it differently.
+                    expiresAt = message.sentAt.plusMillis(1L),
+                    state = RequestState.APPROVED,
+                    decidedAt = message.sentAt,
+                    decisionNote = rule,
+                ),
+            )
+        }
         notifier.notifyAutoApproved(rule.orEmpty())
         return true
     }

@@ -256,6 +256,11 @@
             android:parentActivityName=".ui.RulesActivity" />
 
         <activity
+            android:name=".ui.SyncBackendActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
             android:name=".ui.JoinFamilyActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

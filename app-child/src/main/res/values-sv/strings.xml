@@ -835,4 +835,32 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
     <string name="join_leave_confirm">Telefonen slutar skicka och ta emot. Ingenting på den raderas, och den kan gå med igen med koden och lösenfrasen.</string>
 
     <string name="devices_parents_decide">En förälder godkänner nya telefoner, på sin egen telefon. Inget att göra här.</string>
+
+    <!-- Var familjens meddelanden går. -->
+    <string name="backend_title">Vart meddelanden går</string>
+    <string name="backend_row_detail">Relät som bär familjens meddelanden</string>
+    <string name="backend_intro">Meddelanden förseglas och signeras innan de lämnar telefonen, så det som bär dem kan inte läsa ett ord. Det ser däremot att en familj finns och när den är aktiv. Vill du inte ge en främling ens det, peka det här mot din egen server.</string>
+    <string name="backend_not_connected">Telefonen är inte med i någon familj ännu. Gå med i en först, sedan kan du välja vart meddelandena går.</string>
+    <string name="backend_kind_header">Bärs av</string>
+    <string name="backend_ntfy">ntfy — den enda den här versionen kan använda</string>
+    <string name="backend_server_header">Server</string>
+    <string name="backend_server_hint">https://ntfy.exempel.se</string>
+    <string name="backend_server_hint_detail">Måste vara https. Standard är publika ntfy.sh; allt egenhostat som talar ntfy fungerar här.</string>
+    <string name="backend_bad_server">Det är ingen användbar serveradress. Den måste börja med https:// och sakna sökväg efter värdnamnet.</string>
+    <string name="backend_test">Testa</string>
+    <string name="backend_testing">Testar…</string>
+    <string name="backend_test_result">Resultat: %1$s</string>
+    <string name="backend_save">Flytta familjen</string>
+    <string name="backend_move_warning">Alla telefoner i familjen måste flytta. En som lämnas kvar fortsätter skicka dit ingen lyssnar, vilket ser ut precis som en tyst vecka — den kommer inte att säga att den tappat bort sig.</string>
+    <string name="backend_move_confirm">Telefonen börjar använda den nya adressen direkt. Alla andra telefoner behöver den här koden:
+
+%1$s</string>
+    <string name="backend_moved_title">Flyttad</string>
+    <string name="backend_moved_body">Ge koden till alla andra telefoner i familjen. Tills de har den kan de inte höra den här.</string>
+    <string name="audit_backend_changed">Meddelanden går nu via %1$s</string>
+
+    <string name="join_no_keystore">Telefonen vill inte lagra lösenfrasen säkert, så den har inte sparats. Det brukar lösa sig när skärmlåset ställts in på nytt.</string>
+
+    <string name="privacy_web_header">Sajterna telefonen når</string>
+    <string name="privacy_web_body">Medan räkningen är på får dina föräldrar veta vilka sajter telefonen slagit upp i dag och hur många gånger var — inga adresser inuti en sajt, inga klockslag, och ingenting om vad som fanns på dem. Det är samma lista som du ser på surfsidan. Den nollställs varje dag och ingen historik sparas, varken här eller hos dem.</string>
 </resources>

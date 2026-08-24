@@ -109,6 +109,25 @@ class SyncConfigStore(context: Context) {
         )
     }
 
+    /**
+     * Moves the family to a different address, keeping its identity.
+     *
+     * The topic and passphrase are deliberately untouched: they are who the family
+     * is, and this changes only where it meets. Everything already enrolled stays
+     * enrolled, so a family that moves together does not re-approve anybody.
+     */
+    fun move(token: FamilyToken) {
+        prefs.edit {
+            putString(KEY_TRANSPORT, token.kind.name)
+            putString(KEY_SERVER, token.serverUrl.trimEnd('/'))
+            putString(KEY_TOPIC, token.topic)
+        }
+        // From now, not from the beginning of time. There is nothing at the new
+        // address from before this moment, and asking for everything ever would
+        // fetch whatever else has used that topic name.
+        recordPolledAt(Instant.now())
+    }
+
     fun save(
         enabled: Boolean,
         transport: TransportKind,

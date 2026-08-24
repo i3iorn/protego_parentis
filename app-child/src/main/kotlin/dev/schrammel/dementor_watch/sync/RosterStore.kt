@@ -106,6 +106,11 @@ class RosterStore(context: Context) {
         prefs.edit { putStringSet(KEY_REFUSED, refused + id.value) }
     }
 
+    /** Forgets every device, approved, pending and refused. */
+    fun forgetAll() = synchronized(LOCK) {
+        prefs.edit { clear() }
+    }
+
     /** Devices this family has turned away. */
     val refused: Set<String>
         get() = prefs.getStringSet(KEY_REFUSED, emptySet()).orEmpty()

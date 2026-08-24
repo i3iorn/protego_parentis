@@ -138,6 +138,9 @@ object AuditText {
             AuditAction.DEVICE_REVOKED ->
                 context.getString(R.string.audit_device_revoked, subject)
 
+            AuditAction.SYNC_BACKEND_CHANGED ->
+                context.getString(R.string.audit_backend_changed, subject)
+
             AuditAction.SYNC_CONFIGURED -> context.getString(
                 if (entry.after.toBoolean()) {
                     R.string.audit_sync_on

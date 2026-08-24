@@ -23,8 +23,8 @@ import dev.schrammel.dementor_watch.sync.FamilyTokens
 import dev.schrammel.dementor_watch.sync.MessageCrypto
 import dev.schrammel.dementor_watch.sync.SyncConfigStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
+import dev.schrammel.dementor_watch.sync.SyncSettings
 import dev.schrammel.dementor_watch.sync.TransportKind
-import java.util.UUID
 
 private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
 private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
@@ -57,8 +57,8 @@ class JoinFamilyActivity : DementorActivity() {
     private lateinit var tokenInput: EditText
     private lateinit var passphraseInput: EditText
 
-    /** Whether the PIN has been shown for this visit, when one was needed. */
-    private var unlocked = false
+    /** Set while waiting for the PIN screen, so resuming does not launch a second. */
+    private var awaitingPin = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,11 +77,25 @@ class JoinFamilyActivity : DementorActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (needsPin() && !unlocked) {
-            unlock.launch(PinActivity.intent(this))
-            return
+
+        // Through ParentSession rather than a flag of this screen's own, so the
+        // unlock expires the way it does everywhere else. A boolean here meant a
+        // parent who opened this screen, put the phone down and came back an hour
+        // later was still looking at the button that leaves the family.
+        when {
+            !needsPin() || ParentSession.isUnlocked -> {
+                if (needsPin()) ParentSession.touch()
+                render()
+            }
+
+            awaitingPin -> Unit
+
+            else -> {
+                column.removeAllViews()
+                awaitingPin = true
+                unlock.launch(PinActivity.intent(this))
+            }
         }
-        render()
     }
 
     /**
@@ -98,9 +112,9 @@ class JoinFamilyActivity : DementorActivity() {
     private val unlock = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->
+        awaitingPin = false
         if (result.resultCode == RESULT_OK) {
             ParentSession.unlock()
-            unlocked = true
             render()
         } else {
             finish()
@@ -192,13 +206,12 @@ class JoinFamilyActivity : DementorActivity() {
      * could not read it, but they could watch it move.
      */
     private fun startFamily() {
-        val passphrase = passphraseInput.text.toString()
         val token = FamilyToken(
             kind = TransportKind.NTFY,
-            serverUrl = dev.schrammel.dementor_watch.sync.SyncSettings.DEFAULT_SERVER,
-            topic = "dementor-" + UUID.randomUUID().toString().replace("-", ""),
+            serverUrl = SyncSettings.DEFAULT_SERVER,
+            topic = sync.suggestTopic(),
         )
-        connect(token, passphrase)
+        connect(token, passphraseInput.text.toString())
     }
 
     private fun connect(token: FamilyToken, passphrase: String) {
@@ -212,6 +225,15 @@ class JoinFamilyActivity : DementorActivity() {
                 ),
                 Toast.LENGTH_LONG,
             ).show()
+            return
+        }
+
+        // Storing the passphrase can fail on a phone whose keystore has been
+        // invalidated, and the store deliberately writes nothing rather than
+        // falling back to plain text. Without this the screen would say "joined"
+        // and the family would appear unconfigured a moment later.
+        if (!config.canKeepSecrets()) {
+            Toast.makeText(this, R.string.join_no_keystore, Toast.LENGTH_LONG).show()
             return
         }
 

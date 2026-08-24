@@ -285,7 +285,12 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                     // refused by every recipient as coming from the wrong role,
                     // which is the whole point of the rule; publishing one anyway
                     // would be a message that reads like it did something.
-                    if (role() == SyncRole.PARENT) sync.publishVouch(approved)
+                    // Only a parent may vouch, and only for a parent — a vouch
+                    // for a child device is refused by every recipient, so
+                    // sending one is traffic that reads as though it worked.
+                    if (role() == SyncRole.PARENT && approved.role == SyncRole.PARENT) {
+                        sync.publishVouch(approved)
+                    }
                 }
                 render()
             }

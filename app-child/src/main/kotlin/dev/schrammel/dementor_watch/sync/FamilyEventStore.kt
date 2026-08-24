@@ -144,6 +144,16 @@ class FamilyEventStore(context: Context) {
         }
     }
 
+    /**
+     * Forgets the position, the arrivals and the browsing.
+     *
+     * The most important of these to be able to clear: a parent's phone that has
+     * left a family has no business still knowing where the child was.
+     */
+    fun forgetAll() = synchronized(LOCK) {
+        prefs.edit { clear() }
+    }
+
     private companion object {
         val LOCK = Any()
 

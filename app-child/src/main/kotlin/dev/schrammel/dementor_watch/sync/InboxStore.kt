@@ -111,6 +111,11 @@ class InboxStore(context: Context) {
         true
     }
 
+    /** Forgets every request heard from the child. */
+    fun forgetAll() = exclusively {
+        prefs.edit { clear() }
+    }
+
     private fun read(): List<IncomingRequest> {
         val raw = prefs.getString(KEY_INBOX, null) ?: return emptyList()
         val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
