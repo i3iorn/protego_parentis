@@ -104,7 +104,7 @@
             android:id="@+id/sos_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_lg"
+            android:layout_marginTop="@dimen/space_xl"
             android:text="@string/sos_button" />
 
         <!-- Navigation. Built in code so each row carries a description. -->
@@ -123,24 +123,11 @@
             android:text="@string/home_rules_header"
             android:textAppearance="@style/TextAppearance.Dementor.Section" />
 
+        <!-- Limit, bedtime, whatever context rule is running, and the category
+             allowances. All four are "what applies to me right now", and splitting
+             them across two headings made one idea look like two. -->
         <LinearLayout
             android:id="@+id/rules_list"
-            style="@style/Widget.Dementor.Group"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="@dimen/space_sm"
-            android:paddingBottom="@dimen/space_sm" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/section_spacing"
-            android:layout_marginBottom="@dimen/space_sm"
-            android:text="@string/home_categories_header"
-            android:textAppearance="@style/TextAppearance.Dementor.Section" />
-
-        <LinearLayout
-            android:id="@+id/category_budgets"
             style="@style/Widget.Dementor.Group"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

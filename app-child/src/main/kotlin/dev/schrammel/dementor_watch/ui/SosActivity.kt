@@ -64,7 +64,7 @@ class SosActivity : DementorActivity() {
                 },
             )
             column.addView(
-                Button(this).apply {
+                actionButton().apply {
                     setText(R.string.sos_clear)
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
@@ -79,7 +79,7 @@ class SosActivity : DementorActivity() {
         column.addView(bodyText(getString(R.string.sos_confirm_body)))
         column.addView(captionText(getString(R.string.sos_delay_warning)))
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.sos_send)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,

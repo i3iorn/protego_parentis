@@ -3,15 +3,16 @@ package dev.schrammel.dementor_watch.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.ViewGroup
-import android.widget.Button
+import android.view.Gravity
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
+
+private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
+private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
 /**
  * "What leaves this phone" — the child's view of their own privacy.
@@ -23,25 +24,20 @@ import dev.schrammel.dementor_watch.sync.SyncCoordinator
  * It states three things plainly: what is measured on the device, what is sent off
  * it, and what is never collected at all. The last list is the one that matters
  * most to a teenager, and it is the one most parental control apps cannot write.
+ *
+ * Each claim gets its own card. This screen is the longest stretch of prose in the
+ * app and it used to arrive as one unbroken column, which is the format people
+ * skip. Separate surfaces make it a set of statements that can be read one at a
+ * time — and each one is short enough that reading it costs nothing.
  */
 class PrivacyActivity : DementorActivity() {
 
-    private lateinit var container: LinearLayout
+    private lateinit var column: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        column = contentColumn()
+        showColumn(column)
     }
 
     override fun onResume() {
@@ -50,65 +46,70 @@ class PrivacyActivity : DementorActivity() {
     }
 
     private fun render() {
-        container.removeAllViews()
-        container.addView(heading(getString(R.string.privacy_title), R.style.TextAppearance_Dementor_Title))
+        column.removeAllViews()
+        column.addView(screenTitle(getString(R.string.privacy_title)))
 
-        section(R.string.privacy_measured_header, R.string.privacy_measured_body)
-        section(R.string.privacy_never_header, R.string.privacy_never_body)
+        claim(R.string.privacy_measured_header, R.string.privacy_measured_body)
+        claim(R.string.privacy_never_header, R.string.privacy_never_body)
 
         // Whether anything leaves the phone at all depends on configuration, so
         // this section reports the live answer rather than a general claim.
         val settings = SyncCoordinator(this).settings()
         if (settings.isUsable) {
-            section(R.string.privacy_sent_header, R.string.privacy_sent_body)
-            container.addView(body(getString(R.string.privacy_sent_server, settings.serverUrl)))
+            claim(
+                R.string.privacy_sent_header,
+                R.string.privacy_sent_body,
+                getString(R.string.privacy_sent_server, settings.serverUrl),
+            )
             // Named explicitly, because this is the one message carrying what was
             // used rather than what the app did. A transparency screen that omits
             // the interesting part is worse than none.
-            section(R.string.privacy_summary_header, R.string.privacy_summary_body)
+            claim(R.string.privacy_summary_header, R.string.privacy_summary_body)
             // Location is the one place this app deliberately breaks its own rule
             // about coordinates never leaving the device, so it says so at length
             // rather than in passing.
-            section(R.string.privacy_location_header, R.string.privacy_location_body)
+            claim(R.string.privacy_location_header, R.string.privacy_location_body)
             // The most intimate thing that leaves this phone, and it was missing
             // from the one screen whose whole job is to say what leaves it.
             if (WebFilterStore(this).countVisits) {
-                section(R.string.privacy_web_header, R.string.privacy_web_body)
+                claim(R.string.privacy_web_header, R.string.privacy_web_body)
             }
         } else {
-            section(R.string.privacy_sent_header, R.string.privacy_sent_off)
+            claim(R.string.privacy_sent_header, R.string.privacy_sent_off)
         }
 
-        section(R.string.privacy_log_header, R.string.privacy_log_body)
-        container.addView(
-            Button(this).apply {
+        claim(R.string.privacy_log_header, R.string.privacy_log_body)
+        column.addView(
+            actionButton().apply {
                 setText(R.string.privacy_view_log)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                setOnClickListener { startActivity(DiagnosticsActivity.intent(this@PrivacyActivity)) }
+                setOnClickListener { startActivity(DiagnosticsActivity.intent(context)) }
             },
         )
     }
 
-    private fun section(headerRes: Int, bodyRes: Int) {
-        container.addView(heading(getString(headerRes), R.style.TextAppearance_Dementor_Section))
-        container.addView(body(getString(bodyRes)))
-    }
-
-    private fun heading(text: String, appearance: Int) = TextView(this).apply {
-        this.text = text
-        styleAs(appearance)
-        setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_xxs))
-    }
-
-    private fun body(text: String) = TextView(this).apply {
-        this.text = text
-        styleAs(R.style.TextAppearance_Dementor_Body)
+    /** One statement about what this app does, on its own surface. */
+    private fun claim(headerRes: Int, bodyRes: Int, extra: String? = null) {
+        column.addView(
+            card {
+                addView(
+                    TextView(this@PrivacyActivity).apply {
+                        setText(headerRes)
+                        styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                    },
+                )
+                addView(
+                    TextView(this@PrivacyActivity).apply {
+                        setText(bodyRes)
+                        styleAs(R.style.TextAppearance_Dementor_Body)
+                        setPadding(0, dimen(R.dimen.space_xs), 0, 0)
+                    },
+                )
+                if (extra != null) addView(captionText(extra))
+            },
+        )
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-
         fun intent(context: Context) = Intent(context, PrivacyActivity::class.java)
     }
 }
@@ -131,44 +132,43 @@ class DiagnosticsActivity : DementorActivity() {
             setTextIsSelectable(true)
         }
 
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
+        val column = contentColumn().apply {
+            addView(screenTitle(getString(R.string.diagnostics_title)))
 
+            // Side by side rather than two full-width bars down the screen. They
+            // are a pair of small utilities, and stacking them gave them the
+            // weight of the thing the screen is actually for.
             addView(
-                TextView(context).apply {
-                    setText(R.string.diagnostics_title)
-                    styleAs(R.style.TextAppearance_Dementor_Title)
-                },
-            )
-            addView(
-                Button(context).apply {
-                    setText(R.string.diagnostics_share)
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.START
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    setOnClickListener { share() }
+
+                    addView(
+                        actionButton().apply {
+                            setText(R.string.diagnostics_share)
+                            setOnClickListener { share() }
+                        },
+                    )
+                    addView(
+                        actionButton().apply {
+                            setText(R.string.diagnostics_clear)
+                            (layoutParams as LinearLayout.LayoutParams).marginStart =
+                                dimen(R.dimen.space_sm)
+                            setOnClickListener {
+                                Diagnostics.clear(this@DiagnosticsActivity)
+                                text.text = logText()
+                            }
+                        },
+                    )
                 },
             )
-            addView(
-                Button(context).apply {
-                    setText(R.string.diagnostics_clear)
-                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    setOnClickListener {
-                        Diagnostics.clear(this@DiagnosticsActivity)
-                        text.text = logText()
-                    }
-                },
-            )
-            addView(text.apply { setPadding(0, dimen(R.dimen.space_lg), 0, 0) })
+
+            addView(card { addView(text) })
         }
 
         text.text = logText()
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(content)
-            },
-        )
+        showColumn(column)
     }
 
     private fun logText() = Diagnostics.asText(
@@ -188,9 +188,6 @@ class DiagnosticsActivity : DementorActivity() {
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-
         fun intent(context: Context) = Intent(context, DiagnosticsActivity::class.java)
     }
 }

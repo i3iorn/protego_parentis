@@ -39,7 +39,7 @@
     <string name="home_monitor_only">Watching only. This phone is not set up for blocking, so nothing gets blocked — the rules below are being checked but not applied.</string>
     <string name="home_managed">This phone is managed. Rules below are being enforced.</string>
     <string name="home_rules_header">My rules</string>
-    <string name="home_apps_header">Today</string>
+    <string name="home_apps_header">Where the time went</string>
     <string name="home_would_block_header">Would be blocked right now</string>
     <string name="home_edit_rules">Change rules</string>
     <string name="home_no_usage">No screen time recorded yet today.</string>
@@ -298,7 +298,7 @@
     <string name="rules_choose_exempt">Choose apps</string>
     <string name="rules_security_header">Security</string>
     <string name="rules_change_pin">Change PIN</string>
-    <string name="rules_device_header">Device control</string>
+    <string name="rules_device_header">Security and control</string>
     <string name="rules_device_status_owner">This phone is under full control. Limits are enforced.</string>
     <string name="rules_device_status_monitor">This phone is not under control yet, so nothing is blocked. Limits are only measured.</string>
     <string name="rules_tamper_enable">Lock this phone down</string>
@@ -358,7 +358,6 @@
     <string name="bonus_cleared">Bonus time removed.</string>
 
     <!-- Home: category budgets. -->
-    <string name="home_categories_header">Category limits</string>
     <string name="home_category_row">%1$s: %2$s left</string>
     <string name="home_category_used_up">%1$s: used up</string>
     <string name="home_category_no_limit">%1$s: no limit</string>
@@ -515,7 +514,6 @@
     <string name="new_app_notification_title">A new app appeared</string>
     <string name="new_app_notification_body">%1$s was installed. Allow it or block it.</string>
 
-    <string name="rules_installs_header">New installs</string>
     <string name="rules_installs_hint">By default anyone can install apps and you are told about it afterwards. Gating means nothing new can be installed until you open the door.</string>
     <string name="rules_installs_gate">Block new installs</string>
     <string name="rules_installs_window_shut">Installs are blocked right now.</string>
@@ -728,7 +726,7 @@
     <string name="apps_network_hint">An app with no internet still opens — it just cannot reach anything. For an app that is only useful online, that is nearly the same as blocking it; for one that also works offline, it is much lighter.</string>
 
     <!-- Web activity. -->
-    <string name="rules_row_web_activity">Where the browsing went</string>
+    <string name="rules_row_web_activity">Sites visited</string>
     <string name="rules_row_web_activity_detail">Today\'s sites, counted — and the switch that starts counting</string>
     <string name="web_activity_title">Where the browsing went</string>
     <string name="web_activity_intro">Sites reached today, and how often. No addresses, no times, and nothing about what was on them. Your parents see exactly this list.</string>
@@ -761,7 +759,7 @@
     <string name="place_left_body">Left %1$s.</string>
     <string name="located_notification_title">A parent asked where you are</string>
     <string name="located_notification_body">They were sent this phone\'s position. It is in the shared history.</string>
-    <string name="rules_row_places_alerts">Tell me about arrivals</string>
+    <string name="rules_row_places_alerts">Arrivals and departures</string>
     <string name="rules_row_places_alerts_detail">A message when the phone reaches or leaves a saved place</string>
     <string name="places_alerts_enable">Send arrivals and departures</string>
     <string name="places_alerts_hint">Sends the name of the place, never a position. Positions are only ever sent when a parent asks, or in an emergency.</string>
@@ -894,7 +892,7 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
     <!-- Which parts of the app this family uses. -->
     <string name="features_title">Parts you use</string>
     <string name="features_row_detail">Put away the parts this family does not need</string>
-    <string name="features_intro">The settings have grown past what any one family uses. Turn off what you do not want and its screens disappear, from your phone and from theirs.</string>
+    <string name="features_intro">The settings have grown past what any one family uses. Turn off what you do not want and its screens disappear from this phone.</string>
     <string name="features_still_apply">Putting something away hides its screens. Rules you have already made keep working — delete them first if you want them gone.</string>
     <string name="features_choose_header">Up to you</string>
     <string name="features_always_header">Always there</string>
@@ -907,4 +905,15 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
 
     <string name="audit_feature_on">Turned on: %1$s</string>
     <string name="audit_feature_off">Put away: %1$s</string>
+
+    <string name="home_group_openness">What you can see about this</string>
+    <string name="home_group_settings">Settings</string>
+    <string name="parent_group_family">Your family</string>
+    <string name="parent_group_settings">Settings</string>
+    <string name="join_relay_header">How messages travel</string>
+    <string name="features_each_phone">Set on each phone separately. This one only changes what you see here.</string>
+
+    <string name="rules_protection_header">Protection</string>
+    <string name="rules_release_header">Handing this phone back</string>
+    <string name="rules_release_body">Ends the whole arrangement on this phone. Everything is lifted and this app gives up control.</string>
 </resources>

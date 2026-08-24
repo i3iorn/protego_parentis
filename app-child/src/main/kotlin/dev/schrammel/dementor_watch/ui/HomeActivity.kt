@@ -108,77 +108,85 @@ class HomeActivity : DementorActivity() {
     }
 
     /**
-     * The six places this screen leads to.
+     * Where this screen leads.
      *
-     * Each row says what is behind it. With five destinations, a column of bare
-     * buttons made the reader open one to find out what it was.
+     * Grouped rather than listed. Eight rows in one card is a wall, and the three
+     * kinds of destination here are genuinely different: things to look at, the
+     * two screens that make this app something a person can agree to, and the
+     * settings nobody opens twice. Each row still says what is behind it — with
+     * this many, "History" alone does not tell anyone what they would find.
      */
     private fun buildNavigation() {
         val navigation = findViewById<LinearLayout>(R.id.navigation)
         navigation.removeAllViews()
 
         val on = FeatureFlags(this)
-        val destinations = buildList {
-            if (on.isEnabled(Feature.REQUESTS)) {
-                add(
-                    Triple(
-                        getString(R.string.home_open_requests),
-                        getString(R.string.home_open_requests_detail),
-                    ) { startActivity(RequestsActivity.intent(this@HomeActivity)) },
-                )
-            }
-            add(
-                Triple(
-                    getString(R.string.home_open_week),
-                    getString(R.string.home_open_week_detail),
-                ) { startActivity(WeekActivity.intent(this@HomeActivity)) },
-            )
-            if (on.isEnabled(Feature.WEB_ACTIVITY)) {
-                add(
-                    Triple(
-                        getString(R.string.web_activity_title),
-                        getString(R.string.rules_row_web_activity_detail),
-                    ) { startActivity(WebActivityActivity.intent(this@HomeActivity)) },
-                )
-            }
-            // The history and the what-is-shared screen are never hidden. They are
-            // what a child is owed in exchange for the rest of this.
-            add(
-                Triple(
-                    getString(R.string.home_open_audit),
-                    getString(R.string.home_open_audit_detail),
-                ) { startActivity(AuditActivity.intent(this@HomeActivity)) },
-            )
-            add(
-                Triple(
-                    getString(R.string.home_open_privacy),
-                    getString(R.string.home_open_privacy_detail),
-                ) { startActivity(PrivacyActivity.intent(this@HomeActivity)) },
-            )
-            add(
-                Triple(
-                    getString(R.string.notify_title),
-                    getString(R.string.notify_row_detail),
-                ) { startActivity(NotificationSettingsActivity.intent(this@HomeActivity)) },
-            )
-            add(
-                Triple(
-                    getString(R.string.home_language, LanguagePicker.currentLabel(this@HomeActivity)),
-                    getString(R.string.home_language_detail),
-                ) { LanguagePicker.show(this@HomeActivity) },
-            )
-            add(
-                Triple(
-                    getString(R.string.home_edit_rules),
-                    getString(R.string.home_edit_rules_detail),
-                ) { startActivity(Intent(this@HomeActivity, RulesActivity::class.java)) },
-            )
-        }
 
-        navigation.addView(
-            group(destinations.map { (title, subtitle, action) -> navigationRow(title, subtitle, action) }),
+        // Unlabelled: the screen title has already said this is your phone, and a
+        // heading over the first group would only be naming the obvious.
+        addSection(
+            navigation,
+            null,
+            buildList {
+                if (on.isEnabled(Feature.REQUESTS)) {
+                    add(
+                        row(R.string.home_open_requests, R.string.home_open_requests_detail) {
+                            startActivity(RequestsActivity.intent(this@HomeActivity))
+                        },
+                    )
+                }
+                add(
+                    row(R.string.home_open_week, R.string.home_open_week_detail) {
+                        startActivity(WeekActivity.intent(this@HomeActivity))
+                    },
+                )
+                if (on.isEnabled(Feature.WEB_ACTIVITY)) {
+                    add(
+                        row(
+                            R.string.rules_row_web_activity,
+                            R.string.rules_row_web_activity_detail,
+                        ) { startActivity(WebActivityActivity.intent(this@HomeActivity)) },
+                    )
+                }
+            },
+        )
+
+        // Never hidden, and given their own heading rather than buried among the
+        // settings. These two are what a child is owed in exchange for the rest of
+        // this, and a promise filed under "other" is not much of a promise.
+        addSection(
+            navigation,
+            getString(R.string.home_group_openness),
+            listOf(
+                row(R.string.home_open_audit, R.string.home_open_audit_detail) {
+                    startActivity(AuditActivity.intent(this))
+                },
+                row(R.string.home_open_privacy, R.string.home_open_privacy_detail) {
+                    startActivity(PrivacyActivity.intent(this))
+                },
+            ),
+        )
+
+        addSection(
+            navigation,
+            getString(R.string.home_group_settings),
+            listOf(
+                row(R.string.notify_title, R.string.notify_row_detail) {
+                    startActivity(NotificationSettingsActivity.intent(this))
+                },
+                navigationRow(
+                    getString(R.string.home_language, LanguagePicker.currentLabel(this)),
+                    getString(R.string.home_language_detail),
+                ) { LanguagePicker.show(this) },
+                row(R.string.home_edit_rules, R.string.home_edit_rules_detail) {
+                    startActivity(Intent(this, RulesActivity::class.java))
+                },
+            ),
         )
     }
+
+    private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
+        navigationRow(getString(titleRes), getString(detailRes), onClick)
 
     override fun onResume() {
         super.onResume()
@@ -238,7 +246,6 @@ class HomeActivity : DementorActivity() {
         renderRules()
 
         if (snapshot == null) {
-            clear(R.id.category_budgets)
             clear(R.id.blocked_list)
             clear(R.id.app_list)
             return
@@ -267,14 +274,18 @@ class HomeActivity : DementorActivity() {
         )
     }
 
+    /**
+     * The per-category allowances, appended to the rules list.
+     *
+     * No heading of their own: a category limit is a rule, and giving it a second
+     * heading immediately under "My rules" split one idea in two. Nothing is shown
+     * when no categories exist — an empty state saying so was a line of text
+     * explaining the absence of a feature the family never turned on.
+     */
     private fun renderCategoryBudgets(snapshot: EnforcementSnapshot) {
-        val container = clear(R.id.category_budgets)
+        val container = findViewById<LinearLayout>(R.id.rules_list)
         val categories = snapshot.policy.categories
-
-        if (categories.isEmpty()) {
-            container.addView(line(getString(R.string.rules_no_categories)))
-            return
-        }
+        if (categories.isEmpty()) return
 
         categories.sortedBy { it.name.lowercase() }.forEach { category ->
             val budget = snapshot.enforcement.categoryBudgets[category.id]

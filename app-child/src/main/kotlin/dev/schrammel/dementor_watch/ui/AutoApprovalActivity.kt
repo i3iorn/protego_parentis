@@ -55,7 +55,7 @@ class AutoApprovalActivity : ParentGatedActivity() {
         }
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.auto_add)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     .apply { topMargin = dimen(R.dimen.space_md) }
@@ -174,7 +174,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
         )
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.auto_save)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     .apply { topMargin = dimen(R.dimen.space_md) }
@@ -184,7 +184,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
 
         if (store.find(ruleId) != null) {
             column.addView(
-                Button(this).apply {
+                actionButton().apply {
                     setText(R.string.auto_delete)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                         .apply { topMargin = dimen(R.dimen.space_sm) }

@@ -82,7 +82,7 @@ class LimitsActivity : ParentGatedActivity() {
         exemptSummary = bodyText("")
         column.addView(exemptSummary)
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.rules_choose_exempt)
                 setOnClickListener {
                     pickExempt.launch(
@@ -316,7 +316,7 @@ class CategoriesActivity : ParentGatedActivity() {
         }
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.rules_add_category)
                 setOnClickListener { startActivity(CategoryEditActivity.intent(this@CategoriesActivity)) }
             },
@@ -449,6 +449,18 @@ class DeviceControlActivity : ParentGatedActivity() {
 
     override fun onGatedContentVisible() = render()
 
+    /**
+     * Five controls that used to float.
+     *
+     * Every other list in this app sits on a raised surface; this screen had bare
+     * checkboxes and buttons straight on the window, which is the look the rest of
+     * the design was written to get away from. Each setting now gets a card, with
+     * the sentence explaining it inside the same card rather than orphaned above.
+     *
+     * Two headings also went. "Lock this phone down" was the section heading *and*
+     * the checkbox label directly beneath it, and so was "Release this phone" — a
+     * screen that says a thing twice in a row reads as a rendering fault.
+     */
     private fun render() {
         val store = LocalPolicyStore(this)
         val coordinator = EnforcementCoordinator(this)
@@ -458,73 +470,99 @@ class DeviceControlActivity : ParentGatedActivity() {
 
         column.addView(sectionHeader(getString(R.string.rules_security_header)))
         column.addView(
-            Button(this).apply {
-                setText(R.string.rules_change_pin)
-                setOnClickListener {
-                    // The old PIN is verified inside, and replaced only once the new
-                    // one is confirmed.
-                    startActivity(PinActivity.intent(this@DeviceControlActivity, change = true))
-                }
+            card {
+                addView(captionText(getString(R.string.parent_settings_pin_body)))
+                addView(
+                    actionButton().apply {
+                        setText(R.string.rules_change_pin)
+                        setOnClickListener {
+                            // The old PIN is verified inside, and replaced only
+                            // once the new one is confirmed.
+                            startActivity(
+                                PinActivity.intent(this@DeviceControlActivity, change = true),
+                            )
+                        }
+                    },
+                )
+            },
+        )
+        column.addView(
+            card {
+                addView(
+                    TextView(this@DeviceControlActivity).apply {
+                        setText(R.string.biometric_header)
+                        styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                    },
+                )
+                addView(biometricSetting { render() })
             },
         )
 
-        column.addView(sectionHeader(getString(R.string.biometric_header)))
-        column.addView(biometricSetting { render() })
-
-        column.addView(sectionHeader(getString(R.string.rules_tamper_enable)))
-        column.addView(captionText(getString(R.string.rules_tamper_hint)))
+        column.addView(sectionHeader(getString(R.string.rules_protection_header)))
         column.addView(
-            CheckBox(this).apply {
-                setText(R.string.rules_tamper_enable)
-                isChecked = store.tamperProtection
-                setOnCheckedChangeListener { _, checked ->
-                    val before = store.tamperProtection
-                    store.tamperProtection = checked
-                    Audit.record(
-                        context = this@DeviceControlActivity,
-                        actor = AuditActor.PARENT,
-                        action = AuditAction.TAMPER_PROTECTION_CHANGED,
-                        before = Audit.flag(before),
-                        after = Audit.flag(checked),
-                    )
-                    // Applied at once: turning it off is how someone recovers a device.
-                    EnforcementService.start(this@DeviceControlActivity)
-                }
+            card {
+                addView(
+                    CheckBox(this@DeviceControlActivity).apply {
+                        setText(R.string.rules_tamper_enable)
+                        isChecked = store.tamperProtection
+                        setOnCheckedChangeListener { _, checked ->
+                            val before = store.tamperProtection
+                            store.tamperProtection = checked
+                            Audit.record(
+                                context = this@DeviceControlActivity,
+                                actor = AuditActor.PARENT,
+                                action = AuditAction.TAMPER_PROTECTION_CHANGED,
+                                before = Audit.flag(before),
+                                after = Audit.flag(checked),
+                            )
+                            // Applied at once: turning it off is how someone
+                            // recovers a device.
+                            EnforcementService.start(this@DeviceControlActivity)
+                        }
+                    },
+                )
+                addView(captionText(getString(R.string.rules_tamper_hint)))
+            },
+        )
+        column.addView(
+            card {
+                addView(
+                    CheckBox(this@DeviceControlActivity).apply {
+                        setText(R.string.rules_installs_gate)
+                        isChecked = store.installPolicy == InstallPolicy.GATED
+                        setOnCheckedChangeListener { _, gated ->
+                            val chosen = if (gated) InstallPolicy.GATED else InstallPolicy.NOTIFY
+                            store.installPolicy = chosen
+                            // Switching the gate off leaves no window behind, so
+                            // switching it back on is shut rather than
+                            // mysteriously open.
+                            if (!gated) store.installWindowUntil = null
+                            Audit.record(
+                                context = this@DeviceControlActivity,
+                                actor = AuditActor.PARENT,
+                                action = AuditAction.INSTALL_POLICY_CHANGED,
+                                after = chosen.name,
+                            )
+                            EnforcementService.start(this@DeviceControlActivity)
+                            render()
+                        }
+                    },
+                )
+                addView(captionText(getString(R.string.rules_installs_hint)))
+                if (store.installPolicy == InstallPolicy.GATED) addView(installWindow(store))
             },
         )
 
-        column.addView(sectionHeader(getString(R.string.rules_installs_header)))
-        column.addView(captionText(getString(R.string.rules_installs_hint)))
+        column.addView(sectionHeader(getString(R.string.rules_release_header)))
         column.addView(
-            CheckBox(this).apply {
-                setText(R.string.rules_installs_gate)
-                isChecked = store.installPolicy == InstallPolicy.GATED
-                setOnCheckedChangeListener { _, gated ->
-                    val chosen = if (gated) InstallPolicy.GATED else InstallPolicy.NOTIFY
-                    store.installPolicy = chosen
-                    // Switching the gate off leaves no window behind, so switching
-                    // it back on is shut rather than mysteriously open.
-                    if (!gated) store.installWindowUntil = null
-                    Audit.record(
-                        context = this@DeviceControlActivity,
-                        actor = AuditActor.PARENT,
-                        action = AuditAction.INSTALL_POLICY_CHANGED,
-                        after = chosen.name,
-                    )
-                    EnforcementService.start(this@DeviceControlActivity)
-                    render()
-                }
-            },
-        )
-        if (store.installPolicy == InstallPolicy.GATED) {
-            column.addView(installWindow(store))
-        }
-
-        column.addView(sectionHeader(getString(R.string.rules_release)))
-        column.addView(
-            Button(this).apply {
-                setText(R.string.rules_release)
-                setOnClickListener { confirmRelease(coordinator) }
+            card {
+                addView(captionText(getString(R.string.rules_release_body)))
+                addView(
+                    actionButton().apply {
+                        setText(R.string.rules_release)
+                        setOnClickListener { confirmRelease(coordinator) }
+                    },
+                )
             },
         )
     }

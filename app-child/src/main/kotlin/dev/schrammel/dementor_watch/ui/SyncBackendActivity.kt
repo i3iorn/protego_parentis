@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -92,14 +93,23 @@ class SyncBackendActivity : ParentGatedActivity() {
         }
 
         column.addView(sectionHeader(getString(R.string.backend_kind_header)))
-        column.addView(kinds())
+        column.addView(card { addView(kinds()) })
 
         column.addView(sectionHeader(getString(R.string.backend_server_header)))
-        column.addView(serverInput)
-        column.addView(captionText(getString(R.string.backend_server_hint_detail)))
+        column.addView(
+            card {
+                // The input is a field that outlives the render, so it keeps a
+                // reference to the card it was in last time. Clearing the column
+                // used to be enough when it sat there directly; now that it is a
+                // level deeper, the old parent has to be told.
+                (serverInput.parent as? ViewGroup)?.removeView(serverInput)
+                addView(serverInput)
+                addView(captionText(getString(R.string.backend_server_hint_detail)))
+            },
+        )
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.backend_test)
                 setOnClickListener { test() }
             },
@@ -107,7 +117,7 @@ class SyncBackendActivity : ParentGatedActivity() {
         testResult?.let { column.addView(captionText(it)) }
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.backend_save)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     .apply { topMargin = dimen(R.dimen.space_md) }

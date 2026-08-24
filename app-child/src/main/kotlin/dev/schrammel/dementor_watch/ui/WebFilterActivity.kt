@@ -59,12 +59,20 @@ class WebFilterActivity : ParentGatedActivity() {
         column.addView(bodyText(getString(R.string.web_intro)))
 
         column.addView(sectionHeader(getString(R.string.web_dns_header)))
-        column.addView(captionText(getString(R.string.web_dns_hint)))
-        column.addView(profiles())
+        column.addView(
+            card {
+                addView(captionText(getString(R.string.web_dns_hint)))
+                addView(profiles())
+            },
+        )
 
         column.addView(sectionHeader(getString(R.string.web_browser_header)))
-        column.addView(captionText(getString(R.string.web_browser_hint)))
-        column.addView(browserSwitches())
+        column.addView(
+            card {
+                addView(captionText(getString(R.string.web_browser_hint)))
+                addView(browserSwitches())
+            },
+        )
 
         column.addView(captionText(getString(R.string.web_limits_note)))
     }

@@ -65,7 +65,7 @@ class PlaceAlertsActivity : ParentGatedActivity() {
         }
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.places_title)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,

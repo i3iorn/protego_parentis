@@ -4,6 +4,7 @@ import android.app.Activity
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -77,6 +78,36 @@ internal fun Activity.group(rows: List<View>): LinearLayout = LinearLayout(this)
     rows.forEachIndexed { index, row ->
         if (index > 0) addView(divider())
         addView(row)
+    }
+}
+
+/**
+ * A titled group of rows, added to [column] only if there are any.
+ *
+ * The empty case is the whole reason this exists. Rows are now conditional — a
+ * family that has put a feature away does not see its row — and a heading standing
+ * over an empty card looks like something failed to load. Nothing to show means
+ * nothing is shown, heading included.
+ *
+ * A null [title] gives an unlabelled group, for the first block on a screen where
+ * the screen title has already said what these are.
+ */
+internal fun Activity.addSection(column: LinearLayout, title: String?, rows: List<View>) {
+    if (rows.isEmpty()) return
+    if (title != null) column.addView(sectionHeader(title))
+    column.addView(group(rows))
+}
+
+/**
+ * A button standing on its own in a screen's column.
+ *
+ * A bare `Button` constructed in code has no layout params, which means no margin,
+ * which means it sits flush against the paragraph explaining it. Every screen that
+ * did that looked like the text and the button had collided.
+ */
+internal fun Activity.actionButton(): Button = Button(this).apply {
+    layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
+        topMargin = dimen(R.dimen.space_md)
     }
 }
 

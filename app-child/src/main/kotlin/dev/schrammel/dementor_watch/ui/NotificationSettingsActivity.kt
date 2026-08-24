@@ -67,7 +67,7 @@ class NotificationSettingsActivity : DementorActivity() {
         column.addView(sectionHeader(getString(R.string.notify_system_header)))
         column.addView(captionText(getString(R.string.notify_system_hint)))
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.notify_system_open)
                 setOnClickListener { openSystemSettings() }
             },

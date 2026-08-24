@@ -46,7 +46,7 @@
     <string name="home_monitor_only">Bara mätning. Den här telefonen är inte inställd för blockering, så inget blockeras — reglerna nedan kontrolleras men tillämpas inte.</string>
     <string name="home_managed">Den här telefonen sköts av appen. Reglerna nedan tillämpas.</string>
     <string name="home_rules_header">Mina regler</string>
-    <string name="home_apps_header">I dag</string>
+    <string name="home_apps_header">Vart tiden tog vägen</string>
     <string name="home_would_block_header">Skulle blockeras just nu</string>
     <string name="home_edit_rules">Ändra regler</string>
     <string name="home_no_usage">Ingen skärmtid registrerad i dag än.</string>
@@ -305,7 +305,7 @@
     <string name="rules_choose_exempt">Välj appar</string>
     <string name="rules_security_header">Säkerhet</string>
     <string name="rules_change_pin">Byt PIN-kod</string>
-    <string name="rules_device_header">Kontroll över telefonen</string>
+    <string name="rules_device_header">Säkerhet och kontroll</string>
     <string name="rules_device_status_owner">Appen har full kontroll över telefonen. Gränserna tillämpas.</string>
     <string name="rules_device_status_monitor">Appen har ännu inte kontroll över telefonen, så inget blockeras. Gränserna mäts bara.</string>
     <string name="rules_tamper_enable">Lås ner den här telefonen</string>
@@ -365,7 +365,6 @@
     <string name="bonus_cleared">Extratiden borttagen.</string>
 
     <!-- Kategorigränser på startsidan. -->
-    <string name="home_categories_header">Kategorigränser</string>
     <string name="home_category_row">%1$s: %2$s kvar</string>
     <string name="home_category_used_up">%1$s: slut</string>
     <string name="home_category_no_limit">%1$s: ingen gräns</string>
@@ -522,7 +521,6 @@
     <string name="new_app_notification_title">En ny app dök upp</string>
     <string name="new_app_notification_body">%1$s installerades. Tillåt den eller blockera den.</string>
 
-    <string name="rules_installs_header">Nya installationer</string>
     <string name="rules_installs_hint">Som standard får vem som helst installera appar och du får veta det efteråt. Med spärr går det inte att installera något nytt förrän du öppnar dörren.</string>
     <string name="rules_installs_gate">Spärra nya installationer</string>
     <string name="rules_installs_window_shut">Installationer är spärrade just nu.</string>
@@ -735,7 +733,7 @@
     <string name="apps_network_hint">En app utan internet går fortfarande att öppna — den når bara ingenting. För en app som bara är användbar online är det nästan detsamma som att blockera den; för en som också fungerar offline är det mycket lindrigare.</string>
 
     <!-- Webbaktivitet. -->
-    <string name="rules_row_web_activity">Vart surfandet tog vägen</string>
+    <string name="rules_row_web_activity">Besökta sidor</string>
     <string name="rules_row_web_activity_detail">Dagens sajter, räknade — och knappen som börjar räkna</string>
     <string name="web_activity_title">Vart surfandet tog vägen</string>
     <string name="web_activity_intro">Sajter som nåtts i dag, och hur ofta. Inga adresser, inga klockslag, och ingenting om vad som fanns på dem. Dina föräldrar ser exakt den här listan.</string>
@@ -768,7 +766,7 @@
     <string name="place_left_body">Lämnade %1$s.</string>
     <string name="located_notification_title">En förälder frågade var du är</string>
     <string name="located_notification_body">De fick telefonens position. Det står i den delade historiken.</string>
-    <string name="rules_row_places_alerts">Berätta om ankomster</string>
+    <string name="rules_row_places_alerts">Ankomster och avfärder</string>
     <string name="rules_row_places_alerts_detail">Ett meddelande när telefonen når eller lämnar en sparad plats</string>
     <string name="places_alerts_enable">Skicka ankomster och avfärder</string>
     <string name="places_alerts_hint">Skickar platsens namn, aldrig en position. Positioner skickas bara när en förälder frågar, eller vid nödläge.</string>
@@ -901,7 +899,7 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
     <!-- Vilka delar av appen familjen använder. -->
     <string name="features_title">Delar ni använder</string>
     <string name="features_row_detail">Lägg undan det den här familjen inte behöver</string>
-    <string name="features_intro">Inställningarna har vuxit förbi vad någon enskild familj använder. Stäng av det du inte vill ha, så försvinner dess skärmar — både hos dig och hos dem.</string>
+    <string name="features_intro">Inställningarna har vuxit förbi vad någon enskild familj använder. Stäng av det du inte vill ha, så försvinner dess skärmar från den här telefonen.</string>
     <string name="features_still_apply">Att lägga undan något döljer dess skärmar. Regler du redan skapat fortsätter gälla — ta bort dem först om du vill bli av med dem.</string>
     <string name="features_choose_header">Du bestämmer</string>
     <string name="features_always_header">Alltid kvar</string>
@@ -914,4 +912,15 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
 
     <string name="audit_feature_on">Påslaget: %1$s</string>
     <string name="audit_feature_off">Undanlagt: %1$s</string>
+
+    <string name="home_group_openness">Vad du kan se om det här</string>
+    <string name="home_group_settings">Inställningar</string>
+    <string name="parent_group_family">Din familj</string>
+    <string name="parent_group_settings">Inställningar</string>
+    <string name="join_relay_header">Hur meddelanden färdas</string>
+    <string name="features_each_phone">Ställs in separat på varje telefon. Den här ändrar bara vad du ser här.</string>
+
+    <string name="rules_protection_header">Skydd</string>
+    <string name="rules_release_header">Lämna tillbaka telefonen</string>
+    <string name="rules_release_body">Avslutar hela uppgörelsen på den här telefonen. Allt hävs och appen släpper kontrollen.</string>
 </resources>

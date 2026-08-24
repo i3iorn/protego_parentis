@@ -22,29 +22,37 @@ import dev.schrammel.dementor_watch.rules.FeatureFlags
  * Grouped by the question being answered — how much, how the day is shaped, who
  * else is involved, control of the device — rather than by which part of the code
  * happens to implement it.
+ *
+ * Built in code rather than from a layout because the groups are now conditional.
+ * A fixed layout meant a heading sat there over an empty card when a family had
+ * put everything under it away, which reads as a screen that failed to load.
  */
 class RulesActivity : ParentGatedActivity() {
 
+    private lateinit var column: LinearLayout
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_rules)
+        column = contentColumn()
+        showColumn(column)
     }
 
-    override fun onGatedContentVisible() {
-        findViewById<View>(R.id.rules_content).visibility = View.VISIBLE
-        buildGroups()
-        showDeviceStatus()
-    }
+    override fun onGatedContentVisible() = render()
 
     override fun onGatedContentHidden() {
-        findViewById<View>(R.id.rules_content).visibility = View.GONE
+        column.removeAllViews()
     }
 
-    private fun buildGroups() {
+    private fun render() {
+        column.removeAllViews()
+        column.addView(screenTitle(getString(R.string.rules_title)))
+        column.addView(statusCard())
+
         val on = FeatureFlags(this)
 
-        fill(
-            R.id.group_limits,
+        addSection(
+            column,
+            getString(R.string.rules_group_limits),
             buildList {
                 // The daily limit is the reason the app exists; it has no switch.
                 add(
@@ -91,8 +99,9 @@ class RulesActivity : ParentGatedActivity() {
             },
         )
 
-        fill(
-            R.id.group_day,
+        addSection(
+            column,
+            getString(R.string.rules_group_day),
             buildList {
                 if (on.isEnabled(Feature.SCHEDULES)) {
                     add(
@@ -133,8 +142,9 @@ class RulesActivity : ParentGatedActivity() {
             },
         )
 
-        fill(
-            R.id.group_family,
+        addSection(
+            column,
+            getString(R.string.rules_group_family),
             buildList {
                 if (on.isEnabled(Feature.REQUESTS)) {
                     add(
@@ -142,14 +152,18 @@ class RulesActivity : ParentGatedActivity() {
                             startActivity(RequestInboxActivity.intent(this@RulesActivity))
                         },
                     )
+                    if (on.isEnabled(Feature.AUTO_APPROVE)) {
+                        add(
+                            row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
+                                startActivity(AutoApprovalActivity.intent(this@RulesActivity))
+                            },
+                        )
+                    }
                 }
-                if (on.isEnabled(Feature.REQUESTS) && on.isEnabled(Feature.AUTO_APPROVE)) {
-                    add(
-                        row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
-                            startActivity(AutoApprovalActivity.intent(this@RulesActivity))
-                        },
-                    )
-                }
+                // The relay the family's messages travel over now lives inside the
+                // connection screen rather than beside it. It is chosen once and
+                // never looked at again, and a top-level row for it made a
+                // deployment detail look as important as who is in the family.
                 add(
                     row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
                         startActivity(JoinFamilyActivity.intent(this@RulesActivity))
@@ -160,25 +174,18 @@ class RulesActivity : ParentGatedActivity() {
                         startActivity(FamilyDevicesActivity.intent(this@RulesActivity))
                     },
                 )
-                add(
-                    row(R.string.backend_title, R.string.backend_row_detail) {
-                        startActivity(SyncBackendActivity.intent(this@RulesActivity))
-                    },
-                )
             },
         )
 
-        fill(
-            R.id.group_device,
+        addSection(
+            column,
+            getString(R.string.rules_group_device),
             listOf(
                 row(R.string.rules_row_device, R.string.rules_row_device_detail) {
                     startActivity(Intent(this, DeviceControlActivity::class.java))
                 },
                 row(R.string.features_title, R.string.features_row_detail) {
                     startActivity(FeatureSettingsActivity.intent(this))
-                },
-                row(R.string.notify_title, R.string.notify_row_detail) {
-                    startActivity(NotificationSettingsActivity.intent(this))
                 },
             ),
         )
@@ -187,8 +194,17 @@ class RulesActivity : ParentGatedActivity() {
     /**
      * The device's state, in the one place a parent looks when wondering why
      * nothing is being blocked.
+     *
+     * Starts on the reassuring reading rather than blank. The lookup is off the
+     * main thread, so an empty card would flash on every open, and a status line
+     * that blinks looks like a fault whatever it eventually says.
      */
-    private fun showDeviceStatus() {
+    private fun statusCard(): View {
+        val status = TextView(this).apply {
+            setText(R.string.rules_device_status_monitor)
+            styleAs(R.style.TextAppearance_Dementor_Body)
+        }
+
         Background.load(this, {
             val coordinator = EnforcementCoordinator(this)
             // Read, not recomputed. Asking for a fresh evaluation here would mean
@@ -196,23 +212,20 @@ class RulesActivity : ParentGatedActivity() {
             // effect no one asked a status line to have.
             coordinator.isDeviceOwner() to coordinator.dnsFailedLastPass()
         }) { (owner, dnsFailed) ->
-            val status = findViewById<TextView>(R.id.device_status)
-            when {
-                dnsFailed -> status.setText(R.string.rules_dns_failed)
-                owner -> status.setText(R.string.rules_device_status_owner)
-                else -> status.setText(R.string.rules_device_status_monitor)
-            }
+            status.setText(
+                when {
+                    dnsFailed -> R.string.rules_dns_failed
+                    owner -> R.string.rules_device_status_owner
+                    else -> R.string.rules_device_status_monitor
+                },
+            )
         }
+
+        return card { addView(status) }
     }
 
     private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
         navigationRow(getString(titleRes), getString(detailRes), onClick)
-
-    private fun fill(containerId: Int, rows: List<View>) {
-        val container = findViewById<LinearLayout>(containerId)
-        container.removeAllViews()
-        container.addView(group(rows))
-    }
 
     override fun onPause() {
         super.onPause()

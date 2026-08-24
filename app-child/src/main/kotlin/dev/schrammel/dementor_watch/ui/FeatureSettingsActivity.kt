@@ -50,7 +50,9 @@ class FeatureSettingsActivity : ParentGatedActivity() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.features_title)))
         column.addView(bodyText(getString(R.string.features_intro)))
-        // The one thing about this screen that could surprise somebody.
+        // The two things about this screen that could surprise somebody: it is
+        // per-phone, and it does not undo anything.
+        column.addView(captionText(getString(R.string.features_each_phone)))
         column.addView(captionText(getString(R.string.features_still_apply)))
 
         val (optional, fixed) = Feature.entries.partition { it.optional }

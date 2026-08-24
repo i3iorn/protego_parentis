@@ -129,13 +129,27 @@ class JoinFamilyActivity : DementorActivity() {
             column.addView(screenTitle(getString(R.string.join_connected_title)))
             column.addView(connectedCard())
             column.addView(
-                Button(this).apply {
+                actionButton().apply {
                     setText(R.string.join_leave)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                         .apply { topMargin = dimen(R.dimen.space_lg) }
                     setOnClickListener { confirmLeave() }
                 },
             )
+
+        // The relay lives here rather than beside this screen. Which server
+        // carries the messages is part of the family connection, not a sibling of
+        // it, and on the hub it took a top-level row for something set once.
+        addSection(
+            column,
+            getString(R.string.join_relay_header),
+            listOf(
+                navigationRow(
+                    getString(R.string.backend_title),
+                    getString(R.string.backend_row_detail),
+                ) { startActivity(SyncBackendActivity.intent(this)) },
+            ),
+        )
             return
         }
 
@@ -148,7 +162,7 @@ class JoinFamilyActivity : DementorActivity() {
         column.addView(passphraseInput)
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.join_action)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     .apply { topMargin = dimen(R.dimen.space_md) }
@@ -159,10 +173,24 @@ class JoinFamilyActivity : DementorActivity() {
         column.addView(sectionHeader(getString(R.string.join_start_header)))
         column.addView(captionText(getString(R.string.join_start_hint)))
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.join_start)
                 setOnClickListener { startFamily() }
             },
+        )
+
+        // The relay lives here rather than beside this screen. Which server
+        // carries the messages is part of the family connection, not a sibling of
+        // it, and on the hub it took a top-level row for something set once.
+        addSection(
+            column,
+            getString(R.string.join_relay_header),
+            listOf(
+                navigationRow(
+                    getString(R.string.backend_title),
+                    getString(R.string.backend_row_detail),
+                ) { startActivity(SyncBackendActivity.intent(this)) },
+            ),
         )
     }
 

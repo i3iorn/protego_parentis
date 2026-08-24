@@ -44,24 +44,37 @@ class ParentSettingsActivity : ParentGatedActivity() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.parent_settings_title)))
 
+        // Each setting on its own surface, with its explanation inside it. Loose
+        // buttons under loose paragraphs made three settings look like one
+        // unbroken column of text with things stuck in it.
         column.addView(sectionHeader(getString(R.string.parent_settings_pin_header)))
-        column.addView(bodyText(getString(R.string.parent_settings_pin_body)))
         column.addView(
-            Button(this).apply {
-                setText(R.string.rules_change_pin)
-                setOnClickListener { startActivity(PinActivity.intent(context, change = true)) }
+            card {
+                addView(captionText(getString(R.string.parent_settings_pin_body)))
+                addView(
+                    actionButton().apply {
+                        setText(R.string.rules_change_pin)
+                        setOnClickListener {
+                            startActivity(PinActivity.intent(context, change = true))
+                        }
+                    },
+                )
             },
         )
 
         column.addView(sectionHeader(getString(R.string.biometric_header)))
-        column.addView(biometricSetting { render() })
+        column.addView(card { addView(biometricSetting { render() }) })
 
         column.addView(sectionHeader(getString(R.string.parent_settings_role_header)))
-        column.addView(bodyText(getString(R.string.parent_settings_role_body)))
         column.addView(
-            Button(this).apply {
-                setText(R.string.parent_settings_become_child)
-                setOnClickListener { confirmSwitch() }
+            card {
+                addView(captionText(getString(R.string.parent_settings_role_body)))
+                addView(
+                    actionButton().apply {
+                        setText(R.string.parent_settings_become_child)
+                        setOnClickListener { confirmSwitch() }
+                    },
+                )
             },
         )
     }

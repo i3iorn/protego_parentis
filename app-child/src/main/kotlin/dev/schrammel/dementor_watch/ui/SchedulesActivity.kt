@@ -63,7 +63,7 @@ class SchedulesActivity : ParentGatedActivity() {
         }
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.schedules_add)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -225,7 +225,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 .ifBlank { getString(R.string.schedules_allowed_none) }
         }
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.schedules_allowed_choose)
                 setOnClickListener {
                     pickAllowed.launch(
@@ -248,7 +248,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
         )
 
         column.addView(
-            Button(this).apply {
+            actionButton().apply {
                 setText(R.string.schedules_save)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -260,7 +260,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
 
         if (store.find(scheduleId) != null) {
             column.addView(
-                Button(this).apply {
+                actionButton().apply {
                     setText(R.string.schedules_delete)
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,

@@ -15,6 +15,8 @@ import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.BudgetLevel
+import dev.schrammel.dementor_watch.rules.Feature
+import dev.schrammel.dementor_watch.rules.FeatureFlags
 import dev.schrammel.dementor_watch.sync.DailySummary
 import dev.schrammel.dementor_watch.sync.DailySummaryStore
 import dev.schrammel.dementor_watch.sync.InboxStore
@@ -103,57 +105,86 @@ class ParentHomeActivity : ParentRoleActivity() {
         column.addView(sectionHeader(getString(R.string.parent_today_header)))
         column.addView(todayCard())
 
-        column.addView(
-            group(
-                listOf(
-                    navigationRow(
-                        getString(R.string.parent_row_inbox),
-                        getString(R.string.parent_row_inbox_detail),
-                    ) { startActivity(ParentInboxActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.parent_row_bonus),
-                        getString(R.string.parent_row_bonus_detail),
-                    ) { startActivity(ParentBonusActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.parent_row_lock),
-                        getString(R.string.parent_row_lock_detail),
-                    ) { confirmLock() },
-                    navigationRow(
-                        getString(R.string.parent_row_locate),
-                        getString(R.string.parent_row_locate_detail),
-                    ) { locate() },
-                    navigationRow(
-                        getString(R.string.parent_row_device),
-                        getString(R.string.parent_row_device_detail),
-                    ) { startActivity(ParentDeviceActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.parent_row_audit),
-                        getString(R.string.parent_row_audit_detail),
-                    ) { startActivity(AuditActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.rules_row_devices),
-                        getString(R.string.rules_row_devices_detail),
-                    ) { startActivity(FamilyDevicesActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.parent_row_sync),
-                        getString(R.string.parent_row_sync_detail),
-                    ) { startActivity(JoinFamilyActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.backend_title),
-                        getString(R.string.backend_row_detail),
-                    ) { startActivity(SyncBackendActivity.intent(this)) },
-                    navigationRow(
-                        getString(R.string.home_language, LanguagePicker.currentLabel(this)),
-                        getString(R.string.home_language_detail),
-                    ) { LanguagePicker.show(this) },
-                    navigationRow(
-                        getString(R.string.parent_row_settings),
-                        getString(R.string.parent_row_settings_detail),
-                    ) { startActivity(ParentSettingsActivity.intent(this)) },
-                ),
+        val on = FeatureFlags(this)
+
+        // Three groups rather than one list of eleven. The first is what a parent
+        // opens the app to do, and it is deliberately unlabelled — the screen
+        // title has already said whose phone this is. What follows is arranged by
+        // how often anyone touches it, so the rarely-used settles at the bottom
+        // instead of sitting between the two things anybody wanted.
+        addSection(
+            column,
+            null,
+            buildList {
+                if (on.isEnabled(Feature.REQUESTS)) {
+                    add(
+                        row(R.string.parent_row_inbox, R.string.parent_row_inbox_detail) {
+                            startActivity(ParentInboxActivity.intent(this@ParentHomeActivity))
+                        },
+                    )
+                }
+                if (on.isEnabled(Feature.BONUS)) {
+                    add(
+                        row(R.string.parent_row_bonus, R.string.parent_row_bonus_detail) {
+                            startActivity(ParentBonusActivity.intent(this@ParentHomeActivity))
+                        },
+                    )
+                }
+                add(row(R.string.parent_row_lock, R.string.parent_row_lock_detail) { confirmLock() })
+                // Gated: locating is answered by the other phone, so a row left
+                // here after the feature was put away would ask a question that
+                // now goes unanswered, which reads as the app being broken.
+                if (on.isEnabled(Feature.LOCATION)) {
+                    add(row(R.string.parent_row_locate, R.string.parent_row_locate_detail) { locate() })
+                }
+            },
+        )
+
+        addSection(
+            column,
+            getString(R.string.parent_group_family),
+            listOf(
+                row(R.string.parent_row_device, R.string.parent_row_device_detail) {
+                    startActivity(ParentDeviceActivity.intent(this))
+                },
+                row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
+                    startActivity(FamilyDevicesActivity.intent(this))
+                },
+                row(R.string.parent_row_audit, R.string.parent_row_audit_detail) {
+                    startActivity(AuditActivity.intent(this))
+                },
+            ),
+        )
+
+        addSection(
+            column,
+            getString(R.string.parent_group_settings),
+            listOf(
+                // The relay lives one level down, inside the family connection it
+                // belongs to. It is set once and never touched again, and a row
+                // for it on the front page cost more attention than it is worth.
+                row(R.string.parent_row_sync, R.string.parent_row_sync_detail) {
+                    startActivity(JoinFamilyActivity.intent(this))
+                },
+                navigationRow(
+                    getString(R.string.home_language, LanguagePicker.currentLabel(this)),
+                    getString(R.string.home_language_detail),
+                ) { LanguagePicker.show(this) },
+                row(R.string.notify_title, R.string.notify_row_detail) {
+                    startActivity(NotificationSettingsActivity.intent(this))
+                },
+                row(R.string.features_title, R.string.features_row_detail) {
+                    startActivity(FeatureSettingsActivity.intent(this))
+                },
+                row(R.string.parent_row_settings, R.string.parent_row_settings_detail) {
+                    startActivity(ParentSettingsActivity.intent(this))
+                },
             ),
         )
     }
+
+    private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
+        navigationRow(getString(titleRes), getString(detailRes), onClick)
 
     /**
      * Today on the child's phone (RPT-1).
