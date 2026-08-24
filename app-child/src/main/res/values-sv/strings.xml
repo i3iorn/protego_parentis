@@ -1004,4 +1004,31 @@
     <string name="schedules_starter_school">Skoltid</string>
     <string name="schedules_starter_homework">Läxor</string>
     <string name="schedules_starter_dinner">Middag</string>
+
+    <!-- Parkoppling över lokala nätverket. -->
+    <string name="join_find_nearby">Hitta en telefon på nätverket</string>
+    <string name="join_offer_nearby">Erbjud familjen till en telefon i närheten</string>
+    <string name="pair_network_warning">Familjekoden går över nätverket här. Din lösenfras gör det inte — den lämnar aldrig telefonen den skrevs in på. Gör ändå det här på ett nätverk du litar på, inte ett kafénätverk.</string>
+    <string name="pair_unavailable">Telefonen letar inte efter andra på nätverket. Använd koden eller QR-koden i stället.</string>
+
+    <string name="pair_offer_title">Erbjud till en telefon i närheten</string>
+    <string name="pair_offer_intro">Den andra telefonen ska vara på samma nätverk, på ”Hitta en telefon på nätverket”. Ingenting skickas förrän du jämfört koden den visar och sagt ja.</string>
+    <string name="pair_offer_waiting">Väntar på en telefon…</string>
+    <plurals name="pair_offer_countdown">
+        <item quantity="one">Väntar på en telefon — %1$d sekund kvar</item>
+        <item quantity="other">Väntar på en telefon — %1$d sekunder kvar</item>
+    </plurals>
+    <string name="pair_offer_asking">En telefon ber att få gå med</string>
+    <string name="pair_offer_compare">Den ska visa den här koden:\n\n%1$s\n\nÄr det inte telefonen du håller i, säg nej — då är det något annat på nätverket som frågar.</string>
+    <string name="pair_offer_allow">Det är den — skicka</string>
+    <string name="pair_offer_refuse">Nej</string>
+    <string name="pair_offer_sent">Skickat. Den andra telefonen behöver fortfarande lösenfrasen.</string>
+
+    <string name="pair_find_title">Hitta en telefon på nätverket</string>
+    <string name="pair_find_intro">Telefonen som redan är med i familjen ska vara på ”Erbjud familjen till en telefon i närheten”.</string>
+    <string name="pair_find_looking">Letar…</string>
+    <string name="pair_find_found">Hittade en telefon. Tryck på den för att fråga.</string>
+    <string name="pair_find_detail">Fråga den här telefonen efter familjekoden</string>
+    <string name="pair_find_waiting">Väntar. Kolla att den andra telefonen visar den här koden:\n\n%1$s</string>
+    <string name="pair_find_refused">Det gick inte. Antingen sa den andra telefonen nej, eller så var det inte den som svarade.</string>
 </resources>

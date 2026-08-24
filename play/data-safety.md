@@ -108,6 +108,23 @@ ticked for it. Say what it is for in the permissions section of the listing and 
 any free text the form offers, because a camera permission with no visible reason
 is exactly the kind of thing a reviewer stops on.
 
+## Local network pairing — no data type either
+
+Adding a phone to a family can happen over the local network (`LanPairing`,
+`PairingWire`). Nothing is collected and nothing reaches any server, so no data
+type is ticked.
+
+Worth having the facts to hand if a reviewer asks, because "discovers other
+devices on your network" reads alarmingly until it is described:
+
+- The mDNS advertisement carries **no family data at all** — no topic, no server,
+  no name. Only that a pairing is open, and only while the screen is.
+- It stops after `PairingWire.OFFER_SECONDS` (120) or when the screen closes.
+- The family token is sent phone-to-phone only after a person compares a code
+  shown on both screens and agrees.
+- The passphrase is never transmitted, here or anywhere.
+- No permission beyond `INTERNET` is needed for this, and none was added for it.
+
 ## Do NOT declare
 
 These are worth listing so nobody adds them by mistake — none is collected and

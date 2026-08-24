@@ -194,6 +194,12 @@ class JoinFamilyActivity : DementorActivity() {
                 setOnClickListener { scan.launch(ScanQrActivity.intent(context)) }
             },
         )
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_find_nearby)
+                setOnClickListener { findNearby.launch(LanFindActivity.intent(context)) }
+            },
+        )
         column.addView(sectionHeader(getString(R.string.join_passphrase_header)))
         column.addView(passphraseInput)
 
@@ -290,6 +296,15 @@ class JoinFamilyActivity : DementorActivity() {
         // The same string, as a picture. Sized from the screen rather than fixed:
         // a code that is meant to be read by another phone's camera should be as
         // large as the card allows, and 320dp on a tablet is a stamp.
+        addView(
+            actionButton().apply {
+                setText(R.string.join_offer_nearby)
+                setOnClickListener {
+                    startActivity(LanOfferActivity.intent(this@JoinFamilyActivity))
+                }
+            },
+        )
+
         token?.let(FamilyTokens::encode)?.let { code ->
             val side = (resources.displayMetrics.widthPixels * QR_SCREEN_FRACTION).toInt()
             FamilyQr.encode(code, side)?.let { bitmap ->
@@ -319,6 +334,23 @@ class JoinFamilyActivity : DementorActivity() {
      * because it is not in the code — see [FamilyQr] for why putting it there
      * would trade the security model for a step of typing.
      */
+    /**
+     * Takes the token from a phone on the same network.
+     *
+     * Identical in effect to the scanner: it fills the code field and stops. The
+     * passphrase is still typed, because it does not travel over the network any
+     * more than it travels in a QR code.
+     */
+    private val findNearby = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val code = result.data?.getStringExtra(LanFindActivity.EXTRA_CODE)
+            ?: return@registerForActivityResult
+        tokenInput.setText(code)
+        passphraseInput.requestFocus()
+    }
+
     private val scan = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->

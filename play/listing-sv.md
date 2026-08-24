@@ -41,7 +41,7 @@ VAD DEN GÖR
 • Lås skärmen nu, från en förälders telefon.
 • En nödknapp som den unga alltid kan nå, oavsett vad som annars är blockerat.
 • Korta meddelanden mellan telefonerna. Bara text och emoji.
-• Gå med i en familj genom att skanna en kod, eller genom att skriva in den.
+• Gå med i en familj genom att skanna en kod, genom att hitta den andra telefonen på ert wifi, eller genom att skriva in koden.
 
 
 VAD SOM SKILJER DEN

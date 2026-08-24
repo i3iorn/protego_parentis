@@ -41,7 +41,7 @@ WHAT IT DOES
 • Lock the screen now, from a parent's phone.
 • An emergency button the young person can always reach, whatever else is blocked.
 • Short messages between the phones. Text and emoji only.
-• Join a family by scanning a code, or by typing it in.
+• Join a family by scanning a code, by finding the other phone on your Wi-Fi, or by typing the code in.
 
 
 WHAT MAKES IT DIFFERENT

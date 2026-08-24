@@ -1002,4 +1002,35 @@
     <string name="schedules_starter_school">School hours</string>
     <string name="schedules_starter_homework">Homework</string>
     <string name="schedules_starter_dinner">Dinner</string>
+
+    <!--
+      Pairing over the local network. The wording is careful about one thing:
+      the family code crosses the network, the passphrase never does, and the
+      screens say which rather than implying a guarantee that is not made.
+    -->
+    <string name="join_find_nearby">Find a phone on this network</string>
+    <string name="join_offer_nearby">Offer this family to a phone nearby</string>
+    <string name="pair_network_warning">The family code crosses the network here. Your passphrase does not — it never leaves the phone it was typed on. Still, do this on a network you trust rather than a café one.</string>
+    <string name="pair_unavailable">This phone will not look for others on the network. Use the code or the QR instead.</string>
+
+    <string name="pair_offer_title">Offer to a phone nearby</string>
+    <string name="pair_offer_intro">The other phone should be on this same network, on “Find a phone on this network”. Nothing is sent until you have compared the code it shows and said yes.</string>
+    <string name="pair_offer_waiting">Waiting for a phone…</string>
+    <plurals name="pair_offer_countdown">
+        <item quantity="one">Waiting for a phone — %1$d second left</item>
+        <item quantity="other">Waiting for a phone — %1$d seconds left</item>
+    </plurals>
+    <string name="pair_offer_asking">A phone is asking to join</string>
+    <string name="pair_offer_compare">It should be showing this code:\n\n%1$s\n\nIf that is not the phone in your hand, say no — something else on this network is asking.</string>
+    <string name="pair_offer_allow">That is the one — send it</string>
+    <string name="pair_offer_refuse">No</string>
+    <string name="pair_offer_sent">Sent. The other phone still needs the passphrase.</string>
+
+    <string name="pair_find_title">Find a phone on this network</string>
+    <string name="pair_find_intro">The phone that is already in the family should be on “Offer this family to a phone nearby”.</string>
+    <string name="pair_find_looking">Looking…</string>
+    <string name="pair_find_found">Found a phone. Tap it to ask.</string>
+    <string name="pair_find_detail">Ask this phone for the family code</string>
+    <string name="pair_find_waiting">Waiting. Check the other phone shows this code:\n\n%1$s</string>
+    <string name="pair_find_refused">That did not work. Either the other phone said no, or whatever answered was not it.</string>
 </resources>

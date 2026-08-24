@@ -263,6 +263,21 @@
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />
 
+        <!--
+          Pairing over the local network. Both are ordinary screens: they hold no
+          state, start nothing that outlives them, and exist only while somebody
+          is looking at one of them.
+        -->
+        <activity
+            android:name=".ui.LanOfferActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.JoinFamilyActivity" />
+
+        <activity
+            android:name=".ui.LanFindActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.JoinFamilyActivity" />
+
         <activity
             android:name=".ui.PermissionsActivity"
             android:exported="false"
