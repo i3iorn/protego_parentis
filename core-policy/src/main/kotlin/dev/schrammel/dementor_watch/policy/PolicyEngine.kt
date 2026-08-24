@@ -159,18 +159,40 @@ object PolicyEngine {
         // cancelling it. The reconciler re-evaluates the moment it clears.
         val deferring = deviceState.suspensionDeferred
 
+        // An emergency lifts everything, and lifts it rather than deferring it: a
+        // child who has pressed the SOS button must not find the phone closing
+        // back down while they are still in whatever made them press it. Hidden
+        // apps come back too — an icon that is not there is no use to anybody.
+        val emergency = deviceState.emergency
+
         return Enforcement(
             policyVersion = policy.version,
-            suspend = if (deferring) emptyMap() else suspend,
-            hide = hide,
-            deferred = if (deferring) suspend else emptyMap(),
+            suspend = when {
+                emergency -> emptyMap()
+                deferring -> emptyMap()
+                else -> suspend
+            },
+            hide = if (emergency) emptySet() else hide,
+            deferred = if (deferring && !emergency) suspend else emptyMap(),
             deviceBudget = deviceBudget,
             appBudgets = appBudgets,
             categoryBudgets = categoryBudgets,
             activeSchedules = activeSchedules,
             activeContextRules = contextOutcome.activeRules,
+            // Filtering stays on in an emergency. It blocks sites, not calls or
+            // maps, so lifting it would buy nothing and cost the one protection
+            // that has no bearing on getting help.
             dnsHost = policy.dnsFilter?.host,
+            emergency = emergency,
             appRestrictions = browserRestrictions(policy),
+            // Never anything on the safety list, and never in an emergency: a
+            // phone that cannot reach the network is a phone that cannot call for
+            // help through anything but the dialer.
+            networkBlocked = if (emergency) {
+                emptySet()
+            } else {
+                policy.networkBlockedPackages.filterNot(policy::isSafetyExempt).toSet()
+            },
             installsBlocked = installsBlocked(policy, now),
             nextChangeAt = nextChangeAt(
                 policy = policy,

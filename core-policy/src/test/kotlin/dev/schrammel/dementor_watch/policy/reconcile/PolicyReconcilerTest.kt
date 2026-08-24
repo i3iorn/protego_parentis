@@ -75,6 +75,31 @@ internal class FakeDevicePolicyPort(
 
     val appRestrictions: MutableMap<PackageName, Map<String, RestrictionValue>> = mutableMapOf()
 
+    var locks = 0
+    var secureLockScreen = true
+    var networkLogging = false
+    var alwaysOnVpn: String? = null
+
+    override fun lockScreen() {
+        locks++
+    }
+
+    override fun hasSecureLockScreen(): Boolean = secureLockScreen
+
+    override fun isNetworkLoggingEnabled(): Boolean = networkLogging
+
+    override fun setNetworkLoggingEnabled(enabled: Boolean): Boolean {
+        networkLogging = enabled
+        return true
+    }
+
+    override fun currentAlwaysOnVpn(): String? = alwaysOnVpn
+
+    override fun setAlwaysOnVpn(packageName: String?): Boolean {
+        alwaysOnVpn = packageName
+        return true
+    }
+
     override fun currentPrivateDnsHost(): String? = privateDnsHost
 
     override fun setPrivateDnsHost(host: String?): Boolean {

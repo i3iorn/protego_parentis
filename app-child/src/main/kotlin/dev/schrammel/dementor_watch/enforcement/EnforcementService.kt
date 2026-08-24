@@ -21,6 +21,8 @@ import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
 import android.os.BatteryManager
 import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.Heartbeat
 import dev.schrammel.dementor_watch.model.PackageName
@@ -29,8 +31,16 @@ import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
+import dev.schrammel.dementor_watch.context.ContextProvider
+import dev.schrammel.dementor_watch.context.LocationSharing
+import dev.schrammel.dementor_watch.context.PlaceWatcher
+import dev.schrammel.dementor_watch.rules.ContextRuleStore
+import dev.schrammel.dementor_watch.rules.SosStore
+import dev.schrammel.dementor_watch.rules.WebActivityStore
+import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.sync.AppTime
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
+import java.time.LocalDate
 import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
 import java.time.Instant
@@ -65,6 +75,8 @@ class EnforcementService : Service() {
     private lateinit var review: AppReviewStore
     private lateinit var installedApps: InstalledApps
     private lateinit var requestNotifier: RequestNotifier
+    private lateinit var sos: SosStore
+    private lateinit var places: PlaceWatcher
 
     /**
      * Fires when the device is unlocked. Registered at runtime because implicit
@@ -141,7 +153,11 @@ class EnforcementService : Service() {
         warnings = WarningNotifier(this)
         goals = GoalCoordinator(this)
         goalNotifier = GoalNotifier(this)
+        // The lock arrives as a message and is carried out here, because the
+        // sync layer has no business holding a device policy port.
         sync = SyncCoordinator(this)
+        sos = SosStore(this)
+        places = PlaceWatcher(this)
         createNotificationChannel()
         ContextCompat.registerReceiver(
             this,
@@ -168,6 +184,8 @@ class EnforcementService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_LOCK_NOW) lockScreen()
+
         // Belt and braces with the check in BootReceiver. Several screens start
         // this service, and one of them reaching a parent's phone by mistake must
         // not turn that phone into a second, fictitious child device.
@@ -283,6 +301,18 @@ class EnforcementService : Service() {
                 .onFailure { Log.w(TAG, "Could not send today's summary", it) }
         }
 
+        // An emergency repeats until it is ended, so a parent who missed the
+        // first one still finds out. Runs before the poll, so the position is on
+        // its way in the same pass that noticed the emergency is still running.
+        runCatching { repeatEmergency(now) }
+            .onFailure { Log.w(TAG, "Could not repeat the emergency", it) }
+
+        runCatching { announceArrivals() }
+            .onFailure { Log.w(TAG, "Could not check saved places", it) }
+
+        runCatching { publishBrowsing() }
+            .onFailure { Log.w(TAG, "Could not send the browsing summary", it) }
+
         // Introduces this phone to any parent that has not enrolled it yet.
         // Throttled inside the coordinator to once an hour.
         runCatching { sync.announceSelf() }
@@ -374,6 +404,90 @@ class EnforcementService : Service() {
         )
     }
 
+    /**
+     * Locks the screen, on a parent's instruction (the "lock now" button).
+     *
+     * Through [DeviceLocker] rather than the reconciler: a lock is an edge, not a
+     * level, and the reconciler is a desired-state differ that would either
+     * re-lock the phone on every tick or need a latch it has no business holding.
+     */
+    private fun lockScreen() {
+        handler.post {
+            val result = coordinator.lockDevice()
+            if (result.hadNoLockScreen) {
+                // The screen went dark and swiped straight back open. Worth
+                // saying, because a parent has just been told it locked.
+                Log.w(TAG, "Locked a phone with no lock screen set")
+            }
+        }
+    }
+
+    /**
+     * Keeps telling the parents while an emergency is running (LOC-3).
+     *
+     * Every minute, with a fresh position each time. A single message that arrived
+     * while a phone was in a pocket would be the whole feature failing quietly.
+     */
+    private fun repeatEmergency(now: Instant) {
+        if (!sos.isActive) return
+
+        val last = sos.lastSentAt
+        val due = last == null ||
+            now.toEpochMilli() - last.toEpochMilli() >= SOS_REPEAT_MILLIS ||
+            now.isBefore(last)
+        if (!due) return
+
+        sos.lastSentAt = now
+        sync.publishSosRaised()
+        LocationSharing(this).locate()?.let { position ->
+            sync.publishLocation(position, forEmergency = true)
+        }
+    }
+
+    /**
+     * Tells the parents about arrivals at saved places (LOC-1).
+     *
+     * The name of the place and nothing else. Where the phone actually is stays
+     * something a parent has to ask for, visibly, one answer at a time.
+     */
+    private fun announceArrivals() {
+        val rules = ContextRuleStore(this)
+        if (!rules.announceArrivals) return
+
+        val saved = rules.places
+        if (saved.isEmpty()) return
+
+        val inside = ContextProvider(this).current(saved).insidePlaces
+        places.transitions(saved, inside).forEach { transition ->
+            Audit.record(
+                context = this,
+                actor = AuditActor.SYSTEM,
+                action = if (transition.arrived) {
+                    AuditAction.PLACE_ENTERED
+                } else {
+                    AuditAction.PLACE_LEFT
+                },
+                subject = transition.place.name,
+            )
+            sync.publishPlaceTransition(transition)
+        }
+    }
+
+    /** Today's domains, counted, on the same throttle as the heartbeat (WF-3). */
+    private fun publishBrowsing() {
+        if (!WebFilterStore(this).countVisits) return
+
+        val today = LocalDate.now()
+        val store = WebActivityStore(this)
+        val visits = store.visits(today)
+        if (visits.isEmpty()) return
+
+        sync.publishWebSummary(
+            domains = visits.map { it.domain to it.count },
+            blocked = store.blockedAttempts(today),
+        )
+    }
+
     /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
     private fun batteryPercent(): Int =
         getSystemService(BatteryManager::class.java)
@@ -460,8 +574,20 @@ class EnforcementService : Service() {
         /** Backs off briefly after a failure rather than hammering a broken call. */
         private const val RETRY_INTERVAL_MILLIS = 60_000L
 
+        /** How often an unresolved emergency repeats itself to the parents. */
+        private const val SOS_REPEAT_MILLIS = 60_000L
+
         fun start(context: Context) {
             context.startForegroundService(Intent(context, EnforcementService::class.java))
         }
+
+        /** Locks the screen now, on a parent's instruction. */
+        fun lockNow(context: Context) {
+            context.startForegroundService(
+                Intent(context, EnforcementService::class.java).setAction(ACTION_LOCK_NOW),
+            )
+        }
+
+        private const val ACTION_LOCK_NOW = "dev.schrammel.dementor_watch.LOCK_NOW"
     }
 }

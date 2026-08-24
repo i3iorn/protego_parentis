@@ -87,10 +87,18 @@ object RosterRules {
         SyncMessageType.APP_INSTALLED -> SyncRole.CHILD
         SyncMessageType.DAILY_SUMMARY -> SyncRole.CHILD
         SyncMessageType.DEVICE_STOPPING -> SyncRole.CHILD
+        SyncMessageType.REQUEST_AUTO_APPROVED -> SyncRole.CHILD
+        SyncMessageType.LOCATION_REPORT -> SyncRole.CHILD
+        SyncMessageType.PLACE_TRANSITION -> SyncRole.CHILD
+        SyncMessageType.SOS_RAISED -> SyncRole.CHILD
+        SyncMessageType.SOS_CLEARED -> SyncRole.CHILD
+        SyncMessageType.WEB_SUMMARY -> SyncRole.CHILD
 
         SyncMessageType.REQUEST_DECIDED -> SyncRole.PARENT
         SyncMessageType.BONUS_GRANTED -> SyncRole.PARENT
         SyncMessageType.APP_DECIDED -> SyncRole.PARENT
+        SyncMessageType.LOCK_NOW -> SyncRole.PARENT
+        SyncMessageType.LOCATE_REQUEST -> SyncRole.PARENT
 
         // Either side introduces itself; that is the point of it.
         SyncMessageType.DEVICE_ANNOUNCE -> null

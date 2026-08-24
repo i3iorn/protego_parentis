@@ -34,6 +34,36 @@ enum class SyncMessageType {
      */
     DEVICE_STOPPING,
 
+    /** Parent → child: lock the screen now. */
+    LOCK_NOW,
+
+    /**
+     * Child → parents: a standing rule answered a request, so nobody needs to.
+     *
+     * Its own type rather than REQUEST_DECIDED, which only a parent may send —
+     * relaxing that would hand a compromised child device the power to forge every
+     * parent decision, at a saving of one enum entry.
+     */
+    REQUEST_AUTO_APPROVED,
+
+    /** Parent → child: where are you? Always announced to the child. */
+    LOCATE_REQUEST,
+
+    /** Child → parents: here, once. Never a stream. */
+    LOCATION_REPORT,
+
+    /** Child → parents: arrived at, or left, a named place. Carries no position. */
+    PLACE_TRANSITION,
+
+    /** Child → parents: help. */
+    SOS_RAISED,
+
+    /** Child → parents: the emergency is over. */
+    SOS_CLEARED,
+
+    /** Child → parents: today's domains, counted and named, never timed. */
+    WEB_SUMMARY,
+
     /**
      * Either → everyone: this is who I am.
      *

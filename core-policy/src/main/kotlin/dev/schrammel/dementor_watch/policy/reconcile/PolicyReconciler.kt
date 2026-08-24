@@ -137,6 +137,22 @@ class PolicyReconciler(
         }
         managedLast = enforcement.appRestrictions
 
+        // --- per-app network blocking (WF-4) ---
+        // The tunnel captures only the blocked apps, so everything else routes
+        // exactly as it did. Torn down entirely when the list empties, rather than
+        // left running empty: an always-on VPN nobody needs is a permanent status
+        // icon and a standing question from whoever holds the phone.
+        val wantsVpn = enforcement.networkBlocked.isNotEmpty()
+        val desiredVpn = if (wantsVpn) selfPackage.value else null
+        var vpnChanged = false
+        if (port.currentAlwaysOnVpn() != desiredVpn) {
+            if (port.setAlwaysOnVpn(desiredVpn)) {
+                vpnChanged = true
+            } else {
+                violations += "could not set the always-on VPN to $desiredVpn"
+            }
+        }
+
         // --- self-protection ---
         // Tied to the same switch: if the device is not locked down, the app must
         // remain removable, or a test install becomes permanent.
@@ -153,6 +169,7 @@ class PolicyReconciler(
             restrictionsAdded = restrictionsToAdd,
             restrictionsCleared = restrictionsToClear,
             dnsChanged = dnsChanged,
+            vpnChanged = vpnChanged,
             invariantViolations = violations,
         )
     }

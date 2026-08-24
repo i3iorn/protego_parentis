@@ -62,6 +62,7 @@ class AppControlActivity : ParentGatedActivity() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.apps_title)))
         column.addView(captionText(getString(R.string.apps_hint)))
+        column.addView(captionText(getString(R.string.apps_network_hint)))
 
         Background.load(this, {
             val apps = InstalledApps(this).launchable()
@@ -136,6 +137,23 @@ class AppControlActivity : ParentGatedActivity() {
                 isChecked = app.pkg.value in store.blockedPackages
                 setOnCheckedChangeListener { _, blocked ->
                     decide(app, blocked, wasNew = false)
+                }
+            },
+        )
+        addView(
+            CheckBox(context).apply {
+                setText(R.string.apps_network_blocked)
+                isChecked = app.pkg.value in store.networkBlockedPackages
+                setOnCheckedChangeListener { _, offline ->
+                    store.setNetworkBlocked(app.pkg.value, offline)
+                    Audit.record(
+                        context = this@AppControlActivity,
+                        actor = AuditActor.PARENT,
+                        action = AuditAction.APP_NETWORK_CHANGED,
+                        subject = app.label,
+                        after = Audit.flag(offline),
+                    )
+                    EnforcementService.start(this@AppControlActivity)
                 }
             },
         )

@@ -72,6 +72,9 @@ class HomeActivity : DementorActivity() {
         findViewById<Button>(R.id.permission_button).setOnClickListener {
             startActivity(UsageAccess.settingsIntent())
         }
+        findViewById<Button>(R.id.sos_button).setOnClickListener {
+            startActivity(SosActivity.intent(this))
+        }
         buildNavigation()
     }
 
@@ -121,6 +124,10 @@ class HomeActivity : DementorActivity() {
                 getString(R.string.home_open_week),
                 getString(R.string.home_open_week_detail),
             ) { startActivity(WeekActivity.intent(this)) },
+            Triple(
+                getString(R.string.web_activity_title),
+                getString(R.string.rules_row_web_activity_detail),
+            ) { startActivity(WebActivityActivity.intent(this)) },
             Triple(
                 getString(R.string.home_open_audit),
                 getString(R.string.home_open_audit_detail),

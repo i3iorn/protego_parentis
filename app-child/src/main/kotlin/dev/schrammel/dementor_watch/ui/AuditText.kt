@@ -156,6 +156,50 @@ object AuditText {
 
             AuditAction.DEVICE_RELEASED -> context.getString(R.string.audit_device_released)
 
+            AuditAction.DEVICE_LOCKED -> context.getString(R.string.audit_device_locked)
+
+            AuditAction.REQUEST_AUTO_APPROVED ->
+                context.getString(R.string.audit_request_auto_approved, after, subject)
+
+            AuditAction.AUTO_RULE_SAVED ->
+                context.getString(R.string.audit_auto_rule_saved, subject, after)
+
+            AuditAction.AUTO_RULE_DELETED ->
+                context.getString(R.string.audit_auto_rule_deleted, subject)
+
+            AuditAction.APP_NETWORK_CHANGED -> context.getString(
+                if (entry.after.toBoolean()) {
+                    R.string.audit_app_network_blocked
+                } else {
+                    R.string.audit_app_network_allowed
+                },
+                subject,
+            )
+
+            AuditAction.WEB_LOGGING_CHANGED -> context.getString(
+                if (entry.after.toBoolean()) {
+                    R.string.audit_web_logging_on
+                } else {
+                    R.string.audit_web_logging_off
+                },
+            )
+
+            AuditAction.LOCATE_REQUESTED ->
+                context.getString(R.string.audit_locate_requested)
+
+            AuditAction.LOCATION_SHARED ->
+                context.getString(R.string.audit_location_shared)
+
+            AuditAction.PLACE_ENTERED ->
+                context.getString(R.string.audit_place_entered, subject)
+
+            AuditAction.PLACE_LEFT ->
+                context.getString(R.string.audit_place_left, subject)
+
+            AuditAction.SOS_RAISED -> context.getString(R.string.audit_sos_raised)
+
+            AuditAction.SOS_CLEARED -> context.getString(R.string.audit_sos_cleared)
+
             AuditAction.ROLE_CHANGED ->
                 context.getString(R.string.audit_role_changed, role(context, entry.after))
         }

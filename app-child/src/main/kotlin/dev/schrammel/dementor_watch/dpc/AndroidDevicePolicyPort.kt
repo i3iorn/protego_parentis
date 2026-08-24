@@ -1,5 +1,6 @@
 package dev.schrammel.dementor_watch.dpc
 
+import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -111,6 +112,67 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
         }
         runCatching { dpm.setApplicationRestrictions(admin, pkg.value, bundle) }
             .onFailure { Log.w(TAG, "Could not set managed configuration for ${pkg.value}", it) }
+    }
+
+    /**
+     * Locks the screen.
+     *
+     * The no-argument overload deliberately. The flags version exists only to
+     * evict the credential-encryption key, which is a managed-profile mechanism,
+     * throws on a device without file-based encryption, and would make the child
+     * re-enter their credential for reasons that have nothing to do with a parent
+     * wanting the screen off.
+     *
+     * Requires the force-lock policy, which `res/xml/device_admin.xml` declares.
+     */
+    override fun lockScreen() {
+        runCatching { dpm.lockNow() }
+            .onFailure { Log.w(TAG, "Could not lock the screen", it) }
+    }
+
+    /**
+     * Whether the phone has a real lock rather than a swipe.
+     *
+     * Without one, locking only puts the screen to sleep — it swipes straight back
+     * open. A parent told "locked" in that case has been told something untrue.
+     */
+    override fun hasSecureLockScreen(): Boolean =
+        appContext.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
+    override fun isNetworkLoggingEnabled(): Boolean =
+        runCatching { dpm.isNetworkLoggingEnabled(admin) }.getOrDefault(false)
+
+    override fun setNetworkLoggingEnabled(enabled: Boolean): Boolean = runCatching {
+        dpm.setNetworkLoggingEnabled(admin, enabled)
+        true
+    }.getOrElse { error ->
+        // Refused on a device with more than one user, among other reasons. The
+        // caller reports it rather than leaving a screen claiming to be recording.
+        Log.w(TAG, "Could not change network logging", error)
+        false
+    }
+
+    override fun currentAlwaysOnVpn(): String? =
+        runCatching { dpm.getAlwaysOnVpnPackage(admin) }.getOrNull()
+
+    /**
+     * Sets this app as the always-on VPN, or clears it.
+     *
+     * Lockdown is deliberately off. With it on, every app on the phone loses the
+     * network whenever the tunnel is down — for a feature meant to block three
+     * apps, that would be a phone with no internet whenever this service is
+     * restarting. Off, the blocked apps briefly get through instead, which is the
+     * far smaller wrong.
+     *
+     * A device owner setting this is granted VPN consent implicitly, so no dialog
+     * appears and nothing has to be tapped on the child's phone.
+     */
+    override fun setAlwaysOnVpn(packageName: String?): Boolean = runCatching {
+        dpm.setAlwaysOnVpnPackage(admin, packageName, false)
+        true
+    }.getOrElse { error ->
+        Log.w(TAG, "Could not set the always-on VPN", error)
+        false
     }
 
     override fun clearDeviceOwner() {

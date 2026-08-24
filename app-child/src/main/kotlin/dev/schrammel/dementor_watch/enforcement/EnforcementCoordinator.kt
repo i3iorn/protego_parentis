@@ -15,12 +15,16 @@ import dev.schrammel.dementor_watch.model.Policy
 import dev.schrammel.dementor_watch.model.UsageSnapshot
 import dev.schrammel.dementor_watch.policy.PolicyClock
 import dev.schrammel.dementor_watch.policy.PolicyEngine
+import dev.schrammel.dementor_watch.policy.reconcile.DeviceLocker
+import dev.schrammel.dementor_watch.policy.reconcile.LockResult
 import dev.schrammel.dementor_watch.policy.reconcile.DeviceReleaser
 import dev.schrammel.dementor_watch.policy.reconcile.PolicyReconciler
 import dev.schrammel.dementor_watch.policy.reconcile.ReleaseResult
 import dev.schrammel.dementor_watch.policy.reconcile.ReconcileResult
 import dev.schrammel.dementor_watch.rules.GrantStore
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
+import dev.schrammel.dementor_watch.rules.SosStore
+import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.usage.CollectedUsage
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import dev.schrammel.dementor_watch.usage.UsageAccess
@@ -75,6 +79,9 @@ class EnforcementCoordinator(context: Context) {
     }
 
     fun isDeviceOwner(): Boolean = port.isDeviceOwner()
+
+    /** Locks the screen now, on a parent's instruction. */
+    fun lockDevice(): LockResult = DeviceLocker(port).lock()
 
     /** See [PolicyReconciler.forgetAppliedRestrictions]. */
     fun forgetAppliedRestrictions() = reconciler.forgetAppliedRestrictions()
@@ -151,7 +158,12 @@ class EnforcementCoordinator(context: Context) {
             installedPackages = installed,
             usage = usage.snapshot,
             grants = grants.active(now),
-            deviceState = DeviceState(foregroundPackage = usage.foregroundPackage),
+            deviceState = DeviceState(
+                foregroundPackage = usage.foregroundPackage,
+                // An emergency lifts everything, so it is read on every pass
+                // rather than pushed — a restart must not quietly end one.
+                emergency = SosStore(appContext).isActive,
+            ),
             context = surroundings,
             // Only read when browser policy is on; on a phone with no filtering
             // configured this is an empty set and costs a map lookup.
@@ -162,6 +174,15 @@ class EnforcementCoordinator(context: Context) {
             },
             now = now,
         )
+
+        // Counting sites is desired state like anything else, but it has no
+        // Enforcement field: it is a recording setting rather than a restriction,
+        // and giving it one would invite the engine to start making decisions
+        // about it.
+        if (port.isDeviceOwner()) {
+            val wanted = WebFilterStore(appContext).countVisits
+            if (port.isNetworkLoggingEnabled() != wanted) port.setNetworkLoggingEnabled(wanted)
+        }
 
         val reconcile = if (port.isDeviceOwner()) {
             reconciler.reconcile(policy, enforcement).also { result ->

@@ -134,6 +134,15 @@ data class Enforcement(
     /** Managed configuration per package, applied as-is by the reconciler (WF-2). */
     val appRestrictions: Map<PackageName, Map<String, RestrictionValue>> = emptyMap(),
     /**
+     * Apps barred from the network entirely (WF-4).
+     *
+     * Separate from [suspend] because it is a different kind of restriction: the
+     * app still opens, and still says what it wants to say about being offline.
+     */
+    val networkBlocked: Set<PackageName> = emptySet(),
+    /** True while the child has an emergency raised, so screens can say so. */
+    val emergency: Boolean = false,
+    /**
      * Whether new installs are barred right now (AC-3).
      *
      * Decided here rather than read from the policy by the reconciler, because it

@@ -17,6 +17,9 @@ import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.policy.IntegrityRules
 import dev.schrammel.dementor_watch.policy.request.RequestRules
 import dev.schrammel.dementor_watch.model.PackageName
+import dev.schrammel.dementor_watch.context.LocationSharing
+import dev.schrammel.dementor_watch.context.PlaceTransition
+import dev.schrammel.dementor_watch.context.Position
 import dev.schrammel.dementor_watch.rules.AppReviewStore
 import dev.schrammel.dementor_watch.rules.GrantStore
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
@@ -70,6 +73,7 @@ class SyncCoordinator(context: Context) {
     private val newApps by lazy { NewAppStore(appContext) }
     private val heartbeats by lazy { HeartbeatStore(appContext) }
     private val summaries by lazy { DailySummaryStore(appContext) }
+    private val family by lazy { FamilyEventStore(appContext) }
     private val notifier by lazy { RequestNotifier(appContext) }
 
     fun settings(): SyncSettings = config.load()
@@ -225,6 +229,63 @@ class SyncCoordinator(context: Context) {
         },
     )
 
+    /** Asks the child's phone to lock its screen now. */
+    fun publishLockNow() = publish(SyncMessageType.LOCK_NOW, emptyMap())
+
+    /**
+     * Asks where the phone is (LOC-2).
+     *
+     * The asking is itself published, so the request is on the record before any
+     * answer is. A parent cannot look without the looking being visible.
+     */
+    fun publishLocateRequest() = publish(SyncMessageType.LOCATE_REQUEST, emptyMap())
+
+    /** One position, in answer to one request. Never sent unasked, except in an SOS. */
+    fun publishLocation(position: Position, forEmergency: Boolean) = publish(
+        type = SyncMessageType.LOCATION_REPORT,
+        fields = mapOf(
+            FIELD_LATITUDE to position.latitude.toString(),
+            FIELD_LONGITUDE to position.longitude.toString(),
+            FIELD_ACCURACY to position.accuracyMetres.toString(),
+            FIELD_EMERGENCY to forEmergency.toString(),
+        ),
+    )
+
+    /** Arrived at, or left, a named place. Carries the name and no coordinates. */
+    fun publishPlaceTransition(transition: PlaceTransition) = publish(
+        type = SyncMessageType.PLACE_TRANSITION,
+        fields = mapOf(
+            FIELD_PLACE to transition.place.name,
+            FIELD_ARRIVED to transition.arrived.toString(),
+        ),
+    )
+
+    fun publishSosRaised() = publish(SyncMessageType.SOS_RAISED, emptyMap())
+
+    fun publishSosCleared() = publish(SyncMessageType.SOS_CLEARED, emptyMap())
+
+    /** A standing rule answered a request, so the parents' inboxes can settle it. */
+    fun publishAutoApproved(request: Request, label: String, ruleName: String) = publish(
+        type = SyncMessageType.REQUEST_AUTO_APPROVED,
+        fields = mapOf(
+            FIELD_REQUEST_ID to request.id.value,
+            FIELD_MINUTES to request.amount.inWholeMinutes.toString(),
+            FIELD_TARGET_LABEL to label,
+            FIELD_RULE_NAME to ruleName,
+        ),
+    )
+
+    /** Today's domains, counted (WF-3). */
+    fun publishWebSummary(domains: List<Pair<String, Int>>, blocked: Int) = publish(
+        type = SyncMessageType.WEB_SUMMARY,
+        fields = buildMap {
+            put(FIELD_BLOCKED_COUNT, blocked.toString())
+            domains.forEachIndexed { index, (domain, count) ->
+                put("$FIELD_DOMAIN_PREFIX$index", "$count$APP_SEPARATOR$domain")
+            }
+        },
+    )
+
     /** Says the phone is going off, so silence can be told apart from shutdown. */
     fun publishStopping() = publish(SyncMessageType.DEVICE_STOPPING, emptyMap())
 
@@ -369,6 +430,8 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.REQUEST_DECIDED -> applyDecision(message)
         SyncMessageType.BONUS_GRANTED -> applyBonus(message)
         SyncMessageType.APP_DECIDED -> applyAppDecision(message)
+        SyncMessageType.LOCK_NOW -> applyLockNow()
+        SyncMessageType.LOCATE_REQUEST -> applyLocateRequest()
         // A child phone is the only source of these; hearing one back means a
         // second child device shares the family topic, which is not supported yet.
         // An announcement has already done its work in the roster by this point.
@@ -378,6 +441,12 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.DAILY_SUMMARY,
         SyncMessageType.DEVICE_STOPPING,
         SyncMessageType.DEVICE_ANNOUNCE,
+        SyncMessageType.REQUEST_AUTO_APPROVED,
+        SyncMessageType.LOCATION_REPORT,
+        SyncMessageType.PLACE_TRANSITION,
+        SyncMessageType.SOS_RAISED,
+        SyncMessageType.SOS_CLEARED,
+        SyncMessageType.WEB_SUMMARY,
         -> false
     }
 
@@ -390,12 +459,126 @@ class SyncCoordinator(context: Context) {
         SyncMessageType.APP_INSTALLED -> rememberNewApp(message)
         SyncMessageType.DAILY_SUMMARY -> rememberSummary(message)
         SyncMessageType.DEVICE_STOPPING -> rememberStopping(message)
+        SyncMessageType.REQUEST_AUTO_APPROVED -> settleAutoApproved(message)
+        SyncMessageType.LOCATION_REPORT -> rememberLocation(message)
+        SyncMessageType.PLACE_TRANSITION -> rememberTransition(message)
+        SyncMessageType.SOS_RAISED -> rememberSos(message, raised = true)
+        SyncMessageType.SOS_CLEARED -> rememberSos(message, raised = false)
+        SyncMessageType.WEB_SUMMARY -> rememberWebSummary(message)
         // Sent by a parent, including possibly this one. Nothing to do with it.
         // An announcement has already done its work in the roster by this point.
         SyncMessageType.BONUS_GRANTED,
         SyncMessageType.APP_DECIDED,
         SyncMessageType.DEVICE_ANNOUNCE,
+        SyncMessageType.LOCK_NOW,
+        SyncMessageType.LOCATE_REQUEST,
         -> false
+    }
+
+    // ---------- what the child does when asked ----------
+
+    /**
+     * Locks the screen, and says who did it.
+     *
+     * The notification is posted first so it lands on the lock screen the child is
+     * about to see. A phone that locks itself with no explanation is a phone that
+     * looks broken, and the answer to "why did that happen" should not require
+     * unlocking it again to find out.
+     */
+    private fun applyLockNow(): Boolean {
+        notifier.notifyLocked()
+        Audit.record(appContext, AuditActor.PARENT, AuditAction.DEVICE_LOCKED)
+        // Handed to the service rather than done here, and not through a callback
+        // either: any screen can be the one that happens to be polling when this
+        // arrives, and a lock that only worked when the service polled would fail
+        // exactly when a parent was watching the app on their own phone.
+        EnforcementService.lockNow(appContext)
+        return true
+    }
+
+    /**
+     * Answers a locate, and tells the child it was asked.
+     *
+     * The telling is not conditional on the answering. A locate that failed
+     * because the phone was indoors still happened, and a child who is told only
+     * about the successful ones has been told something misleading about how often
+     * they are looked for.
+     */
+    private fun applyLocateRequest(): Boolean {
+        notifier.notifyLocated()
+        Audit.record(appContext, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
+
+        val position = LocationSharing(appContext).locate()
+        if (position == null) {
+            Log.i(TAG, "Asked for a position, could not get one")
+            return true
+        }
+        Audit.record(appContext, AuditActor.CHILD, AuditAction.LOCATION_SHARED)
+        publishLocation(position, forEmergency = false)
+        return true
+    }
+
+    // ---------- what a parent does with what arrives ----------
+
+    private fun settleAutoApproved(message: SyncMessage): Boolean {
+        val id = message.field(FIELD_REQUEST_ID) ?: return false
+        val rule = message.field(FIELD_RULE_NAME)?.clip()
+        inbox.settle(id, RequestState.APPROVED, rule)
+        notifier.notifyAutoApproved(rule.orEmpty())
+        return true
+    }
+
+    private fun rememberLocation(message: SyncMessage): Boolean {
+        val latitude = message.field(FIELD_LATITUDE)?.toDoubleOrNull() ?: return false
+        val longitude = message.field(FIELD_LONGITUDE)?.toDoubleOrNull() ?: return false
+        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
+
+        family.recordLocation(
+            latitude = latitude,
+            longitude = longitude,
+            accuracyMetres = message.longField(FIELD_ACCURACY)?.toInt() ?: 0,
+            at = message.sentAt,
+        )
+        if (message.field(FIELD_EMERGENCY).toBoolean()) notifier.notifySos(moved = true)
+        return true
+    }
+
+    private fun rememberTransition(message: SyncMessage): Boolean {
+        val place = message.field(FIELD_PLACE)?.clip() ?: return false
+        val arrived = message.field(FIELD_ARRIVED).toBoolean()
+
+        family.recordTransition(place, arrived, message.sentAt)
+        notifier.notifyPlaceTransition(place, arrived)
+        return true
+    }
+
+    private fun rememberSos(message: SyncMessage, raised: Boolean): Boolean {
+        family.recordSos(raised, message.sentAt)
+        if (raised) notifier.notifySos(moved = false) else notifier.notifySosCleared()
+        return true
+    }
+
+    private fun rememberWebSummary(message: SyncMessage): Boolean {
+        val domains = message.fields
+            .filterKeys { it.startsWith(FIELD_DOMAIN_PREFIX) }
+            .toSortedMap(compareBy { it.removePrefix(FIELD_DOMAIN_PREFIX).toIntOrNull() ?: 0 })
+            .values
+            .mapNotNull(::parseDomain)
+            .take(MAX_SUMMARY_DOMAINS)
+
+        family.recordWebSummary(
+            domains = domains,
+            blocked = message.longField(FIELD_BLOCKED_COUNT)?.toInt() ?: 0,
+            at = message.sentAt,
+        )
+        return true
+    }
+
+    private fun parseDomain(raw: String): Pair<String, Int>? {
+        val at = raw.indexOf(APP_SEPARATOR)
+        if (at <= 0 || at == raw.lastIndex) return null
+        val count = raw.substring(0, at).toIntOrNull() ?: return null
+        return raw.substring(at + 1).clip() to count
     }
 
     /**
@@ -696,6 +879,17 @@ class SyncCoordinator(context: Context) {
         const val FIELD_LEVEL = "level"
         const val FIELD_APP_PREFIX = "app"
         const val MAX_SUMMARY_APPS = 10
+
+        const val FIELD_RULE_NAME = "ruleName"
+        const val FIELD_LATITUDE = "lat"
+        const val FIELD_LONGITUDE = "lon"
+        const val FIELD_ACCURACY = "accuracy"
+        const val FIELD_EMERGENCY = "emergency"
+        const val FIELD_PLACE = "place"
+        const val FIELD_ARRIVED = "arrived"
+        const val FIELD_BLOCKED_COUNT = "blockedCount"
+        const val FIELD_DOMAIN_PREFIX = "domain"
+        const val MAX_SUMMARY_DOMAINS = 40
 
         /** Minutes, then the label — so a label containing a digit cannot confuse it. */
         const val APP_SEPARATOR = ':' 

@@ -77,6 +77,17 @@ class WebFilterStore(context: Context) {
         return runCatching { DnsFilter(host) }.getOrNull()
     }
 
+    /**
+     * Whether to count the sites this phone reaches (WF-3).
+     *
+     * Off until a parent turns it on. Android shows the person holding the phone a
+     * permanent notice while it is on, which is not an obstacle to work around —
+     * it is the only thing that makes counting acceptable.
+     */
+    var countVisits: Boolean
+        get() = prefs.getBoolean(KEY_COUNT_VISITS, false)
+        set(value) = prefs.edit { putBoolean(KEY_COUNT_VISITS, value) }
+
     var browserPolicy: BrowserPolicy
         get() = BrowserPolicy(
             forceSafeSearch = prefs.getBoolean(KEY_SAFE_SEARCH, false),
@@ -109,6 +120,7 @@ class WebFilterStore(context: Context) {
         const val KEY_BLOCKED = "blocked"
         const val KEY_ALLOWED = "allowed"
         const val KEY_SUSPEND_BROWSERS = "suspend_browsers"
+        const val KEY_COUNT_VISITS = "count_visits"
     }
 }
 

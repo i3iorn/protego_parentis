@@ -29,6 +29,19 @@ import kotlin.time.Duration.Companion.minutes
  */
 class ContextRuleStore(context: Context) {
 
+    /**
+     * Whether arriving at or leaving a saved place is announced to the parents
+     * (LOC-1).
+     *
+     * Lives here, with the places it is about. Off until a parent turns it on, and
+     * it sends the place's name and never a position — positions go only when a
+     * parent asks, visibly, or in an emergency.
+     */
+    var announceArrivals: Boolean
+        get() = prefs.getBoolean(KEY_ANNOUNCE_ARRIVALS, false)
+        set(value) = prefs.edit { putBoolean(KEY_ANNOUNCE_ARRIVALS, value) }
+
+
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
@@ -259,6 +272,7 @@ class ContextRuleStore(context: Context) {
     }
 
     private companion object {
+        const val KEY_ANNOUNCE_ARRIVALS = "announce_arrivals"
         const val FILE_NAME = "context_rules"
         const val MAX_DEPTH = 12
 

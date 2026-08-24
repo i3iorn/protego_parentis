@@ -7,8 +7,13 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.audit.Audit
+import dev.schrammel.dementor_watch.model.AuditAction
+import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.sync.DailySummary
 import dev.schrammel.dementor_watch.sync.DailySummaryStore
@@ -109,6 +114,14 @@ class ParentHomeActivity : ParentRoleActivity() {
                         getString(R.string.parent_row_bonus),
                         getString(R.string.parent_row_bonus_detail),
                     ) { startActivity(ParentBonusActivity.intent(this)) },
+                    navigationRow(
+                        getString(R.string.parent_row_lock),
+                        getString(R.string.parent_row_lock_detail),
+                    ) { confirmLock() },
+                    navigationRow(
+                        getString(R.string.parent_row_locate),
+                        getString(R.string.parent_row_locate_detail),
+                    ) { locate() },
                     navigationRow(
                         getString(R.string.parent_row_device),
                         getString(R.string.parent_row_device_detail),
@@ -233,6 +246,35 @@ class ParentHomeActivity : ParentRoleActivity() {
         val total = today.allowedMinutes + today.bonusMinutes
         if (total <= 0) return 0
         return ((today.usedMinutes * 100L) / total).coerceIn(0L, 100L).toInt()
+    }
+
+    /**
+     * Confirmed, because it is the one button here that reaches across and changes
+     * what the other phone is doing right now.
+     */
+    private fun confirmLock() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.parent_lock_confirm_title)
+            .setMessage(R.string.parent_lock_confirm_body)
+            .setPositiveButton(R.string.parent_row_lock) { _, _ ->
+                sync.publishLockNow()
+                Audit.record(this, AuditActor.PARENT, AuditAction.DEVICE_LOCKED)
+                Toast.makeText(this, R.string.parent_lock_sent, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /**
+     * Asks where the phone is.
+     *
+     * No confirmation: asking is not the irreversible part, and the child is told
+     * every time regardless — which is what makes it reasonable to ask at all.
+     */
+    private fun locate() {
+        sync.publishLocateRequest()
+        Audit.record(this, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
+        Toast.makeText(this, R.string.parent_locate_sent, Toast.LENGTH_SHORT).show()
     }
 
     private fun statusLine(configured: Boolean): String = when {

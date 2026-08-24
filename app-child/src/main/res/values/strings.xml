@@ -703,4 +703,128 @@
     <string name="biometric_failed">The phone would not set this up. The PIN still works.</string>
 
     <string name="audit_biometric_changed">Fingerprint or face unlock turned %1$s</string>
+
+    <!-- Locking the phone from a parent's device. -->
+    <string name="parent_row_lock">Lock the phone now</string>
+    <string name="parent_row_lock_detail">Send it straight to the lock screen</string>
+    <string name="parent_lock_confirm_title">Lock the phone?</string>
+    <string name="parent_lock_confirm_body">The screen goes to the lock screen at once. Nothing is deleted, and it unlocks with the usual code.</string>
+    <string name="parent_lock_sent">Sent. It locks at the next check-in.</string>
+    <string name="locked_notification_title">A parent locked this phone</string>
+    <string name="locked_notification_body">Unlock it the usual way. It is in the shared history.</string>
+
+    <!-- Automatic answers to requests. -->
+    <string name="rules_row_auto">Automatic answers</string>
+    <string name="rules_row_auto_detail">Say yes to small asks without being interrupted</string>
+    <string name="auto_title">Automatic answers</string>
+    <string name="auto_intro">A standing yes to the asks you already know your answer to. Anything bigger than the cap, or past the count, still comes to you — a rule can only say yes, never no.</string>
+    <string name="auto_empty">No automatic answers yet.</string>
+    <string name="auto_add">Add an automatic answer</string>
+    <string name="auto_name_header">Name</string>
+    <string name="auto_name_hint">A little extra</string>
+    <string name="auto_amount_header">Most it will give at once</string>
+    <string name="auto_count_header">How many times</string>
+    <string name="auto_window_day">Per day</string>
+    <string name="auto_window_week">Per week</string>
+    <string name="auto_enabled">Active</string>
+    <string name="auto_save">Save</string>
+    <string name="auto_delete">Delete this answer</string>
+    <string name="auto_needs_name">Give it a name.</string>
+    <string name="auto_row">Up to %1$s, %2$s</string>
+    <string name="auto_row_off">Up to %1$s, %2$s · off</string>
+    <plurals name="auto_times_day">
+        <item quantity="one">%1$d time a day</item>
+        <item quantity="other">%1$d times a day</item>
+    </plurals>
+    <plurals name="auto_times_week">
+        <item quantity="one">%1$d time a week</item>
+        <item quantity="other">%1$d times a week</item>
+    </plurals>
+    <string name="auto_notification_title">Answered without you</string>
+    <string name="auto_notification_body">Your rule \"%1$s\" approved a request.</string>
+    <string name="requests_state_auto">Approved automatically</string>
+
+    <!-- Per-app network blocking. -->
+    <string name="apps_network_blocked">No internet</string>
+    <string name="apps_network_hint">An app with no internet still opens — it just cannot reach anything. For an app that is only useful online, that is nearly the same as blocking it; for one that also works offline, it is much lighter.</string>
+
+    <!-- Web activity. -->
+    <string name="rules_row_web_activity">Where the browsing went</string>
+    <string name="rules_row_web_activity_detail">Today\'s sites, counted — and the switch that starts counting</string>
+    <string name="web_activity_title">Where the browsing went</string>
+    <string name="web_activity_intro">Sites reached today, and how often. No addresses, no times, and nothing about what was on them. Your parents see exactly this list.</string>
+    <string name="web_activity_enable">Count the sites this phone reaches</string>
+    <string name="web_activity_enable_hint">Android shows a permanent notice on this phone while it is on. That notice is the point: nothing here happens quietly.</string>
+    <string name="web_activity_empty">Nothing counted today.</string>
+    <string name="web_activity_off">Not counting.</string>
+    <plurals name="web_activity_blocked">
+        <item quantity="one">%1$d request blocked by the filter</item>
+        <item quantity="other">%1$d requests blocked by the filter</item>
+    </plurals>
+    <plurals name="web_activity_count">
+        <item quantity="one">%1$d time</item>
+        <item quantity="other">%1$d times</item>
+    </plurals>
+    <string name="web_activity_limits">This counts what the phone looked up, not what was watched. A video inside an app is not a site and will not appear here.</string>
+
+    <!-- Location. -->
+    <string name="parent_row_locate">Where is the phone?</string>
+    <string name="parent_row_locate_detail">Ask once. They are told every time you ask.</string>
+    <string name="parent_locate_sent">Asked. The answer arrives at the next check-in.</string>
+    <string name="parent_locate_none">Nowhere yet</string>
+    <string name="parent_locate_at">Last seen %1$s</string>
+    <string name="parent_locate_accuracy">to about %1$d m</string>
+    <string name="parent_locate_open">Open in maps</string>
+    <string name="parent_places_header">Coming and going</string>
+    <string name="place_arrived_title">Arrived</string>
+    <string name="place_left_title">Left</string>
+    <string name="place_arrived_body">Arrived at %1$s.</string>
+    <string name="place_left_body">Left %1$s.</string>
+    <string name="located_notification_title">A parent asked where you are</string>
+    <string name="located_notification_body">They were sent this phone\'s position. It is in the shared history.</string>
+    <string name="rules_row_places_alerts">Tell me about arrivals</string>
+    <string name="rules_row_places_alerts_detail">A message when the phone reaches or leaves a saved place</string>
+    <string name="places_alerts_enable">Send arrivals and departures</string>
+    <string name="places_alerts_hint">Sends the name of the place, never a position. Positions are only ever sent when a parent asks, or in an emergency.</string>
+
+    <!-- SOS. -->
+    <string name="sos_button">Emergency</string>
+    <string name="sos_confirm_title">Send an emergency?</string>
+    <string name="sos_confirm_body">Everyone in the family is told at once, and told where you are. Every limit on this phone lifts until you say it is over.
+
+If you are in danger, call emergency services first — this app is not a substitute for that.</string>
+    <string name="sos_send">Send it</string>
+    <string name="sos_active">Emergency sent</string>
+    <string name="sos_active_body">Your family is being told where you are. Nothing on this phone is limited until you end it.</string>
+    <string name="sos_clear">I am safe — end it</string>
+    <string name="sos_channel_name">Emergencies</string>
+    <string name="sos_channel_description">An emergency raised from the other phone. Never silenced.</string>
+    <string name="sos_notification_title">Emergency</string>
+    <string name="sos_notification_body">An emergency was raised on the other phone.</string>
+    <string name="sos_notification_moved">An emergency is running. A new position arrived.</string>
+    <string name="sos_cleared_title">Emergency ended</string>
+    <string name="sos_cleared_body">They marked themselves safe.</string>
+    <string name="sos_delay_warning">Parents\' phones check every few minutes, so this is not instant. Call emergency services if you need help now.</string>
+
+    <!-- History lines. -->
+    <string name="audit_device_locked">A parent locked the phone</string>
+    <string name="audit_request_auto_approved">Approved %1$s more on %2$s automatically</string>
+    <string name="audit_auto_rule_saved">Set up an automatic answer: %1$s, up to %2$s</string>
+    <string name="audit_auto_rule_deleted">Removed the automatic answer %1$s</string>
+    <string name="audit_app_network_blocked">%1$s lost internet access</string>
+    <string name="audit_app_network_allowed">%1$s got internet access back</string>
+    <string name="audit_web_logging_on">Started counting the sites reached</string>
+    <string name="audit_web_logging_off">Stopped counting the sites reached</string>
+    <string name="audit_locate_requested">A parent asked where the phone was</string>
+    <string name="audit_location_shared">The phone sent its position</string>
+    <string name="audit_place_entered">Arrived at %1$s</string>
+    <string name="audit_place_left">Left %1$s</string>
+    <string name="audit_sos_raised">An emergency was raised</string>
+    <string name="audit_sos_cleared">The emergency was ended</string>
+
+    <!-- What the privacy screen must now say. -->
+    <string name="privacy_location_header">Where you are</string>
+    <string name="privacy_location_body">Your position is sent only when a parent asks for it, or when you send an emergency. You are told every single time it is asked for, and every ask is in the shared history. Nothing keeps a trail: your parents\' phones hold one position, the most recent, and no history behind it.
+
+Arrivals and departures send the name of the place — \"Arrived at School\" — and no position at all.</string>
 </resources>

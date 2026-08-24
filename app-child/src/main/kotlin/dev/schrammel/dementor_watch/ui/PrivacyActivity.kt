@@ -65,6 +65,10 @@ class PrivacyActivity : DementorActivity() {
             // used rather than what the app did. A transparency screen that omits
             // the interesting part is worse than none.
             section(R.string.privacy_summary_header, R.string.privacy_summary_body)
+            // Location is the one place this app deliberately breaks its own rule
+            // about coordinates never leaving the device, so it says so at length
+            // rather than in passing.
+            section(R.string.privacy_location_header, R.string.privacy_location_body)
         } else {
             section(R.string.privacy_sent_header, R.string.privacy_sent_off)
         }

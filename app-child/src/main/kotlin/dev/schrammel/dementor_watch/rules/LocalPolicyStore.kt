@@ -91,6 +91,7 @@ class LocalPolicyStore(context: Context) {
         safetyAllowlist = SafetyAllowlist.of(appContext),
         dnsFilter = webFilterStore.filter(),
         browserPolicy = webFilterStore.browserPolicy,
+        networkBlockedPackages = networkBlockedPackages.map(::PackageName).toSet(),
         installPolicy = installPolicy,
         installWindowUntil = installWindowUntil,
         tamperProtection = tamperProtection,
@@ -221,6 +222,24 @@ class LocalPolicyStore(context: Context) {
         get() = prefs.getStringSet(KEY_BLOCKED, emptySet()).orEmpty()
         set(value) = write { putStringSet(KEY_BLOCKED, value) }
 
+    /**
+     * Apps barred from the network but still able to open (WF-4).
+     *
+     * A lighter touch than blocking: the app runs and says for itself that it is
+     * offline, rather than refusing to start with a system dialog nobody wrote.
+     */
+    var networkBlockedPackages: Set<String>
+        get() = prefs.getStringSet(KEY_NETWORK_BLOCKED, emptySet()).orEmpty()
+        set(value) = write { putStringSet(KEY_NETWORK_BLOCKED, value) }
+
+    fun setNetworkBlocked(packageName: String, blocked: Boolean) {
+        networkBlockedPackages = if (blocked) {
+            networkBlockedPackages + packageName
+        } else {
+            networkBlockedPackages - packageName
+        }
+    }
+
     /** Harsher than blocked: the icon disappears entirely. */
     var hiddenPackages: Set<String>
         get() = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
@@ -304,6 +323,7 @@ class LocalPolicyStore(context: Context) {
         const val KEY_BLOCKED = "blocked_packages"
         const val KEY_HIDDEN = "hidden_packages"
         const val KEY_INSTALL_WINDOW = "install_window_until"
+        const val KEY_NETWORK_BLOCKED = "network_blocked_packages"
         const val KEY_EXEMPT = "exempt_packages"
         const val KEY_CATEGORIES = "categories"
         const val KEY_APP_LIMITS = "app_limits"

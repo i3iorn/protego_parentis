@@ -19,6 +19,14 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- The enforcement service also takes a fix while answering a locate (LOC-2). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!--
+      Only for answering a locate a parent asked for, and for noticing arrivals at
+      saved places. Needs a Play declaration and a video at submission time.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
@@ -166,6 +174,42 @@
             android:exported="false"
             android:parentActivityName=".ui.SchedulesActivity" />
 
+        <!--
+          The black-hole tunnel for apps with no internet (WF-4).
+
+          BIND_VPN_SERVICE is enforced by the system, so only Android can start it.
+          The device owner names this package as the always-on VPN, which is also
+          what grants the consent — nothing is ever tapped on the child's phone.
+        -->
+        <service
+            android:name=".enforcement.BlockingVpnService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".ui.SosActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
+            android:name=".ui.WebActivityActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
+            android:name=".ui.AutoApprovalActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.AutoApprovalEditActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.AutoApprovalActivity" />
+
         <activity
             android:name=".ui.WebFilterActivity"
             android:exported="false"
@@ -185,6 +229,11 @@
             android:name=".ui.ContextRuleEditActivity"
             android:exported="false"
             android:parentActivityName=".ui.ContextRulesActivity" />
+
+        <activity
+            android:name=".ui.PlaceAlertsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
 
         <activity
             android:name=".ui.PlacesActivity"
@@ -275,7 +324,7 @@
         <service
             android:name=".enforcement.EnforcementService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="specialUse|location">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Enforces the family's screen-time rules and keeps the parent's dashboard current." />

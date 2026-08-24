@@ -93,6 +93,20 @@
                 android:textAppearance="@style/TextAppearance.Dementor.Caption" />
         </LinearLayout>
 
+        <!--
+          The emergency button (LOC-3).
+
+          Above the navigation and outside any list, because it has to be found by
+          someone who is not reading. It works with every app suspended and the
+          day's allowance spent: a safety feature behind a limit is not one.
+        -->
+        <Button
+            android:id="@+id/sos_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_lg"
+            android:text="@string/sos_button" />
+
         <!-- Navigation. Built in code so each row carries a description. -->
         <LinearLayout
             android:id="@+id/navigation"

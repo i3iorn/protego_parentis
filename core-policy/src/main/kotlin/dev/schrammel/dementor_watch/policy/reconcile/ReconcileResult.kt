@@ -21,6 +21,8 @@ data class ReconcileResult(
     val restrictionsCleared: Set<String> = emptySet(),
     /** Whether this pass changed where the device sends its DNS queries (WF-1). */
     val dnsChanged: Boolean = false,
+    /** Whether this pass started or stopped the app-blocking tunnel (WF-4). */
+    val vpnChanged: Boolean = false,
     /**
      * Attempts to restrict something that must never be restricted. Always empty
      * in normal operation; a non-empty list means a bug upstream and should raise

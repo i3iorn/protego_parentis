@@ -58,6 +58,11 @@ class RequestsActivity : DementorActivity() {
             // against, and "com.instagram.android" is not a question anyone can
             // answer from a notification.
             onRaised = { request -> sync.publishRequestRaised(request, describe(request.target)) },
+            // Without this the parents' inboxes keep showing a request nobody can
+            // answer any more, until it quietly expires.
+            onAutoApproved = { request, rule ->
+                sync.publishAutoApproved(request, describe(request.target), rule)
+            },
         )
 
         container = LinearLayout(this).apply {
@@ -222,7 +227,13 @@ class RequestsActivity : DementorActivity() {
         val note = request.decisionNote
         return when (request.state) {
             RequestState.PENDING -> getString(R.string.requests_state_pending)
-            RequestState.APPROVED -> getString(R.string.requests_state_approved) +
+            // Named rather than folded into "approved": a child should be able to
+            // tell an answer their parent gave from one the phone gave itself.
+            RequestState.APPROVED -> if (request.autoApprovedBy != null) {
+                getString(R.string.requests_state_auto)
+            } else {
+                getString(R.string.requests_state_approved)
+            } +
                 (note?.let { " — $it" }.orEmpty())
 
             RequestState.DENIED -> getString(R.string.requests_state_denied) +

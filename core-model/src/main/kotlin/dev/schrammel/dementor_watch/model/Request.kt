@@ -53,8 +53,19 @@ data class Request(
     val decidedAt: Instant? = null,
     val decidedBy: String? = null,
     val decisionNote: String? = null,
+    /**
+     * The standing rule that answered this, or null if a person did.
+     *
+     * Stored on the request because that is the durable record: the grant it
+     * produced expires tonight and the shared history is capped, but a request
+     * lives as long as the family does.
+     */
+    val autoApprovedBy: String? = null,
 ) {
     init {
+        require(autoApprovedBy == null || state == RequestState.APPROVED) {
+            "only an approved request can name the rule that approved it"
+        }
         require(amount.isPositive()) { "a request must ask for a positive amount of time" }
         require(expiresAt.isAfter(createdAt)) { "a request cannot expire before it is made" }
         // Every settled state carries its timestamp, including expiry and

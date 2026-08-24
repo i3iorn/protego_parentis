@@ -710,4 +710,128 @@
     <string name="biometric_failed">Telefonen ville inte ställa in det här. PIN-koden fungerar fortfarande.</string>
 
     <string name="audit_biometric_changed">Upplåsning med fingeravtryck eller ansikte slogs %1$s</string>
+
+    <!-- Att låsa telefonen från en förälders enhet. -->
+    <string name="parent_row_lock">Lås telefonen nu</string>
+    <string name="parent_row_lock_detail">Skicka den direkt till låsskärmen</string>
+    <string name="parent_lock_confirm_title">Låsa telefonen?</string>
+    <string name="parent_lock_confirm_body">Skärmen går till låsskärmen direkt. Ingenting raderas, och den låses upp med den vanliga koden.</string>
+    <string name="parent_lock_sent">Skickat. Den låses vid nästa avstämning.</string>
+    <string name="locked_notification_title">En förälder låste telefonen</string>
+    <string name="locked_notification_body">Lås upp som vanligt. Det står i den delade historiken.</string>
+
+    <!-- Automatiska svar på förfrågningar. -->
+    <string name="rules_row_auto">Automatiska svar</string>
+    <string name="rules_row_auto_detail">Säg ja till små önskemål utan att bli störd</string>
+    <string name="auto_title">Automatiska svar</string>
+    <string name="auto_intro">Ett stående ja till de önskemål du redan vet ditt svar på. Allt större än gränsen, eller utöver antalet, kommer fortfarande till dig — en regel kan bara säga ja, aldrig nej.</string>
+    <string name="auto_empty">Inga automatiska svar ännu.</string>
+    <string name="auto_add">Lägg till ett automatiskt svar</string>
+    <string name="auto_name_header">Namn</string>
+    <string name="auto_name_hint">Lite extra</string>
+    <string name="auto_amount_header">Mest den ger på en gång</string>
+    <string name="auto_count_header">Hur många gånger</string>
+    <string name="auto_window_day">Per dag</string>
+    <string name="auto_window_week">Per vecka</string>
+    <string name="auto_enabled">Aktivt</string>
+    <string name="auto_save">Spara</string>
+    <string name="auto_delete">Ta bort det här svaret</string>
+    <string name="auto_needs_name">Ge det ett namn.</string>
+    <string name="auto_row">Upp till %1$s, %2$s</string>
+    <string name="auto_row_off">Upp till %1$s, %2$s · av</string>
+    <plurals name="auto_times_day">
+        <item quantity="one">%1$d gång om dagen</item>
+        <item quantity="other">%1$d gånger om dagen</item>
+    </plurals>
+    <plurals name="auto_times_week">
+        <item quantity="one">%1$d gång i veckan</item>
+        <item quantity="other">%1$d gånger i veckan</item>
+    </plurals>
+    <string name="auto_notification_title">Besvarat utan dig</string>
+    <string name="auto_notification_body">Din regel \"%1$s\" godkände en förfrågan.</string>
+    <string name="requests_state_auto">Godkänd automatiskt</string>
+
+    <!-- Blockera internet för enskilda appar. -->
+    <string name="apps_network_blocked">Inget internet</string>
+    <string name="apps_network_hint">En app utan internet går fortfarande att öppna — den når bara ingenting. För en app som bara är användbar online är det nästan detsamma som att blockera den; för en som också fungerar offline är det mycket lindrigare.</string>
+
+    <!-- Webbaktivitet. -->
+    <string name="rules_row_web_activity">Vart surfandet tog vägen</string>
+    <string name="rules_row_web_activity_detail">Dagens sajter, räknade — och knappen som börjar räkna</string>
+    <string name="web_activity_title">Vart surfandet tog vägen</string>
+    <string name="web_activity_intro">Sajter som nåtts i dag, och hur ofta. Inga adresser, inga klockslag, och ingenting om vad som fanns på dem. Dina föräldrar ser exakt den här listan.</string>
+    <string name="web_activity_enable">Räkna sajterna telefonen når</string>
+    <string name="web_activity_enable_hint">Android visar en permanent notis på telefonen medan det är på. Den notisen är poängen: ingenting här sker i tysthet.</string>
+    <string name="web_activity_empty">Inget räknat i dag.</string>
+    <string name="web_activity_off">Räknar inte.</string>
+    <plurals name="web_activity_blocked">
+        <item quantity="one">%1$d förfrågan blockerad av filtret</item>
+        <item quantity="other">%1$d förfrågningar blockerade av filtret</item>
+    </plurals>
+    <plurals name="web_activity_count">
+        <item quantity="one">%1$d gång</item>
+        <item quantity="other">%1$d gånger</item>
+    </plurals>
+    <string name="web_activity_limits">Det här räknar vad telefonen slog upp, inte vad som tittades på. En video inuti en app är ingen sajt och syns inte här.</string>
+
+    <!-- Plats. -->
+    <string name="parent_row_locate">Var är telefonen?</string>
+    <string name="parent_row_locate_detail">Fråga en gång. De får veta varje gång du frågar.</string>
+    <string name="parent_locate_sent">Frågat. Svaret kommer vid nästa avstämning.</string>
+    <string name="parent_locate_none">Ingenstans ännu</string>
+    <string name="parent_locate_at">Senast sedd %1$s</string>
+    <string name="parent_locate_accuracy">till cirka %1$d m</string>
+    <string name="parent_locate_open">Öppna i kartor</string>
+    <string name="parent_places_header">Kommer och går</string>
+    <string name="place_arrived_title">Framme</string>
+    <string name="place_left_title">Lämnade</string>
+    <string name="place_arrived_body">Framme vid %1$s.</string>
+    <string name="place_left_body">Lämnade %1$s.</string>
+    <string name="located_notification_title">En förälder frågade var du är</string>
+    <string name="located_notification_body">De fick telefonens position. Det står i den delade historiken.</string>
+    <string name="rules_row_places_alerts">Berätta om ankomster</string>
+    <string name="rules_row_places_alerts_detail">Ett meddelande när telefonen når eller lämnar en sparad plats</string>
+    <string name="places_alerts_enable">Skicka ankomster och avfärder</string>
+    <string name="places_alerts_hint">Skickar platsens namn, aldrig en position. Positioner skickas bara när en förälder frågar, eller vid nödläge.</string>
+
+    <!-- Nödläge. -->
+    <string name="sos_button">Nödläge</string>
+    <string name="sos_confirm_title">Skicka ett nödläge?</string>
+    <string name="sos_confirm_body">Alla i familjen får veta direkt, och får veta var du är. Alla gränser på telefonen lyfts tills du säger att det är över.
+
+Är du i fara, ring nödnumret först — den här appen ersätter inte det.</string>
+    <string name="sos_send">Skicka</string>
+    <string name="sos_active">Nödläge skickat</string>
+    <string name="sos_active_body">Din familj får veta var du är. Ingenting på telefonen är begränsat förrän du avslutar.</string>
+    <string name="sos_clear">Jag är trygg — avsluta</string>
+    <string name="sos_channel_name">Nödlägen</string>
+    <string name="sos_channel_description">Ett nödläge från den andra telefonen. Tystas aldrig.</string>
+    <string name="sos_notification_title">Nödläge</string>
+    <string name="sos_notification_body">Ett nödläge utlöstes på den andra telefonen.</string>
+    <string name="sos_notification_moved">Ett nödläge pågår. En ny position kom in.</string>
+    <string name="sos_cleared_title">Nödläget avslutat</string>
+    <string name="sos_cleared_body">De markerade sig som trygga.</string>
+    <string name="sos_delay_warning">Föräldrarnas telefoner kollar med några minuters mellanrum, så det här går inte omedelbart. Ring nödnumret om du behöver hjälp nu.</string>
+
+    <!-- Historikrader. -->
+    <string name="audit_device_locked">En förälder låste telefonen</string>
+    <string name="audit_request_auto_approved">Godkände %1$s mer på %2$s automatiskt</string>
+    <string name="audit_auto_rule_saved">Skapade ett automatiskt svar: %1$s, upp till %2$s</string>
+    <string name="audit_auto_rule_deleted">Tog bort det automatiska svaret %1$s</string>
+    <string name="audit_app_network_blocked">%1$s förlorade internetåtkomst</string>
+    <string name="audit_app_network_allowed">%1$s fick tillbaka internetåtkomst</string>
+    <string name="audit_web_logging_on">Började räkna sajterna som nås</string>
+    <string name="audit_web_logging_off">Slutade räkna sajterna som nås</string>
+    <string name="audit_locate_requested">En förälder frågade var telefonen var</string>
+    <string name="audit_location_shared">Telefonen skickade sin position</string>
+    <string name="audit_place_entered">Framme vid %1$s</string>
+    <string name="audit_place_left">Lämnade %1$s</string>
+    <string name="audit_sos_raised">Ett nödläge utlöstes</string>
+    <string name="audit_sos_cleared">Nödläget avslutades</string>
+
+    <!-- Vad integritetsskärmen nu måste säga. -->
+    <string name="privacy_location_header">Var du är</string>
+    <string name="privacy_location_body">Din position skickas bara när en förälder frågar efter den, eller när du skickar ett nödläge. Du får veta varje enskild gång någon frågar, och varje fråga står i den delade historiken. Ingenting sparar ett spår: föräldrarnas telefoner håller en position, den senaste, och ingen historik bakom den.
+
+Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och ingen position alls.</string>
 </resources>

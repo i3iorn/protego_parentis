@@ -12,6 +12,7 @@ import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.sync.IncomingRequest
 import dev.schrammel.dementor_watch.sync.NewApp
 import dev.schrammel.dementor_watch.ui.AppControlActivity
+import dev.schrammel.dementor_watch.ui.AuditActivity
 import dev.schrammel.dementor_watch.ui.ParentDeviceActivity
 import dev.schrammel.dementor_watch.ui.ParentInboxActivity
 import dev.schrammel.dementor_watch.ui.RequestInboxActivity
@@ -41,6 +42,17 @@ class RequestNotifier(context: Context) {
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = appContext.getString(R.string.request_channel_incoming_description)
+            },
+        )
+        notifications.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_SOS,
+                appContext.getString(R.string.sos_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = appContext.getString(R.string.sos_channel_description)
+                enableVibration(true)
+                setBypassDnd(true)
             },
         )
         notifications.createNotificationChannel(
@@ -137,6 +149,100 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * A parent locked this phone.
+     *
+     * Posted before the screen goes dark, so it is waiting on the lock screen. A
+     * phone that locks itself with no explanation looks broken, and finding out
+     * why should not require unlocking it again.
+     */
+    fun notifyLocked() {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_LOCKED,
+            title = appContext.getString(R.string.locked_notification_title),
+            body = appContext.getString(R.string.locked_notification_body),
+            destination = AuditActivity.intent(appContext),
+        )
+    }
+
+    /**
+     * A parent asked where this phone is (LOC-2).
+     *
+     * Every time, without exception, and whether or not a position was found. A
+     * child told only about the successful ones has been misled about how often
+     * they are looked for — and that symmetry is the only thing separating this
+     * feature from the tracking the product refuses to be.
+     */
+    fun notifyLocated() {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_LOCATED,
+            title = appContext.getString(R.string.located_notification_title),
+            body = appContext.getString(R.string.located_notification_body),
+            destination = AuditActivity.intent(appContext),
+        )
+    }
+
+    /** A standing rule answered a request, on the parent's phone. */
+    fun notifyAutoApproved(ruleName: String) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_AUTO_APPROVED,
+            title = appContext.getString(R.string.auto_notification_title),
+            body = appContext.getString(R.string.auto_notification_body, ruleName),
+            destination = ParentInboxActivity.intent(appContext),
+        )
+    }
+
+    /** The child arrived at, or left, a saved place. */
+    fun notifyPlaceTransition(place: String, arrived: Boolean) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_PLACE,
+            title = appContext.getString(
+                if (arrived) R.string.place_arrived_title else R.string.place_left_title,
+            ),
+            body = appContext.getString(
+                if (arrived) R.string.place_arrived_body else R.string.place_left_body,
+                place,
+            ),
+            destination = ParentDeviceActivity.intent(appContext),
+        )
+    }
+
+    /**
+     * The child raised an emergency (LOC-3).
+     *
+     * The one notification in this app that is allowed to be loud, and the one
+     * that is never throttled: everything else here is tuned not to teach a parent
+     * to swipe without reading, and this is what that restraint was being saved
+     * for.
+     */
+    fun notifySos(moved: Boolean) {
+        post(
+            channel = CHANNEL_SOS,
+            id = NOTIFICATION_SOS,
+            title = appContext.getString(R.string.sos_notification_title),
+            body = appContext.getString(
+                if (moved) R.string.sos_notification_moved else R.string.sos_notification_body,
+            ),
+            destination = ParentDeviceActivity.intent(appContext),
+            ongoing = true,
+        )
+    }
+
+    fun notifySosCleared() {
+        notifications.cancel(NOTIFICATION_SOS)
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_SOS_CLEARED,
+            title = appContext.getString(R.string.sos_cleared_title),
+            body = appContext.getString(R.string.sos_cleared_body),
+            destination = ParentDeviceActivity.intent(appContext),
+        )
+    }
+
     /** The request has been answered, one way or the other. */
     fun notifyDecision(request: Request) {
         val body = when (request.state) {
@@ -158,7 +264,14 @@ class RequestNotifier(context: Context) {
         )
     }
 
-    private fun post(channel: String, id: Int, title: String, body: String, destination: Intent) {
+    private fun post(
+        channel: String,
+        id: Int,
+        title: String,
+        body: String,
+        destination: Intent,
+        ongoing: Boolean = false,
+    ) {
         notifications.notify(
             id,
             NotificationCompat.Builder(appContext, channel)
@@ -166,7 +279,8 @@ class RequestNotifier(context: Context) {
                 .setContentTitle(title)
                 .setContentText(body)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-                .setAutoCancel(true)
+                .setAutoCancel(!ongoing)
+                .setOngoing(ongoing)
                 .setContentIntent(
                     PendingIntent.getActivity(
                         appContext,
@@ -183,10 +297,19 @@ class RequestNotifier(context: Context) {
         const val CHANNEL_INCOMING = "requests_incoming"
         const val CHANNEL_DECISION = "requests_decision"
 
+        /** Its own channel, so a family can silence everything else and not this. */
+        const val CHANNEL_SOS = "sos"
+
         // Fixed ids: a second request replaces the first rather than stacking up.
         const val NOTIFICATION_INCOMING = 3
         const val NOTIFICATION_DECISION = 4
         const val NOTIFICATION_NEW_APP = 5
         const val NOTIFICATION_SILENT = 6
+        const val NOTIFICATION_LOCKED = 7
+        const val NOTIFICATION_LOCATED = 8
+        const val NOTIFICATION_AUTO_APPROVED = 9
+        const val NOTIFICATION_PLACE = 10
+        const val NOTIFICATION_SOS = 11
+        const val NOTIFICATION_SOS_CLEARED = 12
     }
 }

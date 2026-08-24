@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
@@ -13,11 +14,16 @@ import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.Heartbeat
 import dev.schrammel.dementor_watch.model.IntegrityProblem
 import dev.schrammel.dementor_watch.policy.IntegrityRules
+import android.content.ActivityNotFoundException
+import androidx.core.net.toUri
+import dev.schrammel.dementor_watch.sync.FamilyEventStore
 import dev.schrammel.dementor_watch.sync.HeartbeatStore
 import dev.schrammel.dementor_watch.sync.NewApp
 import dev.schrammel.dementor_watch.sync.NewAppStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
 private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
@@ -37,12 +43,16 @@ class ParentDeviceActivity : ParentRoleActivity() {
 
     private lateinit var heartbeats: HeartbeatStore
     private lateinit var newApps: NewAppStore
+    private lateinit var family: FamilyEventStore
     private lateinit var sync: SyncCoordinator
     private lateinit var column: LinearLayout
+
+    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         heartbeats = HeartbeatStore(this)
         newApps = NewAppStore(this)
+        family = FamilyEventStore(this)
         sync = SyncCoordinator(this)
         column = contentColumn()
         showColumn(column)
@@ -72,6 +82,49 @@ class ParentDeviceActivity : ParentRoleActivity() {
         if (problems.isNotEmpty()) {
             column.addView(sectionHeader(getString(R.string.device_attention_header)))
             column.addView(group(problems.map(::problemRow)))
+        }
+
+        column.addView(sectionHeader(getString(R.string.parent_row_locate)))
+        column.addView(whereCard())
+
+        family.transitions().take(TRANSITION_ROWS).takeIf { it.isNotEmpty() }?.let { events ->
+            column.addView(sectionHeader(getString(R.string.parent_places_header)))
+            column.addView(
+                group(
+                    events.map { event ->
+                        statRow(
+                            getString(
+                                if (event.arrived) {
+                                    R.string.place_arrived_body
+                                } else {
+                                    R.string.place_left_body
+                                },
+                                event.place,
+                            ),
+                            timeFormat.format(event.at.atZone(ZoneId.systemDefault())),
+                        )
+                    },
+                ),
+            )
+        }
+
+        family.webSummary()?.takeIf { it.domains.isNotEmpty() }?.let { web ->
+            column.addView(sectionHeader(getString(R.string.web_activity_title)))
+            column.addView(
+                group(
+                    web.domains.take(DOMAIN_ROWS).map { (domain, count) ->
+                        statRow(
+                            domain,
+                            resources.getQuantityString(
+                                R.plurals.web_activity_count,
+                                count,
+                                count,
+                            ),
+                        )
+                    },
+                ),
+            )
+            column.addView(captionText(getString(R.string.web_activity_limits)))
         }
 
         val pending = newApps.all()
@@ -143,6 +196,65 @@ class ParentDeviceActivity : ParentRoleActivity() {
                 heartbeat.policyVersion.toString(),
             ),
         )
+    }
+
+    /**
+     * The last position the child's phone sent.
+     *
+     * One position, with no history behind it. A parent can ask again; they
+     * cannot scroll back, because a phone quietly accumulating a movement log
+     * somewhere the child cannot see it is the thing this product refuses to be.
+     */
+    private fun whereCard(): LinearLayout = card {
+        val position = family.lastPosition
+        if (position == null) {
+            addView(
+                TextView(this@ParentDeviceActivity).apply {
+                    setText(R.string.parent_locate_none)
+                    styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                },
+            )
+            addView(captionText(getString(R.string.parent_row_locate_detail)))
+            return@card
+        }
+
+        addView(
+            TextView(this@ParentDeviceActivity).apply {
+                text = getString(
+                    R.string.parent_locate_at,
+                    timeFormat.format(position.at.atZone(ZoneId.systemDefault())),
+                )
+                styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            },
+        )
+        addView(
+            captionText(
+                getString(R.string.parent_locate_accuracy, position.accuracyMetres),
+            ),
+        )
+        addView(
+            Button(this@ParentDeviceActivity).apply {
+                setText(R.string.parent_locate_open)
+                setOnClickListener { openInMaps(position.latitude, position.longitude) }
+            },
+        )
+    }
+
+    /**
+     * Hands the position to whatever map app is installed.
+     *
+     * A `geo:` intent rather than a map drawn here: this app has no map library,
+     * no tile budget and no business having either, and every phone already has
+     * something that does this better.
+     */
+    private fun openInMaps(latitude: Double, longitude: Double) {
+        val uri = "geo:$latitude,$longitude?q=$latitude,$longitude".toUri()
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            .onFailure { error ->
+                if (error is ActivityNotFoundException) {
+                    Toast.makeText(this, R.string.parent_locate_none, Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 
     private fun problemRow(problem: IntegrityProblem): LinearLayout =
@@ -249,6 +361,13 @@ class ParentDeviceActivity : ParentRoleActivity() {
     }
 
     companion object {
+        /** Enough to answer "did they get there"; too few to read as a trail. */
+        private const val TIME_PATTERN = "HH:mm"
+
+        /** Enough to answer "did they get there"; too few to read as a trail. */
+        private const val TRANSITION_ROWS = 6
+        private const val DOMAIN_ROWS = 15
+
         fun intent(context: Context) = Intent(context, ParentDeviceActivity::class.java)
     }
 }

@@ -11,6 +11,8 @@ import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestId
 import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.policy.PolicyClock
+import dev.schrammel.dementor_watch.policy.request.AutoApprovalRules
+import dev.schrammel.dementor_watch.policy.request.AutoDecision
 import dev.schrammel.dementor_watch.policy.request.RequestRules
 import dev.schrammel.dementor_watch.policy.request.SubmitDecision
 import java.time.Instant
@@ -41,6 +43,11 @@ class RequestCoordinator(
      * would echo it straight back and the phones would answer each other forever.
      */
     private val onDecided: ((Request) -> Unit)? = null,
+    /**
+     * Called when a standing rule answered instead of a person, so the parents'
+     * inboxes can settle rather than showing a request nobody will ever answer.
+     */
+    private val onAutoApproved: ((Request, String) -> Unit)? = null,
 ) {
 
     private val appContext = context.applicationContext
@@ -48,6 +55,7 @@ class RequestCoordinator(
     private val grants = GrantStore(appContext)
     private val policyStore = LocalPolicyStore(appContext)
     private val notifier = RequestNotifier(appContext)
+    private val autoRules = AutoApprovalStore(appContext)
 
     fun all(now: Instant = Instant.now()): List<Request> = requests.all(now)
 
@@ -84,10 +92,61 @@ class RequestCoordinator(
             expiresAt = now.plusMillis(RequestRules.DEFAULT_LIFETIME.inWholeMilliseconds),
         )
         requests.save(request)
+        // Always recorded as an ask, even when the answer is instant. Two rows
+        // rather than one, or the shared history shows time granted with nothing
+        // asking for it.
         record(AuditActor.CHILD, AuditAction.REQUEST_RAISED, request)
+
+        autoApprove(request, now)?.let { return it }
+
         notifier.notifyRequestReceived(request)
         onRaised?.invoke(request)
         return request
+    }
+
+    /**
+     * Lets a standing rule answer, if one will.
+     *
+     * Note what does not happen when none will: nothing. The request stays open
+     * and goes to a parent exactly as before. There is deliberately no automatic
+     * *denial* — three of those in an evening would spend the child's
+     * three-denials-a-day allowance and lock them out of asking a person, which
+     * would mean the machine had taken away the right to ask.
+     */
+    private fun autoApprove(request: Request, now: Instant): Request? {
+        val decision = AutoApprovalRules.decide(
+            request = request,
+            rules = autoRules.rules,
+            history = requests.all(now),
+            dayStart = startOfToday(now),
+            weekStart = startOfWeek(now),
+        )
+        val rule = (decision as? AutoDecision.Approve)?.rule ?: return null
+
+        val (approved, grant) = RequestRules.autoApprove(
+            request = request,
+            now = now,
+            ruleId = rule.id,
+            grantExpiresAt = endOfToday(now),
+            grantId = GrantId(UUID.randomUUID().toString()),
+        )
+        // The grant first, as with a parent's approval: a crash between the two
+        // leaves spare time and a pending ask, which is recoverable, where the
+        // other order leaves an approval that granted nothing.
+        grants.add(grant)
+        requests.save(approved)
+        autoRules.recordFired()
+
+        Audit.record(
+            context = appContext,
+            actor = AuditActor.SYSTEM,
+            action = AuditAction.REQUEST_AUTO_APPROVED,
+            subject = TargetLabels.describe(appContext, approved.target),
+            after = Audit.minutes(approved.amount.inWholeMinutes.toInt()),
+        )
+        notifier.notifyDecision(approved)
+        onAutoApproved?.invoke(approved, rule.name)
+        return approved
     }
 
     /**
@@ -165,6 +224,16 @@ class RequestCoordinator(
         return PolicyClock.dayStart(day, policy.timeZone, policy.dayBoundaryHour)
     }
 
+    /**
+     * The start of the policy week, for counting a weekly allowance.
+     *
+     * Seven policy days back rather than "since Monday": a rolling week cannot be
+     * reset by waiting for a boundary, and a child who has learned that Sunday
+     * evening is free would have found the one gap worth finding.
+     */
+    private fun startOfWeek(now: Instant): Instant =
+        startOfToday(now).minusMillis(WEEK_DAYS * MILLIS_PER_DAY)
+
     private fun endOfToday(now: Instant): Instant {
         val policy = policyStore.load()
         val day = PolicyClock.policyDay(now, policy.timeZone, policy.dayBoundaryHour)
@@ -174,5 +243,8 @@ class RequestCoordinator(
     private companion object {
         /** Until the server exists, the answer comes from whoever holds the PIN. */
         const val DECIDED_BY_PARENT = "parent"
+
+        const val WEEK_DAYS = 7L
+        const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
     }
 }

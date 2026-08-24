@@ -79,6 +79,16 @@ enum class AuditAction(val valueKind: ValueKind) {
     BONUS_GRANTED(ValueKind.MINUTES),
     BONUS_CLEARED(ValueKind.NONE),
 
+    /**
+     * A standing rule answered instead of a person.
+     *
+     * Recorded with [AuditActor.SYSTEM], because recording it as a parent would be
+     * a lie in the one log this product promises is honest.
+     */
+    REQUEST_AUTO_APPROVED(ValueKind.MINUTES),
+    AUTO_RULE_SAVED(ValueKind.MINUTES),
+    AUTO_RULE_DELETED(ValueKind.NONE),
+
     // ---------- the device itself ----------
     PIN_CHANGED(ValueKind.NONE),
     BIOMETRIC_UNLOCK_CHANGED(ValueKind.FLAG),
@@ -90,7 +100,22 @@ enum class AuditAction(val valueKind: ValueKind) {
     INSTALL_POLICY_CHANGED(ValueKind.TOKEN),
     INSTALL_WINDOW_OPENED(ValueKind.MINUTES),
     TAMPER_PROTECTION_CHANGED(ValueKind.FLAG),
+    APP_NETWORK_CHANGED(ValueKind.FLAG),
+    WEB_LOGGING_CHANGED(ValueKind.FLAG),
+
+    // ---------- where the phone is ----------
+
+    /** A parent asked where the phone was. Recorded whether or not it answered. */
+    LOCATE_REQUESTED(ValueKind.NONE),
+
+    /** The phone answered with a position. */
+    LOCATION_SHARED(ValueKind.NONE),
+    PLACE_ENTERED(ValueKind.NONE),
+    PLACE_LEFT(ValueKind.NONE),
+    SOS_RAISED(ValueKind.NONE),
+    SOS_CLEARED(ValueKind.NONE),
     DEVICE_RELEASED(ValueKind.NONE),
+    DEVICE_LOCKED(ValueKind.NONE),
     ROLE_CHANGED(ValueKind.TOKEN),
 }
 

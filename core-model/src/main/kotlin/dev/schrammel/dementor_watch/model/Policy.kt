@@ -57,6 +57,15 @@ data class Policy(
     val dnsFilter: DnsFilter? = null,
     /** What managed browsers are told to do (WF-2). */
     val browserPolicy: BrowserPolicy = BrowserPolicy.OFF,
+    /**
+     * Apps a parent has barred from the network entirely (WF-4).
+     *
+     * Distinct from blocking an app: a blocked app will not open, while one on
+     * this list opens and finds itself offline. For an app whose whole point is
+     * the network that is nearly the same thing, and for one that also works
+     * offline it is a much lighter touch.
+     */
+    val networkBlockedPackages: Set<PackageName> = emptySet(),
     val installPolicy: InstallPolicy = InstallPolicy.NOTIFY,
     /**
      * When a parent-opened installation window closes, under [InstallPolicy.GATED].

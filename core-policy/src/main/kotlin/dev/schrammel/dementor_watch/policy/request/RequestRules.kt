@@ -123,6 +123,50 @@ object RequestRules {
         return approved to grant
     }
 
+    /**
+     * Approves [request] under a standing rule (RQ-1).
+     *
+     * The same pairing invariant as [approve]: the request and its grant are
+     * produced together because they must be applied together.
+     *
+     * Note what this does *not* have — a matching `autoDeny`. A standing rule that
+     * cannot answer leaves the request pending for a person, and never denies it.
+     * Recording an automatic "not this time" as a denial would spend the child's
+     * three-denials-a-day allowance on answers no human gave, and the third one
+     * would lock them out of asking a person at all. The machine must not be able
+     * to spend the right to ask.
+     */
+    fun autoApprove(
+        request: Request,
+        now: Instant,
+        ruleId: String,
+        grantExpiresAt: Instant,
+        grantId: GrantId,
+    ): Pair<Request, Grant> {
+        require(request.state.isOpen) { "only a pending request can be approved" }
+
+        val by = "$AUTOMATIC_PREFIX$ruleId"
+        val approved = request.copy(
+            state = RequestState.APPROVED,
+            decidedAt = now,
+            decidedBy = by,
+            autoApprovedBy = ruleId,
+        )
+        val grant = Grant(
+            id = grantId,
+            target = request.target,
+            amount = request.amount,
+            grantedAt = now,
+            expiresAt = grantExpiresAt,
+            grantedBy = by,
+            sourceRequestId = request.id.value,
+        )
+        return approved to grant
+    }
+
+    /** How an automatic approval signs itself, in the request and in the grant. */
+    const val AUTOMATIC_PREFIX = "auto:"
+
     fun deny(request: Request, now: Instant, by: String, note: String? = null): Request {
         require(request.state.isOpen) { "only a pending request can be denied" }
         return request.copy(

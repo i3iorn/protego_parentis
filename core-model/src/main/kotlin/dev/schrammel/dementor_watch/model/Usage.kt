@@ -33,6 +33,18 @@ data class DeviceState(
     val foregroundPackage: PackageName? = null,
     val callInProgress: Boolean = false,
     val navigationInProgress: Boolean = false,
+    /**
+     * An emergency the child raised (LOC-3).
+     *
+     * Lifts every restriction outright, rather than deferring it the way a call
+     * does. The difference matters: a deferred suspension is still coming, and a
+     * child who has pressed the SOS button should not find the phone locking down
+     * again the moment it thinks the emergency is over.
+     *
+     * Device state rather than policy, because it is a fact about the phone right
+     * now and not a rule the family wrote.
+     */
+    val emergency: Boolean = false,
 ) {
     val suspensionDeferred: Boolean get() = callInProgress || navigationInProgress
 

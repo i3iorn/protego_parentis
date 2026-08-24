@@ -2,12 +2,16 @@ package dev.schrammel.dementor_watch.dpc
 
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
+import android.app.admin.DnsEvent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.PersistableBundle
 import android.util.Log
 import dev.schrammel.dementor_watch.provisioning.ProvisioningPayload
+import dev.schrammel.dementor_watch.rules.WebActivityStore
+import dev.schrammel.dementor_watch.rules.WebFilterStore
+import java.time.LocalDate
 
 /**
  * The device owner component.
@@ -48,6 +52,44 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
             Log.w(TAG, "Provisioning finished without complete pairing details")
         }
         Log.i(TAG, "Provisioning complete, paired=${pairing.isComplete}")
+    }
+
+    /**
+     * A batch of DNS lookups and connections is ready (WF-3).
+     *
+     * Retrieved and counted immediately, then dropped. The batch itself is the
+     * intimate thing — it has timestamps, addresses and which app asked — and none
+     * of that is written anywhere. What survives is a count per domain for today,
+     * which is what the family agreed to and all they agreed to.
+     */
+    override fun onNetworkLogsAvailable(
+        context: Context,
+        intent: Intent,
+        batchToken: Long,
+        networkLogsCount: Int,
+    ) {
+        if (!WebFilterStore(context).countVisits) return
+
+        val dpm = context.getSystemService(DevicePolicyManager::class.java) ?: return
+        val events = runCatching { dpm.retrieveNetworkLogs(componentName(context), batchToken) }
+            .getOrElse {
+                Log.w(TAG, "Could not read the network log batch", it)
+                null
+            } ?: return
+
+        val hostnames = mutableListOf<String>()
+        var blocked = 0
+        events.forEach { event ->
+            if (event !is DnsEvent) return@forEach
+            hostnames += event.hostname
+            // A lookup that resolved to nothing is what a filtering resolver does
+            // to a blocked site. Counted separately so a family can see the filter
+            // working rather than having to take it on trust.
+            if (event.totalResolvedAddressCount == 0) blocked++
+        }
+
+        WebActivityStore(context).record(LocalDate.now(), hostnames, blocked)
+        Log.d(TAG, "Counted a batch of $networkLogsCount events")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {

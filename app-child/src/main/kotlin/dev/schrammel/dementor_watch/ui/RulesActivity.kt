@@ -57,6 +57,9 @@ class RulesActivity : ParentGatedActivity() {
                 row(R.string.rules_row_web, R.string.rules_row_web_detail) {
                     startActivity(WebFilterActivity.intent(this))
                 },
+                row(R.string.rules_row_web_activity, R.string.rules_row_web_activity_detail) {
+                    startActivity(WebActivityActivity.intent(this))
+                },
             ),
         )
 
@@ -68,6 +71,9 @@ class RulesActivity : ParentGatedActivity() {
                 },
                 row(R.string.rules_row_context, R.string.rules_row_context_detail) {
                     startActivity(ContextRulesActivity.intent(this))
+                },
+                row(R.string.rules_row_places_alerts, R.string.rules_row_places_alerts_detail) {
+                    startActivity(PlaceAlertsActivity.intent(this))
                 },
                 row(R.string.rules_row_goal, R.string.rules_row_goal_detail) {
                     startActivity(Intent(this, GoalActivity::class.java))
@@ -83,6 +89,9 @@ class RulesActivity : ParentGatedActivity() {
             listOf(
                 row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
                     startActivity(RequestInboxActivity.intent(this))
+                },
+                row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
+                    startActivity(AutoApprovalActivity.intent(this))
                 },
                 row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
                     startActivity(SyncSettingsActivity.intent(this))

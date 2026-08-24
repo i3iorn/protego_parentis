@@ -60,6 +60,48 @@ interface DevicePolicyPort {
     fun setApplicationRestrictions(pkg: PackageName, restrictions: Map<String, RestrictionValue>)
 
     /**
+     * Locks the screen immediately.
+     *
+     * A command, not desired state: there is nothing to diff it against, so it is
+     * never called by the reconciler. See [DeviceLocker].
+     */
+    fun lockScreen()
+
+    /**
+     * Whether the phone actually has a lock — a PIN, pattern or password.
+     *
+     * Without one, locking the screen only puts it to sleep. A parent pressing
+     * "lock now" and getting a screen that swipes straight back open has been told
+     * something untrue, so the caller checks first and says so.
+     */
+    fun hasSecureLockScreen(): Boolean
+
+    /** Whether the device is currently recording DNS lookups and connections. */
+    fun isNetworkLoggingEnabled(): Boolean
+
+    /**
+     * Starts or stops network logging (WF-3).
+     *
+     * The platform shows the user a permanent notice while this is on, which is
+     * not a side effect to be worked around — it is the transparency this feature
+     * is only acceptable with.
+     */
+    fun setNetworkLoggingEnabled(enabled: Boolean): Boolean
+
+    /** The package currently set as the device's always-on VPN, or null. */
+    fun currentAlwaysOnVpn(): String?
+
+    /**
+     * Sets, or clears, the always-on VPN package (WF-4).
+     *
+     * Returns false when the package cannot serve as one. Lockdown is deliberately
+     * not exposed: with it on, every app loses the network whenever the VPN is
+     * down, which for a feature meant to block three apps would be a phone with no
+     * internet.
+     */
+    fun setAlwaysOnVpn(packageName: String?): Boolean
+
+    /**
      * Relinquishes device ownership. Irreversible without a factory reset, and
      * every policy-clearing call must already have happened — see [DeviceReleaser].
      */
