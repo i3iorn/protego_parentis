@@ -41,6 +41,7 @@ VAD DEN GÖR
 • Lås skärmen nu, från en förälders telefon.
 • En nödknapp som den unga alltid kan nå, oavsett vad som annars är blockerat.
 • Korta meddelanden mellan telefonerna. Bara text och emoji.
+• Gå med i en familj genom att skanna en kod, eller genom att skriva in den.
 
 
 VAD SOM SKILJER DEN
@@ -58,7 +59,7 @@ Det finns inget konto, ingen registrering och ingen server hos oss. Vi tar aldri
 
 Telefonerna i en familj pratar med varandra via en relätjänst du väljer — en publik som standard, eller din egen om du föredrar det. Allt krypteras på den sändande telefonen först, så relätjänsten bär förseglade meddelanden den inte kan läsa. Varje telefon signerar det den skickar med en nyckel som skapats i telefonens egen hårdvarunyckelbutik.
 
-Ingen reklam. Ingen analys. Inga tredjeparts-SDK:er över huvud taget. Ingenting säljs eller delas med någon.
+Ingen reklam. Ingen analys. Ingen kraschrapportering. Ingenting i appen rapporterar tillbaka till någon, och ingenting säljs eller delas. De enda bibliotek den använder är sådana som ritar och läser en QR-kod, på telefonen.
 
 Dina meddelanden, foton, tangenttryckningar och skärminnehåll läses inte, lagras inte och skickas inte. Appen har ingen åtkomst till dem och begär ingen behörighet som skulle ge den det.
 

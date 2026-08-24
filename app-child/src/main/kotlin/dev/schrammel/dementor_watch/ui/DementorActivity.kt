@@ -21,16 +21,27 @@ import androidx.core.view.WindowInsetsCompat
  */
 abstract class DementorActivity : AppCompatActivity() {
 
+    /**
+     * Whether this screen should also move out of the keyboard's way.
+     *
+     * Off by default, because every other screen in this app is a scroll view: the
+     * keyboard covering the bottom of a scrolling column is fine, since the field
+     * being typed into scrolls itself into view. It is only a problem where
+     * something is pinned to the bottom and has to stay reachable — which is the
+     * chat composer, and nothing else.
+     */
+    protected open val movesForKeyboard: Boolean = false
+
     override fun setContentView(view: View) {
         super.setContentView(view)
-        view.padForSystemBars()
+        view.padForSystemBars(movesForKeyboard)
     }
 
     override fun setContentView(layoutResID: Int) {
         super.setContentView(layoutResID)
         findViewById<View>(android.R.id.content)
             ?.let { (it as? android.view.ViewGroup)?.getChildAt(0) ?: it }
-            ?.padForSystemBars()
+            ?.padForSystemBars(movesForKeyboard)
     }
 }
 
@@ -42,18 +53,26 @@ abstract class DementorActivity : AppCompatActivity() {
  * lose its own padding the moment the insets arrived — or gain it twice if they
  * arrived more than once, which they do on rotation and when the keyboard opens.
  */
-internal fun View.padForSystemBars() {
+internal fun View.padForSystemBars(followKeyboard: Boolean = false) {
     val original = Insets.of(paddingLeft, paddingTop, paddingRight, paddingBottom)
 
     ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInsets ->
         val bars = windowInsets.getInsets(
             WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
         )
+        // The larger of the two, never the sum. The keyboard is drawn over the
+        // navigation bar, so adding both lifts the content by a gesture bar's
+        // height of empty space above the keys.
+        val bottom = if (followKeyboard) {
+            maxOf(bars.bottom, windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom)
+        } else {
+            bars.bottom
+        }
         view.setPadding(
             original.left + bars.left,
             original.top + bars.top,
             original.right + bars.right,
-            original.bottom + bars.bottom,
+            original.bottom + bottom,
         )
         windowInsets
     }

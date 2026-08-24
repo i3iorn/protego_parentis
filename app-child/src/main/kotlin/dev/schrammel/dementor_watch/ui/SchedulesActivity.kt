@@ -58,6 +58,14 @@ class SchedulesActivity : ParentGatedActivity() {
         val schedules = store.schedules.sortedBy { it.startMinuteOfDay }
         if (schedules.isEmpty()) {
             column.addView(bodyText(getString(R.string.schedules_empty)))
+            // Offered rather than created. A family that opens this screen and
+            // finds three windows already switched on has had rules made for them
+            // by an app, which is the opposite of what this product is — so these
+            // arrive off, named, and with the times a parent would have typed
+            // anyway, leaving the decision where it belongs.
+            column.addView(sectionHeader(getString(R.string.schedules_starters_header)))
+            column.addView(captionText(getString(R.string.schedules_starters_hint)))
+            column.addView(group(STARTERS.map(::starterRow)))
         } else {
             column.addView(group(schedules.map(::row)))
         }
@@ -73,6 +81,43 @@ class SchedulesActivity : ParentGatedActivity() {
             },
         )
     }
+
+    /**
+     * A suggestion, which becomes a real schedule the moment it is tapped.
+     *
+     * Saved switched off and opened for editing straight away: the times here are
+     * a guess at somebody else’s week, and the one thing worse than an empty
+     * screen is a rule that started applying before anyone read it.
+     */
+    private fun starterRow(starter: Starter) = navigationRow(
+        title = getString(starter.name),
+        subtitle = getString(
+            R.string.schedules_starter_detail,
+            Format.time(java.time.LocalTime.of(starter.startHour, starter.startMinute)),
+            Format.time(java.time.LocalTime.of(starter.endHour, starter.endMinute)),
+        ),
+    ) {
+        val created = StoredSchedule(
+            id = java.util.UUID.randomUUID().toString(),
+            name = getString(starter.name),
+            days = starter.days,
+            startMinuteOfDay = starter.startHour * MINUTES_PER_HOUR + starter.startMinute,
+            endMinuteOfDay = starter.endHour * MINUTES_PER_HOUR + starter.endMinute,
+            enabled = false,
+        )
+        store.upsert(created)
+        startActivity(ScheduleEditActivity.intent(this, created.id))
+    }
+
+    /** A named window a family is likely to want, with the hours already in it. */
+    private data class Starter(
+        val name: Int,
+        val days: Set<Int>,
+        val startHour: Int,
+        val startMinute: Int,
+        val endHour: Int,
+        val endMinute: Int,
+    )
 
     private fun row(schedule: StoredSchedule) = navigationRow(
         title = schedule.name.ifBlank { getString(R.string.schedules_unnamed) },
@@ -98,6 +143,24 @@ class SchedulesActivity : ParentGatedActivity() {
     }
 
     companion object {
+        private const val MINUTES_PER_HOUR = 60
+
+        /** Monday to Friday, in ISO day numbers. */
+        private val WEEKDAYS = setOf(1, 2, 3, 4, 5)
+
+        /**
+         * The three windows almost every family ends up describing.
+         *
+         * Times chosen to be plainly editable rather than plausibly correct —
+         * nobody’s school day is exactly this, and the point is that the shape
+         * is there and only the numbers need changing.
+         */
+        private val STARTERS = listOf(
+            Starter(R.string.schedules_starter_school, WEEKDAYS, 8, 30, 15, 0),
+            Starter(R.string.schedules_starter_homework, WEEKDAYS, 16, 0, 17, 30),
+            Starter(R.string.schedules_starter_dinner, setOf(1, 2, 3, 4, 5, 6, 7), 18, 0, 19, 0),
+        )
+
         fun intent(context: Context) = Intent(context, SchedulesActivity::class.java)
     }
 }

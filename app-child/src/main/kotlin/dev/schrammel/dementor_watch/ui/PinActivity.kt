@@ -21,6 +21,8 @@ import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
+import dev.schrammel.dementor_watch.security.RoleStore
+import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.BiometricGate
 import dev.schrammel.dementor_watch.security.PinAttempts
 import dev.schrammel.dementor_watch.security.PinLock
@@ -54,6 +56,9 @@ class PinActivity : DementorActivity() {
     private lateinit var biometrics: BiometricGate
 
     private lateinit var prompt: TextView
+
+    /** The "this is not yours to choose" line. Only ever shown on the managed phone. */
+    private lateinit var warning: TextView
     private lateinit var input: EditText
 
     private var step = Step.UNLOCK
@@ -156,6 +161,13 @@ class PinActivity : DementorActivity() {
                 },
             )
             addView(prompt)
+            warning = TextView(this@PinActivity).apply {
+                setText(R.string.pin_create_child_warning)
+                styleAs(R.style.TextAppearance_Dementor_Caption)
+                setPadding(0, dimen(R.dimen.space_sm), 0, 0)
+                visibility = View.GONE
+            }
+            addView(warning)
             addView(input)
             addView(
                 Button(context).apply {
@@ -181,15 +193,36 @@ class PinActivity : DementorActivity() {
         }
     }
 
+    /**
+     * What to say, and on the managed phone, who to say it to.
+     *
+     * Choosing the first PIN on the phone being limited is the one moment in this
+     * app where the wrong person doing the typing quietly breaks everything after
+     * it. A PIN the young person picked unlocks every rule about them, and nothing
+     * later in the product notices or can recover from it — so this screen names
+     * the person who should be holding the phone, rather than saying "choose a
+     * PIN" and hoping.
+     *
+     * Only on the managed device, and only while creating one. A parent setting a
+     * PIN on their own handset already knows whose it is, and being told would
+     * read as the app not knowing which phone it was on.
+     */
     private fun updatePrompt() {
+        val onManagedPhone = RoleStore(this).roleOrChild == DeviceRole.CHILD
+
         prompt.setText(
             when (step) {
                 Step.UNLOCK -> R.string.pin_enter
                 Step.VERIFY_EXISTING -> R.string.pin_enter_current
-                Step.CHOOSE_NEW -> R.string.pin_create
+                Step.CHOOSE_NEW ->
+                    if (onManagedPhone) R.string.pin_create_child else R.string.pin_create
+
                 Step.CONFIRM_NEW -> R.string.pin_confirm
             },
         )
+
+        warning.visibility =
+            if (onManagedPhone && step == Step.CHOOSE_NEW) View.VISIBLE else View.GONE
     }
 
     private fun onSubmit() {

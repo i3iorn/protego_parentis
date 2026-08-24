@@ -180,6 +180,9 @@ class ParentHomeActivity : ParentRoleActivity() {
                 row(R.string.notify_title, R.string.notify_row_detail) {
                     startActivity(NotificationSettingsActivity.intent(this))
                 },
+                row(R.string.perms_title, R.string.perms_row_detail) {
+                    startActivity(PermissionsActivity.intent(this))
+                },
                 row(R.string.features_title, R.string.features_row_detail) {
                     startActivity(FeatureSettingsActivity.intent(this))
                 },

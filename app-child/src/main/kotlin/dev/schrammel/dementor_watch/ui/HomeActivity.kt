@@ -12,6 +12,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
@@ -72,7 +73,11 @@ class HomeActivity : DementorActivity() {
         goals = GoalCoordinator(this)
 
         findViewById<Button>(R.id.permission_button).setOnClickListener {
-            startActivity(UsageAccess.settingsIntent())
+            // To the instructions rather than straight to Settings. Dropping
+            // somebody into a list of every app on the phone, with no note of
+            // what they are looking for or what the switch does, was the step
+            // that lost people.
+            startActivity(PermissionsActivity.intent(this))
         }
         findViewById<Button>(R.id.sos_button).setOnClickListener {
             startActivity(SosActivity.intent(this))
@@ -180,6 +185,9 @@ class HomeActivity : DementorActivity() {
             listOf(
                 row(R.string.notify_title, R.string.notify_row_detail) {
                     startActivity(NotificationSettingsActivity.intent(this))
+                },
+                row(R.string.perms_title, R.string.perms_row_detail) {
+                    startActivity(PermissionsActivity.intent(this))
                 },
                 navigationRow(
                     getString(R.string.home_language, LanguagePicker.currentLabel(this)),
@@ -428,8 +436,13 @@ class HomeActivity : DementorActivity() {
             return
         }
 
+        // Openable, because a list of what you have been using that will not take
+        // you to any of it is a list that answers a question nobody asked. The
+        // blocked list above stays inert on purpose — those are the apps that
+        // will not open, and offering a row that refuses is worse than not
+        // offering one.
         byPackage.forEach { (pkg, time) ->
-            container.addView(row(pkg, Format.duration(time)))
+            container.addView(row(pkg, Format.duration(time), openable = true))
         }
     }
 
@@ -465,12 +478,14 @@ class HomeActivity : DementorActivity() {
         setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_xxs))
     }
 
-    private fun row(pkg: PackageName, trailing: String): View {
+    private fun row(pkg: PackageName, trailing: String, openable: Boolean = false): View {
         val app = installedApps
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
+
+            if (openable) makeOpenable(pkg)
 
             addView(
                 ImageView(context).apply {
@@ -497,6 +512,43 @@ class HomeActivity : DementorActivity() {
                     styleAs(R.style.TextAppearance_Dementor_Body)
                 },
             )
+        }
+    }
+
+    /**
+     * Turns a usage row into a way back into the app it names.
+     *
+     * Deliberately not silent about failing. An app can be uninstalled between the
+     * usage being recorded and the row being tapped, and it can be suspended by
+     * this very app — in which case Android shows its own "app paused" dialog,
+     * which is the correct answer and better than anything this screen could say.
+     * What must not happen is a tap that does nothing at all, so the one case left
+     * over — no launch intent, which is normal for a service or a widget host —
+     * says so rather than looking broken.
+     */
+    private fun View.makeOpenable(pkg: PackageName) {
+        val outValue = android.util.TypedValue()
+        context.theme.resolveAttribute(
+            android.R.attr.selectableItemBackground,
+            outValue,
+            true,
+        )
+        setBackgroundResource(outValue.resourceId)
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            val launch = packageManager.getLaunchIntentForPackage(pkg.value)
+            if (launch == null) {
+                Toast.makeText(this@HomeActivity, R.string.home_cannot_open, Toast.LENGTH_SHORT)
+                    .show()
+                return@setOnClickListener
+            }
+            // Failure here is normal rather than exceptional: a suspended app
+            // throws, and so does one uninstalled a moment ago.
+            runCatching { startActivity(launch) }.onFailure {
+                Toast.makeText(this@HomeActivity, R.string.home_cannot_open, Toast.LENGTH_SHORT)
+                    .show()
+            }
         }
     }
 

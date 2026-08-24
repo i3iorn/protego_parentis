@@ -50,6 +50,10 @@ private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
  */
 class ChatActivity : DementorActivity() {
 
+    // The one screen with something pinned to the bottom that has to stay above
+    // the keyboard. See DementorActivity.movesForKeyboard.
+    override val movesForKeyboard = true
+
     private lateinit var sync: SyncCoordinator
     private lateinit var store: ChatStore
     private lateinit var conversation: LinearLayout

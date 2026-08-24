@@ -371,7 +371,7 @@
     <string name="role_parent_header">A parent\'s phone</string>
     <string name="role_parent_body">This phone answers requests and can send extra time. It measures nothing and enforces nothing — there is no one to enforce against here.</string>
     <string name="role_parent_choose">This is a parent\'s phone</string>
-    <string name="role_pin_next">Next you will set a PIN. It protects the rules on this phone, and nothing is saved until it is set.</string>
+    <string name="role_pin_next">Next you will set a parent’s PIN. On the phone with the limits it should be a parent typing it, not the person the limits are about. Nothing is saved until it is set.</string>
     <string name="role_change_later">You can change this later, but it asks for the PIN first.</string>
 
     <!-- The parent phone. -->
@@ -767,9 +767,7 @@
     <!-- SOS. -->
     <string name="sos_button">Emergency</string>
     <string name="sos_confirm_title">Send an emergency?</string>
-    <string name="sos_confirm_body">Everyone in the family is told at once, and told where you are. Every limit on this phone lifts until you say it is over.
-
-If you are in danger, call emergency services first — this app is not a substitute for that.</string>
+    <string name="sos_confirm_body">Everyone in the family is told at once, and told where you are. Every limit on this phone lifts until you say it is over.\n\nIf you are in danger, call emergency services first — this app is not a substitute for that.</string>
     <string name="sos_send">Send it</string>
     <string name="sos_active">Emergency sent</string>
     <string name="sos_active_body">Your family is being told where you are. Nothing on this phone is limited until you end it.</string>
@@ -801,9 +799,7 @@ If you are in danger, call emergency services first — this app is not a substi
 
     <!-- What the privacy screen must now say. -->
     <string name="privacy_location_header">Where you are</string>
-    <string name="privacy_location_body">Your position is sent only when a parent asks for it, or when you send an emergency. You are told every single time it is asked for, and every ask is in the shared history. Nothing keeps a trail: your parents\' phones hold one position, the most recent, and no history behind it.
-
-Arrivals and departures send the name of the place — \"Arrived at School\" — and no position at all.</string>
+    <string name="privacy_location_body">Your position is sent only when a parent asks for it, or when you send an emergency. You are told every single time it is asked for, and every ask is in the shared history. Nothing keeps a trail: your parents\' phones hold one position, the most recent, and no history behind it.\n\nArrivals and departures send the name of the place — \"Arrived at School\" — and no position at all.</string>
 
     <!-- Joining a family. -->
     <string name="join_title">Join a family</string>
@@ -843,9 +839,7 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
     <string name="backend_test_result">Result: %1$s</string>
     <string name="backend_save">Move the family</string>
     <string name="backend_move_warning">Every phone in the family has to move. One left behind carries on publishing where nobody is listening, which looks exactly like a quiet week — it will not tell you it is lost.</string>
-    <string name="backend_move_confirm">This phone will start using the new address straight away. Every other phone needs this code:
-
-%1$s</string>
+    <string name="backend_move_confirm">This phone will start using the new address straight away. Every other phone needs this code:\n\n%1$s</string>
     <string name="backend_moved_title">Moved</string>
     <string name="backend_moved_body">Give this code to every other phone in the family. Until they have it, they cannot hear this one.</string>
     <string name="audit_backend_changed">Messages now go through %1$s</string>
@@ -936,4 +930,76 @@ Arrivals and departures send the name of the place — \"Arrived at School\" —
     <string name="privacy_chat_body">Anything typed in Messages goes to the other phones in the family, encrypted like everything else. Both ends keep the last few hundred messages until somebody clears them. Only text and emoji can be sent — there is no way to send a picture, a file or a link that opens anything.</string>
 
     <string name="chat_no_family">This phone is not connected to a family yet, so there is nobody to write to.</string>
+
+    <string name="home_cannot_open">That app cannot be opened from here.</string>
+
+    <string name="pin_create_child">Parent: choose a PIN. It is yours, not theirs — you will need it to change any rule on this phone.</string>
+    <string name="pin_create_child_warning">Type it in yourself, and keep it to yourself. Every limit on this phone is only as private as this PIN, and the app cannot work out later who chose it.</string>
+
+    <!-- Joining by camera. The code carries no secret; see FamilyQr. -->
+    <string name="join_scan">Scan a code instead</string>
+    <string name="join_qr_hint">Point the other phone at this. It fills in the code above — the passphrase still has to be said out loud, because it is not in the picture.</string>
+    <string name="join_qr_description">The family code, as a QR code</string>
+    <string name="join_onboarding_hint">Do this next to the other phone if you can. It is much easier now than later.</string>
+    <string name="join_later">Not yet — set this phone up on its own</string>
+
+    <string name="scan_title">Scan the family code</string>
+    <string name="scan_hint">Hold this phone so the code on the other one fills the frame.</string>
+    <string name="scan_not_a_family_code">That is a code, but not a family code. Still looking.</string>
+    <string name="scan_no_permission">Without the camera this phone cannot scan. Type the code in instead, or allow the camera in Android settings.</string>
+    <string name="scan_no_camera">This phone would not open its camera. Type the code in instead.</string>
+    <string name="scan_type_instead">Type it in instead</string>
+
+    <!--
+      Setting up the permissions Android does not hand out with a dialog.
+      Each one names its risk as plainly as its benefit — a page that talks
+      somebody into granting usage access without saying what it allows would be
+      the wrong page to write.
+    -->
+    <string name="perms_title">Permissions</string>
+    <string name="perms_intro">Some of what this app does needs Android’s permission, and the switches are not where you would expect. Here is each one, what it is for, what it lets this app see, and where the switch is.</string>
+    <string name="perms_row_detail">What Android has to allow, and where the switches are</string>
+    <string name="perms_state_on">Switched on</string>
+    <string name="perms_state_off">Not switched on</string>
+    <string name="perms_oem_note">These paths are Android’s. Samsung, Xiaomi and others rename the screens — if a heading here does not match, look for the same words nearby.</string>
+
+    <string name="perms_usage_title">Usage access</string>
+    <string name="perms_usage_why">The one this app cannot work without. It is how screen time is measured at all — without it nothing is counted and no limit can apply.</string>
+    <string name="perms_usage_risk">What it allows: seeing which apps are opened and for how long. Not what is done inside them, and not what is on the screen. Android keeps this switch well hidden because an app that has it can watch how a phone is used — which is exactly what this app does, with both of you able to see the result.</string>
+    <string name="perms_usage_steps">1. Tap the button below — it opens the list directly.\n2. Find Dementor Watch in the list.\n3. Turn on “Permit usage access”.\n4. Come back here; this page will say it is on.\n\nIf the button does not open the right screen: Settings → Apps → Special app access → Usage access.</string>
+    <string name="perms_usage_action">Open usage access settings</string>
+
+    <string name="perms_notifications_title">Notifications</string>
+    <string name="perms_notifications_why">Warnings before time runs out, answers to what was asked, and the notice that a parent looked for this phone. Without it those happen silently, which on the last one matters.</string>
+    <string name="perms_notifications_steps">1. Tap the button below.\n2. Turn on “All Dementor Watch notifications”.\n\nYou can still choose which kinds you get, in Notifications on the main screen.</string>
+    <string name="perms_notifications_action">Open notification settings</string>
+
+    <string name="perms_location_title">Location, all the time</string>
+    <string name="perms_location_why">Only needed for the optional location features: answering “where is the phone?”, and noticing arrivals at saved places. If this family does not use those, leave it off — everything else works without it.</string>
+    <string name="perms_location_risk">What it allows: this app can read the phone’s position while it is closed. Nothing is sent unless a parent asks or an emergency is raised, the phone always says when it was asked, and every ask is in the shared history. But the permission itself is the strongest one here, and it is reasonable to think twice.</string>
+    <string name="perms_location_steps">Android will not grant this from a prompt. It has to be chosen in Settings:\n\n1. Tap the button below.\n2. Tap Permissions, then Location.\n3. Choose “Allow all the time”.\n\nIf “all the time” is not offered, pick “Allow only while using the app” first, come back, and it will appear.</string>
+    <string name="perms_location_action">Open this app’s permissions</string>
+
+    <string name="perms_battery_title">Not being put to sleep</string>
+    <string name="perms_battery_why">Android stops apps it thinks are idle. If it stops this one, measuring pauses and limits stop applying until the phone is unlocked again — which looks exactly like the app failing.</string>
+    <string name="perms_battery_risk">The cost is battery. This app wakes briefly and does no work of its own between checks, so it is small, but it is not nothing.</string>
+    <string name="perms_battery_steps">1. Tap the button below.\n2. Switch the list from “Not optimised” to “All apps”.\n3. Find Dementor Watch.\n4. Choose “Don’t optimise”.</string>
+    <string name="perms_battery_action">Open battery settings</string>
+
+    <string name="perms_owner_header">Blocking, not just measuring</string>
+    <string name="perms_owner_done">This phone is managed. Rules are enforced.</string>
+    <string name="perms_owner_missing">This phone is not managed. Nothing is blocked.</string>
+    <string name="perms_owner_why">Measuring needs only usage access. Actually stopping an app from opening needs Android to hand this app device-owner control, and Android only does that during setup — on a phone that has just been reset.</string>
+    <string name="perms_owner_steps">1. Back up anything on this phone. It will all be erased.\n2. Factory reset it.\n3. On the very first “Welcome” screen, tap the same spot six times to open the QR scanner.\n4. Scan the setup code from the other phone.\n\nThis cannot be done later without resetting again.</string>
+    <string name="perms_owner_warning">Worth deciding together rather than springing on somebody. Without it the app still measures honestly and reports honestly — it just cannot block.</string>
+
+    <string name="join_suggest_passphrase">Suggest a strong one</string>
+    <string name="join_suggested_note">Six random words — far harder to guess than anything anyone invents. Read it out to the other phone before you leave this screen; it cannot be shown again.</string>
+
+    <string name="schedules_starters_header">Start from one of these</string>
+    <string name="schedules_starters_hint">Tapping one creates it, switched off, with the times already filled in. Change them to match your week, then turn it on.</string>
+    <string name="schedules_starter_detail">%1$s to %2$s</string>
+    <string name="schedules_starter_school">School hours</string>
+    <string name="schedules_starter_homework">Homework</string>
+    <string name="schedules_starter_dinner">Dinner</string>
 </resources>

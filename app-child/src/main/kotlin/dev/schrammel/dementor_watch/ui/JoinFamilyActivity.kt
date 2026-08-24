@@ -4,8 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.Gravity
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -14,6 +17,7 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.model.Passphrases
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.ParentSession
 import dev.schrammel.dementor_watch.security.PinLock
@@ -62,6 +66,15 @@ class JoinFamilyActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The passphrase field can hold a suggestion in clear text, because one
+        // that cannot be read cannot be read out. That makes this screen as
+        // sensitive as the PIN screen, and it gets the same treatment: no recents
+        // thumbnail, no screenshot, no screen recording.
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
+
         config = SyncConfigStore(this)
         sync = SyncCoordinator(this)
 
@@ -121,9 +134,25 @@ class JoinFamilyActivity : DementorActivity() {
         }
     }
 
+    /**
+     * Whether this is the setup flow rather than a visit to the settings.
+     *
+     * The difference is only what happens next: during setup this screen owns the
+     * task and has to hand off to the right home screen, and it offers a way past
+     * itself for somebody setting up the first phone in a family with nobody to
+     * join yet.
+     */
+    private val onboarding: Boolean by lazy { intent.getBooleanExtra(EXTRA_ONBOARDING, false) }
+
     private fun render() {
         column.removeAllViews()
         val settings = config.load()
+
+        if (onboarding && settings.isUsable) {
+            // Joined during setup: there is nothing left to do here.
+            goHome()
+            return
+        }
 
         if (settings.isUsable) {
             column.addView(screenTitle(getString(R.string.join_connected_title)))
@@ -155,9 +184,16 @@ class JoinFamilyActivity : DementorActivity() {
 
         column.addView(screenTitle(getString(R.string.join_title)))
         column.addView(bodyText(getString(R.string.join_intro)))
+        if (onboarding) column.addView(captionText(getString(R.string.join_onboarding_hint)))
 
         column.addView(sectionHeader(getString(R.string.join_token_header)))
         column.addView(tokenInput)
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_scan)
+                setOnClickListener { scan.launch(ScanQrActivity.intent(context)) }
+            },
+        )
         column.addView(sectionHeader(getString(R.string.join_passphrase_header)))
         column.addView(passphraseInput)
 
@@ -172,6 +208,12 @@ class JoinFamilyActivity : DementorActivity() {
 
         column.addView(sectionHeader(getString(R.string.join_start_header)))
         column.addView(captionText(getString(R.string.join_start_hint)))
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_suggest_passphrase)
+                setOnClickListener { suggestPassphrase() }
+            },
+        )
         column.addView(
             actionButton().apply {
                 setText(R.string.join_start)
@@ -192,6 +234,37 @@ class JoinFamilyActivity : DementorActivity() {
                 ) { startActivity(SyncBackendActivity.intent(this)) },
             ),
         )
+
+        // A way past, and only during setup. Connecting phones is the point of
+        // this screen, but a family that has not decided yet should not be stuck
+        // on it — and everything below works alone, measuring and enforcing on
+        // one phone, until they do.
+        if (onboarding) {
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.join_later)
+                    setOnClickListener { goHome() }
+                },
+            )
+        }
+    }
+
+    /**
+     * Ends the setup flow on the right screen for this phone.
+     *
+     * The task is cleared because this screen was started as its own: leaving the
+     * role question and the PIN screen on the stack would let a back press walk
+     * somebody back into choosing a role they have already chosen.
+     */
+    private fun goHome() {
+        val home = when (RoleStore(this).roleOrChild) {
+            DeviceRole.CHILD -> Intent(this, HomeActivity::class.java)
+            DeviceRole.PARENT -> ParentHomeActivity.intent(this)
+        }
+        startActivity(
+            home.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        finish()
     }
 
     /**
@@ -213,8 +286,48 @@ class JoinFamilyActivity : DementorActivity() {
             },
         )
         addView(captionText(getString(R.string.join_code_hint)))
+
+        // The same string, as a picture. Sized from the screen rather than fixed:
+        // a code that is meant to be read by another phone's camera should be as
+        // large as the card allows, and 320dp on a tablet is a stamp.
+        token?.let(FamilyTokens::encode)?.let { code ->
+            val side = (resources.displayMetrics.widthPixels * QR_SCREEN_FRACTION).toInt()
+            FamilyQr.encode(code, side)?.let { bitmap ->
+                addView(
+                    ImageView(this@JoinFamilyActivity).apply {
+                        setImageBitmap(bitmap)
+                        adjustViewBounds = true
+                        layoutParams = LinearLayout.LayoutParams(side, side).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                            topMargin = dimen(R.dimen.space_md)
+                        }
+                        // Read aloud as the code it is, for anyone who cannot see it.
+                        contentDescription = getString(R.string.join_qr_description)
+                    },
+                )
+                addView(captionText(getString(R.string.join_qr_hint)))
+            }
+        }
         addView(statRow(getString(R.string.join_backend), settings.transport.name))
         addView(statRow(getString(R.string.join_server), settings.serverUrl))
+    }
+
+    /**
+     * Reads a family code off another phone's screen.
+     *
+     * It fills the code field and stops there. The passphrase is still typed,
+     * because it is not in the code — see [FamilyQr] for why putting it there
+     * would trade the security model for a step of typing.
+     */
+    private val scan = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val code = result.data?.getStringExtra(ScanQrActivity.EXTRA_CODE) ?: return@registerForActivityResult
+        tokenInput.setText(code)
+        // Straight to the half that is still missing, so it is obvious that
+        // scanning did not finish the job.
+        passphraseInput.requestFocus()
     }
 
     private fun join() {
@@ -233,6 +346,25 @@ class JoinFamilyActivity : DementorActivity() {
      * between a stranger and a stream of encrypted family traffic — they still
      * could not read it, but they could watch it move.
      */
+    /**
+     * Fills the passphrase field with something worth using.
+     *
+     * Put where a family is *starting* one rather than joining, because that is
+     * the only moment the passphrase is chosen; on the joining phone it is being
+     * repeated, and a suggest button there would be an invitation to overwrite the
+     * thing they were just told.
+     *
+     * Shown rather than hidden, and the field is made visible at the same time.
+     * This has to be read aloud to a second phone, so a suggestion behind dots
+     * would be a suggestion nobody could use.
+     */
+    private fun suggestPassphrase() {
+        passphraseInput.transformationMethod = null
+        passphraseInput.setText(Passphrases.suggest())
+        passphraseInput.setSelection(passphraseInput.text.length)
+        Toast.makeText(this, R.string.join_suggested_note, Toast.LENGTH_LONG).show()
+    }
+
     private fun startFamily() {
         val token = FamilyToken(
             kind = TransportKind.NTFY,
@@ -304,6 +436,13 @@ class JoinFamilyActivity : DementorActivity() {
     }
 
     companion object {
-        fun intent(context: Context) = Intent(context, JoinFamilyActivity::class.java)
+        const val EXTRA_ONBOARDING = "onboarding"
+
+        /** How much of the screen's width the code fills. */
+        private const val QR_SCREEN_FRACTION = 0.62f
+
+        fun intent(context: Context, onboarding: Boolean = false): Intent =
+            Intent(context, JoinFamilyActivity::class.java)
+                .putExtra(EXTRA_ONBOARDING, onboarding)
     }
 }

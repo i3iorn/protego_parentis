@@ -93,6 +93,21 @@ It is transferred, and the encryption is a mitigation, not an exemption.
 
 ---
 
+## Camera — declare the permission, not a data type
+
+The app requests `CAMERA`, and there is no data type to declare for it.
+
+Its only use is reading a family code off another phone's screen (`ScanQrActivity`).
+Frames are decoded in memory and dropped: nothing is captured, written, uploaded or
+kept, and there is no photo, no file and no gallery entry at any point. The
+permission is requested when that screen opens rather than at install, so a family
+who never scans a code is never asked.
+
+Play's form covers *collection*, and nothing is collected — so no data type is
+ticked for it. Say what it is for in the permissions section of the listing and in
+any free text the form offers, because a camera permission with no visible reason
+is exactly the kind of thing a reviewer stops on.
+
 ## Do NOT declare
 
 These are worth listing so nobody adds them by mistake — none is collected and

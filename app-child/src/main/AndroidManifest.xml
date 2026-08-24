@@ -30,6 +30,14 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
+      Scanning a family code, and nothing else. Requested when that screen opens
+      rather than at install, so a family who never uses a code is never asked.
+      No frame is stored: they are decoded in memory and dropped.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!--
       Both are allowed under Play's parental-control exception but need a
       declaration form at submission time. See spec section 7.
     -->
@@ -254,6 +262,16 @@
             android:name=".ui.FamilyDevicesActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
+            android:name=".ui.PermissionsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
+            android:name=".ui.ScanQrActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.JoinFamilyActivity" />
 
         <activity
             android:name=".ui.ChatActivity"

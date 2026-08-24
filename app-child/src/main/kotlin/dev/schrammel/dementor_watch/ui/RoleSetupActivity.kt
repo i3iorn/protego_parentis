@@ -10,7 +10,7 @@ import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.security.DeviceRole
-import dev.schrammel.dementor_watch.security.PinLock
+import dev.schrammel.dementor_watch.security.ParentSession
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.sync.ParentPollWorker
 
@@ -105,11 +105,20 @@ class RoleSetupActivity : DementorActivity() {
     /**
      * Takes the answer, but stores nothing until there is a PIN to protect it.
      */
+    /**
+     * Takes the answer, and always asks the PIN screen about it first.
+     *
+     * There is no shortcut for "a PIN already exists". Setting one and knowing one
+     * are different things, and this screen changes what the phone *is* — which
+     * side of a request it sits on, and whether it enforces anything. Everywhere
+     * else in the app that is behind the PIN, and it would be a strange exception
+     * for the screen that decides it.
+     *
+     * The PIN screen works out which question to ask: it offers to create one when
+     * there is none and to unlock when there is, so both paths end the same way —
+     * with somebody who has proved they know it.
+     */
     private fun choose(role: DeviceRole) {
-        if (PinLock(this).isSet) {
-            commit(role)
-            return
-        }
         pendingRole = role
         setPin.launch(PinActivity.intent(this))
     }
@@ -128,11 +137,21 @@ class RoleSetupActivity : DementorActivity() {
             DeviceRole.CHILD -> ParentPollWorker.cancel(this)
             DeviceRole.PARENT -> ParentPollWorker.schedule(this)
         }
+        // Safe only because choose() has no path here that skips the PIN screen.
+        // Whoever reached this line either just created the PIN or just entered
+        // it; without that guarantee this line would be handing an unlocked parent
+        // session to anybody holding a half-configured phone.
+        ParentSession.unlock()
+
+        // Both roles are asked to join a family, and both are asked here rather
+        // than left to find the screen later. A phone that is not in a family is
+        // a phone with no requests, no answers and no second parent — everything
+        // this app is for beyond a timer — and the moment somebody is setting it
+        // up next to the other phone is the only moment when connecting them is
+        // easy. It can still be skipped.
         startActivity(
-            when (role) {
-                DeviceRole.CHILD -> Intent(this, HomeActivity::class.java)
-                DeviceRole.PARENT -> ParentHomeActivity.intent(this)
-            }.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK),
+            JoinFamilyActivity.intent(this, onboarding = true)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK),
         )
         finish()
     }

@@ -1011,11 +1011,13 @@ class SyncCoordinator(context: Context) {
     /**
      * [id] is a parameter only because of the chat.
      *
-     * Every other message is filed by its effect, so nobody minds what it is
-     * called. A chat message is stored on the sending phone the moment it is
-     * typed, and then arrives back off the relay like any other; giving both the
-     * same id is what makes the store recognise the echo instead of showing the
-     * message twice.
+     * A chat message is stored on the sending phone the moment it is typed, and
+     * then comes back off the relay like everything else. [apply] normally drops a
+     * phone’s own messages by comparing the sender to this device’s id — but that
+     * id is read from the keystore and is the empty string when the keystore call
+     * fails, and an empty id matches nothing. Giving the stored copy and the
+     * published message the same id means the conversation stays right even in
+     * that case, instead of quietly doubling every line.
      */
     private fun publish(
         type: SyncMessageType,

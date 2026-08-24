@@ -41,6 +41,7 @@ WHAT IT DOES
 • Lock the screen now, from a parent's phone.
 • An emergency button the young person can always reach, whatever else is blocked.
 • Short messages between the phones. Text and emoji only.
+• Join a family by scanning a code, or by typing it in.
 
 
 WHAT MAKES IT DIFFERENT
@@ -58,7 +59,7 @@ There is no account, no sign-up, and no server of ours. We receive nothing, ever
 
 Phones in a family talk to each other through a relay you choose — by default a public one, or your own if you prefer. Everything is encrypted on the sending phone first, so the relay carries sealed messages it cannot read. Each phone signs what it sends with a key generated inside its own hardware keystore.
 
-No advertising. No analytics. No third-party SDKs of any kind. Nothing is sold or shared with anyone.
+No advertising. No analytics. No crash reporting. Nothing in this app reports back to anyone, and nothing is sold or shared. The only libraries it uses are ones that draw and read a QR code, on the device.
 
 Your messages, photos, keystrokes and screen contents are not read, not stored and not sent. The app has no access to them and asks for no permission that would give it access.
 

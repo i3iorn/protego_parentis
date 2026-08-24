@@ -378,7 +378,7 @@
     <string name="role_parent_header">En förälders telefon</string>
     <string name="role_parent_body">Den här telefonen svarar på förfrågningar och kan skicka extra tid. Den mäter ingenting och tillämpar inga regler — det finns ingen här att tillämpa dem på.</string>
     <string name="role_parent_choose">Det här är en förälders telefon</string>
-    <string name="role_pin_next">Härnäst väljer du en PIN-kod. Den skyddar reglerna på den här telefonen, och ingenting sparas förrän den är satt.</string>
+    <string name="role_pin_next">Härnäst väljer du en förälders PIN-kod. På telefonen med gränserna ska det vara en förälder som skriver in den, inte den som gränserna gäller. Ingenting sparas förrän den är satt.</string>
     <string name="role_change_later">Du kan ändra det här senare, men det kräver PIN-koden.</string>
 
     <!-- Förälderns telefon. -->
@@ -774,9 +774,7 @@
     <!-- Nödläge. -->
     <string name="sos_button">Nödläge</string>
     <string name="sos_confirm_title">Skicka ett nödläge?</string>
-    <string name="sos_confirm_body">Alla i familjen får veta direkt, och får veta var du är. Alla gränser på telefonen lyfts tills du säger att det är över.
-
-Är du i fara, ring nödnumret först — den här appen ersätter inte det.</string>
+    <string name="sos_confirm_body">Alla i familjen får veta direkt, och får veta var du är. Alla gränser på telefonen lyfts tills du säger att det är över.\n\nÄr du i fara, ring nödnumret först — den här appen ersätter inte det.</string>
     <string name="sos_send">Skicka</string>
     <string name="sos_active">Nödläge skickat</string>
     <string name="sos_active_body">Din familj får veta var du är. Ingenting på telefonen är begränsat förrän du avslutar.</string>
@@ -808,9 +806,7 @@
 
     <!-- Vad integritetsskärmen nu måste säga. -->
     <string name="privacy_location_header">Var du är</string>
-    <string name="privacy_location_body">Din position skickas bara när en förälder frågar efter den, eller när du skickar ett nödläge. Du får veta varje enskild gång någon frågar, och varje fråga står i den delade historiken. Ingenting sparar ett spår: föräldrarnas telefoner håller en position, den senaste, och ingen historik bakom den.
-
-Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och ingen position alls.</string>
+    <string name="privacy_location_body">Din position skickas bara när en förälder frågar efter den, eller när du skickar ett nödläge. Du får veta varje enskild gång någon frågar, och varje fråga står i den delade historiken. Ingenting sparar ett spår: föräldrarnas telefoner håller en position, den senaste, och ingen historik bakom den.\n\nAnkomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och ingen position alls.</string>
 
     <!-- Att gå med i en familj. -->
     <string name="join_title">Gå med i en familj</string>
@@ -850,9 +846,7 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
     <string name="backend_test_result">Resultat: %1$s</string>
     <string name="backend_save">Flytta familjen</string>
     <string name="backend_move_warning">Alla telefoner i familjen måste flytta. En som lämnas kvar fortsätter skicka dit ingen lyssnar, vilket ser ut precis som en tyst vecka — den kommer inte att säga att den tappat bort sig.</string>
-    <string name="backend_move_confirm">Telefonen börjar använda den nya adressen direkt. Alla andra telefoner behöver den här koden:
-
-%1$s</string>
+    <string name="backend_move_confirm">Telefonen börjar använda den nya adressen direkt. Alla andra telefoner behöver den här koden:\n\n%1$s</string>
     <string name="backend_moved_title">Flyttad</string>
     <string name="backend_moved_body">Ge koden till alla andra telefoner i familjen. Tills de har den kan de inte höra den här.</string>
     <string name="audit_backend_changed">Meddelanden går nu via %1$s</string>
@@ -943,4 +937,71 @@ Ankomster och avfärder skickar platsens namn — \"Framme vid Skolan\" — och 
     <string name="privacy_chat_body">Det du skriver i Meddelanden går till de andra telefonerna i familjen, krypterat som allt annat. Båda ändarna behåller de senaste par hundra meddelandena tills någon rensar dem. Bara text och emoji kan skickas — det finns inget sätt att skicka en bild, en fil eller en länk som öppnar något.</string>
 
     <string name="chat_no_family">Telefonen är inte ansluten till någon familj än, så det finns ingen att skriva till.</string>
+
+    <string name="home_cannot_open">Den appen går inte att öppna härifrån.</string>
+
+    <string name="pin_create_child">Förälder: välj en PIN-kod. Den är din, inte deras — du behöver den för att ändra någon regel på den här telefonen.</string>
+    <string name="pin_create_child_warning">Skriv in den själv och behåll den för dig själv. Varje gräns på telefonen är bara så skyddad som den här koden, och appen kan inte i efterhand avgöra vem som valde den.</string>
+
+    <!-- Att gå med via kameran. Koden bär ingen hemlighet; se FamilyQr. -->
+    <string name="join_scan">Skanna en kod i stället</string>
+    <string name="join_qr_hint">Rikta den andra telefonen mot den här. Den fyller i koden ovan — lösenfrasen måste fortfarande sägas högt, för den finns inte i bilden.</string>
+    <string name="join_qr_description">Familjekoden, som en QR-kod</string>
+    <string name="join_onboarding_hint">Gör det här bredvid den andra telefonen om du kan. Det är mycket enklare nu än senare.</string>
+    <string name="join_later">Inte än — sätt upp den här telefonen för sig</string>
+
+    <string name="scan_title">Skanna familjekoden</string>
+    <string name="scan_hint">Håll telefonen så att koden på den andra fyller rutan.</string>
+    <string name="scan_not_a_family_code">Det är en kod, men inte en familjekod. Letar vidare.</string>
+    <string name="scan_no_permission">Utan kameran kan telefonen inte skanna. Skriv in koden i stället, eller tillåt kameran i Androids inställningar.</string>
+    <string name="scan_no_camera">Telefonen ville inte öppna kameran. Skriv in koden i stället.</string>
+    <string name="scan_type_instead">Skriv in den i stället</string>
+
+    <!-- Att sätta upp de behörigheter Android inte delar ut med en dialogruta. -->
+    <string name="perms_title">Behörigheter</string>
+    <string name="perms_intro">En del av det appen gör kräver Androids tillåtelse, och reglagen sitter inte där man tror. Här är var och en: vad den är till för, vad den låter appen se, och var reglaget finns.</string>
+    <string name="perms_row_detail">Vad Android måste tillåta, och var reglagen sitter</string>
+    <string name="perms_state_on">Påslagen</string>
+    <string name="perms_state_off">Inte påslagen</string>
+    <string name="perms_oem_note">De här vägarna är Androids egna. Samsung, Xiaomi och andra döper om skärmarna — stämmer inte en rubrik, leta efter samma ord i närheten.</string>
+
+    <string name="perms_usage_title">Användningsåtkomst</string>
+    <string name="perms_usage_why">Den enda appen inte klarar sig utan. Det är så skärmtid mäts över huvud taget — utan den räknas ingenting och ingen gräns kan gälla.</string>
+    <string name="perms_usage_risk">Vad den tillåter: att se vilka appar som öppnas och hur länge. Inte vad som görs i dem, och inte vad som syns på skärmen. Android gömmer reglaget väl, för en app som har det kan se hur en telefon används — vilket är precis vad den här appen gör, med resultatet synligt för er båda.</string>
+    <string name="perms_usage_steps">1. Tryck på knappen nedan — den öppnar listan direkt.\n2. Hitta Dementor Watch i listan.\n3. Slå på ”Tillåt användningsåtkomst”.\n4. Kom tillbaka hit; sidan säger då att den är på.\n\nOm knappen inte öppnar rätt skärm: Inställningar → Appar → Särskild appåtkomst → Användningsåtkomst.</string>
+    <string name="perms_usage_action">Öppna användningsåtkomst</string>
+
+    <string name="perms_notifications_title">Aviseringar</string>
+    <string name="perms_notifications_why">Varningar innan tiden tar slut, svar på det som frågats, och beskedet att en förälder sökt efter telefonen. Utan dem sker det tyst, vilket på den sista spelar roll.</string>
+    <string name="perms_notifications_steps">1. Tryck på knappen nedan.\n2. Slå på ”Alla aviseringar från Dementor Watch”.\n\nDu kan fortfarande välja vilka sorter du får, under Aviseringar på huvudskärmen.</string>
+    <string name="perms_notifications_action">Öppna aviseringsinställningar</string>
+
+    <string name="perms_location_title">Plats, hela tiden</string>
+    <string name="perms_location_why">Behövs bara för de valfria platsfunktionerna: att svara på ”var är telefonen?” och att märka ankomster till sparade platser. Använder familjen inte dem, låt den vara av — allt annat fungerar ändå.</string>
+    <string name="perms_location_risk">Vad den tillåter: appen kan läsa telefonens position även när den är stängd. Ingenting skickas om inte en förälder frågar eller ett nödläge utlöses, telefonen säger alltid till när den blivit tillfrågad, och varje fråga finns i den gemensamma historiken. Men behörigheten i sig är den starkaste här, och det är rimligt att tänka efter.</string>
+    <string name="perms_location_steps">Android ger inte det här via en fråga. Det måste väljas i Inställningar:\n\n1. Tryck på knappen nedan.\n2. Tryck på Behörigheter, sedan Plats.\n3. Välj ”Tillåt hela tiden”.\n\nErbjuds inte ”hela tiden”, välj först ”Tillåt endast när appen används”, kom tillbaka, så dyker det upp.</string>
+    <string name="perms_location_action">Öppna appens behörigheter</string>
+
+    <string name="perms_battery_title">Att inte somna</string>
+    <string name="perms_battery_why">Android stoppar appar den tror är overksamma. Stoppas den här pausar mätningen och gränserna slutar gälla tills telefonen låses upp igen — vilket ser ut precis som att appen gått sönder.</string>
+    <string name="perms_battery_risk">Kostnaden är batteri. Appen vaknar kort och gör inget eget däremellan, så det är lite, men inte ingenting.</string>
+    <string name="perms_battery_steps">1. Tryck på knappen nedan.\n2. Byt listan från ”Inte optimerade” till ”Alla appar”.\n3. Hitta Dementor Watch.\n4. Välj ”Optimera inte”.</string>
+    <string name="perms_battery_action">Öppna batteriinställningar</string>
+
+    <string name="perms_owner_header">Att blockera, inte bara mäta</string>
+    <string name="perms_owner_done">Telefonen är hanterad. Reglerna tillämpas.</string>
+    <string name="perms_owner_missing">Telefonen är inte hanterad. Ingenting blockeras.</string>
+    <string name="perms_owner_why">Att mäta kräver bara användningsåtkomst. Att faktiskt hindra en app från att öppnas kräver att Android ger appen enhetsägarkontroll, och det gör Android bara under uppsättningen — på en telefon som just återställts.</string>
+    <string name="perms_owner_steps">1. Säkerhetskopiera allt på telefonen. Allt kommer att raderas.\n2. Fabriksåterställ den.\n3. På allra första ”Välkommen”-skärmen, tryck sex gånger på samma ställe för att öppna QR-läsaren.\n4. Skanna uppsättningskoden från den andra telefonen.\n\nDet går inte att göra i efterhand utan att återställa igen.</string>
+    <string name="perms_owner_warning">Värt att bestämma tillsammans i stället för att överrumpla någon med. Utan det mäter appen ärligt och rapporterar ärligt — den kan bara inte blockera.</string>
+
+    <string name="join_suggest_passphrase">Föreslå en stark</string>
+    <string name="join_suggested_note">Sex slumpade ord — mycket svårare att gissa än något någon hittar på. Läs upp den för den andra telefonen innan du lämnar skärmen; den kan inte visas igen.</string>
+
+    <string name="schedules_starters_header">Börja med en av de här</string>
+    <string name="schedules_starters_hint">Tryck på en så skapas den, avstängd, med tiderna redan ifyllda. Ändra dem så de passar er vecka och slå sedan på den.</string>
+    <string name="schedules_starter_detail">%1$s till %2$s</string>
+    <string name="schedules_starter_school">Skoltid</string>
+    <string name="schedules_starter_homework">Läxor</string>
+    <string name="schedules_starter_dinner">Middag</string>
 </resources>
