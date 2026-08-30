@@ -68,12 +68,21 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
-        <!-- The one answer the screen exists to give. -->
+        <!--
+          The one answer the screen exists to give.
+
+          The explicit top margin matters specifically when the family banner
+          above is showing: that banner is an empty placeholder with no margin
+          of its own until a card is dropped into it at runtime, so without
+          this, the two cards sat flush against each other — one card with a
+          seam in the middle instead of two.
+        -->
         <LinearLayout
             android:id="@+id/summary_card"
             style="@style/Widget.Dementor.Card"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_md">
 
             <TextView
                 android:id="@+id/headline"

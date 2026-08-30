@@ -6,12 +6,16 @@ import androidx.core.content.edit
 /**
  * A kind of notification this app can send, and whether it may be silenced.
  *
- * Most can. Four cannot, and the reason is the same in every case: this is an app
- * that watches a person, and the things it tells that person about being watched
- * are not a preference. A locate a child is not told about is surveillance; a
- * phone that locks itself with no explanation looks broken; an emergency nobody
- * hears is the feature failing at the only moment it matters. Offering a switch
- * for those would be offering to make the product something it says it is not.
+ * Most can. Seven cannot, and the reason is almost the same in every case: this is
+ * an app that watches a person, and the things it tells that person about being
+ * watched are not a preference. A locate a child is not told about is
+ * surveillance; a phone that locks itself with no explanation looks broken; an
+ * emergency nobody hears is the feature failing at the only moment it matters.
+ * Offering a switch for those would be offering to make the product something it
+ * says it is not. A device joining or leaving the family, or the family itself
+ * ending, are the odd ones out in *why* they cannot be silenced rather than
+ * *whether*: each is a trust boundary changing, on a phone that might not be the
+ * one anyone was looking at when it happened.
  *
  * They are listed on the settings screen anyway, shown as always-on with the
  * reason. A setting that is absent looks like an oversight; one that is present
@@ -69,6 +73,41 @@ enum class NotificationKind(
      * been sent to, and the family looked broken instead of unfinished.
      */
     DEVICE_PENDING(optional = true),
+
+    /**
+     * A device has been added to the family, however that happened.
+     *
+     * On both sides, and never silenced. Most of the time this fires with nobody
+     * looking — a device already trusted by one parent is enrolled on every other
+     * phone automatically, in the background, the moment it next hears about it.
+     * That is the whole point of not asking everyone to approve separately, but it
+     * also means the addition would otherwise happen with no one told at all. A
+     * family finding out who is in it only by opening a settings screen and
+     * counting is not "very obvious"; a notification naming the device is.
+     */
+    DEVICE_ADDED(optional = false),
+
+    /**
+     * A device has been removed from the family, however that happened.
+     *
+     * The mirror of [DEVICE_ADDED], never silenced for the same reason: a
+     * parent's phone can revoke another parent's device, and every other phone
+     * that already trusted the revoker removes it too, automatically, in the
+     * background. Nobody should find out their phone lost family membership
+     * only by noticing something stopped working.
+     */
+    DEVICE_REMOVED(optional = false),
+
+    /**
+     * The family this phone was part of no longer exists.
+     *
+     * Never silenced, and on both sides — but what it means differs by side.
+     * A parent phone acts on this by leaving on its own; the managed phone
+     * does not act on it at all, and this notification is the only way
+     * whoever is holding it finds out there is now a loose end to close by
+     * hand.
+     */
+    FAMILY_DISBANDED(optional = false),
 
     /**
      * Somebody in the family said something.

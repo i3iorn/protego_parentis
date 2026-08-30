@@ -1,12 +1,12 @@
 package dev.schrammel.dementor_watch.ui
 
 import android.content.Context
-import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.sync.Enrolment
 import dev.schrammel.dementor_watch.sync.RosterStore
 import dev.schrammel.dementor_watch.sync.SyncConfigStore
 import dev.schrammel.dementor_watch.sync.SyncRole
+import dev.schrammel.dementor_watch.sync.toSyncRole
 
 /** Where this phone has got to in joining a family. */
 enum class FamilyState {
@@ -55,10 +55,7 @@ object FamilyStatus {
         }
 
         val roster = RosterStore(context)
-        val role = when (RoleStore(context).roleOrChild) {
-            DeviceRole.CHILD -> SyncRole.CHILD
-            DeviceRole.PARENT -> SyncRole.PARENT
-        }
+        val role = RoleStore(context).roleOrChild.toSyncRole()
 
         // Asked the same way the devices screen asks it. A child's phone that
         // already trusts a parent has no approve button, so telling it that

@@ -138,6 +138,9 @@ object AuditText {
             AuditAction.DEVICE_REVOKED ->
                 context.getString(R.string.audit_device_revoked, subject)
 
+            AuditAction.FAMILY_DISBANDED ->
+                context.getString(R.string.audit_family_disbanded)
+
             AuditAction.FEATURE_CHANGED -> context.getString(
                 if (entry.after.toBoolean()) {
                     R.string.audit_feature_on
@@ -230,7 +233,7 @@ object AuditText {
         if (raw.isNullOrBlank()) return ""
         return when (entry.action.valueKind) {
             ValueKind.MINUTES ->
-                raw.toIntOrNull()?.let(Format::limit) ?: raw
+                raw.toIntOrNull()?.let { context.formatLimit(it) } ?: raw
 
             ValueKind.TIME_RANGE -> range(raw)
 
@@ -248,7 +251,7 @@ object AuditText {
         if (parts.size != 2) return raw
         val start = runCatching { LocalTime.parse(parts[0]) }.getOrNull() ?: return raw
         val end = runCatching { LocalTime.parse(parts[1]) }.getOrNull() ?: return raw
-        return "${Format.time(start)}–${Format.time(end)}"
+        return "${formatTime(start)}–${formatTime(end)}"
     }
 
     private fun installPolicy(context: Context, raw: String?): String = context.getString(

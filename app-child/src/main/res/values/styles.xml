@@ -19,6 +19,14 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:statusBarColor">@color/window_background</item>
         <item name="android:navigationBarColor">@color/window_background</item>
+        <!-- Left unset, every Button/CheckBox/ToggleButton fell back to
+             AppCompat's own grey-on-grey defaults, which is the "controls
+             don't look like they belong to this app" feedback. Tied instead
+             to the same three surface colours everything else already uses. -->
+        <item name="colorControlNormal">@color/card_stroke</item>
+        <item name="colorControlActivated">@color/brand</item>
+        <item name="colorControlHighlight">@color/card_stroke</item>
+        <item name="colorButtonNormal">@color/card_stroke</item>
     </style>
 
     <!-- A raised surface holding one idea. parent="" opts out of the implicit

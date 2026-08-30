@@ -21,9 +21,6 @@ import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.usage.AppInfo
 import dev.schrammel.dementor_watch.usage.InstalledApps
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * Which apps are allowed on this phone, and what is new (AC-2, AC-3).
  *

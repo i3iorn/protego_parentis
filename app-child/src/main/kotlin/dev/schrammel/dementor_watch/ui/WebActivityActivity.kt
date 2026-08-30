@@ -11,9 +11,11 @@ import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
+import dev.schrammel.dementor_watch.policy.PolicyClock
+import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.WebActivityStore
 import dev.schrammel.dementor_watch.rules.WebFilterStore
-import java.time.LocalDate
+import java.time.Instant
 
 /**
  * Where the browsing went (WF-3).
@@ -66,7 +68,11 @@ class WebActivityActivity : DementorActivity() {
         )
         column.addView(captionText(getString(R.string.web_activity_enable_hint)))
 
-        val today = LocalDate.now()
+        // The same policy day the budget resets on, not real midnight — a family
+        // with a day-boundary hour set would otherwise see this list clear four
+        // hours before the budget it is shown alongside does.
+        val policy = LocalPolicyStore(this).load()
+        val today = PolicyClock.policyDay(Instant.now(), policy.timeZone, policy.dayBoundaryHour)
         val visits = store.visits(today)
 
         column.addView(sectionHeader(getString(R.string.parent_today_header)))

@@ -160,34 +160,16 @@ class RulesActivity : ParentGatedActivity() {
                         )
                     }
                 }
-                // The relay the family's messages travel over now lives inside the
-                // connection screen rather than beside it. It is chosen once and
-                // never looked at again, and a top-level row for it made a
-                // deployment detail look as important as who is in the family.
-                add(
-                    row(R.string.rules_row_sync, R.string.rules_row_sync_detail) {
-                        startActivity(JoinFamilyActivity.intent(this@RulesActivity))
-                    },
-                )
+                // The one path to Family from this hub. Its own Settings row is
+                // where the sync relay and device control live now, rather than
+                // beside it here — a deployment detail and the family roster no
+                // longer compete for the same list.
                 add(
                     row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
                         startActivity(FamilyDevicesActivity.intent(this@RulesActivity))
                     },
                 )
             },
-        )
-
-        addSection(
-            column,
-            getString(R.string.rules_group_device),
-            listOf(
-                row(R.string.rules_row_device, R.string.rules_row_device_detail) {
-                    startActivity(Intent(this, DeviceControlActivity::class.java))
-                },
-                row(R.string.features_title, R.string.features_row_detail) {
-                    startActivity(FeatureSettingsActivity.intent(this))
-                },
-            ),
         )
     }
 
@@ -223,9 +205,6 @@ class RulesActivity : ParentGatedActivity() {
 
         return card { addView(status) }
     }
-
-    private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
-        navigationRow(getString(titleRes), getString(detailRes), onClick)
 
     override fun onPause() {
         super.onPause()

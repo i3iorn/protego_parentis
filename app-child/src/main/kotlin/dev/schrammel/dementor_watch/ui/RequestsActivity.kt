@@ -3,13 +3,10 @@ package dev.schrammel.dementor_watch.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.CategoryId
 import dev.schrammel.dementor_watch.model.GrantTarget
@@ -24,6 +21,7 @@ import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * The child's side of the negotiation (RQ-1).
@@ -65,17 +63,8 @@ class RequestsActivity : DementorActivity() {
             },
         )
 
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onResume() {
@@ -121,6 +110,32 @@ class RequestsActivity : DementorActivity() {
             )
         }
         container.addView(amounts)
+
+        // The presets cover the common asks; this is for everything else. Not a
+        // replacement for them — someone who already knows they want 15 minutes
+        // should not have to drag a slider to say so.
+        container.addView(
+            actionButton().apply {
+                setText(R.string.requests_ask_custom)
+                setOnClickListener { askForCustomAmount() }
+            },
+        )
+    }
+
+    private fun askForCustomAmount() {
+        sliderDialog(
+            title = R.string.requests_custom_title,
+            max = LimitSlider.MAX_STEPS,
+            initialProgress = LimitSlider.progressFor(DEFAULT_CUSTOM_MINUTES),
+            format = { formatLimit(LimitSlider.minutesFor(it)) },
+        ) { progress ->
+            val minutes = LimitSlider.minutesFor(progress)
+            if (minutes <= 0) {
+                toast(getString(R.string.requests_custom_zero))
+                return@sliderDialog
+            }
+            submit(minutes.minutes)
+        }
     }
 
     /**
@@ -271,13 +286,9 @@ class RequestsActivity : DementorActivity() {
         setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_hairline))
     }
 
-    private fun toast(message: String) =
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val TIME_PATTERN = "HH:mm"
+        private const val DEFAULT_CUSTOM_MINUTES = 45
 
         fun intent(context: Context) = Intent(context, RequestsActivity::class.java)
     }

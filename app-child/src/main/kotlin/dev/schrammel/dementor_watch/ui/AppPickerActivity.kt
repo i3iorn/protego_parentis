@@ -5,11 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.usage.InstalledApps
@@ -36,7 +34,15 @@ class AppPickerActivity : ParentGatedActivity() {
         selected += intent.getStringArrayListExtra(EXTRA_SELECTED).orEmpty()
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
 
-        setContentView(buildLayout(title))
+        content = contentColumn()
+        content.addView(
+            TextView(this).apply {
+                text = title
+                styleAs(R.style.TextAppearance_Dementor_Headline)
+                setPadding(0, 0, 0, dimen(R.dimen.space_md))
+            },
+        )
+        showColumn(content)
     }
 
     override fun onGatedContentVisible() {
@@ -53,27 +59,6 @@ class AppPickerActivity : ParentGatedActivity() {
     private lateinit var content: LinearLayout
     private var loaded = false
     private var authenticated = false
-
-    private fun buildLayout(title: String): ScrollView {
-        content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-
-        content.addView(
-            TextView(this).apply {
-                text = title
-                styleAs(R.style.TextAppearance_Dementor_Headline)
-                setPadding(0, 0, 0, dimen(R.dimen.space_md))
-            },
-        )
-
-        return ScrollView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-            addView(content)
-        }
-    }
 
     private fun row(
         pkg: String,
@@ -128,8 +113,6 @@ class AppPickerActivity : ParentGatedActivity() {
     companion object {
         const val EXTRA_SELECTED = "selected"
         private const val EXTRA_TITLE = "title"
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
         fun intent(context: Context, title: String, selected: Collection<String>): Intent =
             Intent(context, AppPickerActivity::class.java)

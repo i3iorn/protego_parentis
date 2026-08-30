@@ -7,7 +7,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
@@ -21,11 +20,8 @@ import dev.schrammel.dementor_watch.sync.SyncConfigStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.sync.Enrolment
 import dev.schrammel.dementor_watch.sync.SyncRole
-import dev.schrammel.dementor_watch.security.DeviceRole
+import dev.schrammel.dementor_watch.sync.toSyncRole
 import dev.schrammel.dementor_watch.security.RoleStore
-
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
 /**
  * Who is in the family, and which phone is which.
@@ -71,6 +67,13 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         // Announcing on arrival is what makes the other phone's list fill in while
         // someone is standing in front of it, rather than up to an hour later.
         sync.announceSelf(force = true)
+        // Same reasoning, for the rest of the family: a newly-joined parent phone
+        // trusts nobody until it has approved one existing device by hand, and
+        // only then can it act on a vouch at all. Repeating every vouch this
+        // phone can make, every time this screen opens, is what lets that phone
+        // pick up everyone else without a coincidence of timing deciding whether
+        // it has to approve them one by one too.
+        revouchKnownParents()
         sync.pollNow { runOnUiThread { if (!isFinishing && !isDestroyed) render() } }
         render()
     }
@@ -117,6 +120,35 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         } else {
             column.addView(group(known.map(::knownRow)))
         }
+
+        // The one screen behind Settings that people reach for directly, on its
+        // own row rather than a tap further inside Settings — pairing a new
+        // phone or fixing a mistyped relay is usually the reason someone opened
+        // this screen at all, not a detour from looking at who's in the family.
+        addSection(
+            column,
+            null,
+            listOf(
+                navigationRow(
+                    getString(R.string.parent_row_sync),
+                    getString(R.string.parent_row_sync_detail),
+                ) { startActivity(JoinFamilyActivity.intent(this)) },
+            ),
+        )
+
+        // The only OTHER door into Settings — notifications, permissions and
+        // this phone's PIN are things you reach because of the family you are
+        // looking at, not a parallel front door that happens to lead here too.
+        addSection(
+            column,
+            getString(R.string.parent_group_settings),
+            listOf(
+                navigationRow(
+                    getString(R.string.parent_row_settings),
+                    getString(R.string.parent_row_settings_detail),
+                ) { startActivity(ParentSettingsActivity.intent(this)) },
+            ),
+        )
     }
 
     private fun thisPhone(): LinearLayout = card {
@@ -279,18 +311,12 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                         after = approved.role.name,
                     )
                     // Tell the family, so nobody else has to do this again —
-                    // this is what makes one parent's approval enough.
-                    //
-                    // Only from a parent. A vouch from the managed phone is
-                    // refused by every recipient as coming from the wrong role,
-                    // which is the whole point of the rule; publishing one anyway
-                    // would be a message that reads like it did something.
-                    // Only a parent may vouch, and only for a parent — a vouch
-                    // for a child device is refused by every recipient, so
-                    // sending one is traffic that reads as though it worked.
-                    if (role() == SyncRole.PARENT && approved.role == SyncRole.PARENT) {
-                        sync.publishVouch(approved)
-                    }
+                    // this is what makes one parent's approval enough. Vouching
+                    // for every parent this phone already knows, not only the
+                    // one just approved, is what lets a freshly-joined parent
+                    // pick up the rest of the family the moment it trusts even
+                    // one of them, rather than approving each by hand.
+                    revouchKnownParents()
                 }
                 render()
             }
@@ -315,70 +341,74 @@ class FamilyDevicesActivity : ParentGatedActivity() {
     }
 
     private fun rename(device: KnownDevice) {
-        promptForName(device.name) { chosen ->
+        promptForText(R.string.devices_rename, R.string.devices_name_hint, prefill = device.name) { chosen ->
             roster.rename(device.id, chosen)
             render()
         }
     }
 
     private fun renameSelf(current: String) {
-        promptForName(current) { chosen ->
+        promptForText(R.string.devices_rename, R.string.devices_name_hint, prefill = current) { chosen ->
             config.deviceName = chosen
             // The other phones only learn the new name from an announcement.
             sync.announceSelf(force = true)
-            Toast.makeText(this, R.string.devices_renamed, Toast.LENGTH_SHORT).show()
+            toast(R.string.devices_renamed)
             render()
         }
-    }
-
-    private fun promptForName(current: String, onChosen: (String) -> Unit) {
-        val input = EditText(this).apply {
-            hint = getString(R.string.devices_name_hint)
-            setText(current)
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, 0)
-            addView(input)
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.devices_rename)
-            .setView(content)
-            .setPositiveButton(R.string.devices_rename) { _, _ ->
-                val chosen = input.text.toString().trim()
-                if (chosen.isNotEmpty()) onChosen(chosen)
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
     }
 
     /**
      * Revoking is confirmed because it is silent when it goes wrong: the revoked
      * phone carries on publishing and nothing acts on any of it.
+     *
+     * Only a parent device's removal is told to the rest of the family — see
+     * [Enrolment.shouldAcceptRevoke]. The child device is never revoked this
+     * way at all: removing it is the local, PIN-gated action already reachable
+     * from its own phone, not something one parent's tap can broadcast.
      */
     private fun confirmRevoke(device: KnownDevice) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.devices_revoke)
-            .setMessage(getString(R.string.devices_revoke_body, device.name))
-            .setPositiveButton(R.string.devices_revoke) { _, _ ->
-                roster.revoke(device.id)
-                Audit.record(
-                    context = this,
-                    actor = AuditActor.PARENT,
-                    action = AuditAction.DEVICE_REVOKED,
-                    subject = device.name,
-                )
-                render()
+        confirmDialog(
+            R.string.devices_revoke,
+            getString(R.string.devices_revoke_body, device.name),
+            R.string.devices_revoke,
+        ) {
+            roster.revoke(device.id)
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = AuditAction.DEVICE_REVOKED,
+                subject = device.name,
+            )
+            if (Enrolment.shouldAcceptRevoke(device.role)) {
+                sync.publishRevoke(device)
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            render()
+        }
     }
 
-    private fun role(): SyncRole = when (RoleStore(this).roleOrChild) {
-        DeviceRole.CHILD -> SyncRole.CHILD
-        DeviceRole.PARENT -> SyncRole.PARENT
+    private fun role(): SyncRole = RoleStore(this).roleOrChild.toSyncRole()
+
+    /**
+     * Restates, to the family, every parent this phone already trusts.
+     *
+     * A vouch for a device the receiver already has is a no-op — [RosterStore.enrol]
+     * skips anything already in the known list — so repeating the whole set costs
+     * nothing on a phone that has heard it before. What it buys is for a phone that
+     * has not: a newly-joined parent trusts nobody until it has compared a
+     * fingerprint and approved one existing device by hand, and only from that
+     * moment can it act on a vouch at all. There is no message telling this phone
+     * *when* that happens on the other end, so instead every vouch this phone can
+     * make is repeated on every approval and every time this screen is opened —
+     * one of those two will land after the newcomer's one manual approval, without
+     * either phone having to time it.
+     *
+     * Never the child: a vouch is refused for anything but a parent role, by
+     * design — see [Enrolment.shouldAccept] for why extending the same shortcut
+     * to the managed phone would be a real hole rather than a convenience.
+     */
+    private fun revouchKnownParents() {
+        if (role() != SyncRole.PARENT) return
+        roster.parents().forEach(sync::publishVouch)
     }
 
     private fun roleName(role: SyncRole): String = getString(

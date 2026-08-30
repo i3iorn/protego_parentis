@@ -50,6 +50,13 @@ enum class DiagnosticEvent {
     SCREEN_LOAD_FAILED,
 
     BOOT_COMPLETED,
+
+    /**
+     * Something escaped every narrower `runCatching`, all the way to the
+     * process's default uncaught-exception handler. Recorded before the app
+     * restarts itself — see [dev.schrammel.dementor_watch.diagnostics.CrashRecovery].
+     */
+    APP_CRASHED,
 }
 
 /** One line of the log. */

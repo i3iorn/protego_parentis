@@ -9,7 +9,6 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
@@ -19,6 +18,7 @@ import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.PackageName
 import dev.schrammel.dementor_watch.rules.ScheduleStore
 import dev.schrammel.dementor_watch.rules.StoredSchedule
+import dev.schrammel.dementor_watch.rules.toMinuteOfDay
 import dev.schrammel.dementor_watch.usage.InstalledApps
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -93,16 +93,16 @@ class SchedulesActivity : ParentGatedActivity() {
         title = getString(starter.name),
         subtitle = getString(
             R.string.schedules_starter_detail,
-            Format.time(java.time.LocalTime.of(starter.startHour, starter.startMinute)),
-            Format.time(java.time.LocalTime.of(starter.endHour, starter.endMinute)),
+            formatTime(java.time.LocalTime.of(starter.startHour, starter.startMinute)),
+            formatTime(java.time.LocalTime.of(starter.endHour, starter.endMinute)),
         ),
     ) {
         val created = StoredSchedule(
             id = java.util.UUID.randomUUID().toString(),
             name = getString(starter.name),
             days = starter.days,
-            startMinuteOfDay = starter.startHour * MINUTES_PER_HOUR + starter.startMinute,
-            endMinuteOfDay = starter.endHour * MINUTES_PER_HOUR + starter.endMinute,
+            startMinuteOfDay = java.time.LocalTime.of(starter.startHour, starter.startMinute).toMinuteOfDay(),
+            endMinuteOfDay = java.time.LocalTime.of(starter.endHour, starter.endMinute).toMinuteOfDay(),
             enabled = false,
         )
         store.upsert(created)
@@ -132,8 +132,8 @@ class SchedulesActivity : ParentGatedActivity() {
         )
         val window = getString(
             R.string.schedules_window,
-            Format.time(schedule.start),
-            Format.time(schedule.end),
+            formatTime(schedule.start),
+            formatTime(schedule.end),
         )
         return if (schedule.enabled) {
             getString(R.string.schedules_row, days, window)
@@ -143,8 +143,6 @@ class SchedulesActivity : ParentGatedActivity() {
     }
 
     companion object {
-        private const val MINUTES_PER_HOUR = 60
-
         /** Monday to Friday, in ISO day numbers. */
         private val WEEKDAYS = setOf(1, 2, 3, 4, 5)
 
@@ -240,7 +238,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 orientation = LinearLayout.HORIZONTAL
                 addView(
                     Button(context).apply {
-                        text = getString(R.string.schedules_from, Format.time(start))
+                        text = getString(R.string.schedules_from, formatTime(start))
                         layoutParams = LinearLayout.LayoutParams(
                             0,
                             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -256,7 +254,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 )
                 addView(
                     Button(context).apply {
-                        text = getString(R.string.schedules_to, Format.time(end))
+                        text = getString(R.string.schedules_to, formatTime(end))
                         layoutParams = LinearLayout.LayoutParams(
                             0,
                             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -340,8 +338,8 @@ class ScheduleEditActivity : ParentGatedActivity() {
             id = scheduleId,
             name = nameInput.text.toString().trim(),
             days = days.map { it.value }.toSet(),
-            startMinuteOfDay = StoredSchedule.minuteOfDay(start),
-            endMinuteOfDay = StoredSchedule.minuteOfDay(end),
+            startMinuteOfDay = start.toMinuteOfDay(),
+            endMinuteOfDay = end.toMinuteOfDay(),
             allowedPackages = allowed.toSet(),
             enabled = enabled,
         )
@@ -353,7 +351,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
             else -> null
         }
         if (problem != null) {
-            Toast.makeText(this, problem, Toast.LENGTH_SHORT).show()
+            toast(problem)
             return
         }
 

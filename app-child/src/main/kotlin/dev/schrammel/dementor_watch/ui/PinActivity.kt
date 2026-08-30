@@ -5,14 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
@@ -146,6 +147,18 @@ class PinActivity : DementorActivity() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             hint = getString(R.string.pin_hint)
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+            // PINs here are variable-length (min 4, no fixed max), so there is no
+            // "complete" length to auto-submit at. Instead, submitting is one tap
+            // away on the keyboard itself rather than only the on-screen button.
+            setSingleLine(true)
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setOnEditorActionListener { _, actionId, event ->
+                val isDone = actionId == EditorInfo.IME_ACTION_DONE ||
+                    (event?.keyCode == KeyEvent.KEYCODE_ENTER &&
+                        event.action == KeyEvent.ACTION_DOWN)
+                if (isDone) onSubmit()
+                isDone
+            }
         }
 
         return LinearLayout(this).apply {
@@ -303,12 +316,7 @@ class PinActivity : DementorActivity() {
         finish()
     }
 
-    private fun toast(message: String) =
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val EXTRA_CHANGE = "change"
 
         fun intent(context: Context, change: Boolean = false): Intent =

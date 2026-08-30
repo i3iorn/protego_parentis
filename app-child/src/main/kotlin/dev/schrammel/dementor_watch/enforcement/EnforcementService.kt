@@ -19,7 +19,6 @@ import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.diagnostics.DiagnosticEvent
 import dev.schrammel.dementor_watch.diagnostics.Diagnostics
-import android.os.BatteryManager
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
@@ -31,6 +30,7 @@ import dev.schrammel.dementor_watch.rules.GoalCoordinator
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.usage.InstalledApps
+import dev.schrammel.dementor_watch.context.BatteryReader
 import dev.schrammel.dementor_watch.context.ContextProvider
 import dev.schrammel.dementor_watch.context.LocationSharing
 import dev.schrammel.dementor_watch.context.PlaceWatcher
@@ -41,8 +41,8 @@ import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.sync.AppTime
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import java.time.LocalDate
-import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
+import dev.schrammel.dementor_watch.ui.formatDuration
 import java.time.Instant
 
 /**
@@ -107,7 +107,10 @@ class EnforcementService : Service() {
             // Replacing an app is an update, not an arrival. Reporting an update
             // as a new install would flag half the phone after a Play Store sweep.
             if (intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true) return
-            handler.post { runCatching { sweepForNewApps() } }
+            handler.post {
+                runCatching { sweepForNewApps() }
+                    .onFailure { Log.w(TAG, "Could not check for new apps", it) }
+            }
         }
     }
 
@@ -310,7 +313,7 @@ class EnforcementService : Service() {
         runCatching { announceArrivals() }
             .onFailure { Log.w(TAG, "Could not check saved places", it) }
 
-        runCatching { publishBrowsing() }
+        runCatching { publishBrowsing(snapshot.usage.snapshot.policyDay) }
             .onFailure { Log.w(TAG, "Could not send the browsing summary", it) }
 
         // Introduces this phone to any parent that has not enrolled it yet.
@@ -399,6 +402,7 @@ class EnforcementService : Service() {
             // Infinite means no limit; zero is how that travels.
             allowedMinutes = if (budget.isUnlimited) 0 else budget.allowed.inWholeMinutes.toInt(),
             bonusMinutes = budget.bonus.inWholeMinutes.toInt(),
+            remainingMinutes = budget.remaining.inWholeMinutes.toInt(),
             level = budget.level.ordinal,
             topApps = top,
         )
@@ -473,11 +477,17 @@ class EnforcementService : Service() {
         }
     }
 
-    /** Today's domains, counted, on the same throttle as the heartbeat (WF-3). */
-    private fun publishBrowsing() {
+    /**
+     * Today's domains, counted, on the same throttle as the heartbeat (WF-3).
+     *
+     * [today] is the policy day the tick just evaluated, not [LocalDate.now] —
+     * a family with a day-boundary hour set (a budget day that runs, say,
+     * 4am-to-4am) must see this summary reset in step with the budget it is
+     * reported alongside, not at real midnight.
+     */
+    private fun publishBrowsing(today: LocalDate) {
         if (!WebFilterStore(this).countVisits) return
 
-        val today = LocalDate.now()
         val store = WebActivityStore(this)
         val visits = store.visits(today)
         if (visits.isEmpty()) return
@@ -489,11 +499,7 @@ class EnforcementService : Service() {
     }
 
     /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
-    private fun batteryPercent(): Int =
-        getSystemService(BatteryManager::class.java)
-            ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            ?.takeIf { it in 0..100 }
-            ?: -1
+    private fun batteryPercent(): Int = BatteryReader.percent(this) ?: -1
 
     /**
      * Sleeps until the engine says the decision would change, within bounds.
@@ -517,13 +523,13 @@ class EnforcementService : Service() {
         val budget = snapshot.enforcement.deviceBudget
         return when {
             budget.isUnlimited ->
-                getString(R.string.service_no_limit, Format.duration(budget.used))
+                getString(R.string.service_no_limit, formatDuration(budget.used))
 
             budget.level == BudgetLevel.EXHAUSTED ->
                 getString(R.string.service_used_up)
 
             else ->
-                getString(R.string.service_remaining, Format.duration(budget.remaining))
+                getString(R.string.service_remaining, formatDuration(budget.remaining))
         }
     }
 

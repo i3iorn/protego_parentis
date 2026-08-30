@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
@@ -24,9 +23,6 @@ import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
 /**
  * How the child's phone is doing, from a parent's phone (TR-2, AC-3).
@@ -162,7 +158,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
             statRow(
                 getString(R.string.device_last_heard),
                 IntegrityRules.quietFor(heartbeat, now)
-                    ?.let { getString(R.string.device_ago, Format.duration(it)) }
+                    ?.let { getString(R.string.device_ago, formatDuration(it)) }
                     ?: getString(R.string.device_clock_off),
             ),
         )
@@ -252,7 +248,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
             .onFailure { error ->
                 if (error is ActivityNotFoundException) {
-                    Toast.makeText(this, R.string.parent_locate_none, Toast.LENGTH_SHORT).show()
+                    toast(R.string.parent_locate_none)
                 }
             }
     }

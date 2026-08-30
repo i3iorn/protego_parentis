@@ -9,6 +9,10 @@
          should not look like an alarm. -->
     <color name="brand">#3A5A93</color>
     <color name="brand_dark">#2A4270</color>
+    <!-- Text/icon colour for something sitting on top of @color/brand, such as a
+         checked day toggle. Brand is dark here and light in dark mode, so this
+         cannot just be text_primary — it has to invert the same way brand does. -->
+    <color name="on_brand">#FFFFFF</color>
 
     <!-- Surfaces. The window is deliberately a shade darker than the groups sitting
          on it: content should read as raised, not as painted onto the background. -->

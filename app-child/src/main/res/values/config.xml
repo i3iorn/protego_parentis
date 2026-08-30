@@ -22,6 +22,7 @@
         <item>10</item>
         <item>15</item>
         <item>30</item>
+        <item>45</item>
     </integer-array>
 
     <!-- Keeps a zero-usage day visible as a sliver in the weekly chart rather

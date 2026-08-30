@@ -7,11 +7,9 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.enforcement.EnforcementCoordinator
@@ -98,48 +96,25 @@ class LimitsActivity : ParentGatedActivity() {
         renderExempt()
     }
 
-    private fun limitSlider(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
+    private fun limitSlider(): LinearLayout {
+        // Where the slider stood when the current drag began. The history
+        // gets one entry for the whole gesture — recording every step would
+        // write forty rows for one adjustment and bury everything else in
+        // the log.
+        var beganAt = store.dailyLimitMinutes
 
-        val value = TextView(context).apply {
-            styleAs(R.style.TextAppearance_Dementor_Metric)
-            text = Format.limit(store.dailyLimitMinutes)
-        }
-        addView(value)
-        addView(
-            SeekBar(context).apply {
-                max = LimitSlider.MAX_STEPS
-                progress = LimitSlider.progressFor(store.dailyLimitMinutes)
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    /**
-                     * Where the slider stood when this drag began.
-                     *
-                     * The history gets one entry for the whole gesture. Recording
-                     * every step would write forty rows for one adjustment and bury
-                     * everything else in the log.
-                     */
-                    private var beganAt = store.dailyLimitMinutes
-
-                    override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
-                        val minutes = LimitSlider.minutesFor(progress)
-                        value.text = Format.limit(minutes)
-                        if (fromUser) store.dailyLimitMinutes = minutes
-                    }
-
-                    override fun onStartTrackingTouch(bar: SeekBar) {
-                        beganAt = store.dailyLimitMinutes
-                    }
-
-                    override fun onStopTrackingTouch(bar: SeekBar) {
-                        Audit.record(
-                            context = this@LimitsActivity,
-                            actor = AuditActor.PARENT,
-                            action = AuditAction.DAILY_LIMIT_CHANGED,
-                            before = Audit.minutes(beganAt),
-                            after = Audit.minutes(store.dailyLimitMinutes),
-                        )
-                    }
-                })
+        return limitSliderBlock(
+            initialMinutes = store.dailyLimitMinutes,
+            onChanged = { minutes -> store.dailyLimitMinutes = minutes },
+            onDragStart = { beganAt = store.dailyLimitMinutes },
+            onDragEnd = {
+                Audit.record(
+                    context = this@LimitsActivity,
+                    actor = AuditActor.PARENT,
+                    action = AuditAction.DAILY_LIMIT_CHANGED,
+                    before = Audit.minutes(beganAt),
+                    after = Audit.minutes(store.dailyLimitMinutes),
+                )
             },
         )
     }
@@ -176,8 +151,8 @@ class LimitsActivity : ParentGatedActivity() {
             toggle.isChecked = setting.enabled
             times.visibility = if (setting.enabled) View.VISIBLE else View.GONE
             nights.visibility = if (setting.enabled) View.VISIBLE else View.GONE
-            start.text = getString(R.string.rules_bedtime_start, Format.time(setting.start))
-            end.text = getString(R.string.rules_bedtime_end, Format.time(setting.end))
+            start.text = getString(R.string.rules_bedtime_start, formatTime(setting.start))
+            end.text = getString(R.string.rules_bedtime_end, formatTime(setting.end))
         }
 
         toggle.setOnCheckedChangeListener { _, checked ->
@@ -302,7 +277,7 @@ class CategoriesActivity : ParentGatedActivity() {
                             title = category.name,
                             subtitle = getString(
                                 R.string.rules_category_row,
-                                Format.limit(category.limitMinutes),
+                                formatLimit(category.limitMinutes),
                                 resources.getQuantityString(
                                     R.plurals.rules_category_apps,
                                     category.packages.size,
@@ -352,22 +327,11 @@ class GoalActivity : ParentGatedActivity() {
 
         val startingMinutes = existing.maxUsage.inWholeMinutes.toInt()
             .takeIf { it > 0 } ?: DEFAULT_GOAL_MINUTES
-        val value = TextView(this).apply {
-            styleAs(R.style.TextAppearance_Dementor_Metric)
-            text = Format.limit(startingMinutes)
-        }
-        val bar = SeekBar(this).apply {
-            max = LimitSlider.MAX_STEPS
-            progress = LimitSlider.progressFor(startingMinutes)
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
-                    value.text = Format.limit(LimitSlider.minutesFor(progress))
-                }
-
-                override fun onStartTrackingTouch(bar: SeekBar) = Unit
-                override fun onStopTrackingTouch(bar: SeekBar) = Unit
-            })
-        }
+        var chosenMinutes = startingMinutes
+        val slider = limitSliderBlock(
+            initialMinutes = startingMinutes,
+            onChanged = { minutes -> chosenMinutes = minutes },
+        )
         val prize = EditText(this).apply {
             hint = getString(R.string.rules_goal_prize_hint)
             setText(existing.prize)
@@ -382,7 +346,7 @@ class GoalActivity : ParentGatedActivity() {
                     // Switching off applies at once. Switching on waits for a prize,
                     // so a goal is never live with nothing to win.
                     if (!checked) {
-                        goals.saveGoal(false, LimitSlider.minutesFor(bar.progress), prize.text.toString())
+                        goals.saveGoal(false, chosenMinutes, prize.text.toString())
                         Audit.record(
                             context = this@GoalActivity,
                             actor = AuditActor.PARENT,
@@ -393,8 +357,7 @@ class GoalActivity : ParentGatedActivity() {
                 }
             },
         )
-        settings.addView(value)
-        settings.addView(bar)
+        settings.addView(slider)
         settings.addView(prize)
         settings.addView(
             Button(this).apply {
@@ -405,7 +368,7 @@ class GoalActivity : ParentGatedActivity() {
                         Toast.makeText(context, R.string.rules_goal_needs_prize, Toast.LENGTH_SHORT).show()
                         return@setOnClickListener
                     }
-                    val minutes = LimitSlider.minutesFor(bar.progress)
+                    val minutes = chosenMinutes
                     val prizeChanged = text != existing.prize
                     goals.saveGoal(true, minutes, text)
                     Audit.record(
@@ -586,7 +549,7 @@ class DeviceControlActivity : ParentGatedActivity() {
                     if (open) {
                         getString(
                             R.string.rules_installs_window_open,
-                            Format.time(
+                            formatTime(
                                 LocalTime.ofInstant(checkNotNull(until), ZoneId.systemDefault()),
                             ),
                         )
@@ -624,22 +587,21 @@ class DeviceControlActivity : ParentGatedActivity() {
                 Toast.makeText(this, R.string.rules_release_not_owner, Toast.LENGTH_LONG).show()
                 return@load
             }
-            AlertDialog.Builder(this)
-                .setTitle(R.string.rules_release_confirm_title)
-                .setMessage(R.string.rules_release_confirm_body)
-                .setPositiveButton(R.string.rules_release) { _, _ ->
-                    Audit.record(
-                        context = this,
-                        actor = AuditActor.PARENT,
-                        action = AuditAction.DEVICE_RELEASED,
-                    )
-                    Background.load(this, { coordinator.releaseDevice() }) {
-                        Toast.makeText(this, R.string.rules_release_done, Toast.LENGTH_LONG).show()
-                        finish()
-                    }
+            confirmDialog(
+                R.string.rules_release_confirm_title,
+                R.string.rules_release_confirm_body,
+                R.string.rules_release,
+            ) {
+                Audit.record(
+                    context = this,
+                    actor = AuditActor.PARENT,
+                    action = AuditAction.DEVICE_RELEASED,
+                )
+                Background.load(this, { coordinator.releaseDevice() }) {
+                    Toast.makeText(this, R.string.rules_release_done, Toast.LENGTH_LONG).show()
+                    finish()
                 }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
+            }
         }
     }
 }

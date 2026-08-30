@@ -9,7 +9,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
-import android.widget.Toast
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
@@ -19,9 +18,6 @@ import dev.schrammel.dementor_watch.model.AutoApprovalWindow
 import dev.schrammel.dementor_watch.rules.AutoApprovalStore
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
-
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
 /** The family's standing answers (RQ-1). */
 class AutoApprovalActivity : ParentGatedActivity() {
@@ -87,7 +83,7 @@ class AutoApprovalActivity : ParentGatedActivity() {
                 rule.maxPerWindow,
                 rule.maxPerWindow,
             )
-            val amount = Format.limit(rule.maxAmount.inWholeMinutes.toInt())
+            val amount = context.formatLimit(rule.maxAmount.inWholeMinutes.toInt())
             return context.getString(
                 if (rule.enabled) R.string.auto_row else R.string.auto_row_off,
                 amount,
@@ -204,7 +200,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
 
         val label = TextView(context).apply {
             styleAs(R.style.TextAppearance_Dementor_Metric)
-            text = if (isMinutes) Format.limit(current) else current.toString()
+            text = if (isMinutes) formatLimit(current) else current.toString()
         }
         addView(label)
         addView(
@@ -214,7 +210,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
                         val value = progress + 1
-                        label.text = if (isMinutes) Format.limit(value) else value.toString()
+                        label.text = if (isMinutes) formatLimit(value) else value.toString()
                         if (fromUser) onChanged(value)
                     }
 
@@ -228,7 +224,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
     private fun save() {
         val name = nameInput.text.toString().trim()
         if (name.isEmpty()) {
-            Toast.makeText(this, R.string.auto_needs_name, Toast.LENGTH_SHORT).show()
+            toast(R.string.auto_needs_name)
             return
         }
 

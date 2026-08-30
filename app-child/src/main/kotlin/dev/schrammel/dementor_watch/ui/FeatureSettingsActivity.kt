@@ -13,9 +13,6 @@ import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.rules.Feature
 import dev.schrammel.dementor_watch.rules.FeatureFlags
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * Which parts of the app this family uses.
  *

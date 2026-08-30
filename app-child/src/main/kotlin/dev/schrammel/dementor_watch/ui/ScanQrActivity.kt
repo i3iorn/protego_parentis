@@ -28,9 +28,6 @@ import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.sync.FamilyTokens
 import java.util.concurrent.Executors
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * Points the camera at a family code and hands back what it read.
  *

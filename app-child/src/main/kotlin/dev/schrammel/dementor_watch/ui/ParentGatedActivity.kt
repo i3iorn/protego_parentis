@@ -45,8 +45,8 @@ abstract class ParentGatedActivity : DementorActivity() {
     override fun onResume() {
         super.onResume()
         when {
-            ParentSession.isUnlocked -> {
-                ParentSession.touch()
+            !requiresPin() || ParentSession.isUnlocked -> {
+                if (requiresPin()) ParentSession.touch()
                 showGatedContent()
             }
 
@@ -59,6 +59,16 @@ abstract class ParentGatedActivity : DementorActivity() {
             }
         }
     }
+
+    /**
+     * Whether this particular visit needs the PIN at all.
+     *
+     * Unconditional for almost every gated screen — `true` by default. The one
+     * exception ([JoinFamilyActivity]) has a state where there is nothing yet to
+     * protect (a parent phone with no family configured), and demanding a PIN to
+     * guard something that does not exist yet is a step for its own sake.
+     */
+    protected open fun requiresPin(): Boolean = true
 
     /** Called whenever the parent is confirmed, including after re-authenticating. */
     protected open fun onParentAuthenticated() = Unit

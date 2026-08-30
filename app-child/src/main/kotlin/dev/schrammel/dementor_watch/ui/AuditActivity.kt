@@ -38,13 +38,22 @@ class AuditActivity : DementorActivity() {
         val column = contentColumn()
         column.addView(screenTitle(getString(R.string.audit_title)))
         column.addView(bodyText(getString(R.string.audit_intro)))
+        showColumn(column)
 
-        column.addView(integrityCard())
+        // The chain check walks the whole log (up to AuditLogFormat.MAX_ENTRIES)
+        // to verify every hash, and reading+grouping the entries is real disk and
+        // CPU work — both belong off the main thread, the same as every other
+        // screen that loads a store.
+        Background.load(this, { Audit.entries(this) to Audit.check(this) }) { (entries, check) ->
+            renderEntries(column, entries, check)
+        }
+    }
 
-        val entries = Audit.entries(this)
+    private fun renderEntries(column: LinearLayout, entries: List<AuditEntry>, check: ChainCheck) {
+        column.addView(integrityCard(check))
+
         if (entries.isEmpty()) {
             column.addView(bodyText(getString(R.string.audit_empty)))
-            showColumn(column)
             return
         }
 
@@ -65,7 +74,6 @@ class AuditActivity : DementorActivity() {
                 ),
             ),
         )
-        showColumn(column)
     }
 
     /**
@@ -75,8 +83,7 @@ class AuditActivity : DementorActivity() {
      * is that both sides can see the answer. A record whose integrity is only
      * known to the app is one nobody has a reason to believe.
      */
-    private fun integrityCard(): LinearLayout = card {
-        val check = Audit.check(this@AuditActivity)
+    private fun integrityCard(check: ChainCheck): LinearLayout = card {
         addView(
             TextView(this@AuditActivity).apply {
                 setText(

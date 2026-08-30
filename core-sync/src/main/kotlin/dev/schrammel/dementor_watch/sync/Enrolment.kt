@@ -81,4 +81,20 @@ object Enrolment {
         vouch.id == selfId -> false
         else -> true
     }
+
+    /**
+     * Whether a revoke naming a device of [targetRole] should be acted on.
+     *
+     * [targetRole] is what *this* device's own records say the target actually
+     * is — its own roster entry for that id, or its own known role when the
+     * revoke names itself — never what the revoke message claims, for the same
+     * reason [shouldAccept] never trusts a vouch's claimed role either.
+     *
+     * A revoke naming the managed phone is refused outright, symmetrically with
+     * [shouldAccept] never covering it either: un-enrolling the single device
+     * the whole family is built around has to stay a local, physical, PIN-gated
+     * action taken on that phone, not something one remote parent's signature
+     * can do to it, or to everyone else's trust in it, all at once.
+     */
+    fun shouldAcceptRevoke(targetRole: SyncRole?): Boolean = targetRole == SyncRole.PARENT
 }

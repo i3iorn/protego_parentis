@@ -181,11 +181,11 @@ class LocalPolicyStore(context: Context) {
         get() = StoredCategory.listFromJson(prefs.getString(KEY_CATEGORIES, null))
         set(value) = write { putString(KEY_CATEGORIES, StoredCategory.listToJson(value)) }
 
-    fun upsertCategory(category: StoredCategory) {
+    fun upsertCategory(category: StoredCategory) = synchronized(prefs) {
         categories = categories.filterNot { it.id == category.id } + category
     }
 
-    fun deleteCategory(id: String) {
+    fun deleteCategory(id: String) = synchronized(prefs) {
         categories = categories.filterNot { it.id == id }
     }
 
@@ -204,7 +204,7 @@ class LocalPolicyStore(context: Context) {
             putString(KEY_APP_LIMITS, JSONObject(value.filterValues { it > 0 }).toString())
         }
 
-    fun setAppLimit(packageName: String, minutes: Int) {
+    fun setAppLimit(packageName: String, minutes: Int) = synchronized(prefs) {
         appLimits = appLimits.toMutableMap().apply {
             if (minutes > 0) put(packageName, minutes.clampToDay()) else remove(packageName)
         }
@@ -232,7 +232,7 @@ class LocalPolicyStore(context: Context) {
         get() = prefs.getStringSet(KEY_NETWORK_BLOCKED, emptySet()).orEmpty()
         set(value) = write { putStringSet(KEY_NETWORK_BLOCKED, value) }
 
-    fun setNetworkBlocked(packageName: String, blocked: Boolean) {
+    fun setNetworkBlocked(packageName: String, blocked: Boolean) = synchronized(prefs) {
         networkBlockedPackages = if (blocked) {
             networkBlockedPackages + packageName
         } else {
@@ -245,7 +245,7 @@ class LocalPolicyStore(context: Context) {
         get() = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
         set(value) = write { putStringSet(KEY_HIDDEN, value) }
 
-    fun setBlocked(packageName: String, blocked: Boolean) {
+    fun setBlocked(packageName: String, blocked: Boolean) = synchronized(prefs) {
         blockedPackages = if (blocked) blockedPackages + packageName else blockedPackages - packageName
         if (blocked) hiddenPackages = hiddenPackages - packageName
     }
@@ -282,22 +282,26 @@ class LocalPolicyStore(context: Context) {
     private fun Int.clampToDay(): Int =
         coerceIn(0, Defaults.MAX_DAILY_LIMIT.inWholeMinutes.toInt())
 
-    private fun LocalTime.toMinuteOfDay(): Int = hour * MINUTES_PER_HOUR + minute
-
     private fun dayOf(value: Int): DayOfWeek? =
         DayOfWeek.entries.firstOrNull { it.value == value }
 
     private fun SharedPreferences.readTime(key: String, fallback: LocalTime): LocalTime {
         val stored = getInt(key, NOT_SET)
         if (stored !in 0 until MINUTES_PER_DAY) return fallback
-        return LocalTime.of(stored / MINUTES_PER_HOUR, stored % MINUTES_PER_HOUR)
+        return stored.toLocalTime()
     }
 
     /**
      * Every write bumps the version. The enforcement service compares it to decide
      * whether anything needs re-applying, and the audit log records it.
+     *
+     * Synchronized on [prefs] itself: rule edits arrive both from the UI thread
+     * and from the sync executor thread (a parent's remote change), and without a
+     * lock two concurrent writers could each read the same version before either
+     * commits, so one writer's bump — or its whole edit, for the compound
+     * read-modify-write setters above — would be silently lost.
      */
-    private fun write(block: SharedPreferences.Editor.() -> Unit) {
+    private fun write(block: SharedPreferences.Editor.() -> Unit) = synchronized(prefs) {
         prefs.edit {
             block()
             putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, INITIAL_VERSION) + 1L)
@@ -310,9 +314,6 @@ class LocalPolicyStore(context: Context) {
         const val LOCAL_CHILD_ID = "local"
         const val BEDTIME_ID = "bedtime"
         const val NOT_SET = -1
-
-        const val MINUTES_PER_HOUR = 60
-        const val MINUTES_PER_DAY = 24 * 60
 
         const val KEY_VERSION = "version"
         const val KEY_DAILY_LIMIT = "daily_limit_minutes"

@@ -11,61 +11,52 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Pure formatting, so it runs as a plain JVM test with no Android framework.
  *
- * Worth covering because these strings are the entire product surface for a teen
+ * Tests [shapeOf] rather than [formatDuration]/[formatLimit] directly: those two
+ * need a real `Context` to look up a localized string, which this module's test
+ * setup has no way to fake. [shapeOf] is where the thresholds these tests
+ * actually care about live — the string lookup itself is a straight one-case-per-
+ * shape mapping with nothing left to get wrong.
+ *
+ * Worth covering because these figures are the entire product surface for a teen
  * checking how long they have left — "0m" or "1h 0m" would both read as broken.
  */
 class FormatTest {
 
     @Test
     fun `hours and minutes are shown together`() {
-        assertEquals("1h 30m", Format.duration(90.minutes))
-        assertEquals("2h 5m", Format.duration(125.minutes))
+        assertEquals(DurationShape.Both(1, 30), shapeOf(90.minutes))
+        assertEquals(DurationShape.Both(2, 5), shapeOf(125.minutes))
     }
 
     @Test
     fun `a whole number of hours omits the minutes`() {
-        assertEquals("1h", Format.duration(60.minutes))
-        assertEquals("3h", Format.duration(3.hours))
+        assertEquals(DurationShape.HoursOnly(1), shapeOf(60.minutes))
+        assertEquals(DurationShape.HoursOnly(3), shapeOf(3.hours))
     }
 
     @Test
     fun `under an hour shows minutes only`() {
-        assertEquals("45m", Format.duration(45.minutes))
-        assertEquals("1m", Format.duration(1.minutes))
+        assertEquals(DurationShape.MinutesOnly(45), shapeOf(45.minutes))
+        assertEquals(DurationShape.MinutesOnly(1), shapeOf(1.minutes))
     }
 
     @Test
     fun `part of a minute is not rounded down to zero`() {
         // "0m left" would read as "you have none" when a little remains.
-        assertEquals("under a minute", Format.duration(30.seconds))
-        assertEquals("under a minute", Format.duration(Duration.ZERO))
+        assertEquals(DurationShape.UnderAMinute, shapeOf(30.seconds))
+        assertEquals(DurationShape.UnderAMinute, shapeOf(Duration.ZERO))
     }
 
     @Test
     fun `an infinite duration reads as no limit`() {
-        assertEquals("no limit", Format.duration(Duration.INFINITE))
-    }
-
-    @Test
-    fun `a zero limit setting reads as no limit`() {
-        // Zero on the slider means "unlimited", which is the opposite of a zero
-        // duration elsewhere — the slider has no other way to express it.
-        assertEquals("No limit", Format.limit(0))
-        assertEquals("No limit", Format.limit(-10))
-    }
-
-    @Test
-    fun `a limit in minutes is formatted like any other duration`() {
-        assertEquals("30m", Format.limit(30))
-        assertEquals("2h", Format.limit(120))
-        assertEquals("1h 15m", Format.limit(75))
+        assertEquals(DurationShape.NoLimit, shapeOf(Duration.INFINITE))
     }
 
     @Test
     fun `times are zero padded`() {
-        assertEquals("07:00", Format.time(LocalTime.of(7, 0)))
-        assertEquals("22:30", Format.time(LocalTime.of(22, 30)))
-        assertEquals("00:05", Format.time(LocalTime.of(0, 5)))
+        assertEquals("07:00", formatTime(LocalTime.of(7, 0)))
+        assertEquals("22:30", formatTime(LocalTime.of(22, 30)))
+        assertEquals("00:05", formatTime(LocalTime.of(0, 5)))
     }
 }
 

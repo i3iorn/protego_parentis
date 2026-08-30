@@ -22,17 +22,29 @@ class RequestStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    /** Everything, newest first, with lapsed requests already closed. */
-    fun all(now: Instant): List<Request> {
+    /**
+     * Everything, newest first, with lapsed requests already closed.
+     *
+     * Synchronized on [prefs]: this both reads and, when something has expired,
+     * writes back, and it runs from the UI thread and the enforcement worker
+     * alike. Without a lock, a save() landing between the read and the write here
+     * could be silently overwritten by the stale expiry pass.
+     */
+    fun all(now: Instant): List<Request> = synchronized(prefs) {
         val stored = read()
         val current = RequestRules.expire(stored, now)
         if (current != stored) write(current)
-        return current.sortedByDescending { it.createdAt }
+        current.sortedByDescending { it.createdAt }
     }
 
     fun pending(now: Instant): List<Request> = all(now).filter { it.state.isOpen }
 
-    fun save(request: Request) {
+    /**
+     * Synchronized on [prefs]: a request being answered on the UI thread can race
+     * a new request being raised from elsewhere, and without a lock one save()'s
+     * read-modify-write could clobber the other's.
+     */
+    fun save(request: Request) = synchronized(prefs) {
         write(read().filterNot { it.id == request.id } + request)
     }
 

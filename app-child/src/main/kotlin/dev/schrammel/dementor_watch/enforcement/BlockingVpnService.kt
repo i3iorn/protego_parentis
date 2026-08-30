@@ -76,13 +76,18 @@ class BlockingVpnService : VpnService() {
             .addRoute(ANY_ADDRESS, 0)
 
         var scoped = 0
+        var missing = 0
         blocked.forEach { pkg ->
             // Throws for an app that is no longer installed, which is ordinary
             // rather than exceptional — the list outlives uninstalls.
             runCatching { builder.addAllowedApplication(pkg) }
                 .onSuccess { scoped++ }
-                .onFailure { Log.d(TAG, "Not installed, so not blocked: $pkg") }
+                .onFailure { missing++ }
         }
+        // A count, not the package names: logcat is not the app's own content-free
+        // diagnostic log, and a blocklist derived from parental rules is not
+        // something this app puts anywhere a package name can be read back out of.
+        if (missing > 0) Log.d(TAG, "$missing blocked app(s) no longer installed")
 
         if (scoped == 0) {
             // Every named app has gone. Establishing now would capture *nothing*,

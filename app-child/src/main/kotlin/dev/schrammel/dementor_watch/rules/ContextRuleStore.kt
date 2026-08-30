@@ -51,11 +51,11 @@ class ContextRuleStore(context: Context) {
         get() = decodeRules(prefs.getString(KEY_RULES, null))
         set(value) = prefs.edit { putString(KEY_RULES, encodeRules(value)) }
 
-    fun upsert(rule: ContextRule) {
+    fun upsert(rule: ContextRule) = synchronized(prefs) {
         rules = rules.filterNot { it.id == rule.id } + rule
     }
 
-    fun delete(id: String) {
+    fun delete(id: String) = synchronized(prefs) {
         rules = rules.filterNot { it.id == id }
     }
 
@@ -65,7 +65,7 @@ class ContextRuleStore(context: Context) {
         get() = decodePlaces(prefs.getString(KEY_PLACES, null))
         set(value) = prefs.edit { putString(KEY_PLACES, encodePlaces(value)) }
 
-    fun upsertPlace(place: Place) {
+    fun upsertPlace(place: Place) = synchronized(prefs) {
         places = places.filterNot { it.id == place.id } + place
     }
 
@@ -75,7 +75,7 @@ class ContextRuleStore(context: Context) {
      * Leaving a rule pointing at a deleted place would make it silently
      * unsatisfiable — a rule that looks active in the list and never fires.
      */
-    fun deletePlace(id: PlaceId) {
+    fun deletePlace(id: PlaceId) = synchronized(prefs) {
         places = places.filterNot { it.id == id }
         rules = rules.filterNot { mentionsPlace(it.condition, id) }
     }
@@ -144,6 +144,11 @@ class ContextRuleStore(context: Context) {
                 put(KEY_VALUE, condition.place.value)
             }
 
+            is Condition.BatteryBelow -> {
+                put(KEY_KIND, BATTERY)
+                put(KEY_VALUE, condition.percent)
+            }
+
             is Condition.AllOf -> {
                 put(KEY_KIND, ALL_OF)
                 put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
@@ -179,6 +184,9 @@ class ContextRuleStore(context: Context) {
             WIFI -> value.takeIf(String::isNotBlank)?.let(Condition::OnWifi)
             NEAR -> value.takeIf(String::isNotBlank)?.let { Condition.NearDevice(DeviceTag(it)) }
             PLACE -> value.takeIf(String::isNotBlank)?.let { Condition.AtPlace(PlaceId(it)) }
+            BATTERY -> json.optInt(KEY_VALUE, 0)
+                .takeIf { it in 1..100 }
+                ?.let(Condition::BatteryBelow)
             ALL_OF -> Condition.AllOf(parts())
             ANY_OF -> Condition.AnyOf(parts())
             NOT -> parts().firstOrNull()?.let(Condition::Not)
@@ -299,6 +307,7 @@ class ContextRuleStore(context: Context) {
         const val WIFI = "wifi"
         const val NEAR = "near"
         const val PLACE = "place"
+        const val BATTERY = "battery"
         const val ALL_OF = "allOf"
         const val ANY_OF = "anyOf"
         const val NOT = "not"

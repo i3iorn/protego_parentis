@@ -105,6 +105,11 @@ object ContextRules {
 
             is Condition.AtPlace -> condition.place in context.insidePlaces
 
+            // Same fail-closed convention as Wi-Fi: an unreadable battery level
+            // must not be indistinguishable from "plenty of charge left".
+            is Condition.BatteryBelow ->
+                context.batteryPercent?.let { it <= condition.percent } ?: false
+
             is Condition.AllOf ->
                 condition.conditions.all { holds(it, context, depth + 1) }
 

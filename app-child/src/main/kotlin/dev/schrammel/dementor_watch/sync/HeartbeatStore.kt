@@ -29,16 +29,21 @@ class HeartbeatStore(context: Context) {
                 suspendedCount = prefs.getInt(KEY_SUSPENDED, 0),
             )
         }
-        set(value) {
+        // Synchronized on LOCK: the out-of-order guard below reads the current
+        // value and only then decides whether to write, and two heartbeats can
+        // arrive close together on the sync executor. Without a lock, both could
+        // pass the check against the same stale "known" before either commits,
+        // and whichever wrote second — not necessarily the newer one — would win.
+        set(value) = synchronized(LOCK) {
             if (value == null) {
                 prefs.edit { clear() }
-                return
+                return@synchronized
             }
             // Out-of-order arrival is normal: the poll window overlaps, and ntfy
             // does not promise ordering. Keeping the newest is what makes "how long
             // has it been quiet" mean anything.
             val known = latest
-            if (known != null && value.sentAt.isBefore(known.sentAt)) return
+            if (known != null && value.sentAt.isBefore(known.sentAt)) return@synchronized
 
             prefs.edit {
                 putLong(KEY_SENT_AT, value.sentAt.toEpochMilli())
@@ -100,6 +105,9 @@ class HeartbeatStore(context: Context) {
         set(value) = prefs.edit { putBoolean(KEY_ALERTED, value) }
 
     private companion object {
+        /** Shared across instances: every screen constructs its own store. */
+        val LOCK = Any()
+
         const val FILE_NAME = "heartbeat"
         const val UNKNOWN_BATTERY = -1
 

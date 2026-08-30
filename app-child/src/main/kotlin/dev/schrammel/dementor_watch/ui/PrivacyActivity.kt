@@ -13,9 +13,6 @@ import dev.schrammel.dementor_watch.rules.FeatureFlags
 import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * "What leaves this phone" — the child's view of their own privacy.
  *

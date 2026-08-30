@@ -13,7 +13,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.ChatText
 import dev.schrammel.dementor_watch.sync.ChatMessage
@@ -21,9 +20,6 @@ import dev.schrammel.dementor_watch.sync.ChatStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
 /**
  * Messages between the phones in the family.
@@ -271,15 +267,10 @@ class ChatActivity : DementorActivity() {
      * what was said turns a conversation into something the child cannot rely on.
      */
     private fun confirmClear() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.chat_clear)
-            .setMessage(R.string.chat_clear_confirm)
-            .setPositiveButton(R.string.chat_clear) { _, _ ->
-                store.forgetAll()
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        confirmDialog(R.string.chat_clear, R.string.chat_clear_confirm, R.string.chat_clear) {
+            store.forgetAll()
+            render()
+        }
     }
 
     companion object {

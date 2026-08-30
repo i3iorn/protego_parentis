@@ -3,14 +3,10 @@ package dev.schrammel.dementor_watch.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.SeekBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
@@ -44,8 +40,7 @@ class CategoryEditActivity : ParentGatedActivity() {
     private var nested = linkedSetOf<String>()
 
     private lateinit var nameInput: EditText
-    private lateinit var limitValue: TextView
-    private lateinit var limitBar: SeekBar
+    private var limitMinutes: Int = 0
     private lateinit var appsSummary: TextView
     private lateinit var nestedSummary: TextView
 
@@ -70,17 +65,13 @@ class CategoryEditActivity : ParentGatedActivity() {
         packages = LinkedHashSet(existing?.packages.orEmpty())
         nested = LinkedHashSet(existing?.subcategories.orEmpty())
 
-        setContentView(buildLayout(existing))
+        showColumn(buildLayout(existing))
         refreshAppsSummary()
         refreshNestedSummary()
     }
 
-    private fun buildLayout(existing: StoredCategory?): ScrollView {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
+    private fun buildLayout(existing: StoredCategory?): LinearLayout {
+        val content = contentColumn()
 
         content.addView(heading(getString(R.string.category_title), 28f))
 
@@ -92,26 +83,13 @@ class CategoryEditActivity : ParentGatedActivity() {
         content.addView(nameInput)
 
         content.addView(heading(getString(R.string.category_limit_header), 20f))
-        limitValue = TextView(this).apply {
-            styleAs(R.style.TextAppearance_Dementor_Metric)
-            text = Format.limit(existing?.limitMinutes ?: defaultLimitMinutes)
-        }
-        content.addView(limitValue)
-
-        limitBar = SeekBar(this).apply {
-            max = LimitSlider.MAX_STEPS
-            progress = LimitSlider.progressFor(existing?.limitMinutes ?: defaultLimitMinutes)
-            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
-                    limitValue.text = Format.limit(LimitSlider.minutesFor(progress))
-                }
-
-                override fun onStartTrackingTouch(bar: SeekBar) = Unit
-                override fun onStopTrackingTouch(bar: SeekBar) = Unit
-            })
-        }
-        content.addView(limitBar)
+        limitMinutes = existing?.limitMinutes ?: defaultLimitMinutes
+        content.addView(
+            limitSliderBlock(
+                initialMinutes = limitMinutes,
+                onChanged = { minutes -> limitMinutes = minutes },
+            ),
+        )
 
         content.addView(heading(getString(R.string.category_apps_header), 20f))
         appsSummary = TextView(this).apply { styleAs(R.style.TextAppearance_Dementor_Body) }
@@ -181,20 +159,17 @@ class CategoryEditActivity : ParentGatedActivity() {
             )
         }
 
-        return ScrollView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-            addView(content)
-        }
+        return content
     }
 
     private fun save() {
         val name = nameInput.text.toString().trim()
         if (name.isEmpty()) {
-            Toast.makeText(this, R.string.category_name_required, Toast.LENGTH_SHORT).show()
+            toast(R.string.category_name_required)
             return
         }
 
-        val minutes = LimitSlider.minutesFor(limitBar.progress)
+        val minutes = limitMinutes
         store.upsertCategory(
             StoredCategory(
                 id = categoryId,
@@ -224,7 +199,7 @@ class CategoryEditActivity : ParentGatedActivity() {
     private fun chooseNested() {
         val all = store.categories.filter { it.id != categoryId }
         if (all.isEmpty()) {
-            Toast.makeText(this, R.string.category_no_nested, Toast.LENGTH_SHORT).show()
+            toast(R.string.category_no_nested)
             return
         }
 
@@ -241,7 +216,7 @@ class CategoryEditActivity : ParentGatedActivity() {
             )
         }
         if (selectable.isEmpty()) {
-            Toast.makeText(this, R.string.category_no_nested, Toast.LENGTH_SHORT).show()
+            toast(R.string.category_no_nested)
             return
         }
 
@@ -300,8 +275,6 @@ class CategoryEditActivity : ParentGatedActivity() {
 
     companion object {
         private const val EXTRA_ID = "categoryId"
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
         fun intent(context: Context, categoryId: String? = null): Intent =
             Intent(context, CategoryEditActivity::class.java)

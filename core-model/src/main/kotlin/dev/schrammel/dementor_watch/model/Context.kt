@@ -28,8 +28,12 @@ data class Place(
 ) {
     init {
         require(name.isNotBlank()) { "a place needs a name to show in a rule" }
-        require(latitude in -90.0..90.0) { "latitude out of range: $latitude" }
-        require(longitude in -180.0..180.0) { "longitude out of range: $longitude" }
+        // Never the value itself, even here: this is an invariant check, not a
+        // debug aid, and a position belongs in no log this app writes,
+        // including a crash log an uncaught version of this exception would
+        // otherwise land in.
+        require(latitude in -90.0..90.0) { "latitude out of range" }
+        require(longitude in -180.0..180.0) { "longitude out of range" }
         require(radiusMetres >= MINIMUM_RADIUS_METRES) {
             "a radius under $MINIMUM_RADIUS_METRES m flaps constantly on consumer GPS"
         }
@@ -56,11 +60,16 @@ data class Place(
  * A null [wifiSsid] means "not on Wi-Fi, or we were not allowed to look". The two
  * are deliberately indistinguishable to a rule, so a missing permission can never
  * make a restriction silently disappear.
+ *
+ * [batteryPercent] follows the same convention: null means "could not be read",
+ * not "battery is fine" — a [Condition.BatteryBelow] rule simply does not fire
+ * rather than firing on a guess.
  */
 data class DeviceContext(
     val wifiSsid: String? = null,
     val nearbyDevices: Set<DeviceTag> = emptySet(),
     val insidePlaces: Set<PlaceId> = emptySet(),
+    val batteryPercent: Int? = null,
 ) {
     companion object {
         /** Nothing known: no Wi-Fi, nothing nearby, nowhere recognised. */
@@ -88,6 +97,13 @@ sealed interface Condition {
 
     /** Inside a saved place. */
     data class AtPlace(val place: PlaceId) : Condition
+
+    /** Battery at or under this percentage. Never fires if the level is unknown. */
+    data class BatteryBelow(val percent: Int) : Condition {
+        init {
+            require(percent in 1..100) { "a battery threshold must be between 1 and 100" }
+        }
+    }
 
     data class AllOf(val conditions: List<Condition>) : Condition
 

@@ -12,6 +12,14 @@
     <string name="service_used_up">Today\'s time is used up</string>
     <string name="service_no_limit">%1$s today</string>
 
+    <!-- Format.kt: generic duration/limit formatting shared across screens. -->
+    <string name="format_no_limit">no limit</string>
+    <string name="format_no_limit_capitalized">No limit</string>
+    <string name="format_under_a_minute">under a minute</string>
+    <string name="format_hours_minutes">%1$dh %2$dm</string>
+    <string name="format_hours">%1$dh</string>
+    <string name="format_minutes">%1$dm</string>
+
     <!-- The warning ladder. -->
     <string name="warning_channel_name">Time warnings</string>
     <string name="warning_channel_description">Warns you before your daily screen time runs out.</string>
@@ -93,6 +101,7 @@
     <string name="context_when_wifi">on Wi-Fi \u201c%1$s\u201d</string>
     <string name="context_when_near">near %1$s</string>
     <string name="context_when_place">at %1$s</string>
+    <string name="context_when_battery">battery at or under %1$d%%</string>
     <string name="context_when_not">not %1$s</string>
     <string name="context_join_and"> and </string>
     <string name="context_join_or"> or </string>
@@ -116,6 +125,7 @@
     <string name="context_choose_device">Near a device</string>
     <string name="context_device_hint">Bluetooth address</string>
     <string name="context_device_explainer">The phone counts a device as near when it is paired and connected over Bluetooth. Pair the other phone first, then paste its Bluetooth address here.</string>
+    <string name="context_choose_battery">Battery level</string>
     <string name="context_choose_budget">Set a different daily limit</string>
     <string name="context_choose_categories">Some categories</string>
     <string name="context_choose_apps">Some apps</string>
@@ -147,6 +157,9 @@
     <string name="privacy_log_body">A short record of what the app did — that it checked your time, that it started, that something failed. It holds no app names, no reasons you wrote and no times you were using anything. You can read all of it.</string>
     <string name="privacy_view_log">Read the log</string>
     <string name="home_open_privacy">What leaves this phone</string>
+    <string name="home_more_title">More</string>
+    <string name="home_open_more">More</string>
+    <string name="home_open_more_detail">History, what leaves this phone, and settings</string>
 
     <string name="diagnostics_title">App log</string>
     <string name="diagnostics_header">Dementor Watch log. Contains only what the app did: event names, counts and times. No app names, no messages, no reasons, no passwords.</string>
@@ -215,6 +228,9 @@
     <string name="requests_reason_hint">Why? Your parent sees this.</string>
     <string name="requests_reason_required">Add a reason first.</string>
     <string name="requests_ask_minutes">Ask for %1$d min</string>
+    <string name="requests_ask_custom">Custom amount</string>
+    <string name="requests_custom_title">How much time?</string>
+    <string name="requests_custom_zero">Choose a bit more than zero.</string>
     <string name="requests_sent">Sent. You will see the answer here.</string>
     <string name="requests_already_pending">You already have a request waiting for this.</string>
     <plurals name="requests_too_many">
@@ -389,12 +405,14 @@
     <string name="parent_row_inbox_detail">Answer asks for more time</string>
     <string name="parent_row_bonus">Send extra time</string>
     <string name="parent_row_bonus_detail">Add minutes without being asked</string>
+    <string name="parent_row_limit">Change daily limit</string>
+    <string name="parent_row_limit_detail">Set a new allowance from here, without the phone</string>
     <string name="parent_row_audit">History</string>
     <string name="parent_row_audit_detail">Everything that has changed, and who changed it</string>
     <string name="parent_row_sync">Family connection</string>
     <string name="parent_row_sync_detail">The topic and passphrase this family shares</string>
     <string name="parent_row_settings">This phone</string>
-    <string name="parent_row_settings_detail">PIN, and switching what this phone is</string>
+    <string name="parent_row_settings_detail">Sync, notifications, permissions, and this phone\'s PIN</string>
 
     <string name="parent_bonus_title">Send extra time</string>
     <string name="parent_bonus_body">Extra minutes for today, on top of the daily limit. It expires at 4am and does not change the rules.</string>
@@ -403,6 +421,12 @@
         <item quantity="one">Sent: %1$d extra minute.</item>
         <item quantity="other">Sent: %1$d extra minutes.</item>
     </plurals>
+
+    <string name="parent_limit_title">Change daily limit</string>
+    <string name="parent_limit_body">A new allowance for every day, replacing the current one. Per-app and category limits are unchanged, and can only be set from the phone itself.</string>
+    <string name="parent_limit_send">Send</string>
+    <string name="parent_limit_sent">Sent</string>
+    <string name="parent_limit_unknown">This phone has not heard from the child\'s phone yet, so the slider starts at zero rather than a guess.</string>
 
     <string name="parent_settings_title">This phone</string>
     <string name="parent_settings_pin_header">PIN</string>
@@ -607,6 +631,7 @@
     <string name="audit_broken_hint">Some entries no longer follow from the ones before them. Something edited or removed part of this record outside the app.</string>
     <string name="audit_device_approved">Approved %1$s as %2$s</string>
     <string name="audit_device_revoked">Removed %1$s from the family</string>
+    <string name="audit_family_disbanded">The family was disbanded</string>
 
     <string name="privacy_summary_header">What your parents\' phones are sent</string>
     <string name="privacy_summary_body">Today\'s total, how much of the limit is left, and the five apps you used most, with how long each was open. No times, no history of when you used anything, and nothing about what you did inside an app. Your parents see the same numbers you see on this phone — nothing more.</string>
@@ -820,6 +845,8 @@
     <string name="join_server">Server</string>
     <string name="join_leave">Leave this family</string>
     <string name="join_leave_confirm">This phone stops sending and receiving. Nothing on it is deleted, and it can join again with the code and passphrase.</string>
+    <string name="join_disband">Disband this family</string>
+    <string name="join_disband_confirm">Every other parent phone leaves too, the moment it next checks in. The managed phone is only told — removing the family from it stays a PIN-gated step on that phone itself. Nothing already recorded is deleted anywhere.</string>
 
     <string name="devices_parents_decide">A parent approves new phones, on their own phone. Nothing to do here.</string>
 
@@ -870,6 +897,12 @@
     <string name="notify_located_reason">You are told every time, and it cannot be switched off. Being told is the difference between this and being tracked.</string>
     <string name="notify_locked">A parent locked this phone</string>
     <string name="notify_locked_reason">A phone that locks itself with no explanation looks broken. This is the explanation.</string>
+    <string name="notify_device_added">A device joined the family</string>
+    <string name="notify_device_added_reason">Most of these happen with nobody watching — a device already trusted by one parent is added everywhere else automatically. An addition nobody was told about is not obvious just because it is visible if somebody goes looking.</string>
+    <string name="notify_device_removed">A device left the family</string>
+    <string name="notify_device_removed_reason">The same as a device being added: a parent revoking one on their own phone removes it everywhere else automatically, and nobody should find that out by noticing something stopped working.</string>
+    <string name="notify_family_disbanded">The family ended</string>
+    <string name="notify_family_disbanded_reason">The biggest trust-boundary change this app has. Whoever is holding this phone should know the moment it happens, not stumble on it later.</string>
     <string name="notify_request_received">Requests</string>
     <string name="notify_request_received_detail">Somebody is asking for more time.</string>
     <string name="notify_auto">Automatic answers</string>
@@ -1050,6 +1083,12 @@
     <string name="family_open_devices">Open family devices</string>
     <string name="family_pending_notification_title">A phone wants to join the family</string>
     <string name="family_pending_notification_body">Check its fingerprint before you let it in.</string>
+    <string name="family_added_notification_title">A device joined the family</string>
+    <string name="family_added_notification_body">%1$s is now trusted by this phone.</string>
+    <string name="family_removed_notification_title">A device left the family</string>
+    <string name="family_removed_notification_body">%1$s is no longer trusted by this phone.</string>
+    <string name="family_disbanded_notification_title">This family no longer exists</string>
+    <string name="family_disbanded_notification_body">A parent ended this family. Tap for what that means for this phone.</string>
 
     <string name="notify_device_pending">Phones asking to join</string>
     <string name="notify_device_pending_detail">When a phone wants into the family and needs approving.</string>

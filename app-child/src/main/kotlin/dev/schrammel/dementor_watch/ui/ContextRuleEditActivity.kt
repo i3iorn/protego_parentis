@@ -7,12 +7,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Bundle
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -84,17 +82,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         negate = stored is Condition.Not
         condition = if (stored is Condition.Not) stored.condition else stored
 
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onGatedContentVisible() = render()
@@ -187,8 +176,23 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 )
             }
             add(getString(R.string.context_choose_device) to { chooseDevice() })
+            add(getString(R.string.context_choose_battery) to { askForBattery() })
         }
         menu(R.string.context_when_header, options)
+    }
+
+    /** A percentage rather than free text — there is no wrong value to type. */
+    private fun askForBattery() {
+        val existing = (condition as? Condition.BatteryBelow)?.percent ?: DEFAULT_BATTERY_PERCENT
+        sliderDialog(
+            title = R.string.context_choose_battery,
+            max = MAX_BATTERY_PERCENT - 1,
+            initialProgress = existing - 1,
+            format = { getString(R.string.context_when_battery, it + 1) },
+        ) { progress ->
+            condition = Condition.BatteryBelow(progress + 1)
+            render()
+        }
     }
 
     /**
@@ -201,54 +205,26 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         val current = dev.schrammel.dementor_watch.context.ContextProvider(this)
             .current(emptyList()).wifiSsid
 
-        val input = EditText(this).apply {
-            setText(current.orEmpty())
-            hint = getString(R.string.context_wifi_hint)
-            setSingleLine()
+        promptForText(
+            R.string.context_choose_wifi,
+            R.string.context_wifi_hint,
+            prefill = current.orEmpty(),
+        ) { ssid ->
+            condition = Condition.OnWifi(ssid)
+            render()
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.context_choose_wifi)
-            .setView(
-                LinearLayout(this).apply {
-                    val pad = dimen(R.dimen.screen_padding)
-                    setPadding(pad, pad, pad, 0)
-                    addView(input)
-                },
-            )
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val ssid = input.text.toString().trim()
-                if (ssid.isNotEmpty()) condition = Condition.OnWifi(ssid)
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
     }
 
     private fun chooseDevice() {
         requestBluetoothIfNeeded()
-        val input = EditText(this).apply {
-            hint = getString(R.string.context_device_hint)
-            setSingleLine()
+        promptForText(
+            R.string.context_choose_device,
+            R.string.context_device_hint,
+            message = getString(R.string.context_device_explainer),
+        ) { tag ->
+            condition = Condition.NearDevice(DeviceTag(tag))
+            render()
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.context_choose_device)
-            .setMessage(R.string.context_device_explainer)
-            .setView(
-                LinearLayout(this).apply {
-                    val pad = dimen(R.dimen.screen_padding)
-                    setPadding(pad, pad, pad, 0)
-                    addView(input)
-                },
-            )
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val tag = input.text.toString().trim()
-                if (tag.isNotEmpty()) {
-                    condition = Condition.NearDevice(DeviceTag(tag))
-                }
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
     }
 
     private fun chooseEffect() {
@@ -263,40 +239,17 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     private fun askForBudget() {
-        val value = TextView(this).apply { styleAs(R.style.TextAppearance_Dementor_Metric) }
-        val bar = android.widget.SeekBar(this).apply {
-            max = LimitSlider.MAX_STEPS
-            progress = LimitSlider.progressFor(DEFAULT_BUDGET_MINUTES)
-            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(bar: android.widget.SeekBar, progress: Int, fromUser: Boolean) {
-                    value.text = Format.limit(LimitSlider.minutesFor(progress))
-                }
-
-                override fun onStartTrackingTouch(bar: android.widget.SeekBar) = Unit
-                override fun onStopTrackingTouch(bar: android.widget.SeekBar) = Unit
-            })
-        }
-        value.text = Format.limit(DEFAULT_BUDGET_MINUTES)
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.context_choose_budget)
-            .setView(
-                LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    val pad = dimen(R.dimen.screen_padding)
-                    setPadding(pad, pad, pad, 0)
-                    addView(value)
-                    addView(bar)
-                },
+        sliderDialog(
+            title = R.string.context_choose_budget,
+            max = LimitSlider.MAX_STEPS,
+            initialProgress = LimitSlider.progressFor(DEFAULT_BUDGET_MINUTES),
+            format = { formatLimit(LimitSlider.minutesFor(it)) },
+        ) { progress ->
+            effect = RuleEffect.SetDeviceBudget(
+                WeeklyBudget.flat(LimitSlider.minutesFor(progress).minutes),
             )
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                effect = RuleEffect.SetDeviceBudget(
-                    WeeklyBudget.flat(LimitSlider.minutesFor(bar.progress).minutes),
-                )
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            render()
+        }
     }
 
     private fun chooseTarget() {
@@ -412,6 +365,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                     ?: getString(R.string.context_place_unknown),
             )
 
+            is Condition.BatteryBelow -> getString(R.string.context_when_battery, current.percent)
+
             else -> getString(R.string.context_when_always)
         }
         return if (negate) getString(R.string.context_when_not, base) else base
@@ -421,7 +376,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         is RuleEffect.Block -> getString(R.string.context_effect_block)
         is RuleEffect.Allow -> getString(R.string.context_effect_allow)
         is RuleEffect.SetDeviceBudget ->
-            getString(R.string.context_effect_budget, Format.duration(current.budget.default))
+            getString(R.string.context_effect_budget, formatDuration(current.budget.default))
     }
 
     private fun describeTarget(): String = when (val current = target) {
@@ -459,15 +414,13 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_xxs))
     }
 
-    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val EXTRA_ID = "ruleId"
         private const val REQUEST_LOCATION = 10
         private const val REQUEST_BLUETOOTH = 11
         private const val DEFAULT_BUDGET_MINUTES = 30
+        private const val DEFAULT_BATTERY_PERCENT = 20
+        private const val MAX_BATTERY_PERCENT = 100
 
         fun intent(context: Context, ruleId: String? = null): Intent =
             Intent(context, ContextRuleEditActivity::class.java)
@@ -498,17 +451,8 @@ class PlacesActivity : ParentGatedActivity() {
         super.onCreate(savedInstanceState)
         store = ContextRuleStore(this)
 
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onGatedContentVisible() = render()
@@ -582,35 +526,22 @@ class PlacesActivity : ParentGatedActivity() {
             return
         }
 
-        val input = EditText(this).apply {
-            hint = getString(R.string.places_name_hint)
-            setSingleLine()
-        }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.places_add_here)
-            .setView(
-                LinearLayout(this).apply {
-                    val pad = dimen(R.dimen.screen_padding)
-                    setPadding(pad, pad, pad, 0)
-                    addView(input)
-                },
+        promptForText(
+            R.string.places_add_here,
+            R.string.places_name_hint,
+            positiveText = R.string.places_add_here,
+        ) { name ->
+            store.upsertPlace(
+                Place(
+                    id = PlaceId(UUID.randomUUID().toString()),
+                    name = name,
+                    latitude = fix.latitude,
+                    longitude = fix.longitude,
+                    radiusMetres = DEFAULT_RADIUS_METRES,
+                ),
             )
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.isEmpty()) return@setPositiveButton
-                store.upsertPlace(
-                    Place(
-                        id = PlaceId(UUID.randomUUID().toString()),
-                        name = name,
-                        latitude = fix.latitude,
-                        longitude = fix.longitude,
-                        radiusMetres = DEFAULT_RADIUS_METRES,
-                    ),
-                )
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            render()
+        }
     }
 
     private fun confirmDelete(place: Place) {
@@ -628,8 +559,6 @@ class PlacesActivity : ParentGatedActivity() {
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val REQUEST_LOCATION = 12
         private const val DEFAULT_RADIUS_METRES = 150
 

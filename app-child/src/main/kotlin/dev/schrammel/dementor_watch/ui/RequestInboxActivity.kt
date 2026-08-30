@@ -3,13 +3,9 @@ package dev.schrammel.dementor_watch.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.GrantTarget
@@ -47,17 +43,8 @@ class RequestInboxActivity : ParentGatedActivity() {
         policyStore = LocalPolicyStore(this)
         installedApps = InstalledApps(this)
 
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onGatedContentVisible() {
@@ -137,32 +124,16 @@ class RequestInboxActivity : ParentGatedActivity() {
      * "no" is the thing that makes a teenager stop asking and start working around.
      */
     private fun decide(id: RequestId, approve: Boolean) {
-        val note = EditText(this).apply {
-            hint = getString(R.string.inbox_note_hint)
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, 0)
-            addView(note)
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle(if (approve) R.string.inbox_approve else R.string.inbox_deny)
-            .setView(content)
-            .setPositiveButton(if (approve) R.string.inbox_approve else R.string.inbox_deny) { _, _ ->
-                val text = note.text.toString()
-                if (approve) {
-                    coordinator.approve(id, text)
-                    // Apply at once so the extra time is usable immediately.
-                    EnforcementService.start(this)
-                } else {
-                    coordinator.deny(id, text)
-                }
-                render()
+        decisionDialog(if (approve) R.string.inbox_approve else R.string.inbox_deny) { text ->
+            if (approve) {
+                coordinator.approve(id, text)
+                // Apply at once so the extra time is usable immediately.
+                EnforcementService.start(this)
+            } else {
+                coordinator.deny(id, text)
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            render()
+        }
     }
 
     private fun describe(target: GrantTarget): String =
@@ -175,8 +146,6 @@ class RequestInboxActivity : ParentGatedActivity() {
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val TIME_PATTERN = "HH:mm"
 
         fun intent(context: Context) = Intent(context, RequestInboxActivity::class.java)

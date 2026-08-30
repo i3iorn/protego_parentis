@@ -8,10 +8,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.PersistableBundle
 import android.util.Log
+import dev.schrammel.dementor_watch.policy.PolicyClock
 import dev.schrammel.dementor_watch.provisioning.ProvisioningPayload
+import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.WebActivityStore
 import dev.schrammel.dementor_watch.rules.WebFilterStore
-import java.time.LocalDate
+import java.time.Instant
 
 /**
  * The device owner component.
@@ -88,7 +90,12 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
             if (event.totalResolvedAddressCount == 0) blocked++
         }
 
-        WebActivityStore(context).record(LocalDate.now(), hostnames, blocked)
+        // Keyed by the same policy day the budget resets on, not real midnight —
+        // a lookup just after midnight but before the day-boundary hour must land
+        // in yesterday's bucket, same as every other counter in the app.
+        val policy = LocalPolicyStore(context).load()
+        val today = PolicyClock.policyDay(Instant.now(), policy.timeZone, policy.dayBoundaryHour)
+        WebActivityStore(context).record(today, hostnames, blocked)
         Log.d(TAG, "Counted a batch of $networkLogsCount events")
     }
 

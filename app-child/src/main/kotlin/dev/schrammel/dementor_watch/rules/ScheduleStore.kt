@@ -30,8 +30,8 @@ data class StoredSchedule(
     val allowedPackages: Set<String> = emptySet(),
     val enabled: Boolean = true,
 ) {
-    val start: LocalTime get() = minuteOfDay(startMinuteOfDay)
-    val end: LocalTime get() = minuteOfDay(endMinuteOfDay)
+    val start: LocalTime get() = startMinuteOfDay.toLocalTime()
+    val end: LocalTime get() = endMinuteOfDay.toLocalTime()
 
     /** Whether the engine would accept this. The editor refuses to save otherwise. */
     val isComplete: Boolean
@@ -53,17 +53,6 @@ data class StoredSchedule(
         )
     }
 
-    private fun minuteOfDay(value: Int): LocalTime {
-        val clamped = value.coerceIn(0, MINUTES_PER_DAY - 1)
-        return LocalTime.of(clamped / MINUTES_PER_HOUR, clamped % MINUTES_PER_HOUR)
-    }
-
-    companion object {
-        const val MINUTES_PER_HOUR = 60
-        const val MINUTES_PER_DAY = 24 * 60
-
-        fun minuteOfDay(time: LocalTime): Int = time.hour * MINUTES_PER_HOUR + time.minute
-    }
 }
 
 /**
@@ -85,11 +74,11 @@ class ScheduleStore(context: Context) {
 
     fun find(id: String): StoredSchedule? = schedules.firstOrNull { it.id == id }
 
-    fun upsert(schedule: StoredSchedule) {
+    fun upsert(schedule: StoredSchedule) = synchronized(prefs) {
         schedules = schedules.filterNot { it.id == schedule.id } + schedule
     }
 
-    fun delete(id: String) {
+    fun delete(id: String) = synchronized(prefs) {
         schedules = schedules.filterNot { it.id == id }
     }
 

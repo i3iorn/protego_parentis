@@ -4,13 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.SeekBar
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
@@ -35,7 +31,8 @@ class AppLimitsActivity : ParentGatedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = LocalPolicyStore(this)
-        setContentView(buildLayout())
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onGatedContentVisible() {
@@ -45,18 +42,6 @@ class AppLimitsActivity : ParentGatedActivity() {
         }) { (loaded, limits) ->
             apps = loaded
             render(limits)
-        }
-    }
-
-    private fun buildLayout(): ScrollView {
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        return ScrollView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-            addView(container)
         }
     }
 
@@ -108,7 +93,7 @@ class AppLimitsActivity : ParentGatedActivity() {
             )
             addView(
                 TextView(context).apply {
-                    text = if (limitMinutes > 0) Format.limit(limitMinutes) else getString(R.string.app_limits_none)
+                    text = if (limitMinutes > 0) formatLimit(limitMinutes) else getString(R.string.app_limits_none)
                     styleAs(R.style.TextAppearance_Dementor_Body)
                 },
             )
@@ -117,54 +102,28 @@ class AppLimitsActivity : ParentGatedActivity() {
         }
 
     private fun promptForLimit(app: AppInfo, current: Int) {
-        val value = TextView(this).apply {
-            styleAs(R.style.TextAppearance_Dementor_Metric)
-            text = Format.limit(current)
+        sliderDialog(
+            title = app.label,
+            max = LimitSlider.MAX_STEPS,
+            initialProgress = LimitSlider.progressFor(current),
+            format = { formatLimit(LimitSlider.minutesFor(it)) },
+            positiveText = R.string.app_limits_save,
+        ) { progress ->
+            val minutes = LimitSlider.minutesFor(progress)
+            store.setAppLimit(app.pkg.value, minutes)
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = AuditAction.APP_LIMIT_CHANGED,
+                subject = app.label,
+                before = Audit.minutes(current),
+                after = Audit.minutes(minutes),
+            )
+            onGatedContentVisible()
         }
-        val bar = SeekBar(this).apply {
-            max = LimitSlider.MAX_STEPS
-            progress = LimitSlider.progressFor(current)
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
-                    value.text = Format.limit(LimitSlider.minutesFor(progress))
-                }
-
-                override fun onStartTrackingTouch(bar: SeekBar) = Unit
-                override fun onStopTrackingTouch(bar: SeekBar) = Unit
-            })
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, 0)
-            addView(value)
-            addView(bar)
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle(app.label)
-            .setView(content)
-            .setPositiveButton(R.string.app_limits_save) { _, _ ->
-                val minutes = LimitSlider.minutesFor(bar.progress)
-                store.setAppLimit(app.pkg.value, minutes)
-                Audit.record(
-                    context = this,
-                    actor = AuditActor.PARENT,
-                    action = AuditAction.APP_LIMIT_CHANGED,
-                    subject = app.label,
-                    before = Audit.minutes(current),
-                    after = Audit.minutes(minutes),
-                )
-                onGatedContentVisible()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-
         fun intent(context: Context) = Intent(context, AppLimitsActivity::class.java)
     }
 }

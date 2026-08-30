@@ -35,7 +35,13 @@ class GoalStore(context: Context) {
      * or its target changes, so editing the prize text does not silently reset
      * progress toward a day already under way.
      */
-    fun save(enabled: Boolean, maxMinutes: Int, prize: String, today: LocalDate) {
+    /**
+     * Synchronized on [prefs]: whether to restart progress depends on reading the
+     * previous goal first, and without a lock a concurrent save (UI thread vs. a
+     * sync callback applying a parent's remote change) could read a value the
+     * other was mid-write on, or have its own write overwritten in between.
+     */
+    fun save(enabled: Boolean, maxMinutes: Int, prize: String, today: LocalDate) = synchronized(prefs) {
         val previous = load(today)
         val restart = enabled && (!previous.enabled || previous.maxUsage != maxMinutes.minutes)
 
@@ -83,7 +89,7 @@ class GoalStore(context: Context) {
      * as the pending slot is cleared, so a crash between the two cannot lose the
      * record and award it again.
      */
-    fun markCelebrated(day: LocalDate) {
+    fun markCelebrated(day: LocalDate) = synchronized(prefs) {
         prefs.edit {
             putStringSet(KEY_CELEBRATED, (celebratedDays() + day).map(LocalDate::toString).toSet())
             remove(KEY_PENDING_DAY)

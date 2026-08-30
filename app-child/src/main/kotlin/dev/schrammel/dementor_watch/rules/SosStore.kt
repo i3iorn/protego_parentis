@@ -33,14 +33,22 @@ class SosStore(context: Context) {
             if (value == null) remove(KEY_LAST_SENT) else putLong(KEY_LAST_SENT, value.toEpochMilli())
         }
 
-    /** Returns false if one was already raised, so pressing twice is not two emergencies. */
-    fun raise(now: Instant = Instant.now()): Boolean {
-        if (isActive) return false
+    /**
+     * Returns false if one was already raised, so pressing twice is not two
+     * emergencies.
+     *
+     * Synchronized on [prefs]: the SOS button and any other trigger of an
+     * emergency both go through this method, and without a lock two calls
+     * arriving together could both observe [isActive] as false before either
+     * commits, each believing it was the one that raised the alarm.
+     */
+    fun raise(now: Instant = Instant.now()): Boolean = synchronized(prefs) {
+        if (isActive) return@synchronized false
         prefs.edit(commit = true) {
             putLong(KEY_RAISED_AT, now.toEpochMilli())
             remove(KEY_LAST_SENT)
         }
-        return true
+        true
     }
 
     fun clear() {

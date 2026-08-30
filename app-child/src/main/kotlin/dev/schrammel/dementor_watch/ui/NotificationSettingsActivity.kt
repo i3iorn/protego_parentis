@@ -14,9 +14,6 @@ import dev.schrammel.dementor_watch.enforcement.NotificationPreferences
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.RoleStore
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * What this phone tells you about.
  *
@@ -97,6 +94,12 @@ class NotificationSettingsActivity : DementorActivity() {
         // So does approving a phone: a parent lets in the managed phone, and
         // whoever sets that phone up lets in the founding parent.
         NotificationKind.DEVICE_PENDING,
+        // And so does hearing that one was added, or removed, or that the
+        // whole family ended — all three including silently, in the
+        // background, which is the case each of them exists for.
+        NotificationKind.DEVICE_ADDED,
+        NotificationKind.DEVICE_REMOVED,
+        NotificationKind.FAMILY_DISBANDED,
         -> true
 
         NotificationKind.AUTO_APPROVED,
@@ -176,6 +179,9 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.EMERGENCY -> R.string.notify_emergency
         NotificationKind.CHAT_MESSAGE -> R.string.chat_title
         NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending
+        NotificationKind.DEVICE_ADDED -> R.string.notify_device_added
+        NotificationKind.DEVICE_REMOVED -> R.string.notify_device_removed
+        NotificationKind.FAMILY_DISBANDED -> R.string.notify_family_disbanded
     }
 
     private fun detailOf(kind: NotificationKind): Int = when (kind) {
@@ -189,10 +195,13 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place_detail
         NotificationKind.CHAT_MESSAGE -> R.string.notify_chat_detail
         NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending_detail
-        // Not reachable: these four are never shown with a switch.
+        // Not reachable: these seven are never shown with a switch.
         NotificationKind.LOCATED,
         NotificationKind.LOCKED,
         NotificationKind.EMERGENCY,
+        NotificationKind.DEVICE_ADDED,
+        NotificationKind.DEVICE_REMOVED,
+        NotificationKind.FAMILY_DISBANDED,
         -> R.string.notify_always_hint
     }
 
@@ -200,6 +209,9 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.LOCATED -> R.string.notify_located_reason
         NotificationKind.LOCKED -> R.string.notify_locked_reason
         NotificationKind.EMERGENCY -> R.string.notify_emergency_reason
+        NotificationKind.DEVICE_ADDED -> R.string.notify_device_added_reason
+        NotificationKind.DEVICE_REMOVED -> R.string.notify_device_removed_reason
+        NotificationKind.FAMILY_DISBANDED -> R.string.notify_family_disbanded_reason
         else -> R.string.notify_always_hint
     }
 

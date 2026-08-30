@@ -12,7 +12,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
@@ -115,11 +114,12 @@ class HomeActivity : DementorActivity() {
     /**
      * Where this screen leads.
      *
-     * Grouped rather than listed. Eight rows in one card is a wall, and the three
-     * kinds of destination here are genuinely different: things to look at, the
-     * two screens that make this app something a person can agree to, and the
-     * settings nobody opens twice. Each row still says what is behind it — with
-     * this many, "History" alone does not tell anyone what they would find.
+     * The first group is what a child actually opens this app to do, including
+     * rules — even though rules are also one tap further inside "More". Burying
+     * the *only* way to them behind a general catch-all made everything rules
+     * leads to (limits, schedules, categories, per-app control) three or four
+     * taps deep for no reason anyone would choose on purpose; a second, more
+     * direct row here costs nothing for someone who was headed into More anyway.
      */
     private fun buildNavigation() {
         val navigation = findViewById<LinearLayout>(R.id.navigation)
@@ -160,48 +160,28 @@ class HomeActivity : DementorActivity() {
                         ) { startActivity(WebActivityActivity.intent(this@HomeActivity)) },
                     )
                 }
+                // Also reachable via More → Change rules. Rules sat three taps
+                // deep behind that one row and everything it leads to went down
+                // with it — this is the direct way in, not a replacement for that
+                // one, since somebody already in More has no reason to back out.
+                add(
+                    row(R.string.home_edit_rules, R.string.home_edit_rules_detail) {
+                        startActivity(Intent(this@HomeActivity, RulesActivity::class.java))
+                    },
+                )
+                // History, privacy and settings all moved one tap away behind
+                // this one row — kept in the same card as everything above
+                // rather than its own, which used to sit close enough beneath
+                // it to look like a seam in one broken card instead of two
+                // deliberate ones.
+                add(
+                    row(R.string.home_open_more, R.string.home_open_more_detail) {
+                        startActivity(HomeMoreActivity.intent(this@HomeActivity))
+                    },
+                )
             },
         )
-
-        // Never hidden, and given their own heading rather than buried among the
-        // settings. These two are what a child is owed in exchange for the rest of
-        // this, and a promise filed under "other" is not much of a promise.
-        addSection(
-            navigation,
-            getString(R.string.home_group_openness),
-            listOf(
-                row(R.string.home_open_audit, R.string.home_open_audit_detail) {
-                    startActivity(AuditActivity.intent(this))
-                },
-                row(R.string.home_open_privacy, R.string.home_open_privacy_detail) {
-                    startActivity(PrivacyActivity.intent(this))
-                },
-            ),
-        )
-
-        addSection(
-            navigation,
-            getString(R.string.home_group_settings),
-            listOf(
-                row(R.string.notify_title, R.string.notify_row_detail) {
-                    startActivity(NotificationSettingsActivity.intent(this))
-                },
-                row(R.string.perms_title, R.string.perms_row_detail) {
-                    startActivity(PermissionsActivity.intent(this))
-                },
-                navigationRow(
-                    getString(R.string.home_language, LanguagePicker.currentLabel(this)),
-                    getString(R.string.home_language_detail),
-                ) { LanguagePicker.show(this) },
-                row(R.string.home_edit_rules, R.string.home_edit_rules_detail) {
-                    startActivity(Intent(this, RulesActivity::class.java))
-                },
-            ),
-        )
     }
-
-    private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
-        navigationRow(getString(titleRes), getString(detailRes), onClick)
 
     /**
      * Whether the family is finished being set up.
@@ -334,7 +314,7 @@ class HomeActivity : DementorActivity() {
                         else -> getString(
                             R.string.home_category_row,
                             category.name,
-                            Format.duration(budget.remaining),
+                            formatDuration(budget.remaining),
                         )
                     },
                 ),
@@ -353,7 +333,7 @@ class HomeActivity : DementorActivity() {
                 headline.text = getString(R.string.home_no_limit_headline)
                 subline.text = getString(
                     R.string.home_used_no_limit,
-                    Format.duration(budget.used),
+                    formatDuration(budget.used),
                 )
                 bar.visibility = View.GONE
                 tintText(headline, BudgetLevel.NORMAL)
@@ -371,15 +351,18 @@ class HomeActivity : DementorActivity() {
             else -> {
                 headline.text = getString(
                     R.string.home_remaining,
-                    Format.duration(budget.remaining),
+                    formatDuration(budget.remaining),
                 )
                 subline.text = getString(
                     R.string.home_used_of,
-                    Format.duration(budget.used),
-                    Format.duration(budget.allowed + budget.bonus),
+                    formatDuration(budget.used),
+                    formatDuration(budget.allowed + budget.bonus),
                 )
                 bar.visibility = View.VISIBLE
-                bar.progress = percentUsed(budget.used, budget.allowed + budget.bonus)
+                bar.progress = percentUsed(
+                    budget.used.inWholeMinutes.toInt(),
+                    (budget.allowed + budget.bonus).inWholeMinutes.toInt(),
+                )
                 tint(bar, budget.level)
                 tintText(headline, budget.level)
             }
@@ -399,7 +382,7 @@ class HomeActivity : DementorActivity() {
                 if (limit <= 0) {
                     getString(R.string.home_rule_no_limit)
                 } else {
-                    getString(R.string.home_rule_limit, Format.limit(limit))
+                    getString(R.string.home_rule_limit, formatLimit(limit))
                 },
             ),
         )
@@ -412,8 +395,8 @@ class HomeActivity : DementorActivity() {
                 } else {
                     getString(
                         R.string.home_rule_bedtime,
-                        Format.time(bedtime.start),
-                        Format.time(bedtime.end),
+                        formatTime(bedtime.start),
+                        formatTime(bedtime.end),
                     )
                 },
             ),
@@ -460,7 +443,7 @@ class HomeActivity : DementorActivity() {
         // will not open, and offering a row that refuses is worse than not
         // offering one.
         byPackage.forEach { (pkg, time) ->
-            container.addView(row(pkg, Format.duration(time), openable = true))
+            container.addView(row(pkg, formatDuration(time), openable = true))
         }
     }
 
@@ -557,27 +540,15 @@ class HomeActivity : DementorActivity() {
         setOnClickListener {
             val launch = packageManager.getLaunchIntentForPackage(pkg.value)
             if (launch == null) {
-                Toast.makeText(this@HomeActivity, R.string.home_cannot_open, Toast.LENGTH_SHORT)
-                    .show()
+                this@HomeActivity.toast(R.string.home_cannot_open)
                 return@setOnClickListener
             }
             // Failure here is normal rather than exceptional: a suspended app
             // throws, and so does one uninstalled a moment ago.
             runCatching { startActivity(launch) }.onFailure {
-                Toast.makeText(this@HomeActivity, R.string.home_cannot_open, Toast.LENGTH_SHORT)
-                    .show()
+                this@HomeActivity.toast(R.string.home_cannot_open)
             }
         }
-    }
-
-    /**
-     * State as colour as well as number, so "nearly out" reads at a glance rather
-     * than having to be worked out from a figure.
-     */
-    private fun colourFor(level: BudgetLevel): Int = when (level) {
-        BudgetLevel.NORMAL -> R.color.state_ok
-        BudgetLevel.NOTICE, BudgetLevel.GRACE -> R.color.state_warning
-        BudgetLevel.EXHAUSTED -> R.color.state_critical
     }
 
     private fun tint(bar: ProgressBar, level: BudgetLevel) {

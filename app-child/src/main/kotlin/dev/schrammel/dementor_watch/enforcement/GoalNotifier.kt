@@ -9,7 +9,7 @@ import androidx.core.app.NotificationCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.GoalAchievement
 import dev.schrammel.dementor_watch.ui.CelebrationActivity
-import dev.schrammel.dementor_watch.ui.Format
+import dev.schrammel.dementor_watch.ui.formatDuration
 
 /**
  * Announces an earned prize on the next unlock.
@@ -52,8 +52,8 @@ class GoalNotifier(context: Context) {
                 .setContentText(
                     appContext.getString(
                         R.string.goal_notification_body,
-                        Format.duration(achievement.used),
-                        Format.duration(achievement.target),
+                        appContext.formatDuration(achievement.used),
+                        appContext.formatDuration(achievement.target),
                     ),
                 )
                 .setAutoCancel(true)

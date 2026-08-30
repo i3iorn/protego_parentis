@@ -50,6 +50,7 @@ class ContextProvider(context: Context) {
         wifiSsid = wifiSsid(),
         nearbyDevices = nearbyDevices(),
         insidePlaces = insidePlaces(places),
+        batteryPercent = BatteryReader.percent(appContext),
     )
 
     // ---------- Wi-Fi ----------

@@ -115,6 +115,43 @@ class EnrolmentTest {
         )
     }
 
+    // ---------- what a revoke may say ----------
+
+    @Test
+    fun `a revoke naming a parent is accepted`() {
+        assertTrue(Enrolment.shouldAcceptRevoke(SyncRole.PARENT))
+    }
+
+    /**
+     * Symmetric with [Enrolment.shouldAccept] never covering the managed phone:
+     * un-enrolling it has to stay a local, PIN-gated action on that phone, not
+     * something a remote parent's revoke can do to it or to everyone's trust in
+     * it all at once.
+     */
+    @Test
+    fun `a revoke naming the managed phone is refused`() {
+        assertFalse(Enrolment.shouldAcceptRevoke(SyncRole.CHILD))
+    }
+
+    /** No roster entry for the named id means nothing is known to revoke. */
+    @Test
+    fun `a revoke naming an unknown device is refused`() {
+        assertFalse(Enrolment.shouldAcceptRevoke(null))
+    }
+
+    /** Only a parent may revoke or disband, whatever a message claims about itself. */
+    @Test
+    fun `revoking and disbanding are a parent's message`() {
+        assertEquals(
+            SyncRole.PARENT,
+            RosterRules.expectedSender(SyncMessageType.DEVICE_REVOKED),
+        )
+        assertEquals(
+            SyncRole.PARENT,
+            RosterRules.expectedSender(SyncMessageType.FAMILY_DISBANDED),
+        )
+    }
+
     private fun vouch(role: SyncRole = SyncRole.PARENT): Vouch {
         val keys = keyPair()
         return Vouch(

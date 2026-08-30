@@ -10,8 +10,8 @@ import androidx.core.content.edit
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.model.BudgetLevel
 import dev.schrammel.dementor_watch.model.BudgetStatus
-import dev.schrammel.dementor_watch.ui.Format
 import dev.schrammel.dementor_watch.ui.HomeActivity
+import dev.schrammel.dementor_watch.ui.formatDuration
 import java.time.LocalDate
 
 /**
@@ -57,9 +57,9 @@ class WarningNotifier(context: Context) {
         val text = when (level) {
             BudgetLevel.NORMAL -> return
             BudgetLevel.NOTICE ->
-                appContext.getString(R.string.warn_notice, Format.duration(budget.remaining))
+                appContext.getString(R.string.warn_notice, appContext.formatDuration(budget.remaining))
             BudgetLevel.GRACE ->
-                appContext.getString(R.string.warn_grace, Format.duration(budget.remaining))
+                appContext.getString(R.string.warn_grace, appContext.formatDuration(budget.remaining))
             BudgetLevel.EXHAUSTED -> appContext.getString(R.string.warn_exhausted)
         }
 

@@ -52,24 +52,31 @@ class AppReviewStore(context: Context) {
      * broadcast is the fast path, the sweep catches anything installed while the
      * service was not running, which on a rebooting phone is a real window.
      */
-    fun noticeInstalled(installed: Set<String>): Set<String> {
+    /**
+     * Synchronized on [prefs]: this both checks state and, depending on what it
+     * finds, writes a new one, and it runs from both the install broadcast
+     * receiver and the enforcement sweep. Without a lock, two near-simultaneous
+     * calls could both read the same "known" set before either commits, so one
+     * caller's fresh packages would be lost rather than added to pending.
+     */
+    fun noticeInstalled(installed: Set<String>): Set<String> = synchronized(prefs) {
         if (!isSeeded) {
             seed(installed)
-            return emptySet()
+            return@synchronized emptySet()
         }
 
         val fresh = installed - known
-        if (fresh.isEmpty()) return emptySet()
+        if (fresh.isEmpty()) return@synchronized emptySet()
 
         prefs.edit {
             putStringSet(KEY_KNOWN, known + fresh)
             putStringSet(KEY_PENDING, pending + fresh)
         }
-        return fresh
+        fresh
     }
 
     /** Clears the "new" flag once someone has said yes or no to it. */
-    fun markReviewed(pkg: String) {
+    fun markReviewed(pkg: String) = synchronized(prefs) {
         prefs.edit {
             putStringSet(KEY_PENDING, pending - pkg)
             putStringSet(KEY_KNOWN, known + pkg)
@@ -83,7 +90,7 @@ class AppReviewStore(context: Context) {
      * news, and reporting it as new every time would turn a reinstall loop into a
      * notification loop.
      */
-    fun forgetPending(pkg: String) {
+    fun forgetPending(pkg: String) = synchronized(prefs) {
         prefs.edit { putStringSet(KEY_PENDING, pending - pkg) }
     }
 

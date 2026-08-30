@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
@@ -96,12 +95,7 @@ class SosActivity : DementorActivity() {
      * hard to press by accident must still be easy to press on purpose.
      */
     private fun confirm() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.sos_confirm_title)
-            .setMessage(R.string.sos_confirm_body)
-            .setPositiveButton(R.string.sos_send) { _, _ -> raise() }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        confirmDialog(R.string.sos_confirm_title, R.string.sos_confirm_body, R.string.sos_send) { raise() }
     }
 
     private fun raise() {

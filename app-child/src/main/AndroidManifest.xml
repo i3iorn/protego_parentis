@@ -49,6 +49,7 @@
         tools:ignore="ProtectedPermissions" />
 
     <application
+        android:name=".DementorApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -139,18 +140,28 @@
             android:parentActivityName=".ui.ParentHomeActivity" />
 
         <activity
-            android:name=".ui.ParentSettingsActivity"
+            android:name=".ui.ParentLimitActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
+
+        <activity
+            android:name=".ui.ParentSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.FamilyDevicesActivity" />
 
         <!--
           The shared history. Deliberately not gated: a record only the parent can
           read is not a shared record.
         -->
         <activity
-            android:name=".ui.AuditActivity"
+            android:name=".ui.HomeMoreActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
+            android:name=".ui.AuditActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeMoreActivity" />
 
         <activity
             android:name=".ui.LimitsActivity"
@@ -251,7 +262,7 @@
         <activity
             android:name=".ui.PrivacyActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeActivity" />
+            android:parentActivityName=".ui.HomeMoreActivity" />
 
         <activity
             android:name=".ui.DiagnosticsActivity"

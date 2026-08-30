@@ -4,10 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
@@ -182,41 +180,29 @@ class ParentInboxActivity : ParentRoleActivity() {
      * denial with a reason is a conversation, a bare no is a wall.
      */
     private fun decide(request: IncomingRequest, state: RequestState) {
-        val note = EditText(this).apply { hint = getString(R.string.inbox_note_hint) }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, 0)
-            addView(note)
-        }
         val label = if (state == RequestState.APPROVED) {
             R.string.inbox_approve
         } else {
             R.string.inbox_deny
         }
 
-        AlertDialog.Builder(this)
-            .setTitle(label)
-            .setView(content)
-            .setPositiveButton(label) { _, _ ->
-                val text = note.text.toString().trim().takeIf(String::isNotEmpty)
-                sync.publishDecision(request.id, state, text)
-                inbox.settle(request.id, state, text)
-                Audit.record(
-                    context = this,
-                    actor = AuditActor.PARENT,
-                    action = if (state == RequestState.APPROVED) {
-                        AuditAction.REQUEST_APPROVED
-                    } else {
-                        AuditAction.REQUEST_DENIED
-                    },
-                    subject = label(request),
-                    after = Audit.minutes(request.minutes),
-                )
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        decisionDialog(label) { text ->
+            val note = text.trim().takeIf(String::isNotEmpty)
+            sync.publishDecision(request.id, state, note)
+            inbox.settle(request.id, state, note)
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = if (state == RequestState.APPROVED) {
+                    AuditAction.REQUEST_APPROVED
+                } else {
+                    AuditAction.REQUEST_DENIED
+                },
+                subject = label(request),
+                after = Audit.minutes(request.minutes),
+            )
+            render()
+        }
     }
 
     companion object {

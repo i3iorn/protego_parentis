@@ -17,9 +17,6 @@ import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.usage.UsageAccess
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * What this app needs Android's permission for, and how to actually give it.
  *

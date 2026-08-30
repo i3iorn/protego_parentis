@@ -83,7 +83,7 @@ class StoredScheduleTest {
 
     @Test
     fun `round-trips a time to a minute of the day`() {
-        assertEquals(16 * 60 + 30, StoredSchedule.minuteOfDay(LocalTime.of(16, 30)))
+        assertEquals(16 * 60 + 30, LocalTime.of(16, 30).toMinuteOfDay())
         assertEquals(LocalTime.of(16, 30), schedule(start = 16 * 60 + 30).start)
     }
 

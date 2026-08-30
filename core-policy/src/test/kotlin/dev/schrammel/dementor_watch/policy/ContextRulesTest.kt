@@ -79,6 +79,20 @@ class ContextRulesTest {
     }
 
     @Test
+    fun `a battery condition holds at or under the threshold`() {
+        assertTrue(ContextRules.holds(Condition.BatteryBelow(20), DeviceContext(batteryPercent = 20)))
+        assertTrue(ContextRules.holds(Condition.BatteryBelow(20), DeviceContext(batteryPercent = 5)))
+        assertFalse(ContextRules.holds(Condition.BatteryBelow(20), DeviceContext(batteryPercent = 21)))
+    }
+
+    @Test
+    fun `a battery condition fails when the level could not be read`() {
+        // Same fail-closed convention as Wi-Fi: an unreadable level must not be
+        // indistinguishable from "battery is fine".
+        assertFalse(ContextRules.holds(Condition.BatteryBelow(20), DeviceContext.UNKNOWN))
+    }
+
+    @Test
     fun `always holds with nothing known at all`() {
         assertTrue(ContextRules.holds(Condition.Always, DeviceContext.UNKNOWN))
     }

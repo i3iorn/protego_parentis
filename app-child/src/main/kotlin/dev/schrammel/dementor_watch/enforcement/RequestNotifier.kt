@@ -204,6 +204,66 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * A device has been added to the family, on this phone.
+     *
+     * Fires the same way whether a person on this phone just tapped Approve or
+     * this phone enrolled the device silently in the background because it
+     * already trusted whoever vouched for it — see [Enrolment.shouldAccept] and
+     * [dev.schrammel.dementor_watch.sync.SyncCoordinator.applyVouch]. That second
+     * path has no screen open and nobody watching it happen, which is exactly why
+     * this one is never optional: an addition nobody was told about is not
+     * obvious just because it is visible if somebody goes looking.
+     */
+    fun notifyDeviceAdded(name: String) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_DEVICE_ADDED,
+            kind = NotificationKind.DEVICE_ADDED,
+            title = appContext.getString(R.string.family_added_notification_title),
+            body = appContext.getString(R.string.family_added_notification_body, name),
+            destination = FamilyDevicesActivity.intent(appContext),
+        )
+    }
+
+    /**
+     * A device has been removed from the family, on this phone.
+     *
+     * Fires the same way whether a person here just tapped Revoke or this phone
+     * removed the device because it already trusted whoever revoked it — the
+     * mirror of [notifyDeviceAdded]. Never fires for the managed phone itself;
+     * see [dev.schrammel.dementor_watch.sync.SyncReceiver] and
+     * [Enrolment.shouldAcceptRevoke] for why that one stays a local action.
+     */
+    fun notifyDeviceRemoved(name: String) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_DEVICE_REMOVED,
+            kind = NotificationKind.DEVICE_REMOVED,
+            title = appContext.getString(R.string.family_removed_notification_title),
+            body = appContext.getString(R.string.family_removed_notification_body, name),
+            destination = FamilyDevicesActivity.intent(appContext),
+        )
+    }
+
+    /**
+     * This phone's family no longer exists.
+     *
+     * The destination differs by whether this phone acted on the disband or
+     * only heard about it — see the two call sites in `SyncReceiver`. Either
+     * way this is the one place the news reaches whoever is holding the phone.
+     */
+    fun notifyFamilyDisbanded(destination: Intent) {
+        post(
+            channel = CHANNEL_INCOMING,
+            id = NOTIFICATION_FAMILY_DISBANDED,
+            kind = NotificationKind.FAMILY_DISBANDED,
+            title = appContext.getString(R.string.family_disbanded_notification_title),
+            body = appContext.getString(R.string.family_disbanded_notification_body),
+            destination = destination,
+        )
+    }
+
     fun notifyLocked() {
         post(
             channel = CHANNEL_DECISION,
@@ -394,5 +454,8 @@ class RequestNotifier(context: Context) {
         const val NOTIFICATION_SOS_CLEARED = 12
         const val NOTIFICATION_CHAT = 13
         const val NOTIFICATION_DEVICE_PENDING = 14
+        const val NOTIFICATION_DEVICE_ADDED = 15
+        const val NOTIFICATION_DEVICE_REMOVED = 16
+        const val NOTIFICATION_FAMILY_DISBANDED = 17
     }
 }

@@ -23,9 +23,6 @@ import dev.schrammel.dementor_watch.sync.SyncConfigStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.sync.TransportKind
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * Where the family's messages are carried.
  *
@@ -191,12 +188,13 @@ class SyncBackendActivity : ParentGatedActivity() {
     private fun confirmMove() {
         val token = proposed() ?: return
 
-        AlertDialog.Builder(this)
-            .setTitle(R.string.backend_save)
-            .setMessage(getString(R.string.backend_move_confirm, FamilyTokens.encode(token)))
-            .setPositiveButton(R.string.backend_save) { _, _ -> move(token) }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        confirmDialog(
+            R.string.backend_save,
+            getString(R.string.backend_move_confirm, FamilyTokens.encode(token)),
+            R.string.backend_save,
+        ) {
+            move(token)
+        }
     }
 
     private fun move(token: FamilyToken) {

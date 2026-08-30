@@ -19,6 +19,14 @@
     <string name="service_used_up">Dagens tid är slut</string>
     <string name="service_no_limit">%1$s i dag</string>
 
+    <!-- Format.kt: generisk formatering av tid/gräns som delas mellan skärmar. -->
+    <string name="format_no_limit">ingen gräns</string>
+    <string name="format_no_limit_capitalized">Ingen gräns</string>
+    <string name="format_under_a_minute">mindre än en minut</string>
+    <string name="format_hours_minutes">%1$dh %2$dm</string>
+    <string name="format_hours">%1$dh</string>
+    <string name="format_minutes">%1$dm</string>
+
     <!-- Varningarna. -->
     <string name="warning_channel_name">Tidsvarningar</string>
     <string name="warning_channel_description">Varnar dig innan dagens skärmtid tar slut.</string>
@@ -100,6 +108,7 @@
     <string name="context_when_wifi">på Wi-Fi \u201d%1$s\u201d</string>
     <string name="context_when_near">nära %1$s</string>
     <string name="context_when_place">vid %1$s</string>
+    <string name="context_when_battery">batteriet på eller under %1$d%%</string>
     <string name="context_when_not">inte %1$s</string>
     <string name="context_join_and"> och </string>
     <string name="context_join_or"> eller </string>
@@ -123,6 +132,7 @@
     <string name="context_choose_device">Nära en enhet</string>
     <string name="context_device_hint">Bluetooth-adress</string>
     <string name="context_device_explainer">Telefonen räknar en enhet som nära när den är parkopplad och ansluten via Bluetooth. Parkoppla den andra telefonen först och klistra sedan in dess Bluetooth-adress här.</string>
+    <string name="context_choose_battery">Batterinivå</string>
     <string name="context_choose_budget">Sätt en annan daglig gräns</string>
     <string name="context_choose_categories">Vissa kategorier</string>
     <string name="context_choose_apps">Vissa appar</string>
@@ -154,6 +164,9 @@
     <string name="privacy_log_body">En kort anteckning om vad appen gjorde — att den kollade din tid, att den startade, att något gick fel. Den innehåller inga appnamn, inga anledningar du skrivit och inga tider då du använde något. Du får läsa hela.</string>
     <string name="privacy_view_log">Läs loggen</string>
     <string name="home_open_privacy">Vad som lämnar telefonen</string>
+    <string name="home_more_title">Mer</string>
+    <string name="home_open_more">Mer</string>
+    <string name="home_open_more_detail">Historik, vad som lämnar telefonen, och inställningar</string>
 
     <string name="diagnostics_title">Applogg</string>
     <string name="diagnostics_header">Dementor Watch-logg. Innehåller bara vad appen gjorde: händelsenamn, antal och tider. Inga appnamn, inga meddelanden, inga anledningar, inga lösenord.</string>
@@ -222,6 +235,9 @@
     <string name="requests_reason_hint">Varför? Din förälder ser det här.</string>
     <string name="requests_reason_required">Skriv en anledning först.</string>
     <string name="requests_ask_minutes">Be om %1$d min</string>
+    <string name="requests_ask_custom">Eget antal minuter</string>
+    <string name="requests_custom_title">Hur mycket tid?</string>
+    <string name="requests_custom_zero">Välj lite mer än noll.</string>
     <string name="requests_sent">Skickat. Du ser svaret här.</string>
     <string name="requests_already_pending">Du har redan en förfrågan som väntar på svar om det här.</string>
     <plurals name="requests_too_many">
@@ -396,12 +412,14 @@
     <string name="parent_row_inbox_detail">Svara på önskemål om mer tid</string>
     <string name="parent_row_bonus">Skicka extratid</string>
     <string name="parent_row_bonus_detail">Lägg till minuter utan att bli tillfrågad</string>
+    <string name="parent_row_limit">Ändra daglig gräns</string>
+    <string name="parent_row_limit_detail">Ange en ny gräns härifrån, utan telefonen</string>
     <string name="parent_row_audit">Historik</string>
     <string name="parent_row_audit_detail">Allt som ändrats, och vem som ändrade det</string>
     <string name="parent_row_sync">Familjeanslutning</string>
     <string name="parent_row_sync_detail">Ämnet och lösenfrasen som familjen delar</string>
     <string name="parent_row_settings">Den här telefonen</string>
-    <string name="parent_row_settings_detail">PIN-kod, och att byta vad telefonen är</string>
+    <string name="parent_row_settings_detail">Synk, aviseringar, behörigheter och PIN-koden för den här telefonen</string>
 
     <string name="parent_bonus_title">Skicka extratid</string>
     <string name="parent_bonus_body">Extra minuter för i dag, utöver den dagliga gränsen. De försvinner klockan 04 och ändrar inte reglerna.</string>
@@ -410,6 +428,12 @@
         <item quantity="one">Skickat: %1$d extra minut.</item>
         <item quantity="other">Skickat: %1$d extra minuter.</item>
     </plurals>
+
+    <string name="parent_limit_title">Ändra daglig gräns</string>
+    <string name="parent_limit_body">En ny gräns för varje dag, som ersätter den nuvarande. Gränser per app och kategori påverkas inte, och kan bara ställas in från telefonen själv.</string>
+    <string name="parent_limit_send">Skicka</string>
+    <string name="parent_limit_sent">Skickat</string>
+    <string name="parent_limit_unknown">Den här telefonen har inte hört något från barnets telefon än, så skjutreglaget börjar på noll i stället för en gissning.</string>
 
     <string name="parent_settings_title">Den här telefonen</string>
     <string name="parent_settings_pin_header">PIN-kod</string>
@@ -614,6 +638,7 @@
     <string name="audit_broken_hint">Några rader följer inte längre på de föregående. Något har ändrat eller tagit bort delar av den här historiken utanför appen.</string>
     <string name="audit_device_approved">Godkände %1$s som %2$s</string>
     <string name="audit_device_revoked">Tog bort %1$s ur familjen</string>
+    <string name="audit_family_disbanded">Familjen upplöstes</string>
 
     <string name="privacy_summary_header">Vad som skickas till föräldrarnas telefoner</string>
     <string name="privacy_summary_body">Dagens totala tid, hur mycket av gränsen som är kvar, och de fem appar du använt mest med hur länge var och en varit öppen. Inga klockslag, ingen historik över när du använt något, och ingenting om vad du gjort inuti en app. Dina föräldrar ser samma siffror som du ser på den här telefonen — inget mer.</string>
@@ -827,6 +852,8 @@
     <string name="join_server">Server</string>
     <string name="join_leave">Lämna familjen</string>
     <string name="join_leave_confirm">Telefonen slutar skicka och ta emot. Ingenting på den raderas, och den kan gå med igen med koden och lösenfrasen.</string>
+    <string name="join_disband">Upplös familjen</string>
+    <string name="join_disband_confirm">Varje annan förälders telefon lämnar också, så snart den nästa gång ansluter. Den övervakade telefonen får bara ett besked — att ta bort familjen från den kräver fortfarande PIN-koden på den telefonen. Inget som redan är sparat raderas någonstans.</string>
 
     <string name="devices_parents_decide">En förälder godkänner nya telefoner, på sin egen telefon. Inget att göra här.</string>
 
@@ -877,6 +904,12 @@
     <string name="notify_located_reason">Du får veta varje gång, och det går inte att stänga av. Att få veta är skillnaden mellan det här och att bli spårad.</string>
     <string name="notify_locked">En förälder låste telefonen</string>
     <string name="notify_locked_reason">En telefon som låser sig utan förklaring ser trasig ut. Det här är förklaringen.</string>
+    <string name="notify_device_added">En enhet gick med i familjen</string>
+    <string name="notify_device_added_reason">De flesta av dessa sker utan att någon ser det — en enhet som redan litas på av en förälder läggs till överallt annars automatiskt. Ett tillägg som ingen fått veta om är inte uppenbart bara för att det syns om någon letar.</string>
+    <string name="notify_device_removed">En enhet lämnade familjen</string>
+    <string name="notify_device_removed_reason">Samma sak som när en enhet läggs till: när en förälder tar bort en på sin egen telefon tas den bort överallt annars automatiskt, och ingen ska behöva upptäcka det genom att något slutar fungera.</string>
+    <string name="notify_family_disbanded">Familjen avslutades</string>
+    <string name="notify_family_disbanded_reason">Den största förändringen av förtroendet den här appen har. Den som håller i telefonen bör veta direkt, inte upptäcka det senare av misstag.</string>
     <string name="notify_request_received">Förfrågningar</string>
     <string name="notify_request_received_detail">Någon ber om mer tid.</string>
     <string name="notify_auto">Automatiska svar</string>
@@ -1043,6 +1076,12 @@
     <string name="family_open_devices">Öppna familjens enheter</string>
     <string name="family_pending_notification_title">En telefon vill gå med i familjen</string>
     <string name="family_pending_notification_body">Kolla dess fingeravtryck innan du släpper in den.</string>
+    <string name="family_added_notification_title">En enhet gick med i familjen</string>
+    <string name="family_added_notification_body">%1$s litar den här telefonen på nu.</string>
+    <string name="family_removed_notification_title">En enhet lämnade familjen</string>
+    <string name="family_removed_notification_body">%1$s litar den här telefonen inte längre på.</string>
+    <string name="family_disbanded_notification_title">Den här familjen finns inte längre</string>
+    <string name="family_disbanded_notification_body">En förälder avslutade familjen. Tryck för vad det betyder för den här telefonen.</string>
 
     <string name="notify_device_pending">Telefoner som vill gå med</string>
     <string name="notify_device_pending_detail">När en telefon vill in i familjen och behöver godkännas.</string>

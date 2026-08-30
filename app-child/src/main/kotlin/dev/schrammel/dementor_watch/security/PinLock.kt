@@ -2,11 +2,7 @@ package dev.schrammel.dementor_watch.security
 
 import android.content.Context
 import androidx.core.content.edit
-import java.security.MessageDigest
-import java.security.SecureRandom
 import java.util.Base64
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
 
 /**
  * The parent's PIN.
@@ -26,17 +22,17 @@ class PinLock(context: Context) {
 
     fun set(pin: String) {
         require(pin.length >= MIN_LENGTH) { "PIN must be at least $MIN_LENGTH digits" }
-        val salt = ByteArray(SALT_BYTES).also(SecureRandom()::nextBytes)
+        val salt = PinHash.newSalt()
         prefs.edit(commit = true) {
             putString(KEY_SALT, encode(salt))
-            putString(KEY_HASH, encode(hash(pin, salt)))
+            putString(KEY_HASH, encode(PinHash.of(pin, salt)))
         }
     }
 
     fun verify(pin: String): Boolean {
         val salt = prefs.getString(KEY_SALT, null)?.let(::decode) ?: return false
         val expected = prefs.getString(KEY_HASH, null)?.let(::decode) ?: return false
-        return MessageDigest.isEqual(hash(pin, salt), expected)
+        return PinHash.matches(pin, salt, expected)
     }
 
     /** Only ever called after a successful [verify]. */
@@ -45,11 +41,6 @@ class PinLock(context: Context) {
             remove(KEY_SALT)
             remove(KEY_HASH)
         }
-    }
-
-    private fun hash(pin: String, salt: ByteArray): ByteArray {
-        val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, KEY_BITS)
-        return SecretKeyFactory.getInstance(ALGORITHM).generateSecret(spec).encoded
     }
 
     private fun encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)
@@ -63,9 +54,5 @@ class PinLock(context: Context) {
         private const val FILE_NAME = "security"
         private const val KEY_SALT = "pin_salt"
         private const val KEY_HASH = "pin_hash"
-        private const val ALGORITHM = "PBKDF2WithHmacSHA256"
-        private const val ITERATIONS = 150_000
-        private const val KEY_BITS = 256
-        private const val SALT_BYTES = 16
     }
 }

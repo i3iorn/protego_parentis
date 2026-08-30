@@ -19,9 +19,6 @@ import dev.schrammel.dementor_watch.rules.DnsProfile
 import dev.schrammel.dementor_watch.rules.WebFilterStore
 import dev.schrammel.dementor_watch.rules.isPlausibleHost
 
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
 /**
  * Web filtering (WF-1, WF-2).
  *
@@ -133,7 +130,7 @@ class WebFilterActivity : ParentGatedActivity() {
         // does not answer DNS-over-TLS, and the family needs to find out now
         // rather than believe the phone is filtered when it is not.
         EnforcementService.start(this)
-        Toast.makeText(this, R.string.web_dns_saved, Toast.LENGTH_SHORT).show()
+        toast(R.string.web_dns_saved)
         render()
     }
 

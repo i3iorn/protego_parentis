@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.Toast
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
@@ -76,11 +75,7 @@ class ParentBonusActivity : ParentRoleActivity() {
             subject = getString(R.string.requests_target_device),
             after = Audit.minutes(minutes),
         )
-        Toast.makeText(
-            this,
-            resources.getQuantityString(R.plurals.parent_bonus_sent, minutes, minutes),
-            Toast.LENGTH_SHORT,
-        ).show()
+        toast(resources.getQuantityString(R.plurals.parent_bonus_sent, minutes, minutes))
         finish()
     }
 

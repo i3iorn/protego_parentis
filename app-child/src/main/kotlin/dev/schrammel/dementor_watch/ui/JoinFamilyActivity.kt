@@ -5,21 +5,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
-import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
 import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.Passphrases
 import dev.schrammel.dementor_watch.security.DeviceRole
-import dev.schrammel.dementor_watch.security.ParentSession
 import dev.schrammel.dementor_watch.security.PinLock
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.sync.FamilyToken
@@ -29,9 +26,6 @@ import dev.schrammel.dementor_watch.sync.SyncConfigStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
 import dev.schrammel.dementor_watch.sync.SyncSettings
 import dev.schrammel.dementor_watch.sync.TransportKind
-
-private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
 
 /**
  * Joining a family, or starting one.
@@ -52,7 +46,7 @@ private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
  *
  * Once a family is joined, changing or leaving it needs the PIN on any phone.
  */
-class JoinFamilyActivity : DementorActivity() {
+class JoinFamilyActivity : ParentGatedActivity() {
 
     private lateinit var config: SyncConfigStore
     private lateinit var sync: SyncCoordinator
@@ -61,20 +55,13 @@ class JoinFamilyActivity : DementorActivity() {
     private lateinit var tokenInput: EditText
     private lateinit var passphraseInput: EditText
 
-    /** Set while waiting for the PIN screen, so resuming does not launch a second. */
-    private var awaitingPin = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The passphrase field can hold a suggestion in clear text, because one
         // that cannot be read cannot be read out. That makes this screen as
-        // sensitive as the PIN screen, and it gets the same treatment: no recents
-        // thumbnail, no screenshot, no screen recording.
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
-
+        // sensitive as the PIN screen — the base class already applies the same
+        // FLAG_SECURE treatment: no recents thumbnail, no screenshot, no screen
+        // recording.
         config = SyncConfigStore(this)
         sync = SyncCoordinator(this)
 
@@ -88,27 +75,10 @@ class JoinFamilyActivity : DementorActivity() {
         showColumn(column)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onGatedContentVisible() = render()
 
-        // Through ParentSession rather than a flag of this screen's own, so the
-        // unlock expires the way it does everywhere else. A boolean here meant a
-        // parent who opened this screen, put the phone down and came back an hour
-        // later was still looking at the button that leaves the family.
-        when {
-            !needsPin() || ParentSession.isUnlocked -> {
-                if (needsPin()) ParentSession.touch()
-                render()
-            }
-
-            awaitingPin -> Unit
-
-            else -> {
-                column.removeAllViews()
-                awaitingPin = true
-                unlock.launch(PinActivity.intent(this))
-            }
-        }
+    override fun onGatedContentHidden() {
+        column.removeAllViews()
     }
 
     /**
@@ -117,21 +87,9 @@ class JoinFamilyActivity : DementorActivity() {
      * The managed phone always. Everyone else once there is a family to change —
      * a parent's own phone with nothing configured has nothing to protect yet.
      */
-    private fun needsPin(): Boolean {
+    override fun requiresPin(): Boolean {
         if (RoleStore(this).roleOrChild == DeviceRole.CHILD) return PinLock(this).isSet
         return config.load().isUsable && PinLock(this).isSet
-    }
-
-    private val unlock = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        awaitingPin = false
-        if (result.resultCode == RESULT_OK) {
-            ParentSession.unlock()
-            render()
-        } else {
-            finish()
-        }
     }
 
     /**
@@ -165,6 +123,17 @@ class JoinFamilyActivity : DementorActivity() {
                     setOnClickListener { confirmLeave() }
                 },
             )
+
+            if (RoleStore(this).roleOrChild == DeviceRole.PARENT) {
+                column.addView(
+                    actionButton().apply {
+                        setText(R.string.join_disband)
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                            .apply { topMargin = dimen(R.dimen.space_sm) }
+                        setOnClickListener { confirmDisband() }
+                    },
+                )
+            }
 
         // The relay lives here rather than beside this screen. Which server
         // carries the messages is part of the family connection, not a sibling of
@@ -444,21 +413,37 @@ class JoinFamilyActivity : DementorActivity() {
     }
 
     private fun confirmLeave() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.join_leave)
-            .setMessage(R.string.join_leave_confirm)
-            .setPositiveButton(R.string.join_leave) { _, _ ->
-                sync.leave()
-                Audit.record(
-                    context = this,
-                    actor = AuditActor.PARENT,
-                    action = AuditAction.SYNC_CONFIGURED,
-                    after = Audit.flag(false),
-                )
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        confirmDialog(R.string.join_leave, R.string.join_leave_confirm, R.string.join_leave) {
+            sync.leave()
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = AuditAction.SYNC_CONFIGURED,
+                after = Audit.flag(false),
+            )
+            render()
+        }
+    }
+
+    /**
+     * Ends the family for everyone, not just this phone.
+     *
+     * The message reaches every parent phone and the managed phone alike, but
+     * only the parents act on it by leaving outright — see
+     * [dev.schrammel.dementor_watch.sync.SyncReceiver] for why the managed
+     * phone only hears about it instead.
+     */
+    private fun confirmDisband() {
+        confirmDialog(R.string.join_disband, R.string.join_disband_confirm, R.string.join_disband) {
+            sync.publishDisband()
+            sync.leave()
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = AuditAction.FAMILY_DISBANDED,
+            )
+            render()
+        }
     }
 
     private fun field() = EditText(this).apply {

@@ -29,8 +29,15 @@ class GrantStore(context: Context) {
     fun active(now: Instant): List<Grant> =
         all().filter { it.isActiveAt(now) }
 
-    /** Stores a grant built elsewhere, such as by approving a request. */
-    fun add(grant: Grant) {
+    /**
+     * Stores a grant built elsewhere, such as by approving a request.
+     *
+     * Synchronized on [prefs]: a parent approving a request on the UI thread can
+     * race the enforcement worker granting bonus time from an auto-approval rule,
+     * and without a lock the second writer's read would miss the first's grant,
+     * silently dropping it.
+     */
+    fun add(grant: Grant) = synchronized(prefs) {
         write(all().filter { it.isActiveAt(grant.grantedAt) } + grant)
     }
 

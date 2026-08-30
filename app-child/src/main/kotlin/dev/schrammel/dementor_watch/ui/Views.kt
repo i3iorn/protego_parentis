@@ -5,14 +5,19 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 
-private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+internal const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
 /**
  * The pieces every screen is built from.
@@ -245,10 +250,216 @@ internal fun Activity.navigationRow(
     )
 }
 
+/**
+ * The same row, from string resources — the common case, since most rows are
+ * static. Named `row` rather than another `navigationRow` overload because that
+ * is what every screen using this shape already called it before this existed.
+ */
+internal fun Activity.row(
+    @StringRes titleRes: Int,
+    @StringRes detailRes: Int,
+    onClick: () -> Unit,
+): LinearLayout = navigationRow(getString(titleRes), getString(detailRes), onClick)
+
 /** A hairline between rows, so a list reads as a list. */
 internal fun Activity.divider(): View = View(this).apply {
     layoutParams = LinearLayout.LayoutParams(MATCH, dimen(R.dimen.divider_height))
     setBackgroundResource(R.color.card_stroke)
+}
+
+/** A short message, gone on its own. The common case for "that worked" or "that didn't". */
+internal fun Activity.toast(message: String) =
+    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
+internal fun Activity.toast(@StringRes messageRes: Int) = toast(getString(messageRes))
+
+/**
+ * Asks before a consequential or irreversible action: title, message, a
+ * destructive-sounding positive button, and a plain cancel.
+ *
+ * The shape every "revoke", "release", "leave", "clear" and "lock" confirmation
+ * in this app already used independently — pulled into one place so a future
+ * change to how that confirmation behaves (the exact wording of cancel, whether
+ * it is a `TextView` or a `String` message) happens once.
+ */
+internal fun Activity.confirmDialog(
+    @StringRes title: Int,
+    message: String,
+    @StringRes positiveText: Int,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setMessage(message)
+        .setPositiveButton(positiveText) { _, _ -> onConfirm() }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+internal fun Activity.confirmDialog(
+    @StringRes title: Int,
+    @StringRes message: Int,
+    @StringRes positiveText: Int,
+    onConfirm: () -> Unit,
+) = confirmDialog(title, getString(message), positiveText, onConfirm)
+
+/**
+ * Asks for one line of text: an optional explainer, a prefilled field, applied
+ * only if what comes back is not blank.
+ *
+ * "Name this", "rename this", "type the network name" are all this same shape
+ * with a different title and hint — see the places that used to build this by
+ * hand for what varied and what didn't.
+ */
+internal fun Activity.promptForText(
+    @StringRes title: Int,
+    @StringRes hint: Int,
+    prefill: String = "",
+    message: String? = null,
+    @StringRes positiveText: Int = android.R.string.ok,
+    onChosen: (String) -> Unit,
+) {
+    val input = EditText(this).apply {
+        this.hint = getString(hint)
+        setText(prefill)
+        setSingleLine()
+    }
+    val content = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val pad = dimen(R.dimen.screen_padding)
+        setPadding(pad, pad, pad, 0)
+        message?.let { addView(captionText(it)) }
+        addView(input)
+    }
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setView(content)
+        .setPositiveButton(positiveText) { _, _ ->
+            val chosen = input.text.toString().trim()
+            if (chosen.isNotEmpty()) onChosen(chosen)
+        }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+/**
+ * A note dialog whose title and confirm button share the same text — "approve
+ * or deny, optionally with a reason", the shape both the child's request inbox
+ * and a parent's use. The note is handed back exactly as typed; trimming or
+ * turning a blank note into `null` is left to the caller, because the two
+ * existing callers did not agree on that and neither was wrong to want it.
+ */
+internal fun Activity.decisionDialog(@StringRes label: Int, onConfirmed: (note: String) -> Unit) {
+    val note = EditText(this).apply { hint = getString(R.string.inbox_note_hint) }
+    val content = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val pad = dimen(R.dimen.screen_padding)
+        setPadding(pad, pad, pad, 0)
+        addView(note)
+    }
+    AlertDialog.Builder(this)
+        .setTitle(label)
+        .setView(content)
+        .setPositiveButton(label) { _, _ -> onConfirmed(note.text.toString()) }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+/**
+ * A value label above a slider, inside a confirmation dialog — for choosing one
+ * number and nothing else. [max]/[initialProgress] are raw `SeekBar` steps;
+ * [format] turns a step into what the label shows, so this works equally for a
+ * minutes-via-[LimitSlider] caller and a plain percentage.
+ */
+internal fun Activity.sliderDialog(
+    @StringRes title: Int,
+    max: Int,
+    initialProgress: Int,
+    format: (Int) -> String,
+    @StringRes positiveText: Int = android.R.string.ok,
+    onChosen: (Int) -> Unit,
+) = sliderDialog(getString(title), max, initialProgress, format, positiveText, onChosen)
+
+/** As above, for a title that isn't a string resource — e.g. an app's own label. */
+internal fun Activity.sliderDialog(
+    title: String,
+    max: Int,
+    initialProgress: Int,
+    format: (Int) -> String,
+    @StringRes positiveText: Int = android.R.string.ok,
+    onChosen: (Int) -> Unit,
+) {
+    val value = TextView(this).apply {
+        styleAs(R.style.TextAppearance_Dementor_Metric)
+        text = format(initialProgress)
+    }
+    val bar = SeekBar(this).apply {
+        this.max = max
+        progress = initialProgress
+        setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                value.text = format(progress)
+            }
+
+            override fun onStartTrackingTouch(bar: SeekBar) = Unit
+            override fun onStopTrackingTouch(bar: SeekBar) = Unit
+        })
+    }
+
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                val pad = dimen(R.dimen.screen_padding)
+                setPadding(pad, pad, pad, 0)
+                addView(value)
+                addView(bar)
+            },
+        )
+        .setPositiveButton(positiveText) { _, _ -> onChosen(bar.progress) }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+/**
+ * A value label above a minutes slider, as a block inside a screen's own column
+ * rather than a dialog — see [sliderDialog] for that version.
+ *
+ * [onChanged] fires only on a user drag (never on the initial layout pass), and
+ * [onDragStart]/[onDragEnd] exist for the one caller ([dev.schrammel.dementor_watch.ui.SettingsScreens]'s
+ * `LimitsActivity`) that writes on every tick and records one audit entry per
+ * whole gesture rather than per tick — everyone else can ignore them.
+ */
+internal fun Activity.limitSliderBlock(
+    initialMinutes: Int,
+    onChanged: (Int) -> Unit = {},
+    onDragStart: () -> Unit = {},
+    onDragEnd: () -> Unit = {},
+): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.VERTICAL
+
+    val value = TextView(context).apply {
+        styleAs(R.style.TextAppearance_Dementor_Metric)
+        text = formatLimit(initialMinutes)
+    }
+    addView(value)
+    addView(
+        SeekBar(context).apply {
+            max = LimitSlider.MAX_STEPS
+            progress = LimitSlider.progressFor(initialMinutes)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                    val minutes = LimitSlider.minutesFor(progress)
+                    value.text = formatLimit(minutes)
+                    if (fromUser) onChanged(minutes)
+                }
+
+                override fun onStartTrackingTouch(bar: SeekBar) = onDragStart()
+                override fun onStopTrackingTouch(bar: SeekBar) = onDragEnd()
+            })
+        },
+    )
 }
 
 /** A label and a value on one line, for a summary. */

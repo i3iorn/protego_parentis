@@ -38,6 +38,16 @@ enum class SyncMessageType {
     LOCK_NOW,
 
     /**
+     * Parent → child: change the daily allowance.
+     *
+     * The one rule edit that can be made from a phone other than the child's own,
+     * because it is the rule the product exists for and the one most likely to
+     * need changing in the moment rather than the next time somebody is standing
+     * at the managed phone.
+     */
+    SET_DAILY_LIMIT,
+
+    /**
      * Child → parents: a standing rule answered a request, so nobody needs to.
      *
      * Its own type rather than REQUEST_DECIDED, which only a parent may send —
@@ -92,6 +102,28 @@ enum class SyncMessageType {
      * The only message type whose sender is, by definition, not yet trusted.
      */
     DEVICE_ANNOUNCE,
+
+    /**
+     * Parent → everyone: I have removed this device.
+     *
+     * The mirror of [DEVICE_VOUCHED], and refused under the same rule vouching
+     * already refuses under: never for the managed phone. Revoking a parent
+     * device propagates everywhere at once, the same way approving one does —
+     * revoking the managed phone stays a local, physical, PIN-gated action on
+     * that phone, whatever any remote parent's phone says.
+     */
+    DEVICE_REVOKED,
+
+    /**
+     * Parent → everyone: this family is over.
+     *
+     * Every other parent phone leaves automatically on receiving one, the same
+     * "one parent's word is enough" trust every other family-wide action here
+     * already runs on. The managed phone does not: it is told, so whoever is
+     * holding it knows what happened, but it does not un-enrol itself — that is
+     * the same local, physical, PIN-gated step [DEVICE_REVOKED] insists on.
+     */
+    FAMILY_DISBANDED,
 }
 
 /**

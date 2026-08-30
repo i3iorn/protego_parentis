@@ -123,11 +123,17 @@ object RosterRules {
         SyncMessageType.APP_DECIDED -> SyncRole.PARENT
         SyncMessageType.LOCK_NOW -> SyncRole.PARENT
         SyncMessageType.LOCATE_REQUEST -> SyncRole.PARENT
+        SyncMessageType.SET_DAILY_LIMIT -> SyncRole.PARENT
 
         // Only a parent may let somebody in. A child device that obtained the
         // passphrase can sign this perfectly well and is refused, which is the
         // point of the roster existing at all.
         SyncMessageType.DEVICE_VOUCHED -> SyncRole.PARENT
+
+        // The same authority that lets somebody in is the only one that may
+        // put them out, or end the family outright.
+        SyncMessageType.DEVICE_REVOKED -> SyncRole.PARENT
+        SyncMessageType.FAMILY_DISBANDED -> SyncRole.PARENT
 
         // Either side introduces itself; that is the point of it.
         SyncMessageType.DEVICE_ANNOUNCE -> null

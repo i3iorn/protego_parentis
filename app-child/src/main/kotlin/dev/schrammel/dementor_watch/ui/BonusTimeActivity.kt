@@ -4,12 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.enforcement.EnforcementService
 import dev.schrammel.dementor_watch.model.CategoryId
@@ -38,15 +35,11 @@ class BonusTimeActivity : ParentGatedActivity() {
         super.onCreate(savedInstanceState)
         store = LocalPolicyStore(this)
         grants = GrantStore(this)
-        setContentView(buildLayout())
+        showColumn(buildLayout())
     }
 
-    private fun buildLayout(): ScrollView {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
+    private fun buildLayout(): LinearLayout {
+        val content = contentColumn()
 
         content.addView(heading(getString(R.string.bonus_title), 28f))
         content.addView(
@@ -92,10 +85,7 @@ class BonusTimeActivity : ParentGatedActivity() {
             },
         )
 
-        return ScrollView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-            addView(content)
-        }
+        return content
     }
 
     private fun amountRow(onPick: (Int) -> Unit): LinearLayout =
@@ -145,13 +135,7 @@ class BonusTimeActivity : ParentGatedActivity() {
         setPadding(0, dimen(R.dimen.space_xl), 0, dimen(R.dimen.space_xs))
     }
 
-    private fun toast(message: String) =
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-
         fun intent(context: Context) = Intent(context, BonusTimeActivity::class.java)
     }
 }

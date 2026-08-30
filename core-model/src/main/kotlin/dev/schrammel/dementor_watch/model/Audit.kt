@@ -99,6 +99,7 @@ enum class AuditAction(val valueKind: ValueKind) {
     BROWSER_POLICY_CHANGED(ValueKind.FLAG),
     DEVICE_APPROVED(ValueKind.TOKEN),
     DEVICE_REVOKED(ValueKind.NONE),
+    FAMILY_DISBANDED(ValueKind.NONE),
     INSTALL_POLICY_CHANGED(ValueKind.TOKEN),
     INSTALL_WINDOW_OPENED(ValueKind.MINUTES),
     TAMPER_PROTECTION_CHANGED(ValueKind.FLAG),

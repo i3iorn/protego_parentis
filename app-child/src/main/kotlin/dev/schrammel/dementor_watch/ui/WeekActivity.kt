@@ -7,7 +7,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import dev.schrammel.dementor_watch.R
@@ -43,17 +42,8 @@ class WeekActivity : DementorActivity() {
         coordinator = EnforcementCoordinator(this)
         installedApps = InstalledApps(this)
 
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onResume() {
@@ -87,10 +77,10 @@ class WeekActivity : DementorActivity() {
             topAppLimit = resources.getInteger(R.integer.week_top_apps),
         )
 
-        container.addView(title(Format.duration(summary.total), 34f))
+        container.addView(title(formatDuration(summary.total), 34f))
         container.addView(body(getString(R.string.week_total_caption)))
         container.addView(
-            body(getString(R.string.week_average, Format.duration(summary.dailyAverage))),
+            body(getString(R.string.week_average, formatDuration(summary.dailyAverage))),
         )
         container.addView(deltaLine(UsageAggregates.delta(thisWeek, lastWeek), lastWeek))
 
@@ -105,7 +95,7 @@ class WeekActivity : DementorActivity() {
                 container.addView(
                     row(
                         installedApps.labelFor(app.pkg),
-                        Format.duration(app.total),
+                        formatDuration(app.total),
                     ),
                 )
             }
@@ -173,7 +163,7 @@ class WeekActivity : DementorActivity() {
                     addView(
                         TextView(context).apply {
                             text = if (day.deviceTotal > Duration.ZERO) {
-                                Format.duration(day.deviceTotal)
+                                formatDuration(day.deviceTotal)
                             } else {
                                 getString(R.string.week_none)
                             }
@@ -190,10 +180,10 @@ class WeekActivity : DementorActivity() {
         val text = when {
             !hadPrevious -> getString(R.string.week_no_comparison)
             delta > Duration.ZERO ->
-                getString(R.string.week_more_than_last, Format.duration(delta))
+                getString(R.string.week_more_than_last, formatDuration(delta))
 
             delta < Duration.ZERO ->
-                getString(R.string.week_less_than_last, Format.duration(-delta))
+                getString(R.string.week_less_than_last, formatDuration(-delta))
 
             else -> getString(R.string.week_same_as_last)
         }
@@ -229,9 +219,6 @@ class WeekActivity : DementorActivity() {
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-
         fun intent(context: Context) = Intent(context, WeekActivity::class.java)
     }
 }

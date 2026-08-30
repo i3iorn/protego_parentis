@@ -8,7 +8,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.audit.Audit
@@ -141,6 +140,11 @@ class ParentHomeActivity : ParentRoleActivity() {
                         },
                     )
                 }
+                add(
+                    row(R.string.parent_row_limit, R.string.parent_row_limit_detail) {
+                        startActivity(ParentLimitActivity.intent(this@ParentHomeActivity))
+                    },
+                )
                 if (on.isEnabled(Feature.CHAT)) {
                     add(
                         row(R.string.chat_title, R.string.chat_row_detail) {
@@ -174,38 +178,10 @@ class ParentHomeActivity : ParentRoleActivity() {
             ),
         )
 
-        addSection(
-            column,
-            getString(R.string.parent_group_settings),
-            listOf(
-                // The relay lives one level down, inside the family connection it
-                // belongs to. It is set once and never touched again, and a row
-                // for it on the front page cost more attention than it is worth.
-                row(R.string.parent_row_sync, R.string.parent_row_sync_detail) {
-                    startActivity(JoinFamilyActivity.intent(this))
-                },
-                navigationRow(
-                    getString(R.string.home_language, LanguagePicker.currentLabel(this)),
-                    getString(R.string.home_language_detail),
-                ) { LanguagePicker.show(this) },
-                row(R.string.notify_title, R.string.notify_row_detail) {
-                    startActivity(NotificationSettingsActivity.intent(this))
-                },
-                row(R.string.perms_title, R.string.perms_row_detail) {
-                    startActivity(PermissionsActivity.intent(this))
-                },
-                row(R.string.features_title, R.string.features_row_detail) {
-                    startActivity(FeatureSettingsActivity.intent(this))
-                },
-                row(R.string.parent_row_settings, R.string.parent_row_settings_detail) {
-                    startActivity(ParentSettingsActivity.intent(this))
-                },
-            ),
-        )
+        // Settings used to have its own row here too, next to Family. It now
+        // lives one tap inside Family instead — reachable only by way of the
+        // family it configures, rather than as a second front door.
     }
-
-    private fun row(titleRes: Int, detailRes: Int, onClick: () -> Unit) =
-        navigationRow(getString(titleRes), getString(detailRes), onClick)
 
     /**
      * Today on the child's phone (RPT-1).
@@ -259,14 +235,14 @@ class ParentHomeActivity : ParentRoleActivity() {
         addView(
             statRow(
                 getString(R.string.parent_today_used),
-                Format.limit(today.usedMinutes),
+                formatLimit(today.usedMinutes),
             ),
         )
 
         if (today.topApps.isNotEmpty()) {
             addView(captionText(getString(R.string.parent_today_apps)))
             today.topApps.forEach { app ->
-                addView(statRow(app.label, Format.limit(app.minutes)))
+                addView(statRow(app.label, formatLimit(app.minutes)))
             }
         }
 
@@ -283,26 +259,20 @@ class ParentHomeActivity : ParentRoleActivity() {
     private fun headlineFor(today: DailySummary): String = when {
         !today.hasLimit -> getString(R.string.parent_today_no_limit)
         today.remainingMinutes <= 0 -> getString(R.string.home_used_up)
-        else -> getString(R.string.parent_today_remaining) + " " + Format.limit(today.remainingMinutes)
+        else -> getString(R.string.parent_today_remaining) + " " + formatLimit(today.remainingMinutes)
     }
 
     /**
      * The level travels as an ordinal so a parent phone needs no copy of the
      * rules to colour it. An unrecognised value reads as normal rather than as
-     * an alarm — a newer child build must not make this screen shout.
+     * an alarm — a newer child build must not make this screen shout. The colour
+     * itself comes from the same [colourFor] the child's own dashboard uses.
      */
     private fun colourFor(today: DailySummary): Int =
-        when (BudgetLevel.entries.getOrNull(today.level)) {
-            BudgetLevel.EXHAUSTED -> R.color.state_critical
-            BudgetLevel.GRACE, BudgetLevel.NOTICE -> R.color.state_warning
-            else -> R.color.state_ok
-        }
+        colourFor(BudgetLevel.entries.getOrNull(today.level) ?: BudgetLevel.NORMAL)
 
-    private fun percentUsed(today: DailySummary): Int {
-        val total = today.allowedMinutes + today.bonusMinutes
-        if (total <= 0) return 0
-        return ((today.usedMinutes * 100L) / total).coerceIn(0L, 100L).toInt()
-    }
+    private fun percentUsed(today: DailySummary): Int =
+        percentUsed(today.usedMinutes, today.allowedMinutes + today.bonusMinutes)
 
     /**
      * Confirmed, because it is the one button here that reaches across and changes
@@ -310,16 +280,15 @@ class ParentHomeActivity : ParentRoleActivity() {
      */
     private fun confirmLock() {
         if (!reachable()) return
-        AlertDialog.Builder(this)
-            .setTitle(R.string.parent_lock_confirm_title)
-            .setMessage(R.string.parent_lock_confirm_body)
-            .setPositiveButton(R.string.parent_row_lock) { _, _ ->
-                sync.publishLockNow()
-                Audit.record(this, AuditActor.PARENT, AuditAction.DEVICE_LOCKED)
-                Toast.makeText(this, R.string.parent_lock_sent, Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        confirmDialog(
+            R.string.parent_lock_confirm_title,
+            R.string.parent_lock_confirm_body,
+            R.string.parent_row_lock,
+        ) {
+            sync.publishLockNow()
+            Audit.record(this, AuditActor.PARENT, AuditAction.DEVICE_LOCKED)
+            toast(R.string.parent_lock_sent)
+        }
     }
 
     /**
@@ -332,7 +301,7 @@ class ParentHomeActivity : ParentRoleActivity() {
         if (!reachable()) return
         sync.publishLocateRequest()
         Audit.record(this, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
-        Toast.makeText(this, R.string.parent_locate_sent, Toast.LENGTH_SHORT).show()
+        toast(R.string.parent_locate_sent)
     }
 
     /**

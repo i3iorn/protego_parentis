@@ -3,10 +3,8 @@ package dev.schrammel.dementor_watch.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import dev.schrammel.dementor_watch.R
 import dev.schrammel.dementor_watch.context.ContextProvider
@@ -40,17 +38,8 @@ class ContextRulesActivity : ParentGatedActivity() {
         store = ContextRuleStore(this)
         policyStore = LocalPolicyStore(this)
 
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dimen(R.dimen.screen_padding)
-            setPadding(pad, pad, pad, pad)
-        }
-        setContentView(
-            ScrollView(this).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-                addView(container)
-            },
-        )
+        container = contentColumn()
+        showColumn(container)
     }
 
     override fun onGatedContentVisible() {
@@ -157,7 +146,7 @@ class ContextRulesActivity : ParentGatedActivity() {
             is RuleEffect.Block -> getString(R.string.context_effect_block)
             is RuleEffect.Allow -> getString(R.string.context_effect_allow)
             is RuleEffect.SetDeviceBudget ->
-                getString(R.string.context_effect_budget, Format.duration(effect.budget.default))
+                getString(R.string.context_effect_budget, formatDuration(effect.budget.default))
         }
         val who = when (val target = rule.target) {
             is RuleTarget.Everything -> getString(R.string.context_target_everything)
@@ -185,6 +174,8 @@ class ContextRulesActivity : ParentGatedActivity() {
                 ?: getString(R.string.context_place_unknown),
         )
 
+        is Condition.BatteryBelow -> getString(R.string.context_when_battery, condition.percent)
+
         is Condition.Not -> getString(
             R.string.context_when_not,
             describeCondition(condition.condition, places),
@@ -211,9 +202,6 @@ class ContextRulesActivity : ParentGatedActivity() {
     }
 
     companion object {
-        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-
         fun intent(context: Context) = Intent(context, ContextRulesActivity::class.java)
     }
 }

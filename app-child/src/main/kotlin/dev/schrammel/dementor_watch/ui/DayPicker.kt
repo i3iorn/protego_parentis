@@ -1,9 +1,11 @@
 package dev.schrammel.dementor_watch.ui
 
 import android.app.Activity
+import android.content.res.ColorStateList
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ToggleButton
+import androidx.core.content.ContextCompat
 import dev.schrammel.dementor_watch.R
 import java.time.DayOfWeek
 import java.time.format.TextStyle
@@ -29,6 +31,30 @@ internal object DayPicker {
     ): LinearLayout {
         val chosen = selected.toMutableSet()
 
+        // A stock ToggleButton picks its checked/unchecked look from AppCompat's
+        // default control colours, which read as barely-different shades of grey
+        // — the exact "which days are on" contrast this was reported for. Tinting
+        // both background and text off two of the app's own surface colours makes
+        // checked days a solid brand-coloured block instead of a subtle outline.
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_checked),
+            intArrayOf(-android.R.attr.state_checked),
+        )
+        val background = ColorStateList(
+            states,
+            intArrayOf(
+                ContextCompat.getColor(activity, R.color.brand),
+                ContextCompat.getColor(activity, R.color.card_stroke),
+            ),
+        )
+        val textColors = ColorStateList(
+            states,
+            intArrayOf(
+                ContextCompat.getColor(activity, R.color.on_brand),
+                ContextCompat.getColor(activity, R.color.text_primary),
+            ),
+        )
+
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
@@ -44,6 +70,8 @@ internal object DayPicker {
                         textOn = label
                         textOff = label
                         isChecked = day in chosen
+                        backgroundTintList = background
+                        setTextColor(textColors)
                         layoutParams = LinearLayout.LayoutParams(
                             0,
                             LinearLayout.LayoutParams.WRAP_CONTENT,

@@ -30,11 +30,11 @@ class AutoApprovalStore(context: Context) {
 
     fun find(id: String): AutoApproval? = rules.firstOrNull { it.id == id }
 
-    fun upsert(rule: AutoApproval) {
+    fun upsert(rule: AutoApproval) = synchronized(prefs) {
         rules = rules.filterNot { it.id == rule.id } + rule
     }
 
-    fun delete(id: String) {
+    fun delete(id: String) = synchronized(prefs) {
         rules = rules.filterNot { it.id == id }
     }
 
@@ -49,7 +49,7 @@ class AutoApprovalStore(context: Context) {
         get() = prefs.getLong(KEY_FIRED, 0L)
         private set(value) = prefs.edit { putLong(KEY_FIRED, value) }
 
-    fun recordFired() {
+    fun recordFired() = synchronized(prefs) {
         firedTotal += 1L
     }
 
