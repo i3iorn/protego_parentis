@@ -17,7 +17,7 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 | --- | --- | --- |
 | `core-model` | Pure Kotlin | Domain types: `Policy`, `Category`, `WeeklyBudget`, `Grant`, `Enforcement`. No Android, no I/O. |
 | `core-policy` | Pure Kotlin | All the real logic: `ContextRules` (where and near what),  `PolicyEngine` (what should be blocked), `UsageReplay` (how much time was spent), `RequestRules` (asking and answering), `PolicyReconciler` (apply it), `DeviceReleaser` (undo it). |
-| `core-provisioning` | Pure Kotlin | The setup QR payload. Kept Android-free so the parent app can generate codes without a device SDK. |
+| `core-provisioning` | Pure Kotlin | The setup QR payload format. Kept Android-free so the parent app can generate codes without a device SDK. **Not wired into the app yet** — see [Turning on enforcement](#turning-on-enforcement-device-owner). |
 | `app-child` | Android app | The app that runs on the teenager's phone. Reads usage, drives `DevicePolicyManager`, stores history, hosts the UI. |
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
@@ -75,16 +75,11 @@ Without it, every measurement reads zero.
 Until the device is device owner the app runs in **monitor-only** mode: it measures
 and evaluates, but nothing is ever blocked. The dashboard says so plainly.
 
-There are two ways to become device owner.
+### The only path that currently works
 
-### The real path
-
-Factory reset, then scan a provisioning QR code during setup. The payload is built
-by `ProvisioningPayload` in `core-provisioning`. This is what ships to families.
-
-### The development path
-
-No factory reset needed, but Android imposes two conditions that catch everyone:
+There is no working QR-provisioning flow yet — see the note below. The only way
+to make a phone device owner today is `adb`, which Android allows under two
+conditions that catch everyone:
 
 1. **Exactly one user.** Private space and work profiles both count.
 
@@ -110,7 +105,18 @@ adb shell dpm set-device-owner dev.schrammel.dementor_watch/.dpc.DementorDeviceA
 ```
 
 Accounts can be added back immediately afterwards — the restriction only applies
-at the moment ownership is set.
+at the moment ownership is set. A freshly factory-reset phone that has not been
+signed into anything yet already satisfies both conditions, so this is also the
+path to use on a brand-new device — not just for development.
+
+> **QR provisioning (factory reset, six taps, scan a code) is not built.**
+> `ProvisioningPayload` in `core-provisioning` defines the payload *format* Android
+> expects, but nothing in the app constructs one, renders it as a QR code, or hosts
+> the APK it would need to download from an HTTPS URL. The QR code the family
+> connection screen shows is unrelated — it carries this app's own sync topic/id
+> for pairing two already-installed phones with each other, not Android's
+> device-owner provisioning payload. Scanning it during Android's setup wizard
+> will not work and produces "Wrong QR code." See **Current state** below.
 
 ### Getting back out
 
@@ -171,6 +177,15 @@ Not built yet:
   or emailed on a schedule.
 - **No server and no parent app.** Rules are edited on the same phone that enforces
   them. `LocalPolicyStore` is a stand-in for Room plus sync.
+- **No QR-code device-owner provisioning.** `ProvisioningPayload` in
+  `core-provisioning` defines the payload format, but no screen builds one,
+  renders it as a QR code, or hosts the APK it points at. Becoming device owner
+  today means `adb shell dpm set-device-owner` (see above). Finishing the real
+  path needs: a screen that builds a `ProvisioningPayload` and turns it into a QR
+  image, an HTTPS location to host the release APK (not Play — provisioning
+  downloads it directly), and the release signing certificate's SHA-256 checksum
+  wired in rather than hand-copied. Until all three exist, this is the largest gap
+  between what the product spec describes and what the app does.
 
 ## Contextual rules
 

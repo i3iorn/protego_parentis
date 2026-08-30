@@ -75,7 +75,10 @@ adb install -r app-child/build/outputs/apk/release/app-child-release.apk
 
 Then walk the whole app, both roles. At minimum:
 
-- Device Owner provisioning by QR, on a factory-reset device.
+- Device Owner provisioning. **QR provisioning is not built yet** — see the
+  README's "Current state" — so use `adb shell dpm set-device-owner` instead
+  until it is. Do not submit to Play claiming QR provisioning works; either
+  finish it first or describe the actual setup path in the listing.
 - Usage access granted; screen time actually accumulating.
 - An app being suspended when the allowance runs out, and restored.
 - A request raised on the child device and answered on the parent device.

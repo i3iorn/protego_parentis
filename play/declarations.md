@@ -129,6 +129,16 @@ not manipulate ads, and has a privacy policy — all satisfied.
 Not a permission-declaration form, but reviewers will ask what the device-admin
 receiver is for, and DPC apps get extra scrutiny.
 
+> **Do not paste the paragraph below into the Console yet.** It describes the
+> intended, shipped-product provisioning flow — QR-code device-owner
+> provisioning — which is not built. See the README's "Current state" for what
+> is missing (the QR-generation screen, APK hosting, and the checksum wiring).
+> Submitting this declaration before that flow exists would describe a setup
+> path a real family cannot use. Either finish it first, or rewrite this
+> paragraph to describe `adb shell dpm set-device-owner`, which is not a
+> workable instruction to hand a non-technical parent and should not ship as
+> the real answer.
+
 > The app is provisioned as a Device Owner by a parent, on a device dedicated to a
 > young person, using Android's standard QR-code provisioning. Device Owner is used
 > to suspend and restore apps, lock the screen when a parent asks, set a private
