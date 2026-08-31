@@ -13,6 +13,9 @@ import dev.schrammel.dementor_watch.context.PlaceTransition
 import dev.schrammel.dementor_watch.context.Position
 import dev.schrammel.dementor_watch.rules.Feature
 import dev.schrammel.dementor_watch.rules.FeatureFlags
+import dev.schrammel.dementor_watch.rules.LocalPolicyStore
+import dev.schrammel.dementor_watch.rules.PolicySnapshot
+import dev.schrammel.dementor_watch.rules.snapshot
 import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.KeystoreSigner
 import dev.schrammel.dementor_watch.security.RoleStore
@@ -20,7 +23,11 @@ import dev.schrammel.dementor_watch.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_ACCURACY
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_ALLOWED
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_APP_PREFIX
+import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_APPS_JSON
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_ARRIVED
+import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_BUCKETS
+import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_DIGEST
+import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_BATTERY
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_BLOCKED
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_BLOCKED_COUNT
@@ -38,6 +45,7 @@ import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_MINUTES
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_NOTE
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_PLACE
+import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_POLICY_VERSION
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_REASON
 import dev.schrammel.dementor_watch.sync.SyncWireFields.FIELD_REMAINING
@@ -75,6 +83,7 @@ class SyncPublisher(context: Context) {
     private val roles = RoleStore(appContext)
     private val signer = KeystoreSigner()
     private val chat by lazy { ChatStore(appContext) }
+    private val state by lazy { ReplicatedStateStore(appContext) }
 
     fun settings(): SyncSettings = config.load()
 
@@ -132,17 +141,21 @@ class SyncPublisher(context: Context) {
      * rather than a bare identifier is the difference between a parent answering
      * from the notification and having to go and ask what was meant.
      */
-    fun publishRequestRaised(request: Request, label: String) = publish(
-        type = SyncMessageType.REQUEST_RAISED,
-        fields = mapOf(
-            FIELD_REQUEST_ID to request.id.value,
-            FIELD_MINUTES to request.amount.inWholeMinutes.toString(),
-            FIELD_REASON to request.reason,
-            FIELD_TARGET to SyncTargets.encode(request.target),
-            FIELD_TARGET_LABEL to label,
-            FIELD_EXPIRES_AT to request.expiresAt.toEpochMilli().toString(),
-        ),
-    )
+    fun publishRequestRaised(request: Request, label: String) {
+        // Written as replicated state: every parent phone converges on the same
+        // request and, crucially, on the same answer to it. The old message
+        // published a request and a separate decision, so two parents answering
+        // at once left each phone believing whichever arrived last.
+        RequestReplication(appContext).raise(
+            minutes = request.amount.inWholeMinutes.toInt(),
+            reason = request.reason,
+            target = SyncTargets.encode(request.target),
+            targetLabel = label,
+            expiresAt = request.expiresAt,
+            localId = request.id.value,
+        )
+        publishPendingOps()
+    }
 
     /** Confirms back to the other parents that a request has been answered. */
     fun publishDecision(request: Request) = publishDecision(
@@ -251,23 +264,23 @@ class SyncPublisher(context: Context) {
         remainingMinutes: Int,
         level: Int,
         topApps: List<AppTime>,
-    ) = publish(
-        type = SyncMessageType.DAILY_SUMMARY,
-        fields = buildMap {
-            put(FIELD_USED, usedMinutes.toString())
-            put(FIELD_ALLOWED, allowedMinutes.toString())
-            put(FIELD_BONUS, bonusMinutes.toString())
-            // Sent as its own field rather than left for the parent side to
-            // recompute from the other three: each of those is independently
-            // truncated to whole minutes, so used + remaining could otherwise
-            // drift from allowed by up to two minutes.
-            put(FIELD_REMAINING, remainingMinutes.toString())
-            put(FIELD_LEVEL, level.toString())
-            topApps.forEachIndexed { index, app ->
-                put("$FIELD_APP_PREFIX$index", "${app.minutes}$APP_SEPARATOR${app.label}")
-            }
-        },
-    )
+    ) {
+        // Replicated state only. This used to publish a whole DAILY_SUMMARY
+        // message *as well*, which meant the same figures went out twice on
+        // every tick that moved them — the exact duplication the replication
+        // work was meant to remove. A parent phone reads these registers now,
+        // and a parent still on the older build is served by the legacy handler
+        // on the receiving side rather than by sending everything twice.
+        TelemetryReplication(appContext).report(
+            usedMinutes = usedMinutes,
+            allowedMinutes = allowedMinutes,
+            bonusMinutes = bonusMinutes,
+            remainingMinutes = remainingMinutes,
+            level = level,
+            topApps = topApps,
+        )
+        publishPendingOps()
+    }
 
     /** Asks the child's phone to lock its screen now. */
     fun publishLockNow() = publish(SyncMessageType.LOCK_NOW, emptyMap())
@@ -347,21 +360,20 @@ class SyncPublisher(context: Context) {
 
         val text = ChatText.sanitise(raw) ?: return null
 
-        val id = UUID.randomUUID().toString()
-        val mine = ChatMessage(
+        // Written as replicated state, which is what carries it to the family
+        // now. No separate CHAT_MESSAGE goes out: the ops published at the end
+        // of this poll are the message, and every replica merges them into the
+        // same conversation without a de-duplication pass.
+        val id = ChatReplication(appContext).send(raw, settings.deviceName) ?: return null
+        publishPendingOps()
+
+        return ChatMessage(
             id = id,
             text = text,
             mine = true,
             sender = settings.deviceName,
             at = Instant.now(),
         )
-        chat.add(mine)
-        publish(
-            type = SyncMessageType.CHAT_MESSAGE,
-            fields = mapOf(FIELD_TEXT to text),
-            id = id,
-        )
-        return mine
     }
 
     /** Says the phone is going off, so silence can be told apart from shutdown. */
@@ -407,6 +419,69 @@ class SyncPublisher(context: Context) {
      * here is the only way the initiating phone actually leaves too.
      */
     fun publishDisband() = publish(SyncMessageType.FAMILY_DISBANDED, emptyMap())
+
+    // ---------- replicated state ----------
+
+    /**
+     * Sends everything this device has changed and not yet published.
+     *
+     * Split into several messages when a repair produces more ops than one
+     * body can carry. Each batch is cleared from the queue only once the
+     * transport has accepted it, so an edit made in a tunnel is republished on
+     * the next attempt rather than lost.
+     */
+    fun publishPendingOps() {
+        val queued = state.pending
+        if (queued.isEmpty()) return
+        queued.chunked(StateCodec.MAX_OPS_PER_MESSAGE).forEach { batch ->
+            publishOps(batch) { state.clearPending(batch) }
+        }
+    }
+
+    /** Sends [ops] as one batch, calling [onSent] if the transport took it. */
+    fun publishOps(ops: List<StateOp>, onSent: () -> Unit = {}) {
+        if (ops.isEmpty()) return
+        publish(
+            type = SyncMessageType.STATE_OPS,
+            fields = mapOf(FIELD_OPS to StateCodec.encodeOps(ops)),
+            onSent = onSent,
+        )
+    }
+
+    /**
+     * Says what this device holds, so a replica that missed ops can notice.
+     *
+     * Cheap enough to send often and small enough not to matter when everyone
+     * already agrees, which is the ordinary case.
+     */
+    fun publishDigest() = publish(
+        type = SyncMessageType.STATE_DIGEST,
+        fields = mapOf(FIELD_DIGEST to StateCodec.encodeDigest(state.digest())),
+    )
+
+    /** Asks the family for everything it has in [buckets]. */
+    fun publishRepairRequest(buckets: Set<Int>) {
+        if (buckets.isEmpty()) return
+        publish(
+            type = SyncMessageType.STATE_REPAIR,
+            fields = mapOf(FIELD_BUCKETS to StateCodec.encodeBuckets(buckets)),
+        )
+    }
+
+    /** Child: answers with every rule this phone currently enforces. */
+    fun publishPolicySnapshot() = publish(
+        type = SyncMessageType.POLICY_SNAPSHOT,
+        fields = mapOf(FIELD_POLICY_JSON to LocalPolicyStore(appContext).snapshot().encode()),
+    )
+
+    /** Parent: asks the child phone for the apps it has installed. */
+    fun publishAppInventoryRequest() = publish(SyncMessageType.APP_INVENTORY_REQUESTED, emptyMap())
+
+    /** Child: answers with the apps it has installed. */
+    fun publishAppInventory() = publish(
+        type = SyncMessageType.APP_INVENTORY,
+        fields = mapOf(FIELD_APPS_JSON to AppInventoryCodec.encode(installedInventory(appContext))),
+    )
 
     /** A parent's answer about a new app. */
     fun publishAppDecision(packageName: String, blocked: Boolean) = publish(
@@ -459,12 +534,21 @@ class SyncPublisher(context: Context) {
         type: SyncMessageType,
         fields: Map<String, String>,
         id: String = UUID.randomUUID().toString(),
+        onSent: () -> Unit = {},
     ) {
         val settings = config.load()
         if (!settings.isUsable) return
 
         SyncKeying.execute {
-            val key = SyncKeying.keyFor(settings) ?: return@execute
+            val key = SyncKeying.keyFor(settings)
+            if (key == null) {
+                // Otherwise this fails with no trace anywhere: not a log line, not
+                // a toast, nothing on the ntfy topic to notice is missing. A
+                // publish that never left the phone deserves exactly as loud a
+                // record as one the server refused.
+                Diagnostics.record(appContext, DiagnosticEvent.SYNC_KEY_UNAVAILABLE)
+                return@execute
+            }
 
             // Signing can fail on a phone whose keystore has been invalidated.
             // Publishing unsigned would be worse than not publishing: every
@@ -488,6 +572,7 @@ class SyncPublisher(context: Context) {
             }
 
             val sent = Transports.of(settings).publish(MessageCrypto.seal(key, signed))
+            if (sent is TransportResult.Ok) onSent()
             Diagnostics.record(
                 appContext,
                 if (sent is TransportResult.Ok) {
@@ -495,7 +580,13 @@ class SyncPublisher(context: Context) {
                 } else {
                     DiagnosticEvent.SYNC_PUBLISH_FAILED
                 },
-                mapOf("type" to type.ordinal.toLong()),
+                buildMap {
+                    put("type", type.ordinal.toLong())
+                    if (sent is TransportResult.Failed) {
+                        put("kind", sent.kind.ordinal.toLong())
+                        sent.httpStatus?.let { put("httpStatus", it.toLong()) }
+                    }
+                },
             )
         }
     }

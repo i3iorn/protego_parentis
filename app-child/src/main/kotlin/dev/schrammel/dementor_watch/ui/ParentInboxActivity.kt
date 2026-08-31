@@ -189,7 +189,7 @@ class ParentInboxActivity : ParentRoleActivity() {
         decisionDialog(label) { text ->
             val note = text.trim().takeIf(String::isNotEmpty)
             sync.publishDecision(request.id, state, note)
-            inbox.settle(request.id, state, note)
+            inbox.settle(request.id, state, note, decidedBy = sync.settings().deviceName)
             Audit.record(
                 context = this,
                 actor = AuditActor.PARENT,

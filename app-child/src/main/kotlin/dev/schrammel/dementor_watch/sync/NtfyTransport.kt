@@ -4,7 +4,9 @@ import android.util.Log
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
+import java.net.UnknownHostException
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -45,12 +47,12 @@ class NtfyTransport(
         if (code in 200..299) {
             TransportResult.Ok(Unit)
         } else {
-            TransportResult.Failed("server returned $code")
+            TransportResult.Failed("server returned $code", TransportFailureKind.HTTP_ERROR, code)
         }
     } catch (e: Exception) {
         // Offline is the normal case, not an error worth shouting about.
         Log.d(TAG, "Publish failed", e)
-        TransportResult.Failed(e.message ?: "could not reach the server")
+        TransportResult.Failed(e.message ?: "could not reach the server", classify(e))
     }
 
     /**
@@ -67,7 +69,7 @@ class NtfyTransport(
         val code = connection.responseCode
         if (code !in 200..299) {
             connection.disconnect()
-            TransportResult.Failed("server returned $code")
+            TransportResult.Failed("server returned $code", TransportFailureKind.HTTP_ERROR, code)
         } else {
             val envelopes = connection.inputStream.bufferedReader().use(::readEnvelopes)
             connection.disconnect()
@@ -75,7 +77,14 @@ class NtfyTransport(
         }
     } catch (e: Exception) {
         Log.d(TAG, "Poll failed", e)
-        TransportResult.Failed(e.message ?: "could not reach the server")
+        TransportResult.Failed(e.message ?: "could not reach the server", classify(e))
+    }
+
+    /** Sorts a caught exception into one of the handful of kinds worth telling apart. */
+    private fun classify(e: Exception): TransportFailureKind = when (e) {
+        is SocketTimeoutException -> TransportFailureKind.TIMEOUT
+        is UnknownHostException -> TransportFailureKind.UNREACHABLE
+        else -> TransportFailureKind.OTHER
     }
 
     /**

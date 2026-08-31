@@ -28,13 +28,20 @@ object FamilyData {
     fun forget(context: Context) {
         RosterStore(context).forgetAll()
         HeartbeatStore(context).latest = null
-        InboxStore(context).forgetAll()
         NewAppStore(context).forgetAll()
-        DailySummaryStore(context).latest = null
+        DailySummaryStore(context).forget()
         FamilyEventStore(context).forgetAll()
         // The conversation goes with the family. A phone that has left holding a
         // transcript of what was said inside it is the dossier problem again, in
         // the most personal form this app has.
         ChatStore(context).forgetAll()
+        // And the replica, which is where the rules, roster, requests, history
+        // and conversation actually live now — a phone that kept it would still
+        // be holding all of them after walking away from the family.
+        //
+        // Wiped rather than tombstoned, deliberately. A tombstone would
+        // replicate, and one phone leaving must not delete the family's history
+        // from the phones that stayed.
+        ReplicatedStateStore(context).forgetAll()
     }
 }

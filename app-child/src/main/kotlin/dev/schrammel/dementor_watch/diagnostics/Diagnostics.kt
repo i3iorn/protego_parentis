@@ -37,6 +37,33 @@ enum class DiagnosticEvent {
     SYNC_POLLED,
     SYNC_POLL_FAILED,
 
+    /**
+     * The family key could not be derived from the stored passphrase and topic.
+     * Distinct from [SYNC_PUBLISH_FAILED] / [SYNC_POLL_FAILED] on purpose: those
+     * mean the network was reached and refused or was unreachable, this means the
+     * attempt never left the phone at all — almost always a corrupted or
+     * unreadable passphrase rather than a connectivity problem.
+     */
+    SYNC_KEY_UNAVAILABLE,
+
+    /**
+     * A parent's rule push named a rules version different from this phone's
+     * current one — something changed here since the parent's copy was taken,
+     * so the push was refused rather than silently discarding it.
+     */
+    POLICY_UPDATE_CONFLICT,
+
+    /**
+     * A device tried to write somewhere its role does not permit — most
+     * importantly, the managed phone attempting to change its own rules. Counted
+     * rather than described: which path was refused would say what the family
+     * has set up, and this log is meant to be safe to hand to a stranger.
+     */
+    STATE_OPS_REFUSED,
+
+    /** This replica found itself behind and asked for the difference. */
+    STATE_REPAIR_REQUESTED,
+
     /** A message decrypted but was refused — stale, duplicated, or a bad clock. */
     SYNC_MESSAGE_REFUSED,
 

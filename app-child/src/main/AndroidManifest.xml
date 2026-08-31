@@ -145,6 +145,11 @@
             android:parentActivityName=".ui.ParentHomeActivity" />
 
         <activity
+            android:name=".ui.ParentRulesActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ParentHomeActivity" />
+
+        <activity
             android:name=".ui.ParentSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.FamilyDevicesActivity" />

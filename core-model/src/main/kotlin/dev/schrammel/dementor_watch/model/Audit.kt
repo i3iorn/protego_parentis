@@ -49,6 +49,9 @@ enum class AuditAction(val valueKind: ValueKind) {
 
     // ---------- limits ----------
     DAILY_LIMIT_CHANGED(ValueKind.MINUTES),
+
+    /** A parent's phone replaced every rule at once, rather than one at a time. */
+    RULES_REPLACED(ValueKind.NONE),
     APP_LIMIT_CHANGED(ValueKind.MINUTES),
     APP_EXEMPTION_CHANGED(ValueKind.FLAG),
     APP_BLOCK_CHANGED(ValueKind.FLAG),

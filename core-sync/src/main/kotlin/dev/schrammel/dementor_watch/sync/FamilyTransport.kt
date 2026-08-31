@@ -12,8 +12,36 @@ sealed interface TransportResult<out T> {
      * It is shown on a settings screen and can end up in a support conversation,
      * so "server returned 503" is welcome here and anything about what was being
      * sent is not.
+     *
+     * [kind] and [httpStatus] carry the same distinction as plain numbers, for the
+     * diagnostic log — which accepts numbers and event names but never free text.
+     * Without them every failure looked identical there: a DNS problem, a slow
+     * network and a server refusal all read as the same bare event, and telling
+     * them apart meant asking whoever holds the phone to describe what they saw.
      */
-    data class Failed(val message: String) : TransportResult<Nothing>
+    data class Failed(
+        val message: String,
+        val kind: TransportFailureKind = TransportFailureKind.OTHER,
+        val httpStatus: Int? = null,
+    ) : TransportResult<Nothing>
+}
+
+/**
+ * The broad shape of why a transport call failed. Never carries content — only
+ * which of a handful of known situations this was.
+ */
+enum class TransportFailureKind {
+    /** The server answered, just not with success. See the accompanying status. */
+    HTTP_ERROR,
+
+    /** The connection or the read took too long. */
+    TIMEOUT,
+
+    /** The host could not be found or reached at all — most often no network. */
+    UNREACHABLE,
+
+    /** Anything else: a malformed response, a certificate problem, and so on. */
+    OTHER,
 }
 
 /** Which backend carries a family's messages. */

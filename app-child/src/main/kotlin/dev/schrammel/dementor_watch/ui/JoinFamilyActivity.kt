@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -54,6 +55,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
 
     private lateinit var tokenInput: EditText
     private lateinit var passphraseInput: EditText
+    private lateinit var startServerInput: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +72,14 @@ class JoinFamilyActivity : ParentGatedActivity() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
         }
         passphraseInput = field()
+        // Pre-filled with the default rather than left blank: leaving it exactly
+        // as shown is the common case, and a blank field would make "unset" and
+        // "delete the default on purpose" look the same.
+        startServerInput = EditText(this).apply {
+            hint = getString(R.string.backend_server_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            setText(SyncSettings.DEFAULT_SERVER)
+        }
 
         column = contentColumn()
         showColumn(column)
@@ -189,6 +199,9 @@ class JoinFamilyActivity : ParentGatedActivity() {
                 setOnClickListener { suggestPassphrase() }
             },
         )
+        (startServerInput.parent as? ViewGroup)?.removeView(startServerInput)
+        column.addView(startServerInput)
+        column.addView(captionText(getString(R.string.join_start_server_hint)))
         column.addView(
             actionButton().apply {
                 setText(R.string.join_start)
@@ -196,19 +209,10 @@ class JoinFamilyActivity : ParentGatedActivity() {
             },
         )
 
-        // The relay lives here rather than beside this screen. Which server
-        // carries the messages is part of the family connection, not a sibling of
-        // it, and on the hub it took a top-level row for something set once.
-        addSection(
-            column,
-            getString(R.string.join_relay_header),
-            listOf(
-                navigationRow(
-                    getString(R.string.backend_title),
-                    getString(R.string.backend_row_detail),
-                ) { startActivity(SyncBackendActivity.intent(this)) },
-            ),
-        )
+        // No link to the relay screen here, deliberately — before there is a
+        // family it has nothing to do (see its own "nothing to move" state), and
+        // now that the server is part of starting one, sending someone there
+        // first would be a detour to a screen that turns them straight back.
 
         // A way past, and only during setup. Connecting phones is the point of
         // this screen, but a family that has not decided yet should not be stuck
@@ -367,11 +371,14 @@ class JoinFamilyActivity : ParentGatedActivity() {
     }
 
     private fun startFamily() {
-        val token = FamilyToken(
-            kind = TransportKind.NTFY,
-            serverUrl = SyncSettings.DEFAULT_SERVER,
-            topic = sync.suggestTopic(),
-        )
+        val server = startServerInput.text.toString().trim().trimEnd('/')
+            .ifBlank { SyncSettings.DEFAULT_SERVER }
+        val token = runCatching {
+            FamilyToken(kind = TransportKind.NTFY, serverUrl = server, topic = sync.suggestTopic())
+        }.getOrElse {
+            toast(R.string.backend_bad_server)
+            return
+        }
         connect(token, passphraseInput.text.toString())
     }
 

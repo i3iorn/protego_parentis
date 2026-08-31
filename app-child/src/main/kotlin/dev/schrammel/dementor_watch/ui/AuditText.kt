@@ -34,6 +34,8 @@ object AuditText {
             AuditAction.DAILY_LIMIT_CHANGED ->
                 context.getString(R.string.audit_daily_limit_changed, before, after)
 
+            AuditAction.RULES_REPLACED -> context.getString(R.string.audit_rules_replaced)
+
             AuditAction.APP_LIMIT_CHANGED ->
                 context.getString(R.string.audit_app_limit_changed, subject, before, after)
 

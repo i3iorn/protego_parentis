@@ -152,6 +152,32 @@ class EnrolmentTest {
         )
     }
 
+    // ---------- who may ask for or replace the rules ----------
+
+    @Test
+    fun `only a parent may request or replace the rules`() {
+        assertEquals(SyncRole.PARENT, RosterRules.expectedSender(SyncMessageType.POLICY_REQUESTED))
+        assertEquals(SyncRole.PARENT, RosterRules.expectedSender(SyncMessageType.POLICY_UPDATED))
+    }
+
+    @Test
+    fun `only the managed phone may answer with its rules`() {
+        assertEquals(SyncRole.CHILD, RosterRules.expectedSender(SyncMessageType.POLICY_SNAPSHOT))
+    }
+
+    @Test
+    fun `only a parent may ask what apps are installed`() {
+        assertEquals(
+            SyncRole.PARENT,
+            RosterRules.expectedSender(SyncMessageType.APP_INVENTORY_REQUESTED),
+        )
+    }
+
+    @Test
+    fun `only the managed phone may answer with its app list`() {
+        assertEquals(SyncRole.CHILD, RosterRules.expectedSender(SyncMessageType.APP_INVENTORY))
+    }
+
     private fun vouch(role: SyncRole = SyncRole.PARENT): Vouch {
         val keys = keyPair()
         return Vouch(

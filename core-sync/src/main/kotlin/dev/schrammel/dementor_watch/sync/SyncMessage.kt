@@ -124,6 +124,80 @@ enum class SyncMessageType {
      * the same local, physical, PIN-gated step [DEVICE_REVOKED] insists on.
      */
     FAMILY_DISBANDED,
+
+    /**
+     * Either → everyone: a batch of replicated-state writes.
+     *
+     * The workhorse of the current design, and what replaced asking one phone
+     * for its whole policy. Carries only the registers that actually changed —
+     * see [StateOp] — so a limit being nudged is a message of one line rather
+     * than every rule the family has.
+     *
+     * Both roles send these, because every device is a replica of the same
+     * state: an edit made standing at the managed phone reaches the parents the
+     * same way a parent's edit reaches it. What that does *not* relax is who may
+     * be believed about what — see [ReplicationRules].
+     */
+    STATE_OPS,
+
+    /**
+     * Either → everyone: a summary of everything I hold.
+     *
+     * Small and fixed-size regardless of how much state there is. Published on
+     * a slow timer so a replica that missed ops entirely — off for longer than
+     * the relay keeps them — finds that out on its own rather than staying
+     * quietly wrong. See [StateDigest].
+     */
+    STATE_DIGEST,
+
+    /**
+     * Either → everyone: send me what you have in these buckets.
+     *
+     * The answer arrives as ordinary [STATE_OPS]. Only the buckets that actually
+     * disagreed are asked for, so recovering from a weekend offline costs a
+     * fraction of the state rather than all of it.
+     */
+    STATE_REPAIR,
+
+    /**
+     * Parent → child: send your current rules.
+     *
+     * **Superseded by [STATE_OPS].** Kept so that a phone still on the older
+     * build can be understood rather than refused outright: a family does not
+     * update every handset at once, and an unrecognised type is dropped
+     * silently, which would look like sync simply not working.
+     */
+    POLICY_REQUESTED,
+
+    /**
+     * Child → parents: here is every rule this phone currently enforces.
+     *
+     * Sent in reply to [POLICY_REQUESTED], and only then — unlike a heartbeat,
+     * nobody needs this the moment something changes, only when a parent has
+     * actually opened the rules screen to look.
+     */
+    POLICY_SNAPSHOT,
+
+    /**
+     * Parent → child: replace the rules with these.
+     *
+     * Carries the version the parent's copy was based on, so the child can
+     * refuse rather than silently discard an edit made locally in the meantime
+     * — see where this is applied for the exact check.
+     */
+    POLICY_UPDATED,
+
+    /** Parent → child: send the list of apps on this phone. */
+    APP_INVENTORY_REQUESTED,
+
+    /**
+     * Child → parents: every launchable app on this phone, by name.
+     *
+     * No icons and no usage — a parent phone needs this list only to choose
+     * which app a rule is about, the same information already shown once an app
+     * is installed and reported through [APP_INSTALLED].
+     */
+    APP_INVENTORY,
 }
 
 /**

@@ -272,6 +272,10 @@ class LocalPolicyStore(context: Context) {
      * Locks the device against tampering. Defaults to **off**: turning it on makes
      * the device very hard to recover, so it must be a deliberate choice rather
      * than something that happens the moment a device is provisioned.
+     *
+     * Deliberately outside [PolicySnapshot] and every other remote rule change —
+     * see there for why. Flipping this on is a decision to be made standing at
+     * the phone it affects, not from wherever a parent happens to be.
      */
     var tamperProtection: Boolean
         get() = prefs.getBoolean(KEY_TAMPER, false)

@@ -145,6 +145,11 @@ class ParentHomeActivity : ParentRoleActivity() {
                         startActivity(ParentLimitActivity.intent(this@ParentHomeActivity))
                     },
                 )
+                add(
+                    row(R.string.parent_row_rules, R.string.parent_row_rules_detail) {
+                        startActivity(ParentRulesActivity.intent(this@ParentHomeActivity))
+                    },
+                )
                 if (on.isEnabled(Feature.CHAT)) {
                     add(
                         row(R.string.chat_title, R.string.chat_row_detail) {

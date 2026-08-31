@@ -50,6 +50,18 @@ internal object SyncWireFields {
     const val FIELD_TEXT = "text"
     const val MAX_SUMMARY_DOMAINS = 40
 
+    const val FIELD_POLICY_JSON = "policyJson"
+    const val FIELD_APPS_JSON = "appsJson"
+
+    /** A batch of replicated-state writes, encoded by [StateCodec]. */
+    const val FIELD_OPS = "ops"
+
+    /** One number per digest bucket. */
+    const val FIELD_DIGEST = "digest"
+
+    /** Which digest buckets a repair is being asked for. */
+    const val FIELD_BUCKETS = "buckets"
+
     /** Minutes, then the label — so a label containing a digit cannot confuse it. */
     const val APP_SEPARATOR = ':'
 
