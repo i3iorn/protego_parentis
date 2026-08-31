@@ -144,9 +144,14 @@ fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) {
         enabled = snapshot.bedtimeEnabled,
         start = snapshot.bedtimeStartMinute.toLocalTime(),
         end = snapshot.bedtimeEndMinute.toLocalTime(),
-        days = snapshot.bedtimeDays.mapNotNull { value -> DayOfWeek.entries.firstOrNull { it.value == value } }
-            .toSet()
-            .ifEmpty { BedtimeSetting.ALL_DAYS },
+        // No days is a real answer — a bedtime with no nights is off, which is
+        // how the switch expresses "not this week" without losing the times.
+        // Substituting every night here meant clearing them all was silently
+        // undone: the replica said none, this wrote seven, and the next push
+        // sent seven back to the phone that had just cleared them.
+        days = snapshot.bedtimeDays
+            .mapNotNull { value -> DayOfWeek.entries.firstOrNull { it.value == value } }
+            .toSet(),
     )
     categories = snapshot.categories
     appLimits = snapshot.appLimits

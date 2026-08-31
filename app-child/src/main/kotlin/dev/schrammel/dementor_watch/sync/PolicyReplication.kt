@@ -1,6 +1,7 @@
 package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
+import androidx.core.content.edit
 import dev.schrammel.dementor_watch.model.InstallPolicy
 import dev.schrammel.dementor_watch.rules.LocalPolicyStore
 import dev.schrammel.dementor_watch.rules.PolicySnapshot
@@ -53,6 +54,9 @@ class PolicyReplication(context: Context) {
     private val store = LocalPolicyStore(appContext)
     private val state = ReplicatedStateStore(appContext)
 
+    /** Which rules version was last flattened into the replica, on this phone. */
+    private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+
     /**
      * Records this phone's own rules as replicated writes.
      *
@@ -60,8 +64,22 @@ class PolicyReplication(context: Context) {
      * poll. Unchanged fields produce no ops, so the common case — a screen
      * re-rendering, or a save that moved one slider — publishes one line rather
      * than the whole policy, and a poll that changed nothing publishes nothing.
+     *
+     * Skipped outright when the rules have not moved since the last push. The
+     * comparison below is not expensive in absolute terms, but the managed
+     * phone's enforcement tick runs every few seconds, and reading every rule
+     * off disk and flattening it into two hundred paths to conclude "no change"
+     * is a poor thing to do all day on a battery. [Policy.version] increments on
+     * every local write, so it is a sufficient answer to "is this worth doing".
      */
-    fun pushFromLocalPolicy(): List<StateOp> = write(store.snapshot())
+    fun pushFromLocalPolicy(): List<StateOp> {
+        val version = store.load().version
+        if (version == prefs.getLong(KEY_PUSHED_VERSION, NEVER)) return emptyList()
+
+        val ops = write(store.snapshot())
+        prefs.edit { putLong(KEY_PUSHED_VERSION, version) }
+        return ops
+    }
 
     /** Records an edit made on a parent's phone, which holds no local rules. */
     fun write(snapshot: PolicySnapshot): List<StateOp> {
@@ -185,6 +203,12 @@ class PolicyReplication(context: Context) {
     private companion object {
         const val POLICY = ReplicationRules.POLICY
         const val PRESENT = "1"
+
+        const val FILE_NAME = "policy_replication"
+        const val KEY_PUSHED_VERSION = "pushedVersion"
+
+        /** No version has been pushed; [Policy.version] starts above this. */
+        const val NEVER = -1L
 
         const val PATH_DAILY_LIMIT = "dailyLimitMinutes"
         const val PATH_BEDTIME_ENABLED = "bedtime/enabled"

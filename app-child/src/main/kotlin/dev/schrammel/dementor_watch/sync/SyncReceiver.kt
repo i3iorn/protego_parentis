@@ -790,7 +790,11 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         // publishes its own side of the difference in the same exchange so the
         // other replica converges too rather than only this one.
         publisher.publishRepairRequest(differing)
-        publisher.publishOps(state.entriesIn(differing))
+        // Batched by size, like every other send. A bucket set holding a busy
+        // conversation is far more than one message can carry, and an over-long
+        // one is dropped by the receiver rather than truncated — so sending it
+        // whole meant the repair silently accomplished nothing.
+        StateCodec.batch(state.entriesIn(differing)).forEach(publisher::publishOps)
         Diagnostics.record(
             appContext,
             DiagnosticEvent.STATE_REPAIR_REQUESTED,
@@ -806,7 +810,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
 
         val entries = state.entriesIn(buckets)
         if (entries.isEmpty()) return false
-        entries.chunked(StateCodec.MAX_OPS_PER_MESSAGE).forEach(publisher::publishOps)
+        StateCodec.batch(entries).forEach(publisher::publishOps)
         return true
     }
 

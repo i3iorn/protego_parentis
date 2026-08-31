@@ -82,6 +82,64 @@ class WireSizeTest {
         assertTrue(hugeDigest.length < largeDigest.length + StateDigest.BUCKETS)
     }
 
+    // ---------- splitting a send so it survives the trip ----------
+
+    /**
+     * The bug this replaced: batching by op *count* alone.
+     *
+     * A hundred and twenty policy registers are a few kilobytes; a hundred and
+     * twenty chat messages are sixty. A receiver drops an over-long line rather
+     * than truncating it, so the oversized batch did not arrive damaged — it did
+     * not arrive at all, silently, and the repair it was answering simply never
+     * completed.
+     */
+    @Test
+    fun `a batch of long values is split by size, not by count`() {
+        val chatty = (1..40).map {
+            StateOp("chat/17000000$it-a/text", "m".repeat(500), 1L, origin)
+        }
+
+        val batches = StateCodec.batch(chatty)
+
+        assertTrue("expected several batches, got ${batches.size}", batches.size > 1)
+        batches.forEach { batch ->
+            val encoded = StateCodec.encodeOps(batch)
+            assertTrue("batch encoded to ${encoded.length}", encoded.length <= StateCodec.MAX_MESSAGE_CHARS)
+        }
+    }
+
+    @Test
+    fun `batching loses nothing and duplicates nothing`() {
+        val ops = (1..300).map { StateOp("policy/key$it", "value$it", it.toLong(), origin) }
+
+        val batched = StateCodec.batch(ops).flatten()
+
+        assertEquals(ops.toSet(), batched.toSet())
+        assertEquals(ops.size, batched.size)
+    }
+
+    @Test
+    fun `a small batch stays a single message`() {
+        val ops = (1..5).map { StateOp("policy/key$it", "$it", 1L, origin) }
+
+        assertEquals(1, StateCodec.batch(ops).size)
+        assertEquals(0, StateCodec.batch(emptyList()).size)
+    }
+
+    /**
+     * One op larger than the ceiling cannot be split, so it goes alone rather
+     * than being dropped. Its size is already bounded by [ReplicationRules].
+     */
+    @Test
+    fun `an oversized single op is still sent`() {
+        val huge = StateOp("chat/1-a/text", "x".repeat(ReplicationRules.MAX_VALUE_LENGTH), 1L, origin)
+
+        val batches = StateCodec.batch(listOf(huge))
+
+        assertEquals(1, batches.size)
+        assertEquals(huge, batches.single().single())
+    }
+
     /**
      * An idle phone must publish nothing at all. This is the difference between
      * a protocol that costs a few hundred bytes an hour and one that costs a few

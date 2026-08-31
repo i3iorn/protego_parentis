@@ -1,5 +1,6 @@
 package dev.schrammel.dementor_watch.sync
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,22 +20,40 @@ class ReplicationRulesTest {
 
     // ---------- the rule the product rests on ----------
 
+    /**
+     * Both devices write the rules, and that is deliberate.
+     *
+     * The rules live on the managed phone and can be edited standing at it,
+     * behind the parent PIN. Refusing its writes meant a parent's phone never
+     * learned them at all and the two replicas could never agree — so the
+     * boundary for the rules is the PIN rather than the device. See
+     * [ReplicationRules.mayWrite] for what that gives up.
+     */
     @Test
-    fun `the managed phone may not write the rules imposed on it`() {
+    fun `either phone may write the rules`() {
         listOf(
             "policy/dailyLimitMinutes",
             "policy/bedtime/enabled",
             "policy/categories/games/limitMinutes",
             "policy/appLimits/com.example.a",
         ).forEach { path ->
-            assertFalse(path, ReplicationRules.mayWrite(SyncRole.CHILD, path))
+            assertTrue(path, ReplicationRules.mayWrite(SyncRole.CHILD, path))
             assertTrue(path, ReplicationRules.mayWrite(SyncRole.PARENT, path))
         }
     }
 
+    /**
+     * The rule that does *not* soften, and the reason the one above safely can.
+     *
+     * A phone that could write the roster could admit a device of its own, and
+     * that device could then write everything a parent may write. That is an
+     * escalation rather than a view being wrong, so the managed phone is kept
+     * out of it exactly as before.
+     */
     @Test
     fun `the managed phone may not write the roster`() {
         assertFalse(ReplicationRules.mayWrite(SyncRole.CHILD, "roster/AAAA/role"))
+        assertFalse(ReplicationRules.mayWrite(SyncRole.CHILD, "roster/BBBB/key"))
         assertTrue(ReplicationRules.mayWrite(SyncRole.PARENT, "roster/AAAA/role"))
     }
 
@@ -105,6 +124,45 @@ class ReplicationRulesTest {
         assertTrue(
             ReplicationRules.accepts(SyncRole.PARENT, op("policy/dailyLimitMinutes", "90", 2L)),
         )
+    }
+
+    /**
+     * The whole boundary in one place, as a table.
+     *
+     * Worth pinning explicitly because of how the failure shows up when it is
+     * wrong. Each adapter writes its own section locally, and a local write is
+     * not authorised against these rules — only what arrives from a peer is. So
+     * a section a device writes but its peers refuse does not fail loudly: the
+     * two replicas simply never agree, the digest finds the same difference on
+     * every exchange, and they repair each other forever over a value that will
+     * be refused again. That was a real bug, and it cost continuous traffic on
+     * a phone whose data allowance is the reason the wire format is compressed
+     * at all.
+     *
+     * Changing a row here means checking that whichever device writes that
+     * section is still permitted to.
+     */
+    @Test
+    fun `each section says exactly who may write it`() {
+        val expected = mapOf(
+            // Written by the managed phone on every rules change, and by a
+            // parent from the Rules screen. Both must be able to.
+            ReplicationRules.POLICY to setOf(SyncRole.CHILD, SyncRole.PARENT),
+            // Written only by parents, and pulled into trust by everyone.
+            ReplicationRules.ROSTER to setOf(SyncRole.PARENT),
+            // Written only by the phone that can actually observe itself.
+            ReplicationRules.TELEMETRY to setOf(SyncRole.CHILD),
+            ReplicationRules.REQUESTS to setOf(SyncRole.CHILD, SyncRole.PARENT),
+            ReplicationRules.CHAT to setOf(SyncRole.CHILD, SyncRole.PARENT),
+            ReplicationRules.AUDIT to setOf(SyncRole.CHILD, SyncRole.PARENT),
+        )
+
+        expected.forEach { (section, writers) ->
+            val actual = listOf(SyncRole.CHILD, SyncRole.PARENT)
+                .filter { ReplicationRules.mayWrite(it, "$section/x") }
+                .toSet()
+            assertEquals(section, writers, actual)
+        }
     }
 
     // ---------- anything unrecognised ----------
