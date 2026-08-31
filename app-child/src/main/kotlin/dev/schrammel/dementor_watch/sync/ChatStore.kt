@@ -2,9 +2,7 @@ package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
 import androidx.core.content.edit
-import dev.schrammel.dementor_watch.model.ChatText
-import org.json.JSONArray
-import org.json.JSONObject
+import dev.schrammel.dementor_watch.security.KeystoreSigner
 import java.time.Instant
 
 /** One message, as this phone holds it. */
@@ -40,91 +38,81 @@ data class ChatMessage(
  */
 class ChatStore(context: Context) {
 
-    private val prefs = context.applicationContext
-        .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val replication = ChatReplication(appContext)
 
-    /** Oldest first, which is the order a conversation is read in. */
+    /**
+     * When this phone was last told to forget the conversation.
+     *
+     * Local, and deliberately never replicated. "Clear" promises the other
+     * phones keep their copy, and under replication a delete cannot be local —
+     * a tombstone travels, and simply dropping the entries would have the next
+     * digest repair fetch them straight back. So nothing is deleted at all:
+     * this phone stops showing what it was holding, which is exactly what was
+     * promised and the only version of it that survives a repair.
+     */
+    private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+
+    /**
+     * Oldest first, which is the order a conversation is read in.
+     *
+     * Capped on the way out rather than on the way in. The replica keeps
+     * whatever the family's retention window holds; this decides how much of it
+     * is a *conversation*, which is a product decision and belongs here rather
+     * than in the sync layer.
+     */
     fun all(): List<ChatMessage> {
-        val raw = prefs.getString(KEY_MESSAGES, null) ?: return emptyList()
-        val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
-
-        return (0 until array.length())
-            .mapNotNull { array.optJSONObject(it) }
-            .mapNotNull { json ->
-                // Sanitised again on the way out. What is on disk was clean when it
-                // was written, but this costs nothing and means a tampered
-                // preferences file cannot put anything on screen either.
-                val text = ChatText.sanitise(json.optString(KEY_TEXT)) ?: return@mapNotNull null
+        val self = runCatching { KeystoreSigner().deviceId.value }.getOrNull()
+        val hiddenBefore = prefs.getLong(KEY_CLEARED_AT, 0L)
+        return replication.messages()
+            .filter { it.at.epochSecond > hiddenBefore }
+            .sortedBy { it.at }
+            .takeLast(MAX_MESSAGES)
+            .map { line ->
                 ChatMessage(
-                    id = json.optString(KEY_ID).takeIf(String::isNotBlank)
-                        ?: return@mapNotNull null,
-                    text = text,
-                    mine = json.optBoolean(KEY_MINE),
-                    sender = json.optString(KEY_SENDER),
-                    at = Instant.ofEpochMilli(json.optLong(KEY_AT, 0L)),
+                    id = line.id,
+                    text = line.text,
+                    mine = self != null && line.by == self,
+                    sender = line.from,
+                    at = line.at,
                 )
             }
-            .sortedBy { it.at }
     }
 
     /**
-     * Adds a message, unless this phone already has it.
+     * Sends a message. Returns false when the text sanitised to nothing.
      *
-     * The de-duplication is not tidiness. A message stays on the relay for its
-     * retention window and every poll sees it again, so without this the
-     * conversation would repeat itself on every check.
-     *
-     * Returns false when nothing was added, so a caller knows whether to notify.
+     * De-duplication is no longer this store's problem: a message is a set of
+     * registers under an id, so the same one arriving on every poll for the
+     * length of the relay's retention window merges to exactly what is already
+     * held. That was previously the whole reason [add] existed.
      */
-    fun add(message: ChatMessage): Boolean = synchronized(LOCK) {
-        val existing = all()
-        if (existing.any { it.id == message.id }) return false
+    fun send(raw: String, senderName: String): Boolean =
+        replication.send(raw, senderName) != null
 
-        // Newest kept: takeLast, because the list is oldest first and it is the
-        // start of a long conversation that stops being interesting.
-        val kept = (existing + message).takeLast(MAX_MESSAGES)
-        prefs.edit {
-            putString(
-                KEY_MESSAGES,
-                JSONArray(
-                    kept.map { entry ->
-                        JSONObject().apply {
-                            put(KEY_ID, entry.id)
-                            put(KEY_TEXT, entry.text)
-                            put(KEY_MINE, entry.mine)
-                            put(KEY_SENDER, entry.sender)
-                            put(KEY_AT, entry.at.toEpochMilli())
-                        }
-                    },
-                ).toString(),
-            )
-        }
-        return true
+    /**
+     * Stops this phone showing the conversation so far.
+     *
+     * Local, as the confirmation says. Nothing is tombstoned, because a
+     * tombstone would replicate and clear everybody's copy — which is the
+     * opposite of what the button promises. The messages stay in the replica
+     * until the ordinary retention window drops them, and are simply not shown
+     * here any more.
+     */
+    fun forgetAll() {
+        prefs.edit { putLong(KEY_CLEARED_AT, Instant.now().epochSecond) }
     }
 
-    /** Wipes the conversation. Offered on the screen itself, to both sides. */
-    fun forgetAll() = synchronized(LOCK) {
-        prefs.edit { clear() }
-    }
-
-    private companion object {
-        val LOCK = Any()
-
-        const val FILE_NAME = "chat"
+    companion object {
+        private const val FILE_NAME = "chat"
+        private const val KEY_CLEARED_AT = "clearedAt"
 
         /**
-         * How much conversation a phone keeps.
+         * How much of a conversation is kept.
          *
-         * Enough to scroll back through an evening. Not enough to be a log of a
-         * childhood, which is the only other place this number could go.
+         * Short on purpose, and the same on both phones. See the note above the
+         * class: the cap is the feature.
          */
         const val MAX_MESSAGES = 200
-
-        const val KEY_MESSAGES = "messages"
-        const val KEY_ID = "id"
-        const val KEY_TEXT = "text"
-        const val KEY_MINE = "mine"
-        const val KEY_SENDER = "sender"
-        const val KEY_AT = "at"
     }
 }

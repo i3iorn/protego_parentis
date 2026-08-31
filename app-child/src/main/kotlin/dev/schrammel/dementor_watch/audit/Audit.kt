@@ -6,6 +6,8 @@ import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.AuditChain
 import dev.schrammel.dementor_watch.model.AuditEntry
+import dev.schrammel.dementor_watch.security.KeystoreSigner
+import dev.schrammel.dementor_watch.sync.AuditReplication
 import dev.schrammel.dementor_watch.model.ChainCheck
 import java.time.Instant
 import java.time.LocalTime
@@ -83,11 +85,58 @@ object Audit {
                 putLong(KEY_TOTAL, prefs.getLong(KEY_TOTAL, 0L) + 1L)
             }
         }
+
+        // Recorded twice, deliberately, and the two copies do different jobs.
+        //
+        // The local log above is a hash chain: it proves *this phone's* history
+        // has not been edited underneath the app. That chain is linear by
+        // nature, and entries from three other devices arriving out of order
+        // cannot be threaded onto it without destroying the property.
+        //
+        // So the replica below carries the same entry to the rest of the
+        // family, unchained, and [entries] shows the union. The chain answers
+        // "has this phone's log been tampered with"; replication answers "does
+        // the family see the same history". Both were promised, and neither
+        // substitutes for the other.
+        AuditReplication(context).record(
+            actor = actor.name,
+            action = action.name,
+            subject = subject,
+            before = before,
+            after = after,
+        )
     }
 
-    /** Newest first, the way the screen reads it. */
-    fun entries(context: Context): List<AuditEntry> =
-        AuditLogFormat.decodeAll(prefs(context).getString(KEY_LOG, null)).asReversed()
+    /**
+     * Newest first, the way the screen reads it.
+     *
+     * This phone's own chained entries, plus what every other device in the
+     * family recorded. Nothing is de-duplicated because nothing overlaps: the
+     * local log holds only what this phone wrote, and the replica is filtered to
+     * what it did not.
+     */
+    fun entries(context: Context): List<AuditEntry> {
+        val own = AuditLogFormat.decodeAll(prefs(context).getString(KEY_LOG, null))
+        val self = runCatching { KeystoreSigner().deviceId.value }.getOrNull()
+
+        val fromFamily = AuditReplication(context).entries()
+            .filter { self == null || it.by != self }
+            .mapNotNull { entry ->
+                AuditEntry(
+                    id = entry.id,
+                    at = entry.at,
+                    actor = AuditActor.entries.firstOrNull { it.name == entry.actor }
+                        ?: return@mapNotNull null,
+                    action = AuditAction.entries.firstOrNull { it.name == entry.action }
+                        ?: return@mapNotNull null,
+                    subject = entry.subject,
+                    before = entry.before,
+                    after = entry.after,
+                )
+            }
+
+        return (own + fromFamily).sortedByDescending { it.at }
+    }
 
     /**
      * Whether the stored history still adds up (TR-3).

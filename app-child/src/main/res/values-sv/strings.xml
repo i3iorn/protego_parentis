@@ -350,6 +350,10 @@
         <item quantity="other">Använd minst %d siffror.</item>
     </plurals>
 
+    <!-- Ending a parent session early, from any PIN-gated screen. -->
+    <string name="session_lock">Lås</string>
+    <string name="session_lock_description">Avsluta denna föräldrasession och lås</string>
+
     <!-- Kategorier. -->
     <string name="category_title">Kategori</string>
     <string name="category_name_hint">Namn, till exempel Spel</string>
@@ -414,6 +418,8 @@
     <string name="parent_row_bonus_detail">Lägg till minuter utan att bli tillfrågad</string>
     <string name="parent_row_limit">Ändra daglig gräns</string>
     <string name="parent_row_limit_detail">Ange en ny gräns härifrån, utan telefonen</string>
+    <string name="parent_row_rules">Regler</string>
+    <string name="parent_row_rules_detail">Alla regler familjen kan ställa in, härifrån</string>
     <string name="parent_row_audit">Historik</string>
     <string name="parent_row_audit_detail">Allt som ändrats, och vem som ändrade det</string>
     <string name="parent_row_sync">Familjeanslutning</string>
@@ -430,10 +436,31 @@
     </plurals>
 
     <string name="parent_limit_title">Ändra daglig gräns</string>
-    <string name="parent_limit_body">En ny gräns för varje dag, som ersätter den nuvarande. Gränser per app och kategori påverkas inte, och kan bara ställas in från telefonen själv.</string>
+    <string name="parent_limit_body">En ny gräns för varje dag, som ersätter den nuvarande. För gränser per app, kategorier, läggdags och allt annat, använd Regler istället.</string>
     <string name="parent_limit_send">Skicka</string>
     <string name="parent_limit_sent">Skickat</string>
     <string name="parent_limit_unknown">Den här telefonen har inte hört något från barnets telefon än, så skjutreglaget börjar på noll i stället för en gissning.</string>
+
+    <string name="parent_rules_title">Regler</string>
+    <string name="parent_rules_intro">Inget ändras på den andra telefonen förrän du skickar det. Uppdatering ersätter allt som inte skickats än med det som faktiskt körs där just nu.</string>
+    <string name="parent_rules_loading">Väntar på svar från den andra telefonen…</string>
+    <string name="parent_rules_refresh">Uppdatera från telefonen</string>
+    <string name="parent_rules_send">Skicka till telefonen</string>
+    <string name="parent_rules_sent">Skickat</string>
+    <string name="parent_rules_conflict">Skickades inte: reglerna ändrades på den telefonen sedan denna skärm senast hörde från den. Uppdatera och försök igen.</string>
+    <string name="parent_rules_daily_limit">Daglig gräns</string>
+    <string name="parent_rules_install_header">Nya appar</string>
+    <string name="parent_rules_install_notify">Tillåtet, och jag blir informerad</string>
+    <string name="parent_rules_install_gated">Blockerat tills jag öppnar ett fönster</string>
+    <string name="parent_rules_categories_add">Lägg till en kategori</string>
+    <string name="parent_rules_category_summary">%1$s · %2$d appar</string>
+    <string name="parent_rules_apps_header">Appar</string>
+    <string name="parent_rules_apps_none">Väntar på applistan från den andra telefonen…</string>
+    <string name="parent_rules_app_limit">Gräns: %1$s</string>
+    <string name="parent_rules_app_no_limit">Ingen gräns satt</string>
+    <string name="parent_rules_app_blocked">Blockerad</string>
+    <string name="parent_rules_app_network_blocked">Inget nätverk</string>
+    <string name="parent_rules_app_exempt">Aldrig begränsad</string>
 
     <string name="parent_settings_title">Den här telefonen</string>
     <string name="parent_settings_pin_header">PIN-kod</string>
@@ -467,6 +494,7 @@
     <string name="audit_role_parent">en förälders telefon</string>
 
     <string name="audit_daily_limit_changed">Daglig gräns ändrad från %1$s till %2$s</string>
+    <string name="audit_rules_replaced">En förälders telefon ersatte alla regler</string>
     <string name="audit_app_limit_changed">Gränsen för %1$s ändrad från %2$s till %3$s</string>
     <string name="audit_app_exempted">%1$s räknas inte längre mot gränserna</string>
     <string name="audit_app_unexempted">%1$s räknas mot gränserna igen</string>
@@ -845,6 +873,7 @@
     <string name="join_done">Med i familjen. En förälder måste godkänna telefonen innan den kan göra något.</string>
     <string name="join_start_header">Eller starta en ny familj</string>
     <string name="join_start_hint">Välj en lösenfras ovan först. Alla som går med behöver den, och den är det enda som håller familjens meddelanden privata — välj något långt.</string>
+    <string name="join_start_server_hint">Lämna som ntfy.sh om inte familjen kör sin egen relä. Den som går med via koden nedan får den här adressen automatiskt — det finns inget separat steg för att flytta dem dit.</string>
     <string name="join_start">Starta en ny familj</string>
     <string name="join_connected_title">Den här familjen</string>
     <string name="join_code_hint">Läs upp koden för nästa telefon som ska gå med. Den är ingen hemlighet i sig — det är lösenfrasen som låser upp något.</string>

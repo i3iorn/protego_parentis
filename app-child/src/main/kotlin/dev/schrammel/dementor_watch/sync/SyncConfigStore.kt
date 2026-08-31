@@ -308,6 +308,30 @@ class SyncConfigStore(context: Context) {
         prefs.edit { remove(KEY_LAST_ANNOUNCE) }
     }
 
+    // ---------- replication ----------
+
+    /**
+     * Whether to publish a state digest again.
+     *
+     * Slower than the poll on purpose. The digest exists to catch the case where
+     * ops were missed entirely — a phone off for longer than the relay keeps
+     * them — which is rare and not urgent. Sending one every tick would spend a
+     * message on saying "still agreed" dozens of times an hour.
+     */
+    fun digestDue(now: Instant): Boolean {
+        val last = prefs.getLong(KEY_LAST_DIGEST, 0L)
+        if (last <= 0L) return true
+        val elapsed = now.toEpochMilli() - last
+        // A negative gap means the clock moved backwards, which on the managed
+        // phone is something the person being limited can arrange. Treated as
+        // due rather than as a reason to never send one again.
+        return elapsed < 0L || elapsed >= DIGEST_INTERVAL_MINUTES * MILLIS_PER_MINUTE
+    }
+
+    fun recordDigestAt(at: Instant) {
+        prefs.edit { putLong(KEY_LAST_DIGEST, at.toEpochMilli()) }
+    }
+
     private companion object {
         /** Process-wide: every screen builds its own store. */
         @Volatile
@@ -321,6 +345,9 @@ class SyncConfigStore(context: Context) {
         const val MAX_NAME_LENGTH = 40
         const val MILLIS_PER_MINUTE = 60_000L
         const val ANNOUNCE_INTERVAL_MINUTES = 60L
+
+        /** Often enough to heal within an hour, rare enough to be nearly free. */
+        const val DIGEST_INTERVAL_MINUTES = 30L
 
         const val KEY_ENABLED = "enabled"
         const val KEY_SERVER = "server"
@@ -336,5 +363,6 @@ class SyncConfigStore(context: Context) {
         const val KEY_LAST_POLL = "last_poll"
         const val KEY_LAST_HEARTBEAT = "last_heartbeat"
         const val KEY_LAST_ANNOUNCE = "last_announce"
+        const val KEY_LAST_DIGEST = "last_digest"
     }
 }

@@ -117,6 +117,8 @@ object RosterRules {
         SyncMessageType.SOS_RAISED -> SyncRole.CHILD
         SyncMessageType.SOS_CLEARED -> SyncRole.CHILD
         SyncMessageType.WEB_SUMMARY -> SyncRole.CHILD
+        SyncMessageType.POLICY_SNAPSHOT -> SyncRole.CHILD
+        SyncMessageType.APP_INVENTORY -> SyncRole.CHILD
 
         SyncMessageType.REQUEST_DECIDED -> SyncRole.PARENT
         SyncMessageType.BONUS_GRANTED -> SyncRole.PARENT
@@ -124,6 +126,9 @@ object RosterRules {
         SyncMessageType.LOCK_NOW -> SyncRole.PARENT
         SyncMessageType.LOCATE_REQUEST -> SyncRole.PARENT
         SyncMessageType.SET_DAILY_LIMIT -> SyncRole.PARENT
+        SyncMessageType.POLICY_REQUESTED -> SyncRole.PARENT
+        SyncMessageType.POLICY_UPDATED -> SyncRole.PARENT
+        SyncMessageType.APP_INVENTORY_REQUESTED -> SyncRole.PARENT
 
         // Only a parent may let somebody in. A child device that obtained the
         // passphrase can sign this perfectly well and is refused, which is the
@@ -137,6 +142,14 @@ object RosterRules {
 
         // Either side introduces itself; that is the point of it.
         SyncMessageType.DEVICE_ANNOUNCE -> null
+
+        // Every device is a replica, so every device sends these. The role check
+        // that matters for replication is not "may you send this message" but
+        // "may you write this path" — see [ReplicationRules], applied per op
+        // after the sender has been identified here.
+        SyncMessageType.STATE_OPS -> null
+        SyncMessageType.STATE_DIGEST -> null
+        SyncMessageType.STATE_REPAIR -> null
 
         // A conversation both sides can start. Note what this does *not* relax:
         // the sender still has to be on the roster, still has to sign, and its id

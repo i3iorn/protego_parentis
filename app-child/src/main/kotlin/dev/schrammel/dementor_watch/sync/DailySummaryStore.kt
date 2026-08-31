@@ -57,63 +57,46 @@ class DailySummaryStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    var latest: DailySummary?
+    private val telemetry = TelemetryReplication(context)
+
+    /**
+     * The last picture the managed phone reported.
+     *
+     * Read from replicated telemetry rather than a summary message. The figures
+     * are the same; what changed is that they arrive as a handful of registers
+     * that only move when the numbers do, instead of a whole summary on a timer.
+     *
+     * [DailySummary.receivedAt] is now this phone's own clock rather than the
+     * sending phone's: replication carries no wall-clock time, and the honest
+     * meaning of the timestamp on a dashboard is "as of when I last heard",
+     * which is exactly what this is.
+     */
+    val latest: DailySummary?
         get() {
-            val at = prefs.getLong(KEY_AT, 0L).takeIf { it > 0L } ?: return null
+            val reported = telemetry.read()
+            if (!reported.hasReported) return null
             return DailySummary(
-                receivedAt = Instant.ofEpochMilli(at),
-                usedMinutes = prefs.getInt(KEY_USED, 0),
-                allowedMinutes = prefs.getInt(KEY_ALLOWED, 0),
-                bonusMinutes = prefs.getInt(KEY_BONUS, 0),
-                remainingMinutes = prefs.getInt(KEY_REMAINING, 0),
-                level = prefs.getInt(KEY_LEVEL, 0),
-                topApps = decodeApps(prefs.getString(KEY_APPS, null)),
+                receivedAt = lastHeardAt() ?: Instant.now(),
+                usedMinutes = reported.usedMinutes ?: 0,
+                allowedMinutes = reported.allowedMinutes ?: 0,
+                bonusMinutes = reported.bonusMinutes ?: 0,
+                remainingMinutes = reported.remainingMinutes ?: 0,
+                level = reported.level ?: 0,
+                topApps = telemetry.topApps(),
             )
         }
-        // Synchronized on LOCK: the out-of-order guard below reads the current
-        // value and only then decides whether to write, and two summaries can
-        // arrive close together on the sync executor. Without a lock, both could
-        // pass the check against the same stale "known" before either commits,
-        // and whichever wrote second — not necessarily the newer one — would win.
-        set(value) = synchronized(LOCK) {
-            if (value == null) {
-                prefs.edit { clear() }
-                return@synchronized
-            }
-            // Out-of-order arrival is normal; the poll window overlaps and the
-            // server promises nothing about ordering.
-            val known = latest
-            if (known != null && value.receivedAt.isBefore(known.receivedAt)) return@synchronized
 
-            prefs.edit {
-                putLong(KEY_AT, value.receivedAt.toEpochMilli())
-                putInt(KEY_USED, value.usedMinutes)
-                putInt(KEY_ALLOWED, value.allowedMinutes)
-                putInt(KEY_BONUS, value.bonusMinutes)
-                putInt(KEY_REMAINING, value.remainingMinutes)
-                putInt(KEY_LEVEL, value.level)
-                putString(KEY_APPS, encodeApps(value.topApps))
-            }
-        }
+    private fun lastHeardAt(): Instant? =
+        prefs.getLong(KEY_AT, 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
 
-    private fun encodeApps(apps: List<AppTime>): String = JSONArray(
-        apps.map { app ->
-            JSONObject().apply {
-                put(KEY_LABEL, app.label)
-                put(KEY_MINUTES, app.minutes)
-            }
-        },
-    ).toString()
+    /** Notes that fresh telemetry landed, for the "as of" line on the dashboard. */
+    fun markHeard(at: Instant = Instant.now()) {
+        prefs.edit { putLong(KEY_AT, at.toEpochMilli()) }
+    }
 
-    private fun decodeApps(raw: String?): List<AppTime> {
-        if (raw.isNullOrBlank()) return emptyList()
-        val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
-        return (0 until array.length()).mapNotNull { index ->
-            val json = array.optJSONObject(index) ?: return@mapNotNull null
-            val label = json.optString(KEY_LABEL).takeIf(String::isNotBlank)
-                ?: return@mapNotNull null
-            AppTime(label, json.optInt(KEY_MINUTES, 0))
-        }
+    /** Forgets what this phone was told, when it leaves the family. */
+    fun forget() {
+        prefs.edit { clear() }
     }
 
     private companion object {

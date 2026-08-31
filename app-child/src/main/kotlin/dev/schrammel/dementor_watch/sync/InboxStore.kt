@@ -1,10 +1,7 @@
 package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
-import androidx.core.content.edit
 import dev.schrammel.dementor_watch.model.RequestState
-import org.json.JSONArray
-import org.json.JSONObject
 import java.time.Instant
 
 /**
@@ -44,139 +41,58 @@ data class IncomingRequest(
  */
 class InboxStore(context: Context) {
 
-    private val prefs = context.applicationContext
-        .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val replication = RequestReplication(appContext)
 
     /**
-     * Every mutation below reads the whole list, changes it and writes it back.
-     * A poll landing on the sync executor while a parent taps Approve on the main
-     * thread would otherwise lose one of the two — either an answer that was never
-     * published, or a request that reappears as unanswered.
+     * Everything the parent has heard about, newest first.
+     *
+     * Expiry is computed on read rather than written back. Under replication a
+     * lapse is not an event anybody caused — every replica can work it out from
+     * the expiry it already holds, and writing it would be three phones racing
+     * to record the same non-decision.
      */
-    private fun <T> exclusively(block: () -> T): T = synchronized(LOCK, block)
-
-    /** Everything the parent has heard about, newest first. */
-    fun all(now: Instant = Instant.now()): List<IncomingRequest> = exclusively {
-        val stored = read()
-        val current = stored.map { request ->
-            if (request.state.isOpen && !now.isBefore(request.expiresAt)) {
-                request.copy(state = RequestState.EXPIRED, decidedAt = request.expiresAt)
-            } else {
-                request
-            }
-        }
-        if (current != stored) write(current)
-        current.sortedByDescending { it.raisedAt }
-    }
+    fun all(now: Instant = Instant.now()): List<IncomingRequest> =
+        replication.all().map { request ->
+            IncomingRequest(
+                id = request.id,
+                label = request.targetLabel,
+                minutes = request.minutes,
+                reason = request.reason,
+                raisedAt = request.at,
+                expiresAt = request.expiresAt,
+                state = if (request.state.isOpen && !now.isBefore(request.expiresAt)) {
+                    RequestState.EXPIRED
+                } else {
+                    request.state
+                },
+                decidedAt = request.decidedAt,
+                decisionNote = request.note,
+            )
+        }.sortedByDescending { it.raisedAt }
 
     fun pending(now: Instant = Instant.now()): List<IncomingRequest> =
         all(now).filter { it.isOpenAt(now) }
 
     /**
-     * Records a request heard on the topic.
+     * Answers a request.
      *
-     * A request already known is left exactly as it is. Messages arrive more than
-     * once by design — the poll window overlaps — and re-recording would reopen
-     * something this phone had already answered.
+     * Returns false when it was already settled, which is what stops a second
+     * parent's tap counting twice. Note that this is a courtesy rather than a
+     * guarantee: two parents answering within one poll of each other both see it
+     * open and both write. That is no longer a problem the way it was — both
+     * write the same register, so every replica converges on the same answer
+     * instead of each phone believing whichever arrived last.
      */
-    fun remember(request: IncomingRequest) = exclusively {
-        val existing = read()
-        if (existing.none { it.id == request.id }) {
-            write((existing + request).takeLast(MAX_ENTRIES))
-        }
-    }
-
-    /** Marks a request answered, whether by this phone or another parent's. */
     fun settle(
         id: String,
         state: RequestState,
         note: String?,
-        at: Instant = Instant.now(),
-    ): Boolean = exclusively {
-        val existing = read()
-        val target = existing.firstOrNull { it.id == id }
-        if (target == null || !target.state.isOpen) {
-            return@exclusively false
-        }
-
-        write(
-            existing.map { request ->
-                if (request.id == id) {
-                    request.copy(state = state, decidedAt = at, decisionNote = note)
-                } else {
-                    request
-                }
-            },
-        )
-        true
+        decidedBy: String,
+    ): Boolean {
+        val target = replication.all().firstOrNull { it.id == id } ?: return false
+        if (!target.state.isOpen) return false
+        return replication.decide(id, state, note, decidedBy)
     }
 
-    /** Forgets every request heard from the child. */
-    fun forgetAll() = exclusively {
-        prefs.edit { clear() }
-    }
-
-    private fun read(): List<IncomingRequest> {
-        val raw = prefs.getString(KEY_INBOX, null) ?: return emptyList()
-        val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
-        return (0 until array.length()).mapNotNull { array.optJSONObject(it)?.let(::fromJson) }
-    }
-
-    private fun write(requests: List<IncomingRequest>) {
-        prefs.edit { putString(KEY_INBOX, JSONArray(requests.map(::toJson)).toString()) }
-    }
-
-    private fun toJson(request: IncomingRequest): JSONObject = JSONObject().apply {
-        put(KEY_ID, request.id)
-        put(KEY_LABEL, request.label)
-        put(KEY_MINUTES, request.minutes)
-        put(KEY_REASON, request.reason)
-        put(KEY_RAISED, request.raisedAt.toEpochMilli())
-        put(KEY_EXPIRES, request.expiresAt.toEpochMilli())
-        put(KEY_STATE, request.state.name)
-        request.decidedAt?.let { put(KEY_DECIDED, it.toEpochMilli()) }
-        request.decisionNote?.let { put(KEY_NOTE, it) }
-    }
-
-    private fun fromJson(json: JSONObject): IncomingRequest? {
-        val minutes = json.optInt(KEY_MINUTES, 0).takeIf { it > 0 } ?: return null
-        val raised = json.optLong(KEY_RAISED, 0L).takeIf { it > 0L } ?: return null
-        val expires = json.optLong(KEY_EXPIRES, 0L).takeIf { it > raised } ?: return null
-        val state = RequestState.entries.firstOrNull { it.name == json.optString(KEY_STATE) }
-            ?: return null
-
-        return IncomingRequest(
-            id = json.optString(KEY_ID).takeIf(String::isNotBlank) ?: return null,
-            label = json.optString(KEY_LABEL),
-            minutes = minutes,
-            reason = json.optString(KEY_REASON),
-            raisedAt = Instant.ofEpochMilli(raised),
-            expiresAt = Instant.ofEpochMilli(expires),
-            state = state,
-            decidedAt = json.optLong(KEY_DECIDED, 0L).takeIf { it > 0L }
-                ?.let(Instant::ofEpochMilli),
-            decisionNote = json.optString(KEY_NOTE).takeIf(String::isNotBlank),
-        )
-    }
-
-    private companion object {
-        /** Shared across instances: every screen constructs its own store. */
-        val LOCK = Any()
-
-        const val FILE_NAME = "inbox"
-        const val KEY_INBOX = "requests"
-
-        /** A parent phone keeps recent history, not the family archive. */
-        const val MAX_ENTRIES = 200
-
-        const val KEY_ID = "id"
-        const val KEY_LABEL = "label"
-        const val KEY_MINUTES = "minutes"
-        const val KEY_REASON = "reason"
-        const val KEY_RAISED = "raisedAt"
-        const val KEY_EXPIRES = "expiresAt"
-        const val KEY_STATE = "state"
-        const val KEY_DECIDED = "decidedAt"
-        const val KEY_NOTE = "note"
-    }
 }

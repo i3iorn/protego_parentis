@@ -1,10 +1,19 @@
 package dev.schrammel.dementor_watch.ui
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
+import dev.schrammel.dementor_watch.R
+import dev.schrammel.dementor_watch.security.DeviceRole
 import dev.schrammel.dementor_watch.security.ParentSession
+import dev.schrammel.dementor_watch.security.RoleStore
 
 /**
  * Base class for every screen only a parent may see.
@@ -15,10 +24,18 @@ import dev.schrammel.dementor_watch.security.ParentSession
  *
  * Subclasses build their UI as normal and override [onParentAuthenticated] for
  * anything that must wait until the parent is confirmed.
+ *
+ * Every gated screen also carries an explicit **Lock** button, pinned in the
+ * corner regardless of what the subclass draws underneath. The five-minute
+ * session exists so a parent can move between several rules screens without
+ * retyping the PIN, which is also exactly the situation where walking away
+ * mid-errand leaves the phone unlocked for those five minutes with nothing to
+ * say so. A tap here ends the session immediately rather than waiting it out.
  */
 abstract class ParentGatedActivity : DementorActivity() {
 
     private var awaitingPin = false
+    private var lockButton: View? = null
 
     private val unlock = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -40,6 +57,46 @@ abstract class ParentGatedActivity : DementorActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE,
         )
+    }
+
+    /**
+     * Wraps whatever a subclass sets as its content in a floating **Lock**
+     * button, so every gated screen carries one without each subclass having to
+     * remember to add it.
+     */
+    override fun setContentView(view: View) {
+        val button = Button(this).apply {
+            setText(R.string.session_lock)
+            contentDescription = getString(R.string.session_lock_description)
+            visibility = View.GONE
+            setOnClickListener { lockAndGoHome() }
+        }
+        lockButton = button
+
+        super.setContentView(
+            FrameLayout(this).apply {
+                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
+                addView(view, ViewGroup.LayoutParams(MATCH, MATCH))
+                addView(
+                    button,
+                    FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END).apply {
+                        val margin = dimen(R.dimen.screen_padding)
+                        setMargins(margin, margin, margin, margin)
+                    },
+                )
+            },
+        )
+    }
+
+    /** Ends the session right away and leaves nothing gated on screen behind it. */
+    private fun lockAndGoHome() {
+        ParentSession.lock()
+        val home = when (RoleStore(this).roleOrChild) {
+            DeviceRole.CHILD -> Intent(this, HomeActivity::class.java)
+            DeviceRole.PARENT -> ParentHomeActivity.intent(this)
+        }
+        startActivity(home.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK))
+        finish()
     }
 
     override fun onResume() {
@@ -82,9 +139,13 @@ abstract class ParentGatedActivity : DementorActivity() {
     private fun showGatedContent() {
         onGatedContentVisible()
         onParentAuthenticated()
+        // Nothing to lock on a screen requiresPin() left unguarded — there is no
+        // session here to end early.
+        lockButton?.visibility = if (requiresPin()) View.VISIBLE else View.GONE
     }
 
     private fun hideGatedContent() {
         onGatedContentHidden()
+        lockButton?.visibility = View.GONE
     }
 }

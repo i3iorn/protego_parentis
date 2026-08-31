@@ -6,6 +6,7 @@ import dev.schrammel.dementor_watch.model.Request
 import dev.schrammel.dementor_watch.model.RequestState
 import dev.schrammel.dementor_watch.context.PlaceTransition
 import dev.schrammel.dementor_watch.context.Position
+import dev.schrammel.dementor_watch.rules.PolicySnapshot
 import dev.schrammel.dementor_watch.security.DeviceRole
 
 /** Which sync identity a device's local role corresponds to. */
@@ -49,6 +50,7 @@ internal fun DeviceRole.toSyncRole(): SyncRole = when (this) {
  */
 class SyncCoordinator(context: Context) {
 
+    private val context = context.applicationContext
     private val publisher = SyncPublisher(context)
     private val receiver = SyncReceiver(context, publisher)
 
@@ -142,6 +144,27 @@ class SyncCoordinator(context: Context) {
 
     /** Tells the family that this phone has ended it. */
     fun publishDisband() = publisher.publishDisband()
+
+    /**
+     * Records a rule edit made on this phone and sends what changed.
+     *
+     * Replaces the old whole-policy push: only the registers that actually
+     * differ become ops, and they merge with concurrent edits from other
+     * devices rather than overwriting them.
+     */
+    fun applyPolicyEdit(snapshot: PolicySnapshot) {
+        PolicyReplication(context).write(snapshot)
+        publisher.publishPendingOps()
+    }
+
+    /** Sends anything edited locally and not yet published. */
+    fun publishPendingOps() = publisher.publishPendingOps()
+
+    /** Says what this device holds, so a replica behind on ops can notice. */
+    fun publishDigest() = publisher.publishDigest()
+
+    /** Parent: asks the child phone for the apps it has installed. */
+    fun publishAppInventoryRequest() = publisher.publishAppInventoryRequest()
 
     /** A parent's answer about a new app. */
     fun publishAppDecision(packageName: String, blocked: Boolean) =

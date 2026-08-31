@@ -343,6 +343,10 @@
         <item quantity="other">Use at least %d digits.</item>
     </plurals>
 
+    <!-- Ending a parent session early, from any PIN-gated screen. -->
+    <string name="session_lock">Lock</string>
+    <string name="session_lock_description">End this parent session and lock</string>
+
     <!-- Category editor. -->
     <string name="category_title">Category</string>
     <string name="category_name_hint">Name, for example Games</string>
@@ -407,6 +411,8 @@
     <string name="parent_row_bonus_detail">Add minutes without being asked</string>
     <string name="parent_row_limit">Change daily limit</string>
     <string name="parent_row_limit_detail">Set a new allowance from here, without the phone</string>
+    <string name="parent_row_rules">Rules</string>
+    <string name="parent_row_rules_detail">Every rule this family can set, from here</string>
     <string name="parent_row_audit">History</string>
     <string name="parent_row_audit_detail">Everything that has changed, and who changed it</string>
     <string name="parent_row_sync">Family connection</string>
@@ -423,10 +429,31 @@
     </plurals>
 
     <string name="parent_limit_title">Change daily limit</string>
-    <string name="parent_limit_body">A new allowance for every day, replacing the current one. Per-app and category limits are unchanged, and can only be set from the phone itself.</string>
+    <string name="parent_limit_body">A new allowance for every day, replacing the current one. For per-app limits, categories, bedtime and everything else, use Rules instead.</string>
     <string name="parent_limit_send">Send</string>
     <string name="parent_limit_sent">Sent</string>
     <string name="parent_limit_unknown">This phone has not heard from the child\'s phone yet, so the slider starts at zero rather than a guess.</string>
+
+    <string name="parent_rules_title">Rules</string>
+    <string name="parent_rules_intro">Nothing changes on the other phone until you send it. Refreshing replaces anything not yet sent with what is actually running there right now.</string>
+    <string name="parent_rules_loading">Waiting to hear back from the other phone…</string>
+    <string name="parent_rules_refresh">Refresh from the phone</string>
+    <string name="parent_rules_send">Send to the phone</string>
+    <string name="parent_rules_sent">Sent</string>
+    <string name="parent_rules_conflict">Not sent: the rules changed on that phone since this screen last heard from it. Refresh, then try again.</string>
+    <string name="parent_rules_daily_limit">Daily limit</string>
+    <string name="parent_rules_install_header">New apps</string>
+    <string name="parent_rules_install_notify">Allowed, and I\'m told</string>
+    <string name="parent_rules_install_gated">Blocked until I open a window</string>
+    <string name="parent_rules_categories_add">Add a category</string>
+    <string name="parent_rules_category_summary">%1$s · %2$d apps</string>
+    <string name="parent_rules_apps_header">Apps</string>
+    <string name="parent_rules_apps_none">Waiting for the app list from the other phone…</string>
+    <string name="parent_rules_app_limit">Limit: %1$s</string>
+    <string name="parent_rules_app_no_limit">No limit set</string>
+    <string name="parent_rules_app_blocked">Blocked</string>
+    <string name="parent_rules_app_network_blocked">No network</string>
+    <string name="parent_rules_app_exempt">Never limited</string>
 
     <string name="parent_settings_title">This phone</string>
     <string name="parent_settings_pin_header">PIN</string>
@@ -460,6 +487,7 @@
     <string name="audit_role_parent">a parent\'s phone</string>
 
     <string name="audit_daily_limit_changed">Daily limit changed from %1$s to %2$s</string>
+    <string name="audit_rules_replaced">A parent phone replaced every rule</string>
     <string name="audit_app_limit_changed">Limit for %1$s changed from %2$s to %3$s</string>
     <string name="audit_app_exempted">%1$s no longer counts towards limits</string>
     <string name="audit_app_unexempted">%1$s counts towards limits again</string>
@@ -838,6 +866,7 @@
     <string name="join_done">Joined. A parent has to approve this phone before it can do anything.</string>
     <string name="join_start_header">Or start a new family</string>
     <string name="join_start_hint">Pick a passphrase above first. Everyone who joins will need it, and it is the only thing keeping the family\'s messages private — choose something long.</string>
+    <string name="join_start_server_hint">Leave this as ntfy.sh unless the family runs its own relay. Whoever joins with the code below gets this address automatically — there is no separate step to move them onto it.</string>
     <string name="join_start">Start a new family</string>
     <string name="join_connected_title">This family</string>
     <string name="join_code_hint">Read this code out to the next phone joining. It is not a secret on its own — the passphrase is what unlocks anything.</string>
