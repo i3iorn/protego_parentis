@@ -378,18 +378,31 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
 
         // Turned off means turned off, not hidden. A parent who put this away and
         // found their old phone still answering would be right to feel misled.
+        // Every branch below answers. A locate that produced nothing used to
+        // write a line to logcat and stop there, so the parent saw "Sent" and
+        // then waited on something that was never coming — indistinguishable
+        // from an answer still in flight.
+        val telemetry = TelemetryReplication(appContext)
+
         if (!FeatureFlags(appContext).isEnabled(Feature.LOCATION)) {
             Log.i(TAG, "Asked for a position while locating is switched off")
+            telemetry.reportLocate(LocateOutcome.SWITCHED_OFF)
+            publisher.publishPendingOps()
             return true
         }
 
         val position = LocationSharing(appContext).locate()
         if (position == null) {
             Log.i(TAG, "Asked for a position, could not get one")
+            telemetry.reportLocate(LocateOutcome.UNAVAILABLE)
+            publisher.publishPendingOps()
             return true
         }
+
         Audit.record(appContext, AuditActor.CHILD, AuditAction.LOCATION_SHARED)
         publisher.publishLocation(position, forEmergency = false)
+        telemetry.reportLocate(LocateOutcome.ANSWERED)
+        publisher.publishPendingOps()
         return true
     }
 

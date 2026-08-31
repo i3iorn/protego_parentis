@@ -17,6 +17,8 @@ import android.content.ActivityNotFoundException
 import androidx.core.net.toUri
 import dev.schrammel.dementor_watch.sync.FamilyEventStore
 import dev.schrammel.dementor_watch.sync.HeartbeatStore
+import dev.schrammel.dementor_watch.sync.LocateOutcome
+import dev.schrammel.dementor_watch.sync.TelemetryReplication
 import dev.schrammel.dementor_watch.sync.NewApp
 import dev.schrammel.dementor_watch.sync.NewAppStore
 import dev.schrammel.dementor_watch.sync.SyncCoordinator
@@ -203,6 +205,29 @@ class ParentDeviceActivity : ParentRoleActivity() {
      */
     private fun whereCard(): LinearLayout = card {
         val position = family.lastPosition
+
+        // Said before the position, and only when it is the newer of the two:
+        // a refusal that predates the position on screen is history, but one
+        // that came after it is the reason nothing moved.
+        TelemetryReplication(this@ParentDeviceActivity).lastLocate()
+            ?.takeIf { (outcome, at) ->
+                outcome != LocateOutcome.ANSWERED &&
+                    (position == null || at.isAfter(position.at))
+            }
+            ?.let { (outcome, _) ->
+                addView(
+                    TextView(this@ParentDeviceActivity).apply {
+                        setText(
+                            when (outcome) {
+                                LocateOutcome.SWITCHED_OFF -> R.string.parent_locate_off
+                                else -> R.string.parent_locate_unavailable
+                            },
+                        )
+                        styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                    },
+                )
+            }
+
         if (position == null) {
             addView(
                 TextView(this@ParentDeviceActivity).apply {
