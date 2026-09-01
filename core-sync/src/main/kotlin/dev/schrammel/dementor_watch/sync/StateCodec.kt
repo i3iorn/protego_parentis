@@ -138,14 +138,62 @@ object StateCodec {
     }
 
     /**
-     * How many ops fit in one message.
+     * A ceiling on ops per message, as a backstop rather than the real bound.
      *
-     * A bound rather than a target. Repairing a long-divergent replica can
-     * produce more ops than any relay will carry in one body, so the caller
-     * sends several — see the publisher's batching. Sized well below ntfy's
-     * limit, since the encoded batch is then sealed and base64'd on top.
+     * Counting ops is not enough on its own: a hundred and twenty policy
+     * registers are a few kilobytes, while a hundred and twenty chat messages at
+     * five hundred characters each are sixty — far past what the relay will
+     * carry. A receiver drops an over-long line rather than truncating it, so
+     * such a batch would vanish in silence. [batch] measures instead.
      */
     const val MAX_OPS_PER_MESSAGE = 120
+
+    /**
+     * A ceiling on the *encoded* size of one message.
+     *
+     * Sized against what the transport will accept once this has been sealed
+     * and base64'd on top — roughly half the receiver's line limit, which
+     * leaves room for the envelope and for encryption's expansion without this
+     * file having to know either number.
+     */
+    const val MAX_MESSAGE_CHARS = 8_000
+
+    /**
+     * Splits [ops] into messages that will survive the trip.
+     *
+     * Greedy and deliberately pessimistic: it sums raw lengths without
+     * crediting the front coding [encodeOps] then applies, so a real batch only
+     * ever comes out smaller than predicted. A single op over the ceiling still
+     * goes out alone rather than being dropped — it cannot be split, and
+     * [ReplicationRules] already bounds how large one can be.
+     */
+    fun batch(ops: List<StateOp>): List<List<StateOp>> {
+        if (ops.isEmpty()) return emptyList()
+
+        val batches = mutableListOf<List<StateOp>>()
+        var current = mutableListOf<StateOp>()
+        var size = 0
+
+        ops.sortedBy { it.path }.forEach { op ->
+            val cost = sizeOf(op)
+            val full = current.size >= MAX_OPS_PER_MESSAGE || size + cost > MAX_MESSAGE_CHARS
+            if (current.isNotEmpty() && full) {
+                batches += current
+                current = mutableListOf()
+                size = 0
+            }
+            current += op
+            size += cost
+        }
+        if (current.isNotEmpty()) batches += current
+        return batches
+    }
+
+    private fun sizeOf(op: StateOp): Int =
+        op.path.length + (op.value?.length ?: 0) + op.origin.length + PER_OP_OVERHEAD
+
+    /** Separators, the tombstone flag and the clock, rounded generously up. */
+    private const val PER_OP_OVERHEAD = 32
 
     private fun sharedPrefix(previous: String, current: String): Int {
         val limit = minOf(previous.length, current.length)

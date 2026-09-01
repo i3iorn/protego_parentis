@@ -378,18 +378,31 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
 
         // Turned off means turned off, not hidden. A parent who put this away and
         // found their old phone still answering would be right to feel misled.
+        // Every branch below answers. A locate that produced nothing used to
+        // write a line to logcat and stop there, so the parent saw "Sent" and
+        // then waited on something that was never coming — indistinguishable
+        // from an answer still in flight.
+        val telemetry = TelemetryReplication(appContext)
+
         if (!FeatureFlags(appContext).isEnabled(Feature.LOCATION)) {
             Log.i(TAG, "Asked for a position while locating is switched off")
+            telemetry.reportLocate(LocateOutcome.SWITCHED_OFF)
+            publisher.publishPendingOps()
             return true
         }
 
         val position = LocationSharing(appContext).locate()
         if (position == null) {
             Log.i(TAG, "Asked for a position, could not get one")
+            telemetry.reportLocate(LocateOutcome.UNAVAILABLE)
+            publisher.publishPendingOps()
             return true
         }
+
         Audit.record(appContext, AuditActor.CHILD, AuditAction.LOCATION_SHARED)
         publisher.publishLocation(position, forEmergency = false)
+        telemetry.reportLocate(LocateOutcome.ANSWERED)
+        publisher.publishPendingOps()
         return true
     }
 
@@ -790,7 +803,11 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         // publishes its own side of the difference in the same exchange so the
         // other replica converges too rather than only this one.
         publisher.publishRepairRequest(differing)
-        publisher.publishOps(state.entriesIn(differing))
+        // Batched by size, like every other send. A bucket set holding a busy
+        // conversation is far more than one message can carry, and an over-long
+        // one is dropped by the receiver rather than truncated — so sending it
+        // whole meant the repair silently accomplished nothing.
+        StateCodec.batch(state.entriesIn(differing)).forEach(publisher::publishOps)
         Diagnostics.record(
             appContext,
             DiagnosticEvent.STATE_REPAIR_REQUESTED,
@@ -806,7 +823,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
 
         val entries = state.entriesIn(buckets)
         if (entries.isEmpty()) return false
-        entries.chunked(StateCodec.MAX_OPS_PER_MESSAGE).forEach(publisher::publishOps)
+        StateCodec.batch(entries).forEach(publisher::publishOps)
         return true
     }
 

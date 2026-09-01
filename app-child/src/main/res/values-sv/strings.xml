@@ -810,6 +810,8 @@
     <string name="parent_locate_sent">Frågat. Svaret kommer vid nästa avstämning.</string>
     <string name="parent_locate_none">Ingenstans ännu</string>
     <string name="parent_locate_at">Senast sedd %1$s</string>
+    <string name="parent_locate_off">Den telefonen har platsdelning avstängd, så inget svar kommer.</string>
+    <string name="parent_locate_unavailable">Den telefonen kunde inte avgöra var den var. Att fråga igen kan hjälpa.</string>
     <string name="parent_locate_accuracy">till cirka %1$d m</string>
     <string name="parent_locate_open">Öppna i kartor</string>
     <string name="parent_places_header">Kommer och går</string>

@@ -433,7 +433,7 @@ class SyncPublisher(context: Context) {
     fun publishPendingOps() {
         val queued = state.pending
         if (queued.isEmpty()) return
-        queued.chunked(StateCodec.MAX_OPS_PER_MESSAGE).forEach { batch ->
+        StateCodec.batch(queued).forEach { batch ->
             publishOps(batch) { state.clearPending(batch) }
         }
     }

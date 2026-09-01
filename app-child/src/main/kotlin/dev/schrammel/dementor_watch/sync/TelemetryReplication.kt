@@ -2,6 +2,7 @@ package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
 import dev.schrammel.dementor_watch.security.KeystoreSigner
+import java.time.Instant
 
 /**
  * What the managed phone reports about itself.
@@ -90,6 +91,39 @@ class TelemetryReplication(context: Context) {
         return state.writeAll(values, origin)
     }
 
+    /**
+     * Says how the last request for a position turned out.
+     *
+     * A locate that cannot be answered used to produce nothing at all — the
+     * managed phone wrote a line to logcat and stayed quiet, so a parent saw
+     * "Sent" and then waited on an answer that was never coming, unable to tell
+     * that from one still on its way. Recording the outcome is what turns those
+     * two apart.
+     *
+     * Telemetry rather than a message of its own: it is the managed phone
+     * describing its own state, it is only ever the latest one that matters, and
+     * it wants exactly the write rules this section already has.
+     */
+    fun reportLocate(outcome: LocateOutcome, at: Instant = Instant.now()): List<StateOp> {
+        val origin = runCatching { KeystoreSigner().deviceId.value }.getOrNull() ?: return emptyList()
+        return state.writeAll(
+            mapOf(
+                path(LOCATE_RESULT) to outcome.name,
+                path(LOCATE_AT) to at.epochSecond.toString(),
+            ),
+            origin,
+        )
+    }
+
+    /** How the last request for a position turned out, and when. */
+    fun lastLocate(): Pair<LocateOutcome, Instant>? {
+        val outcome = state.value(path(LOCATE_RESULT))
+            ?.let { name -> LocateOutcome.entries.firstOrNull { it.name == name } }
+            ?: return null
+        val at = state.value(path(LOCATE_AT))?.toLongOrNull() ?: return null
+        return outcome to Instant.ofEpochSecond(at)
+    }
+
     /** The day's biggest few apps, as last reported. */
     fun topApps(): List<AppTime> {
         val root = "${path(APPS)}${ReplicationRules.SEPARATOR}"
@@ -149,6 +183,8 @@ class TelemetryReplication(context: Context) {
         const val CHARGING = "charging"
         const val PLACE = "place"
         const val APPS = "apps"
+        const val LOCATE_RESULT = "locate/result"
+        const val LOCATE_AT = "locate/at"
 
         /** The same handful the old daily summary carried. */
         const val MAX_APPS = 10
@@ -162,6 +198,27 @@ class TelemetryReplication(context: Context) {
         /** Five points. Finer than a parent can act on, coarser than it changes. */
         const val BATTERY_STEP = 5
     }
+}
+
+/**
+ * How a request for a position turned out on the managed phone.
+ *
+ * A closed set, and deliberately a small one: it says whether an answer is
+ * coming, and if not whose problem it is to fix. It carries nothing about where
+ * the phone was — that travels as a position or not at all.
+ */
+enum class LocateOutcome {
+    /** A position was found and sent. */
+    ANSWERED,
+
+    /** Locating is switched off for this family. Nothing will arrive. */
+    SWITCHED_OFF,
+
+    /**
+     * Locating is on, but no position was available — permission refused, or no
+     * fix yet. Worth asking again; the previous two are not.
+     */
+    UNAVAILABLE,
 }
 
 /** The last picture the managed phone reported of itself. */

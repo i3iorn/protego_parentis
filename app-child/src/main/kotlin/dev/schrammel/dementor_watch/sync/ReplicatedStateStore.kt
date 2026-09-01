@@ -34,7 +34,24 @@ class ReplicatedStateStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    private val clock = LamportClock(prefs.getLong(KEY_CLOCK, 0L))
+    /**
+     * The logical clock, shared by every instance in the process.
+     *
+     * Emphatically not per-instance, which it was, and which was a silent and
+     * very confusing bug. Half a dozen collaborators build their own store —
+     * the publisher, the receiver, and each of the section adapters — and each
+     * read the clock off disk when it happened to be constructed. A long-lived
+     * one therefore held a stale value, and a stale clock is worse than a wrong
+     * one: a local edit stamped with a lamport below what the map already held
+     * lost its own merge, so the write did nothing, was still published, and was
+     * refused by every peer for the same reason. The edit vanished with nothing
+     * logged anywhere. Committing then wrote the stale value back, dragging the
+     * persisted clock *backwards* so the next writer collided too.
+     *
+     * [LOCK] was already process-wide for exactly this class of problem; the
+     * clock simply was not held under it.
+     */
+    private val clock: LamportClock get() = shared(prefs)
 
     /** Every register this device holds. */
     val entries: Map<String, StateEntry>
@@ -156,8 +173,18 @@ class ReplicatedStateStore(context: Context) {
 
     private fun nowSeconds(): Long = Instant.now().epochSecond
 
-    /** Forgets the whole replica. Used when this phone leaves the family. */
-    fun forgetAll() = synchronized(LOCK) { prefs.edit { clear() } }
+    /**
+     * Forgets the whole replica. Used when this phone leaves the family.
+     *
+     * The clock is dropped with it. Carrying a high one into the next family
+     * would make every write from this phone outrank everything already there —
+     * a phone that had been busy elsewhere would join and quietly win every
+     * conflict, including clobbering rules it had never seen.
+     */
+    fun forgetAll() = synchronized(LOCK) {
+        prefs.edit { clear() }
+        sharedClock = null
+    }
 
     private fun read(): Map<String, StateEntry> =
         StateCodec.decodeOps(prefs.getString(KEY_ENTRIES, null))
@@ -189,5 +216,20 @@ class ReplicatedStateStore(context: Context) {
         const val MAX_PENDING = 500
 
         val LOCK = Any()
+
+        /**
+         * One clock for the process, built from disk the first time it is asked
+         * for and shared by every store afterwards.
+         *
+         * Read under [LOCK] like everything else here, so a caller cannot
+         * observe it half-initialised.
+         */
+        @Volatile
+        private var sharedClock: LamportClock? = null
+
+        fun shared(prefs: android.content.SharedPreferences): LamportClock =
+            sharedClock ?: synchronized(LOCK) {
+                sharedClock ?: LamportClock(prefs.getLong(KEY_CLOCK, 0L)).also { sharedClock = it }
+            }
     }
 }

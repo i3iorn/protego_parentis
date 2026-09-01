@@ -188,7 +188,10 @@ class ParentInboxActivity : ParentRoleActivity() {
 
         decisionDialog(label) { text ->
             val note = text.trim().takeIf(String::isNotEmpty)
-            sync.publishDecision(request.id, state, note)
+            // No separate decision message. It carried the *replicated* id,
+            // which the child looks up as one of its own request ids and never
+            // matches — so it was a wasted message that did nothing, alongside
+            // the write below that actually answers the request.
             inbox.settle(request.id, state, note, decidedBy = sync.settings().deviceName)
             Audit.record(
                 context = this,

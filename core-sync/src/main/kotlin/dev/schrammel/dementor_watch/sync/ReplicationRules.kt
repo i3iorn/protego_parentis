@@ -50,15 +50,37 @@ object ReplicationRules {
     fun mayWrite(role: SyncRole?, path: String): Boolean {
         val section = path.substringBefore(SEPARATOR)
         return when (section) {
-            // The heart of it. A child device that obtained the passphrase can
-            // sign a policy op perfectly well, and is refused here — otherwise
-            // the person being limited could lift their own limits and the rest
-            // of the app would be decoration.
-            POLICY -> role == SyncRole.PARENT
+            // Both, and this one is worth the paragraph.
+            //
+            // The tempting rule is "only a parent may write the rules", and it
+            // was the rule here first. It does not survive contact with the
+            // product: the managed phone is where the rules actually live and
+            // where they can be edited standing at it, behind the parent PIN.
+            // Refusing its writes meant a parent's phone never learned the rules
+            // at all — it sat on an empty screen waiting for state that by
+            // construction could never arrive — and, worse, the two replicas
+            // could never agree, so every digest exchange found the same
+            // difference and asked for the same repair, forever.
+            //
+            // So the boundary for the rules is the PIN, not the device. An edit
+            // made at the managed phone has already been authorised by somebody
+            // who knows the PIN, which is the same reasoning that lets that
+            // phone enrol the founding parent (see [Enrolment]). What this gives
+            // up is real and worth stating plainly: a managed phone whose app
+            // has been modified can publish a policy its parents will believe.
+            // Such a phone could already ignore that policy outright, so what is
+            // lost is the parents' *view* being trustworthy, not enforcement —
+            // and the shared history still records which device wrote what.
+            //
+            // Trust itself is not on this footing. See ROSTER below.
+            POLICY -> role != null
 
             // Enrolment stays a parent's decision, exactly as it was before
-            // replication existed. See Enrolment.shouldAccept for why extending
-            // this to the managed phone would be a real hole.
+            // replication existed, and unlike POLICY above it does not soften.
+            // A phone that could write the roster could admit a device of its
+            // own, and that device could then write everything a parent may
+            // write — an escalation rather than a view being wrong. See
+            // [Enrolment.shouldAccept].
             ROSTER -> role == SyncRole.PARENT
 
             // Only the managed phone can observe the managed phone. A parent

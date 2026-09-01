@@ -90,9 +90,23 @@ class InboxStore(context: Context) {
         note: String?,
         decidedBy: String,
     ): Boolean {
-        val target = replication.all().firstOrNull { it.id == id } ?: return false
+        // Resolved by either id. A request has two: the one the replica knows it
+        // by, and the one the phone that raised it knows it by. A decision made
+        // standing at the managed phone — or by one of its standing rules —
+        // travels as the older message type and carries the *local* id, so
+        // matching only on the replicated one left those requests showing as
+        // pending on every parent's phone forever.
+        val target = replication.all().firstOrNull { it.id == id || it.localId == id }
+            ?: return false
         if (!target.state.isOpen) return false
-        return replication.decide(id, state, note, decidedBy)
+        if (!replication.decide(target.id, state, note, decidedBy)) return false
+
+        // Sent now rather than at the next poll. A parent phone has no
+        // enforcement tick, so its next poll can be a quarter of an hour away —
+        // and an approval that appears to do nothing for fifteen minutes is one
+        // nobody trusts the second time.
+        SyncCoordinator(appContext).publishPendingOps()
+        return true
     }
 
 }

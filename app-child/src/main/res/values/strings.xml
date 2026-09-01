@@ -803,6 +803,8 @@
     <string name="parent_locate_sent">Asked. The answer arrives at the next check-in.</string>
     <string name="parent_locate_none">Nowhere yet</string>
     <string name="parent_locate_at">Last seen %1$s</string>
+    <string name="parent_locate_off">That phone has locating switched off, so no answer is coming.</string>
+    <string name="parent_locate_unavailable">That phone could not work out where it was. Asking again may help.</string>
     <string name="parent_locate_accuracy">to about %1$d m</string>
     <string name="parent_locate_open">Open in maps</string>
     <string name="parent_places_header">Coming and going</string>

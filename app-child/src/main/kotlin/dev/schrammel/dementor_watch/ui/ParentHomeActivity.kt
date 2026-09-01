@@ -307,6 +307,10 @@ class ParentHomeActivity : ParentRoleActivity() {
         sync.publishLocateRequest()
         Audit.record(this, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
         toast(R.string.parent_locate_sent)
+        // Straight to where the answer lands. Asking from here and displaying
+        // the result on another screen meant a position could arrive correctly
+        // and never be seen — which reads exactly like the request having failed.
+        startActivity(ParentDeviceActivity.intent(this))
     }
 
     /**
