@@ -92,6 +92,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    testOptions {
+        unitTests {
+            // Robolectric needs the merged manifest and the resource table to
+            // stand up a real framework; without this it gets neither and every
+            // test that touches a Context fails at startup rather than in a way
+            // that says what is missing.
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -109,6 +119,7 @@ dependencies {
     implementation(libs.zxing.core)
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    testImplementation(libs.robolectric)
 }
 
 /**
