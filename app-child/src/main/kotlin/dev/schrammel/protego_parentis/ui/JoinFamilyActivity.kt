@@ -1,0 +1,472 @@
+package dev.schrammel.protego_parentis.ui
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.text.InputType
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.model.AuditAction
+import dev.schrammel.protego_parentis.model.AuditActor
+import dev.schrammel.protego_parentis.model.Passphrases
+import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.security.PinLock
+import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.FamilyToken
+import dev.schrammel.protego_parentis.sync.FamilyTokens
+import dev.schrammel.protego_parentis.sync.MessageCrypto
+import dev.schrammel.protego_parentis.sync.SyncConfigStore
+import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncSettings
+import dev.schrammel.protego_parentis.sync.TransportKind
+
+/**
+ * Joining a family, or starting one.
+ *
+ * **A parent's phone with no family joins without a PIN.** That is a deliberate
+ * change, and it is safe because of a different one: joining no longer grants
+ * anything. A device that types the code and the passphrase reaches the topic and
+ * is then a stranger waiting in a queue — it cannot read a rule, answer a request
+ * or be believed about anything until a parent approves it on their own phone.
+ * Demanding a PIN first was the wrong order: the first thing somebody does with a
+ * new phone is join their family, and inventing a PIN to protect something that
+ * does not exist yet is a step for its own sake.
+ *
+ * **The managed phone is always gated**, family or no family. It is the one device
+ * the product assumes is in the hands of the person being limited, and a child who
+ * found it unconfigured could otherwise join a family of their own making and
+ * answer their own requests from a second phone.
+ *
+ * Once a family is joined, changing or leaving it needs the PIN on any phone.
+ */
+class JoinFamilyActivity : ParentGatedActivity() {
+
+    private lateinit var config: SyncConfigStore
+    private lateinit var sync: SyncCoordinator
+    private lateinit var column: LinearLayout
+
+    private lateinit var tokenInput: EditText
+    private lateinit var passphraseInput: EditText
+    private lateinit var startServerInput: EditText
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // The passphrase field can hold a suggestion in clear text, because one
+        // that cannot be read cannot be read out. That makes this screen as
+        // sensitive as the PIN screen — the base class already applies the same
+        // FLAG_SECURE treatment: no recents thumbnail, no screenshot, no screen
+        // recording.
+        config = SyncConfigStore(this)
+        sync = SyncCoordinator(this)
+
+        tokenInput = EditText(this).apply {
+            hint = getString(R.string.join_token_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        }
+        passphraseInput = field()
+        // Pre-filled with the default rather than left blank: leaving it exactly
+        // as shown is the common case, and a blank field would make "unset" and
+        // "delete the default on purpose" look the same.
+        startServerInput = EditText(this).apply {
+            hint = getString(R.string.backend_server_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            setText(SyncSettings.DEFAULT_SERVER)
+        }
+
+        column = contentColumn()
+        showColumn(column)
+    }
+
+    override fun onGatedContentVisible() = render()
+
+    override fun onGatedContentHidden() {
+        column.removeAllViews()
+    }
+
+    /**
+     * Who has to prove themselves before touching this.
+     *
+     * The managed phone always. Everyone else once there is a family to change —
+     * a parent's own phone with nothing configured has nothing to protect yet.
+     */
+    override fun requiresPin(): Boolean {
+        if (RoleStore(this).roleOrChild == DeviceRole.CHILD) return PinLock(this).isSet
+        return config.load().isUsable && PinLock(this).isSet
+    }
+
+    /**
+     * Whether this is the setup flow rather than a visit to the settings.
+     *
+     * The difference is only what happens next: during setup this screen owns the
+     * task and has to hand off to the right home screen, and it offers a way past
+     * itself for somebody setting up the first phone in a family with nobody to
+     * join yet.
+     */
+    private val onboarding: Boolean by lazy { intent.getBooleanExtra(EXTRA_ONBOARDING, false) }
+
+    private fun render() {
+        column.removeAllViews()
+        val settings = config.load()
+
+        if (onboarding && settings.isUsable) {
+            // Joined during setup: there is nothing left to do here.
+            goHome()
+            return
+        }
+
+        if (settings.isUsable) {
+            column.addView(screenTitle(getString(R.string.join_connected_title)))
+            column.addView(connectedCard())
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.join_leave)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_lg) }
+                    setOnClickListener { confirmLeave() }
+                },
+            )
+
+            if (RoleStore(this).roleOrChild == DeviceRole.PARENT) {
+                column.addView(
+                    actionButton().apply {
+                        setText(R.string.join_disband)
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                            .apply { topMargin = dimen(R.dimen.space_sm) }
+                        setOnClickListener { confirmDisband() }
+                    },
+                )
+            }
+
+        // The relay lives here rather than beside this screen. Which server
+        // carries the messages is part of the family connection, not a sibling of
+        // it, and on the hub it took a top-level row for something set once.
+        addSection(
+            column,
+            getString(R.string.join_relay_header),
+            listOf(
+                navigationRow(
+                    getString(R.string.backend_title),
+                    getString(R.string.backend_row_detail),
+                ) { startActivity(SyncBackendActivity.intent(this)) },
+            ),
+        )
+            return
+        }
+
+        column.addView(screenTitle(getString(R.string.join_title)))
+        column.addView(bodyText(getString(R.string.join_intro)))
+        if (onboarding) column.addView(captionText(getString(R.string.join_onboarding_hint)))
+
+        column.addView(sectionHeader(getString(R.string.join_token_header)))
+        column.addView(tokenInput)
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_scan)
+                setOnClickListener { scan.launch(ScanQrActivity.intent(context)) }
+            },
+        )
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_find_nearby)
+                setOnClickListener { findNearby.launch(LanFindActivity.intent(context)) }
+            },
+        )
+        column.addView(sectionHeader(getString(R.string.join_passphrase_header)))
+        column.addView(passphraseInput)
+
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_action)
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                    .apply { topMargin = dimen(R.dimen.space_md) }
+                setOnClickListener { join() }
+            },
+        )
+
+        column.addView(sectionHeader(getString(R.string.join_start_header)))
+        column.addView(captionText(getString(R.string.join_start_hint)))
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_suggest_passphrase)
+                setOnClickListener { suggestPassphrase() }
+            },
+        )
+        (startServerInput.parent as? ViewGroup)?.removeView(startServerInput)
+        column.addView(startServerInput)
+        column.addView(captionText(getString(R.string.join_start_server_hint)))
+        column.addView(
+            actionButton().apply {
+                setText(R.string.join_start)
+                setOnClickListener { startFamily() }
+            },
+        )
+
+        // No link to the relay screen here, deliberately — before there is a
+        // family it has nothing to do (see its own "nothing to move" state), and
+        // now that the server is part of starting one, sending someone there
+        // first would be a detour to a screen that turns them straight back.
+
+        // A way past, and only during setup. Connecting phones is the point of
+        // this screen, but a family that has not decided yet should not be stuck
+        // on it — and everything below works alone, measuring and enforcing on
+        // one phone, until they do.
+        if (onboarding) {
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.join_later)
+                    setOnClickListener { goHome() }
+                },
+            )
+        }
+    }
+
+    /**
+     * Ends the setup flow on the right screen for this phone.
+     *
+     * The task is cleared because this screen was started as its own: leaving the
+     * role question and the PIN screen on the stack would let a back press walk
+     * somebody back into choosing a role they have already chosen.
+     */
+    private fun goHome() {
+        val home = when (RoleStore(this).roleOrChild) {
+            DeviceRole.CHILD -> Intent(this, HomeActivity::class.java)
+            DeviceRole.PARENT -> ParentHomeActivity.intent(this)
+        }
+        startActivity(
+            home.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        finish()
+    }
+
+    /**
+     * What this phone is connected to, and the code to pass to the next phone.
+     *
+     * The passphrase is not shown. It is sealed in the keystore and there is no
+     * reason for a screen to be able to display it — a parent adding a second
+     * phone reads out the code and types the passphrase they already chose.
+     */
+    private fun connectedCard(): LinearLayout = card {
+        val settings = config.load()
+        val token = settings.token()
+
+        addView(
+            TextView(this@JoinFamilyActivity).apply {
+                text = token?.let(FamilyTokens::encode) ?: getString(R.string.devices_no_identity)
+                styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                setTextIsSelectable(true)
+            },
+        )
+        addView(captionText(getString(R.string.join_code_hint)))
+
+        // The same string, as a picture. Sized from the screen rather than fixed:
+        // a code that is meant to be read by another phone's camera should be as
+        // large as the card allows, and 320dp on a tablet is a stamp.
+        addView(
+            actionButton().apply {
+                setText(R.string.join_offer_nearby)
+                setOnClickListener {
+                    startActivity(LanOfferActivity.intent(this@JoinFamilyActivity))
+                }
+            },
+        )
+
+        token?.let(FamilyTokens::encode)?.let { code ->
+            val side = (resources.displayMetrics.widthPixels * QR_SCREEN_FRACTION).toInt()
+            FamilyQr.encode(code, side)?.let { bitmap ->
+                addView(
+                    ImageView(this@JoinFamilyActivity).apply {
+                        setImageBitmap(bitmap)
+                        adjustViewBounds = true
+                        layoutParams = LinearLayout.LayoutParams(side, side).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                            topMargin = dimen(R.dimen.space_md)
+                        }
+                        // Read aloud as the code it is, for anyone who cannot see it.
+                        contentDescription = getString(R.string.join_qr_description)
+                    },
+                )
+                addView(captionText(getString(R.string.join_qr_hint)))
+            }
+        }
+        addView(statRow(getString(R.string.join_backend), settings.transport.name))
+        addView(statRow(getString(R.string.join_server), settings.serverUrl))
+    }
+
+    /**
+     * Reads a family code off another phone's screen.
+     *
+     * It fills the code field and stops there. The passphrase is still typed,
+     * because it is not in the code — see [FamilyQr] for why putting it there
+     * would trade the security model for a step of typing.
+     */
+    /**
+     * Takes the token from a phone on the same network.
+     *
+     * Identical in effect to the scanner: it fills the code field and stops. The
+     * passphrase is still typed, because it does not travel over the network any
+     * more than it travels in a QR code.
+     */
+    private val findNearby = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val code = result.data?.getStringExtra(LanFindActivity.EXTRA_CODE)
+            ?: return@registerForActivityResult
+        tokenInput.setText(code)
+        passphraseInput.requestFocus()
+    }
+
+    private val scan = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val code = result.data?.getStringExtra(ScanQrActivity.EXTRA_CODE) ?: return@registerForActivityResult
+        tokenInput.setText(code)
+        // Straight to the half that is still missing, so it is obvious that
+        // scanning did not finish the job.
+        passphraseInput.requestFocus()
+    }
+
+    private fun join() {
+        val token = FamilyTokens.decode(tokenInput.text.toString())
+        if (token == null) {
+            Toast.makeText(this, R.string.join_bad_token, Toast.LENGTH_LONG).show()
+            return
+        }
+        connect(token, passphraseInput.text.toString())
+    }
+
+    /**
+     * Starts a new family on this phone.
+     *
+     * A random topic, because on a public server the topic name is the only thing
+     * between a stranger and a stream of encrypted family traffic — they still
+     * could not read it, but they could watch it move.
+     */
+    /**
+     * Fills the passphrase field with something worth using.
+     *
+     * Put where a family is *starting* one rather than joining, because that is
+     * the only moment the passphrase is chosen; on the joining phone it is being
+     * repeated, and a suggest button there would be an invitation to overwrite the
+     * thing they were just told.
+     *
+     * Shown rather than hidden, and the field is made visible at the same time.
+     * This has to be read aloud to a second phone, so a suggestion behind dots
+     * would be a suggestion nobody could use.
+     */
+    private fun suggestPassphrase() {
+        passphraseInput.transformationMethod = null
+        passphraseInput.setText(Passphrases.suggest())
+        passphraseInput.setSelection(passphraseInput.text.length)
+        Toast.makeText(this, R.string.join_suggested_note, Toast.LENGTH_LONG).show()
+    }
+
+    private fun startFamily() {
+        val server = startServerInput.text.toString().trim().trimEnd('/')
+            .ifBlank { SyncSettings.DEFAULT_SERVER }
+        val token = runCatching {
+            FamilyToken(kind = TransportKind.NTFY, serverUrl = server, topic = sync.suggestTopic())
+        }.getOrElse {
+            toast(R.string.backend_bad_server)
+            return
+        }
+        connect(token, passphraseInput.text.toString())
+    }
+
+    private fun connect(token: FamilyToken, passphrase: String) {
+        if (passphrase.length < MessageCrypto.MIN_PASSPHRASE_LENGTH) {
+            Toast.makeText(
+                this,
+                resources.getQuantityString(
+                    R.plurals.sync_passphrase_too_short,
+                    MessageCrypto.MIN_PASSPHRASE_LENGTH,
+                    MessageCrypto.MIN_PASSPHRASE_LENGTH,
+                ),
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+
+        // Storing the passphrase can fail on a phone whose keystore has been
+        // invalidated, and the store deliberately writes nothing rather than
+        // falling back to plain text. Without this the screen would say "joined"
+        // and the family would appear unconfigured a moment later.
+        if (!config.canKeepSecrets()) {
+            Toast.makeText(this, R.string.join_no_keystore, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        sync.join(token, passphrase)
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.SYNC_CONFIGURED,
+            after = Audit.flag(true),
+        )
+        // Introduce this phone straight away, so it appears on the other one while
+        // somebody is still standing in front of it.
+        sync.announceSelf(force = true)
+        Toast.makeText(this, R.string.join_done, Toast.LENGTH_LONG).show()
+        render()
+    }
+
+    private fun confirmLeave() {
+        confirmDialog(R.string.join_leave, R.string.join_leave_confirm, R.string.join_leave) {
+            sync.leave()
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = AuditAction.SYNC_CONFIGURED,
+                after = Audit.flag(false),
+            )
+            render()
+        }
+    }
+
+    /**
+     * Ends the family for everyone, not just this phone.
+     *
+     * The message reaches every parent phone and the managed phone alike, but
+     * only the parents act on it by leaving outright — see
+     * [dev.schrammel.protego_parentis.sync.SyncReceiver] for why the managed
+     * phone only hears about it instead.
+     */
+    private fun confirmDisband() {
+        confirmDialog(R.string.join_disband, R.string.join_disband_confirm, R.string.join_disband) {
+            sync.publishDisband()
+            sync.leave()
+            Audit.record(
+                context = this,
+                actor = AuditActor.PARENT,
+                action = AuditAction.FAMILY_DISBANDED,
+            )
+            render()
+        }
+    }
+
+    private fun field() = EditText(this).apply {
+        hint = getString(R.string.join_passphrase_hint)
+        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+    }
+
+    companion object {
+        const val EXTRA_ONBOARDING = "onboarding"
+
+        /** How much of the screen's width the code fills. */
+        private const val QR_SCREEN_FRACTION = 0.62f
+
+        fun intent(context: Context, onboarding: Boolean = false): Intent =
+            Intent(context, JoinFamilyActivity::class.java)
+                .putExtra(EXTRA_ONBOARDING, onboarding)
+    }
+}

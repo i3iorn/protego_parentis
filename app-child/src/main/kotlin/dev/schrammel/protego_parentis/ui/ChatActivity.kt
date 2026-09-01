@@ -1,0 +1,284 @@
+package dev.schrammel.protego_parentis.ui
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.text.InputFilter
+import android.text.InputType
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.model.ChatText
+import dev.schrammel.protego_parentis.sync.ChatMessage
+import dev.schrammel.protego_parentis.sync.ChatStore
+import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+/**
+ * Messages between the phones in the family.
+ *
+ * Text. That is the whole feature, and the restraint is deliberate rather than a
+ * first version waiting to grow: there is no attach button, no camera, no file
+ * picker, no clipboard image handling and no link preview, because every one of
+ * those is a way for one phone to hand another phone something to open. A chat
+ * that can only ever produce characters in a `TextView` cannot deliver anything
+ * else, whatever arrives on the wire.
+ *
+ * The two consequences of that decision worth spelling out:
+ *
+ *  - The input accepts text and emoji and refuses everything else, using the same
+ *    [ChatText] rules the receiving side applies. A sender is shown what will
+ *    actually be sent as they type rather than discovering later that half of it
+ *    was dropped.
+ *  - Messages are rendered with `text =`, never through any HTML or markup path.
+ *    A message reading `<b>` shows those five characters.
+ *
+ * Not PIN-gated on either side. A parent needing a code to say "dinner is ready"
+ * is friction with nothing behind it, and a child who cannot answer without one
+ * has not been given a chat.
+ */
+class ChatActivity : DementorActivity() {
+
+    // The one screen with something pinned to the bottom that has to stay above
+    // the keyboard. See DementorActivity.movesForKeyboard.
+    override val movesForKeyboard = true
+
+    private lateinit var sync: SyncCoordinator
+    private lateinit var store: ChatStore
+    private lateinit var conversation: LinearLayout
+    private lateinit var scroll: ScrollView
+    private lateinit var input: EditText
+    private lateinit var composer: View
+
+    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        sync = SyncCoordinator(this)
+        store = ChatStore(this)
+
+        conversation = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dimen(R.dimen.screen_padding)
+            setPadding(pad, dimen(R.dimen.space_sm), pad, dimen(R.dimen.space_md))
+        }
+
+        scroll = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(MATCH, 0, 1f)
+            isFillViewport = true
+            addView(conversation, LinearLayout.LayoutParams(MATCH, WRAP))
+        }
+
+        // The whole screen rather than a scrolling column: the composer has to stay
+        // put at the bottom while the conversation moves behind it, which is the
+        // one layout in this app that a single scroll view cannot give.
+        setContentView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
+                composer = composer()
+                addView(header())
+                addView(scroll)
+                addView(composer)
+            },
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        render()
+        // Opening the conversation is when somebody expects to be up to date.
+        sync.pollNow { runOnUiThread { render() } }
+    }
+
+    private fun header(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        val pad = dimen(R.dimen.screen_padding)
+        setPadding(pad, dimen(R.dimen.space_sm), pad, 0)
+
+        addView(
+            screenTitle(getString(R.string.chat_title)).apply {
+                layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            },
+        )
+        addView(
+            Button(context).apply {
+                setText(R.string.chat_clear)
+                setOnClickListener { confirmClear() }
+            },
+        )
+    }
+
+    private fun composer(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.BOTTOM
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        val pad = dimen(R.dimen.screen_padding)
+        setPadding(pad, dimen(R.dimen.space_sm), pad, dimen(R.dimen.space_md))
+
+        input = EditText(context).apply {
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            hint = getString(R.string.chat_hint)
+            // TYPE_TEXT_FLAG_MULTI_LINE, and nothing that invites anything else.
+            // Notably not any of the autofill or content-type hints: this field is
+            // for words, and asking the system to help fill it in would be asking
+            // for the wrong kind of help.
+            inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            maxLines = COMPOSER_MAX_LINES
+            // Two filters rather than one. The length cap stops a paste from
+            // silently losing its tail somewhere later; the character filter is the
+            // same rule the far end applies, so what is typed is what is sent.
+            filters = arrayOf(
+                InputFilter.LengthFilter(ChatText.MAX_LENGTH),
+                textAndEmojiOnly(),
+            )
+        }
+        addView(input)
+
+        addView(
+            Button(context).apply {
+                setText(R.string.chat_send)
+                (layoutParams as? LinearLayout.LayoutParams)?.marginStart =
+                    dimen(R.dimen.space_sm)
+                setOnClickListener { send() }
+            },
+        )
+    }
+
+    /**
+     * Refuses, as it is typed or pasted, anything the far end would drop.
+     *
+     * An [InputFilter] rather than a check on send. A paste carrying a direction
+     * override or a private-use character loses it at the moment it lands, so the
+     * box never holds text that will not survive the trip — the alternative is a
+     * sender who writes a message, sends it, and watches it come out different.
+     *
+     * [ChatText.keepCharacters] and not [ChatText.sanitise]: the character rule
+     * applies to a keystroke, the tidying only to a finished message. Sanitising
+     * here would reject the space bar, because a lone space tidies away to nothing
+     * and the field would refuse every space as it was typed.
+     *
+     * Returning null means "accept this insert unchanged" and is the answer for
+     * every ordinary keystroke, which matters — a filter that hands back a new
+     * string on each key can disturb an IME mid-composition, and predictive text
+     * and the emoji picker are exactly the input methods this field has to get
+     * along with.
+     */
+    private fun textAndEmojiOnly() = InputFilter { source, start, end, _, _, _ ->
+        val candidate = source.subSequence(start, end).toString()
+        val allowed = ChatText.keepCharacters(candidate)
+        if (allowed == candidate) null else allowed
+    }
+
+    private fun send() {
+        val typed = input.text.toString()
+        // Sanitised again inside the coordinator; this call is about whether there
+        // is anything to send at all.
+        if (ChatText.sanitise(typed) == null) return
+
+        sync.publishChat(typed)
+        input.setText("")
+        render()
+    }
+
+    private fun render() {
+        conversation.removeAllViews()
+        val messages = store.all()
+
+        // Said once, at the top, rather than left for the sender to discover when
+        // a message goes nowhere. There is no family to send to, so there is
+        // nothing to type into either.
+        val connected = sync.settings().isUsable
+        composer.visibility = if (connected) View.VISIBLE else View.GONE
+        if (!connected) conversation.addView(captionText(getString(R.string.chat_no_family)))
+
+        if (messages.isEmpty()) {
+            if (connected) conversation.addView(captionText(getString(R.string.chat_empty)))
+            return
+        }
+
+        messages.forEach { conversation.addView(bubble(it)) }
+        // After layout, or the scroll view does not yet know how tall it became.
+        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    /**
+     * One message.
+     *
+     * Sent and received messages differ by alignment and by which surface they sit
+     * on, not by colour alone — the difference has to survive being read by someone
+     * who does not distinguish the two colours.
+     */
+    private fun bubble(message: ChatMessage): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+            topMargin = dimen(R.dimen.space_sm)
+        }
+        gravity = if (message.mine) Gravity.END else Gravity.START
+
+        addView(
+            TextView(context).apply {
+                // Who and when, above the words. The name is the roster's, and has
+                // been through the sanitiser — see SyncCoordinator.rememberChat.
+                text = getString(
+                    R.string.chat_attribution,
+                    if (message.mine) getString(R.string.chat_me) else message.sender,
+                    timeFormat.format(message.at.atZone(ZoneId.systemDefault())),
+                )
+                styleAs(R.style.TextAppearance_Dementor_Caption)
+            },
+        )
+        addView(
+            card {
+                addView(
+                    TextView(this@ChatActivity).apply {
+                        // Plain assignment. Not Html.fromHtml, not a Spanned, not
+                        // anything that would treat the message as instructions.
+                        text = message.text
+                        styleAs(R.style.TextAppearance_Dementor_Body)
+                    },
+                )
+                (layoutParams as? LinearLayout.LayoutParams)?.apply {
+                    topMargin = dimen(R.dimen.space_xxs)
+                    // Never the full width, so the two sides read as two sides.
+                    marginStart = if (message.mine) dimen(R.dimen.chat_bubble_inset) else 0
+                    marginEnd = if (message.mine) 0 else dimen(R.dimen.chat_bubble_inset)
+                }
+            },
+        )
+    }
+
+    /**
+     * Clearing is offered to whoever is holding the phone, child included.
+     *
+     * It only clears this device. There is no "delete for everyone" and there is
+     * not going to be: a parent who could reach into a child's phone and remove
+     * what was said turns a conversation into something the child cannot rely on.
+     */
+    private fun confirmClear() {
+        confirmDialog(R.string.chat_clear, R.string.chat_clear_confirm, R.string.chat_clear) {
+            store.forgetAll()
+            render()
+        }
+    }
+
+    companion object {
+        private const val TIME_PATTERN = "HH:mm"
+
+        /** The box grows to this and then scrolls, rather than eating the screen. */
+        private const val COMPOSER_MAX_LINES = 5
+
+        fun intent(context: Context) = Intent(context, ChatActivity::class.java)
+    }
+}

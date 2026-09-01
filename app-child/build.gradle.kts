@@ -21,14 +21,14 @@ val signingProperties = Properties().apply {
 val canSignRelease = signingProperties.getProperty("storeFile") != null
 
 android {
-    namespace = "dev.schrammel.dementor_watch"
+    namespace = "dev.schrammel.protego_parentis"
 
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "dev.schrammel.dementor_watch"
+        applicationId = "dev.schrammel.protego_parentis"
         minSdk = 33
         targetSdk = 37
         versionCode = 37
@@ -101,6 +101,29 @@ android {
             // that says what is missing.
             isIncludeAndroidResources = true
         }
+    }
+}
+
+/**
+ * Warnings are errors here, as they already are in the four core modules.
+ *
+ * This module was the exception, which was backwards: it is the largest by a
+ * wide margin and the least covered by tests, so it is where a warning is most
+ * likely to be the only notice anybody gets. It was left out until now only
+ * because nothing compiled it — there was no CI, and a warning nobody sees
+ * cannot be made into an error.
+ *
+ * The two it started with are fixed in this commit. One of them was a real
+ * dated breakage: a return from an expression-bodied function, which Kotlin
+ * says stops compiling in language version 2.5.
+ *
+ * A top-level block rather than `android.kotlinOptions`, which AGP 9 removed
+ * along with the need to apply the Kotlin plugin at all — the Android plugin
+ * now registers the Kotlin compilations itself.
+ */
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
     }
 }
 
