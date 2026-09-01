@@ -133,11 +133,19 @@ class ReplicatedStateStore(context: Context) {
         return novel
     }
 
-    /** Drops ops the transport has accepted. */
-    fun clearPending(published: List<StateOp>) = synchronized(LOCK) {
-        if (published.isEmpty()) return
-        val sent = published.map { it.path to it.lamport }.toSet()
-        writePending(pending.filterNot { (it.path to it.lamport) in sent })
+    /**
+     * Drops ops the transport has accepted.
+     *
+     * A block body rather than an expression one, because of the early return:
+     * Kotlin warns that returning from an expression-bodied function without a
+     * declared return type stops compiling in language version 2.5.
+     */
+    fun clearPending(published: List<StateOp>) {
+        synchronized(LOCK) {
+            if (published.isEmpty()) return
+            val sent = published.map { it.path to it.lamport }.toSet()
+            writePending(pending.filterNot { (it.path to it.lamport) in sent })
+        }
     }
 
     /** This device's summary, for the digest exchange. */

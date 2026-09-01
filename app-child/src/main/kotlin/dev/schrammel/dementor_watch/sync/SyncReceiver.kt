@@ -255,7 +255,9 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         // What the roster says this sender is, never what the message claims.
         // Replication decides what an op may touch from this, so it has to be
         // the established role rather than the self-reported one.
-        val senderRole = (admittance as? Admittance.Accepted)?.device?.role
+        // No cast: every other branch of the `when` above returns, so this is
+        // only reached for an accepted sender and the compiler knows it.
+        val senderRole = admittance.device.role
 
         return when (roles.roleOrChild) {
             DeviceRole.CHILD -> applyAsChild(message, senderRole)
