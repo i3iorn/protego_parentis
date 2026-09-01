@@ -81,6 +81,18 @@ class PolicyReplication(context: Context) {
         return ops
     }
 
+    /**
+     * Forgets that these rules were ever pushed, so the next push sends them all.
+     *
+     * Called when the replica is wiped, which is not something the version gate
+     * above can see: the rules themselves have not changed, so their version has
+     * not moved, so without this the managed phone would join its next family
+     * and never publish a single rule to it. The parents would sit on an empty
+     * Rules screen until somebody happened to edit something — the exact silent
+     * failure the gate was added alongside fixing.
+     */
+    fun forgetPushed() = prefs.edit { remove(KEY_PUSHED_VERSION) }
+
     /** Records an edit made on a parent's phone, which holds no local rules. */
     fun write(snapshot: PolicySnapshot): List<StateOp> {
         val origin = runCatching { KeystoreSigner().deviceId.value }.getOrNull() ?: return emptyList()

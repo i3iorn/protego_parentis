@@ -43,5 +43,8 @@ object FamilyData {
         // replicate, and one phone leaving must not delete the family's history
         // from the phones that stayed.
         ReplicatedStateStore(context).forgetAll()
+        // And the note saying the rules had already been published into it,
+        // which the wipe above has just made untrue.
+        PolicyReplication(context).forgetPushed()
     }
 }
