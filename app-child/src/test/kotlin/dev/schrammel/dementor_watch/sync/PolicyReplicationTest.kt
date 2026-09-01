@@ -28,8 +28,16 @@ class PolicyReplicationTest {
 
     private val context: Context get() = RuntimeEnvironment.getApplication()
 
-    private val dailyLimitPath =
-        "${PolicyReplication.POLICY}/${PolicyReplication.PATH_DAILY_LIMIT}"
+    /**
+     * Spelled out rather than built from [PolicyReplication]'s own constants,
+     * and not only because they are private.
+     *
+     * This is a path on the wire. Phones already in the field hold it in their
+     * replicas and compare it in every digest, so renaming it is a compatibility
+     * break rather than a refactor. A test written in terms of the constant
+     * would follow such a rename without a word; this one does not.
+     */
+    private val dailyLimitPath = "policy/dailyLimitMinutes"
 
     @Before
     fun useAKnownIdentity() {
