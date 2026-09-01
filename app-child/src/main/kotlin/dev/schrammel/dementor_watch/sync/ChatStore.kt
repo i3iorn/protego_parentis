@@ -2,7 +2,6 @@ package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
 import androidx.core.content.edit
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 import java.time.Instant
 
 /** One message, as this phone holds it. */
@@ -62,7 +61,7 @@ class ChatStore(context: Context) {
      * than in the sync layer.
      */
     fun all(): List<ChatMessage> {
-        val self = runCatching { KeystoreSigner().deviceId.value }.getOrNull()
+        val self = LocalDeviceId.current()
         val hiddenBefore = prefs.getLong(KEY_CLEARED_AT, 0L)
         return replication.messages()
             .filter { it.at.epochSecond > hiddenBefore }

@@ -3,7 +3,6 @@ package dev.schrammel.dementor_watch.sync
 import android.content.Context
 import dev.schrammel.dementor_watch.model.ChatText
 import dev.schrammel.dementor_watch.model.RequestState
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 import java.time.Instant
 
 /**
@@ -319,7 +318,7 @@ class RosterReplication(context: Context) {
 
     /** Records every device this phone trusts, so the rest of the family agrees. */
     fun push(): List<StateOp> {
-        val origin = runCatching { KeystoreSigner().deviceId.value }.getOrNull() ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
         val known = roster.devices
 
         val values = buildMap<String, String?> {
@@ -353,7 +352,7 @@ class RosterReplication(context: Context) {
      * explicit local action, not the absence of a record.
      */
     fun pullIntoRoster() {
-        val self = runCatching { KeystoreSigner().deviceId.value }.getOrNull()
+        val self = LocalDeviceId.current()
         val held = roster.devices.map { it.id.value }.toSet()
 
         state.idsUnder(ReplicationRules.ROSTER)

@@ -8,7 +8,6 @@ import dev.schrammel.dementor_watch.rules.PolicySnapshot
 import dev.schrammel.dementor_watch.rules.StoredCategory
 import dev.schrammel.dementor_watch.rules.applySnapshot
 import dev.schrammel.dementor_watch.rules.snapshot
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 
 /**
  * The rules, as paths.
@@ -76,6 +75,16 @@ class PolicyReplication(context: Context) {
         val version = store.load().version
         if (version == prefs.getLong(KEY_PUSHED_VERSION, NEVER)) return emptyList()
 
+        // A phone that cannot say who it is has not pushed anything, and must not
+        // record that it has. The keystore is genuinely allowed to be
+        // unavailable — a key invalidated by a biometric change, a restored
+        // backup, the moments before first unlock — and [write] correctly
+        // produces nothing then. Marking the version as pushed anyway would
+        // leave the rules unpublished and the gate shut behind them, until
+        // somebody happened to edit a rule. That is the same failure the gate
+        // itself introduced, one step further along.
+        if (LocalDeviceId.current() == null) return emptyList()
+
         val ops = write(store.snapshot())
         prefs.edit { putLong(KEY_PUSHED_VERSION, version) }
         return ops
@@ -95,7 +104,7 @@ class PolicyReplication(context: Context) {
 
     /** Records an edit made on a parent's phone, which holds no local rules. */
     fun write(snapshot: PolicySnapshot): List<StateOp> {
-        val origin = runCatching { KeystoreSigner().deviceId.value }.getOrNull() ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
         return state.writeAll(flatten(snapshot), origin)
     }
 
