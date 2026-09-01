@@ -22,11 +22,16 @@ Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcf
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 285 tests run without a phone.
+in the wrong place — that separation is what lets 640 tests run without a phone.
 
 ---
 
 ## Building
+
+Needs a **JDK 21 or newer** on the path — nothing here requires more than that,
+and every module compiles to JVM 11 bytecode against the Java 11 API regardless
+of which JDK you build with, so a newer one cannot quietly introduce a call that
+only exists off-device.
 
 ```bash
 ./gradlew assembleDebug
@@ -49,6 +54,9 @@ Run everything — unit tests plus Android lint:
 ```bash
 ./gradlew build
 ```
+
+The same command runs on every push and pull request; see
+`.github/workflows/build.yml`.
 
 In Android Studio, select the **app-child** run configuration. If it is missing,
 use *File → Sync Project with Gradle Files*.
@@ -141,7 +149,7 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-285 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
+640 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
 and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
