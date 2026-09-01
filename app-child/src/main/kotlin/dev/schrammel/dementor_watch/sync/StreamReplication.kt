@@ -1,7 +1,6 @@
 package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 import java.time.Instant
 import java.util.UUID
 
@@ -34,7 +33,7 @@ class StreamReplication(context: Context) {
 
     /** This device's id, or null if the keystore will not answer. */
     private fun origin(): String? =
-        runCatching { KeystoreSigner().deviceId.value }.getOrNull()
+        LocalDeviceId.current()
 
     /**
      * Adds one entry to [section], returning its id.

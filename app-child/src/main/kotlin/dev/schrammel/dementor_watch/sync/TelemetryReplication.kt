@@ -1,7 +1,6 @@
 package dev.schrammel.dementor_watch.sync
 
 import android.content.Context
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 import java.time.Instant
 
 /**
@@ -61,7 +60,7 @@ class TelemetryReplication(context: Context) {
          */
         topApps: List<AppTime>? = null,
     ): List<StateOp> {
-        val origin = runCatching { KeystoreSigner().deviceId.value }.getOrNull() ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
 
         val values = buildMap<String, String?> {
             usedMinutes?.let { put(path(USED), it.toString()) }
@@ -105,7 +104,7 @@ class TelemetryReplication(context: Context) {
      * it wants exactly the write rules this section already has.
      */
     fun reportLocate(outcome: LocateOutcome, at: Instant = Instant.now()): List<StateOp> {
-        val origin = runCatching { KeystoreSigner().deviceId.value }.getOrNull() ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
         return state.writeAll(
             mapOf(
                 path(LOCATE_RESULT) to outcome.name,

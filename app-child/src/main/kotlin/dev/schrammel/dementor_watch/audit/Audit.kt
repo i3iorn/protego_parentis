@@ -6,9 +6,9 @@ import dev.schrammel.dementor_watch.model.AuditAction
 import dev.schrammel.dementor_watch.model.AuditActor
 import dev.schrammel.dementor_watch.model.AuditChain
 import dev.schrammel.dementor_watch.model.AuditEntry
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 import dev.schrammel.dementor_watch.sync.AuditReplication
 import dev.schrammel.dementor_watch.model.ChainCheck
+import dev.schrammel.dementor_watch.sync.LocalDeviceId
 import java.time.Instant
 import java.time.LocalTime
 import java.util.UUID
@@ -117,7 +117,7 @@ object Audit {
      */
     fun entries(context: Context): List<AuditEntry> {
         val own = AuditLogFormat.decodeAll(prefs(context).getString(KEY_LOG, null))
-        val self = runCatching { KeystoreSigner().deviceId.value }.getOrNull()
+        val self = LocalDeviceId.current()
 
         val fromFamily = AuditReplication(context).entries()
             .filter { self == null || it.by != self }

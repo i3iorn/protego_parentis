@@ -5,7 +5,6 @@ import android.os.Build
 import androidx.core.content.edit
 import dev.schrammel.dementor_watch.model.Defaults
 import dev.schrammel.dementor_watch.security.DeviceRole
-import dev.schrammel.dementor_watch.security.KeystoreSigner
 import dev.schrammel.dementor_watch.security.RoleStore
 import dev.schrammel.dementor_watch.security.SecretVault
 import dev.schrammel.dementor_watch.sync.SyncSettings.Companion.DEFAULT_SERVER
@@ -87,7 +86,7 @@ class SyncConfigStore(context: Context) {
      */
     private fun deviceId(): String {
         cachedDeviceId?.let { return it }
-        val value = runCatching { KeystoreSigner().deviceId.value }.getOrDefault("")
+        val value = LocalDeviceId.current() ?: ""
         cachedDeviceId = value
         return value
     }
