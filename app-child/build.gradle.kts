@@ -21,14 +21,14 @@ val signingProperties = Properties().apply {
 val canSignRelease = signingProperties.getProperty("storeFile") != null
 
 android {
-    namespace = "dev.schrammel.dementor_watch"
+    namespace = "dev.schrammel.protego_parentis"
 
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "dev.schrammel.dementor_watch"
+        applicationId = "dev.schrammel.protego_parentis"
         minSdk = 33
         targetSdk = 37
         versionCode = 37

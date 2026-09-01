@@ -13,7 +13,7 @@
 # device that is already provisioned records the component name it was set up
 # with, and an update that moves it would leave a phone owned by a component that
 # no longer exists, with no way back short of a factory reset.
--keep class dev.schrammel.dementor_watch.dpc.DementorDeviceAdminReceiver { *; }
+-keep class dev.schrammel.protego_parentis.dpc.DementorDeviceAdminReceiver { *; }
 
 # ---------------------------------------------------------------- WorkManager
 #

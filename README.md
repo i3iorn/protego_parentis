@@ -109,7 +109,7 @@ conditions that catch everyone:
 Then:
 
 ```bash
-adb shell dpm set-device-owner dev.schrammel.dementor_watch/.dpc.DementorDeviceAdminReceiver
+adb shell dpm set-device-owner dev.schrammel.protego_parentis/.dpc.DementorDeviceAdminReceiver
 ```
 
 Accounts can be added back immediately afterwards — the restriction only applies
