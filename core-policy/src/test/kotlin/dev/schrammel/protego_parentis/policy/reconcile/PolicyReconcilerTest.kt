@@ -296,14 +296,40 @@ class PolicyReconcilerTest {
         assertTrue(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
     }
 
-    /** It is part of the lockdown switch, not of being provisioned. */
+    /**
+     * Not part of the lockdown switch, deliberately, and this test used to assert
+     * the opposite.
+     *
+     * The reasoning it was changed on: everything in LOCKDOWN takes something
+     * away from the person holding the phone — no factory reset, no safe mode, no
+     * clock — and a family may reasonably decline all of it. This one takes
+     * nothing away from them. It only stops the app being emptied, and an emptied
+     * app is not merely unenforcing: the roster goes with the rules, a phone with
+     * no trusted parents is the bootstrap state, and the managed user is handed
+     * the founding-parent path on a device that is still device owner.
+     *
+     * So turning lockdown off is a family saying "do not restrict this phone",
+     * which is theirs to say. It is not them saying "let whoever holds it become
+     * a parent", which is what the old behaviour delivered.
+     */
     @Test
-    fun `without lockdown the app can still be cleared`() {
+    fun `the app cannot be cleared even with lockdown off`() {
         val port = FakeDevicePolicyPort()
         PolicyReconciler(port, SELF)
             .reconcile(policy().copy(tamperProtection = false), enforcement())
 
-        assertFalse(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
+        assertTrue(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
+    }
+
+    /** The rest of the lockdown does come off, which is the point of the switch. */
+    @Test
+    fun `turning lockdown off lifts everything that restricts the phone`() {
+        val port = FakeDevicePolicyPort()
+        PolicyReconciler(port, SELF)
+            .reconcile(policy().copy(tamperProtection = false), enforcement())
+
+        assertEquals(TamperRestrictions.ALWAYS, port.restrictions)
+        assertTrue(TamperRestrictions.LOCKDOWN.none { it in port.restrictions })
     }
 
     // ---------- web filtering ----------
@@ -433,14 +459,24 @@ class PolicyReconcilerTest {
         assertFalse(TamperRestrictions.NO_INSTALL_APPS in port.restrictions)
     }
 
+    /**
+     * Off means none of the lockdown, not none of the protection.
+     *
+     * The set left behind is exactly [TamperRestrictions.ALWAYS] — the one
+     * restriction that stops this app's own data being cleared. It is not part
+     * of the switch, because clearing the data does not merely stop enforcement:
+     * it empties the roster, and a phone with no trusted parents lets whoever is
+     * holding it enrol themselves as the founding parent.
+     */
     @Test
-    fun `tamper protection off applies no baseline restrictions`() {
+    fun `tamper protection off applies nothing that restricts the phone`() {
         val port = FakeDevicePolicyPort()
         val result = PolicyReconciler(port, SELF)
             .reconcile(policy().copy(tamperProtection = false), enforcement())
 
-        assertEquals(emptySet<String>(), port.restrictions)
-        assertEquals(emptySet<String>(), result.restrictionsAdded)
+        assertEquals(TamperRestrictions.ALWAYS, port.restrictions)
+        assertEquals(TamperRestrictions.ALWAYS, result.restrictionsAdded)
+        assertTrue(TamperRestrictions.LOCKDOWN.none { it in port.restrictions })
     }
 
     @Test
@@ -460,8 +496,10 @@ class PolicyReconcilerTest {
         reconciler.reconcile(policy(), enforcement())
         val result = reconciler.reconcile(policy().copy(tamperProtection = false), enforcement())
 
-        assertEquals(emptySet<String>(), port.restrictions)
-        assertEquals(TamperRestrictions.BASELINE, result.restrictionsCleared)
+        // The lockdown comes off; the self-protection does not, so it is not in
+        // the cleared set either.
+        assertEquals(TamperRestrictions.ALWAYS, port.restrictions)
+        assertEquals(TamperRestrictions.LOCKDOWN, result.restrictionsCleared)
         assertEquals(emptySet<PackageName>(), port.uninstallBlocked)
     }
 
