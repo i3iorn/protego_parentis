@@ -22,7 +22,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "dementor_watch"
+rootProject.name = "protego_parentis"
 
 // Pure-JVM core. No Android dependencies, no device required to test.
 include(":core-model")
