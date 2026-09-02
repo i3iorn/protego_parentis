@@ -56,6 +56,42 @@ jobs:
       - name: Build, test and lint
         run: ./gradlew build --stacktrace
 
+      # 16 KB page-size compatibility.
+      #
+      # Google's guidance is explicit that an app written only in Java or Kotlin,
+      # dependencies included, already supports 16 KB pages and needs no rebuild.
+      # This app has no NDK code and no dependency that ships a native library, so
+      # there is nothing here to align — checking the alignment of an APK with no
+      # .so in it would be a check that can never fail and never means anything.
+      #
+      # What is worth checking is the assumption underneath that: whether a native
+      # library has appeared. The day one does, alignment becomes a real question,
+      # and it should be answered here rather than discovered from a Play
+      # rejection. So this passes silently while there are none, and runs the real
+      # alignment check the moment there is one.
+      - name: Check native libraries for 16 KB alignment
+        run: |
+          set -euo pipefail
+          apk=app-child/build/outputs/apk/release/app-child-release-unsigned.apk
+          if [ ! -f "$apk" ]; then
+            echo "::error::$apk was not produced; this check cannot run."
+            exit 1
+          fi
+          libs=$(unzip -Z1 "$apk" 'lib/*' 2>/dev/null || true)
+          if [ -z "$libs" ]; then
+            echo "No native libraries in the release APK, so 16 KB pages are supported by construction."
+            exit 0
+          fi
+          echo "Native libraries found:"
+          echo "$libs"
+          zipalign=$(find "${ANDROID_HOME:?}/build-tools" -name zipalign -type f | sort -V | tail -n 1)
+          if [ -z "$zipalign" ]; then
+            echo "::error::A native library has appeared and zipalign is not available to check its alignment. See https://developer.android.com/guide/practices/page-sizes"
+            exit 1
+          fi
+          # -P 16 is the page-size alignment; 4 is the ordinary entry alignment.
+          "$zipalign" -c -P 16 -v 4 "$apk"
+
       # The console output says which test failed; these say what it expected.
       # Kept only on failure, since a green run's reports are of no interest and
       # this repository has 640 of them.

@@ -61,6 +61,42 @@ The same command runs on every push and pull request; see
 In Android Studio, select the **app-child** run configuration. If it is missing,
 use *File → Sync Project with Gradle Files*.
 
+### 16 KB memory page sizes
+
+Google Play requires apps targeting Android 15 or higher to support 16 KB memory
+page sizes on 64-bit devices, and from **1 February 2027** will refuse updates
+that do not. This app targets API 37, so it is in scope.
+
+It already complies, and not because of anything the build does. The requirement
+is about **native libraries**: a `.so` whose ELF segments are aligned for 4 KB
+pages cannot be mapped on a device with 16 KB pages. Google's guidance is
+explicit that an app written only in Java or Kotlin — dependencies included —
+already supports 16 KB devices and needs no rebuild.
+
+This app has no NDK code, and none of its dependencies ship a native library:
+AppCompat, core-ktx, WorkManager, Biometric, CameraX and ZXing are all pure
+Java or Kotlin. So there is nothing in the packaged app to align.
+
+Two things follow, and both are deliberate:
+
+- **Nothing is configured for this.** AGP 9 aligns native libraries to 16 KB
+  automatically (it has since 8.5.1), so the day a native dependency does arrive
+  the packaging is already right. Adding settings now would only be settings that
+  do nothing.
+- **CI checks the assumption, not the alignment.** `.github/workflows/build.yml`
+  looks for `lib/*` in the release APK. While there is none it passes and says
+  so; the moment a dependency brings one in, it runs `zipalign -c -P 16` against
+  it and fails if that alignment is missing. A check that verified alignment on
+  an APK containing no native code would pass forever without ever having tested
+  anything.
+
+Note that page-size support is a **compatibility** requirement, not a
+performance one. It is unrelated to asset packing or startup time, and there is
+no measurable startup improvement to be had from it on an app with no native
+code.
+
+Reference: [Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes).
+
 ---
 
 ## Installing
