@@ -22,6 +22,10 @@ import dev.schrammel.protego_parentis.security.PinLock
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.FamilyToken
 import dev.schrammel.protego_parentis.sync.FamilyTokens
+import dev.schrammel.protego_parentis.sync.Band
+import dev.schrammel.protego_parentis.sync.PassphraseStrength
+import dev.schrammel.protego_parentis.sync.PassphraseVerdict
+import dev.schrammel.protego_parentis.sync.Weakness
 import dev.schrammel.protego_parentis.sync.MessageCrypto
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
@@ -55,6 +59,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
 
     private lateinit var tokenInput: EditText
     private lateinit var passphraseInput: EditText
+    private lateinit var strengthNote: TextView
     private lateinit var startServerInput: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,6 +77,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
         }
         passphraseInput = field()
+        strengthNote = captionText("")
         // Pre-filled with the default rather than left blank: leaving it exactly
         // as shown is the common case, and a blank field would make "unset" and
         // "delete the default on purpose" look the same.
@@ -181,6 +187,8 @@ class JoinFamilyActivity : ParentGatedActivity() {
         )
         column.addView(sectionHeader(getString(R.string.join_passphrase_header)))
         column.addView(passphraseInput)
+        column.addView(strengthNote)
+        passphraseInput.addTextChangedListener(PassphraseWatcher { showStrength(it) })
 
         column.addView(
             actionButton().apply {
@@ -371,6 +379,16 @@ class JoinFamilyActivity : ParentGatedActivity() {
     }
 
     private fun startFamily() {
+        // Only here, and deliberately not in connect(). A phone *joining* is
+        // repeating a passphrase the family already chose, and refusing it there
+        // would lock a family out of adding a device over a judgement about a
+        // secret they cannot change without re-pairing everything.
+        val verdict = PassphraseStrength.assess(passphraseInput.text.toString())
+        if (verdict is PassphraseVerdict.Unusable) {
+            Toast.makeText(this, refusalText(verdict.why), Toast.LENGTH_LONG).show()
+            return
+        }
+
         val server = startServerInput.text.toString().trim().trimEnd('/')
             .ifBlank { SyncSettings.DEFAULT_SERVER }
         val token = runCatching {
@@ -381,6 +399,37 @@ class JoinFamilyActivity : ParentGatedActivity() {
         }
         connect(token, passphraseInput.text.toString())
     }
+
+    /**
+     * Says what the typed passphrase is worth, as it is typed.
+     *
+     * Nothing is refused here — that happens once, on starting a family. This is
+     * only so that replacing the suggestion with something weaker is a visible
+     * act rather than a silent one.
+     */
+    private fun showStrength(text: String) {
+        strengthNote.text = when {
+            text.isEmpty() -> ""
+            PassphraseStrength.isSuggested(text) -> getString(R.string.passphrase_band_suggested)
+            else -> when (val verdict = PassphraseStrength.assess(text)) {
+                is PassphraseVerdict.Unusable -> refusalText(verdict.why)
+                is PassphraseVerdict.Usable -> when (verdict.band) {
+                    Band.WEAK -> getString(R.string.passphrase_band_weak)
+                    Band.FAIR -> getString(R.string.passphrase_band_fair)
+                    Band.STRONG -> getString(R.string.passphrase_band_strong)
+                }
+            }
+        }
+    }
+
+    private fun refusalText(why: Weakness): String = getString(
+        when (why) {
+            Weakness.TOO_SHORT -> R.string.passphrase_refused_short
+            Weakness.TOO_FEW_DISTINCT -> R.string.passphrase_refused_few
+            Weakness.REPEATED_UNIT -> R.string.passphrase_refused_repeated
+            Weakness.RUN -> R.string.passphrase_refused_run
+        },
+    )
 
     private fun connect(token: FamilyToken, passphrase: String) {
         if (passphrase.length < MessageCrypto.MIN_PASSPHRASE_LENGTH) {
@@ -469,4 +518,11 @@ class JoinFamilyActivity : ParentGatedActivity() {
             Intent(context, JoinFamilyActivity::class.java)
                 .putExtra(EXTRA_ONBOARDING, onboarding)
     }
+}
+
+/** Reports the text after every edit. */
+private class PassphraseWatcher(private val onChanged: (String) -> Unit) : android.text.TextWatcher {
+    override fun afterTextChanged(s: android.text.Editable?) = onChanged(s?.toString().orEmpty())
+    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
 }

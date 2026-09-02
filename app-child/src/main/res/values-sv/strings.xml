@@ -1060,6 +1060,14 @@
     <string name="perms_owner_warning">Värt att bestämma tillsammans i stället för att överrumpla någon med. Utan det mäter appen ärligt och rapporterar ärligt — den kan bara inte blockera.</string>
 
     <string name="join_suggest_passphrase">Föreslå en stark</string>
+    <string name="passphrase_refused_short">Det är för kort för att skydda något. Använd förslaget, eller en fras med flera ord.</string>
+    <string name="passphrase_refused_few">Det är långt men byggt av bara några få tecken, vilket inte är samma sak.</string>
+    <string name="passphrase_refused_repeated">Det är en sak som upprepas. Använd förslaget, eller en fras med flera ord.</string>
+    <string name="passphrase_refused_run">Det följer tangentbordet, vilket är bland det första någon provar.</string>
+    <string name="passphrase_band_weak">Svag. Den som fångar familjens trafik kan arbeta på den offline, hur länge som helst.</string>
+    <string name="passphrase_band_fair">Godtagbar. Starkare än de flesta, svagare än förslaget.</string>
+    <string name="passphrase_band_strong">Stark.</string>
+    <string name="passphrase_band_suggested">Stark — detta är den föreslagna frasen, sex slumpmässigt valda ord.</string>
     <string name="join_suggested_note">Sex slumpade ord — mycket svårare att gissa än något någon hittar på. Läs upp den för den andra telefonen innan du lämnar skärmen; den kan inte visas igen.</string>
 
     <string name="schedules_starters_header">Börja med en av de här</string>
