@@ -34,6 +34,12 @@ internal class FakeDevicePolicyPort(
     var suspendCallCount = 0
         private set
 
+    /** Null on both halves, the way the platform reports "never set". */
+    var supportMessages = SupportMessages(short = null, long = null)
+        private set
+    var supportMessageWrites = 0
+        private set
+
     override fun isDeviceOwner(): Boolean = deviceOwner
 
     override fun currentlySuspended(): Set<PackageName> = suspendedPackages.toSet()
@@ -113,6 +119,13 @@ internal class FakeDevicePolicyPort(
         restrictions: Map<String, RestrictionValue>,
     ) {
         if (restrictions.isEmpty()) appRestrictions -= pkg else appRestrictions[pkg] = restrictions
+    }
+
+    override fun currentSupportMessages(): SupportMessages = supportMessages
+
+    override fun setSupportMessages(messages: SupportMessages) {
+        supportMessages = messages
+        supportMessageWrites++
     }
 
     override fun clearDeviceOwner() {
