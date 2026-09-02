@@ -1035,6 +1035,9 @@
     <string name="perms_usage_steps">1. Tryck på knappen nedan — den öppnar listan direkt.\n2. Hitta Dementor Watch i listan.\n3. Slå på ”Tillåt användningsåtkomst”.\n4. Kom tillbaka hit; sidan säger då att den är på.\n\nOm knappen inte öppnar rätt skärm: Inställningar → Appar → Särskild appåtkomst → Användningsåtkomst.</string>
     <string name="perms_usage_action">Öppna användningsåtkomst</string>
 
+    <string name="app_search_hint">Sök appar</string>
+    <string name="app_search_none">Ingen app matchar det.</string>
+
     <string name="perms_notifications_title">Aviseringar</string>
     <string name="perms_notifications_why">Varningar innan tiden tar slut, svar på det som frågats, och beskedet att en förälder sökt efter telefonen. Utan dem sker det tyst, vilket på den sista spelar roll.</string>
     <string name="perms_notifications_steps">1. Tryck på knappen nedan.\n2. Slå på ”Alla aviseringar från Dementor Watch”.\n\nDu kan fortfarande välja vilka sorter du får, under Aviseringar på huvudskärmen.</string>

@@ -60,6 +60,12 @@ class ParentRulesActivity : ParentRoleActivity() {
     /** The edit in progress. Null until a snapshot has ever been received. */
     private var edited: PolicySnapshot? = null
 
+    /**
+     * Survives [render], which rebuilds the whole column after any policy edit.
+     * Losing what a parent typed because they ticked a box is not acceptable.
+     */
+    private var appQuery = ""
+
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
         mirror = PolicyMirrorStore(this)
@@ -150,9 +156,19 @@ class ParentRulesActivity : ParentRoleActivity() {
         column.addView(sectionHeader(getString(R.string.parent_rules_apps_header)))
         val apps = inventory.apps
         if (apps.isEmpty()) {
+            // Nothing heard from the managed phone yet. Distinct from a search
+            // that matched nothing: the fix for each is a different action.
             column.addView(captionText(getString(R.string.parent_rules_apps_none)))
         } else {
-            column.addView(group(apps.map { app -> appRow(app, snapshot) }))
+            val appRows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            column.addView(
+                searchField(appQuery) { typed ->
+                    appQuery = typed
+                    renderAppRows(appRows, apps, snapshot)
+                },
+            )
+            column.addView(appRows)
+            renderAppRows(appRows, apps, snapshot)
         }
 
         column.addView(
@@ -352,6 +368,20 @@ class ParentRulesActivity : ParentRoleActivity() {
 
     // ---------- apps ----------
 
+    private fun renderAppRows(
+        into: LinearLayout,
+        apps: List<AppInventoryEntry>,
+        snapshot: PolicySnapshot,
+    ) {
+        into.removeAllViews()
+        val visible = AppSearch.filter(apps, appQuery, { it.label }, { it.packageName })
+        if (visible.isEmpty()) {
+            into.addView(noSearchResults())
+        } else {
+            into.addView(group(visible.map { app -> appRow(app, snapshot) }))
+        }
+    }
+
     private fun appRow(app: AppInventoryEntry, snapshot: PolicySnapshot): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -458,21 +488,38 @@ class ParentRulesActivity : ParentRoleActivity() {
         }
 
         val chosen = current.toMutableSet()
+        val boxes = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        // Rebuilds the checkboxes from `chosen`, never the other way round: an app
+        // ticked and then filtered out of view stays chosen, which is the obvious
+        // way to get this wrong and it silently discards a parent's choices.
+        fun renderBoxes(query: String) {
+            boxes.removeAllViews()
+            val visible = AppSearch.filter(apps, query, { it.label }, { it.packageName })
+            if (visible.isEmpty()) {
+                boxes.addView(noSearchResults())
+                return
+            }
+            visible.forEach { app ->
+                boxes.addView(
+                    CheckBox(this).apply {
+                        text = app.label
+                        isChecked = app.packageName in chosen
+                        setOnCheckedChangeListener { _, checked ->
+                            if (checked) chosen += app.packageName else chosen -= app.packageName
+                        }
+                    },
+                )
+            }
+        }
+        renderBoxes("")
+
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, 0)
-        }
-        apps.forEach { app ->
-            list.addView(
-                CheckBox(this).apply {
-                    text = app.label
-                    isChecked = app.packageName in chosen
-                    setOnCheckedChangeListener { _, checked ->
-                        if (checked) chosen += app.packageName else chosen -= app.packageName
-                    }
-                },
-            )
+            addView(searchField { renderBoxes(it) })
+            addView(boxes)
         }
 
         AlertDialog.Builder(this)

@@ -26,28 +26,15 @@ class AppLimitsActivity : ParentGatedActivity() {
 
     private lateinit var store: LocalPolicyStore
     private lateinit var container: LinearLayout
+    private lateinit var rows: LinearLayout
     private var apps: List<AppInfo> = emptyList()
+    private var limits: Map<String, Int> = emptyMap()
+    private var query = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = LocalPolicyStore(this)
         container = contentColumn()
-        showColumn(container)
-    }
-
-    override fun onGatedContentVisible() {
-        Background.load(this, {
-            // Both the app list and the stored limits come off disk.
-            InstalledApps(this).launchable() to store.appLimits
-        }) { (loaded, limits) ->
-            apps = loaded
-            render(limits)
-        }
-    }
-
-    private fun render(limits: Map<String, Int>) {
-        container.removeAllViews()
-
         container.addView(
             TextView(this).apply {
                 setText(R.string.app_limits_title)
@@ -61,13 +48,38 @@ class AppLimitsActivity : ParentGatedActivity() {
                 setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_md))
             },
         )
+        // Built once and never rebuilt. Recreating the field on each keystroke
+        // would take the cursor and the typed text with it.
+        container.addView(searchField { query = it; renderRows() })
+        rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(rows)
+        showColumn(container)
+    }
+
+    override fun onGatedContentVisible() {
+        Background.load(this, {
+            // Both the app list and the stored limits come off disk.
+            InstalledApps(this).launchable() to store.appLimits
+        }) { (loadedApps, loadedLimits) ->
+            apps = loadedApps
+            limits = loadedLimits
+            renderRows()
+        }
+    }
+
+    private fun renderRows() {
+        rows.removeAllViews()
 
         // Apps that already have a limit float to the top, so the ones the family
         // actually cares about are not buried in an alphabetical list of hundreds.
+        // Ordering first and filtering second keeps that true while searching.
         val (limited, unlimited) = apps.partition { limits.containsKey(it.pkg.value) }
-        (limited + unlimited).forEach { app ->
-            container.addView(row(app, limits[app.pkg.value] ?: 0))
+        val visible = AppSearch.filter(limited + unlimited, query, { it.label }, { it.pkg.value })
+        if (visible.isEmpty() && apps.isNotEmpty()) {
+            rows.addView(noSearchResults())
+            return
         }
+        visible.forEach { app -> rows.addView(row(app, limits[app.pkg.value] ?: 0)) }
     }
 
     private fun row(app: AppInfo, limitMinutes: Int): LinearLayout =

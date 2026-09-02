@@ -1,6 +1,9 @@
 package dev.schrammel.protego_parentis.ui
 
 import android.app.Activity
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -163,6 +166,59 @@ internal fun Activity.familyBanner(snapshot: FamilySnapshot, onOpen: () -> Unit)
         )
     }
 }
+
+/**
+ * Minimal text watcher, because only the final value is ever wanted.
+ *
+ * Shared rather than per-file: it was private to the rule editor until the app
+ * lists needed the same thing, and a second copy is how two fields start
+ * behaving differently.
+ */
+internal class SimpleWatcher(private val onChanged: (String) -> Unit) : TextWatcher {
+    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+    override fun afterTextChanged(s: Editable?) = onChanged(s?.toString().orEmpty())
+}
+
+/**
+ * The filter row above a list of apps.
+ *
+ * One row, used by every screen that lists apps, so the same job feels the same
+ * everywhere. [onQuery] fires on each keystroke and is expected to re-render from
+ * a list already in memory — see [AppSearch]; re-reading `PackageManager` per
+ * character would undo the background load these screens do precisely to stay
+ * responsive.
+ */
+internal fun Activity.searchField(
+    prefill: String = "",
+    onQuery: (String) -> Unit,
+): EditText = EditText(this).apply {
+    hint = getString(R.string.app_search_hint)
+    // No suggestions: half these queries are package names, and autocorrect
+    // turning "deskclock" into two words helps nobody.
+    inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+    setSingleLine()
+    if (prefill.isNotEmpty()) {
+        // Before the listener is attached, so restoring a query does not count
+        // as the parent typing. Caret at the end rather than at zero: on the
+        // screens that rebuild the whole column after an edit, they should be
+        // able to keep typing.
+        setText(prefill)
+        setSelection(prefill.length)
+    }
+    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+        bottomMargin = dimen(R.dimen.space_sm)
+    }
+    addTextChangedListener(SimpleWatcher(onQuery))
+}
+
+/**
+ * "Nothing matched", which is not the same as an empty list.
+ *
+ * A screen with no apps at all and a screen whose filter excluded them need
+ * different things from the reader, so they never share a line.
+ */
+internal fun Activity.noSearchResults(): TextView = bodyText(getString(R.string.app_search_none))
 
 internal fun Activity.bodyText(text: String): TextView = TextView(this).apply {
     this.text = text

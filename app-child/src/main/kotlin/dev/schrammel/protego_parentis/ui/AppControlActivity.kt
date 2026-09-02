@@ -39,6 +39,10 @@ class AppControlActivity : ParentGatedActivity() {
     private lateinit var review: AppReviewStore
     private lateinit var sync: SyncCoordinator
     private lateinit var column: LinearLayout
+    private lateinit var rows: LinearLayout
+    private var fresh: List<AppInfo> = emptyList()
+    private var known: List<AppInfo> = emptyList()
+    private var query = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,24 +64,47 @@ class AppControlActivity : ParentGatedActivity() {
         column.addView(screenTitle(getString(R.string.apps_title)))
         column.addView(captionText(getString(R.string.apps_hint)))
         column.addView(captionText(getString(R.string.apps_network_hint)))
+        // Outside the part that gets rebuilt on each keystroke, which would take
+        // the cursor and the typed text with it. Prefilled because render() runs
+        // again after a decision, and an empty box over a filtered list is worse
+        // than either.
+        column.addView(searchField(query) { query = it; renderRows() })
+        rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(rows)
 
         Background.load(this, {
             val apps = InstalledApps(this).launchable()
             val pending = review.pending
             apps.partition { it.pkg.value in pending }
-        }) { (fresh, rest) ->
-            if (fresh.isNotEmpty()) {
-                column.addView(sectionHeader(getString(R.string.apps_new_header)))
-                column.addView(captionText(getString(R.string.apps_new_hint)))
-                column.addView(group(fresh.map(::newAppRow)))
-            }
+        }) { (pending, rest) ->
+            fresh = pending
+            known = rest
+            renderRows()
+        }
+    }
 
-            column.addView(sectionHeader(getString(R.string.apps_all_header)))
-            if (rest.isEmpty()) {
-                column.addView(bodyText(getString(R.string.apps_none)))
-            } else {
-                column.addView(group(rest.map(::knownAppRow)))
-            }
+    private fun renderRows() {
+        rows.removeAllViews()
+
+        // The search covers both sections. A new arrival is still an app somebody
+        // may be looking for by name, and hiding it from the filter would make
+        // the one section that needs an answer the one section search cannot find.
+        val newMatches = AppSearch.filter(fresh, query, { it.label }, { it.pkg.value })
+        val knownMatches = AppSearch.filter(known, query, { it.label }, { it.pkg.value })
+
+        if (newMatches.isNotEmpty()) {
+            rows.addView(sectionHeader(getString(R.string.apps_new_header)))
+            rows.addView(captionText(getString(R.string.apps_new_hint)))
+            rows.addView(group(newMatches.map(::newAppRow)))
+        }
+
+        rows.addView(sectionHeader(getString(R.string.apps_all_header)))
+        when {
+            // Genuinely no apps to show is a different thing from a search that
+            // matched nothing, and needs a different answer from the reader.
+            known.isEmpty() -> rows.addView(bodyText(getString(R.string.apps_none)))
+            knownMatches.isEmpty() -> rows.addView(noSearchResults())
+            else -> rows.addView(group(knownMatches.map(::knownAppRow)))
         }
     }
 

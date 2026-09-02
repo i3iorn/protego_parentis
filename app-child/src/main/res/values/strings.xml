@@ -1033,6 +1033,9 @@
     <string name="perms_usage_steps">1. Tap the button below — it opens the list directly.\n2. Find Dementor Watch in the list.\n3. Turn on “Permit usage access”.\n4. Come back here; this page will say it is on.\n\nIf the button does not open the right screen: Settings → Apps → Special app access → Usage access.</string>
     <string name="perms_usage_action">Open usage access settings</string>
 
+    <string name="app_search_hint">Search apps</string>
+    <string name="app_search_none">No app matches that.</string>
+
     <string name="perms_notifications_title">Notifications</string>
     <string name="perms_notifications_why">Warnings before time runs out, answers to what was asked, and the notice that a parent looked for this phone. Without it those happen silently, which on the last one matters.</string>
     <string name="perms_notifications_steps">1. Tap the button below.\n2. Turn on “All Dementor Watch notifications”.\n\nYou can still choose which kinds you get, in Notifications on the main screen.</string>
