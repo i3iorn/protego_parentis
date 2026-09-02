@@ -204,10 +204,12 @@ class RulesInventoryTest {
         type.declaredFields
             .filter { it.name.startsWith("KEY_") }
             .map { field ->
-                // trySetAccessible rather than isAccessible = true: the getter of
-                // that property is deprecated in Java 9+, and this module compiles
-                // warnings as errors.
-                field.trySetAccessible()
+                // Not trySetAccessible: unit tests compile against android.jar,
+                // and Android's AccessibleObject never took that Java 9 addition.
+                // The deprecation this looks like it should worry about is on the
+                // getter, which a write access never calls — and Android did not
+                // adopt that deprecation either.
+                field.isAccessible = true
                 "${field.name}=${field.get(null)}"
             }
             .toSet()
