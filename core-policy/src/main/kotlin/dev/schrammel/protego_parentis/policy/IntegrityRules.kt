@@ -60,7 +60,29 @@ object IntegrityRules {
      * and a count that grew — the head is expected to change then, and it is not
      * this phone's job to verify a chain it does not hold.
      */
-    fun historyRewritten(previous: Heartbeat?, latest: Heartbeat): Boolean {
+    fun historyRewritten(
+        previous: Heartbeat?,
+        latest: Heartbeat,
+        /**
+         * How many of that phone's entries this one holds in its own replica.
+         *
+         * A floor the reporting phone cannot lower. The audit section replicates
+         * append-only — the earliest write for a path stands and a later one
+         * cannot revise it — so entries that reached here stay here whatever
+         * happens to the log they came from. The reported count is a running
+         * total that only ever increases, so it can never honestly be less than
+         * the number of that phone's entries somebody else is already holding.
+         *
+         * This is what catches the rewrite the two comparisons below cannot: one
+         * that *grows* the log. Remove five entries, add six, and the count is
+         * higher and the head is different, which reads as ordinary progress —
+         * unless the count has fallen through a floor set by evidence the
+         * rewriting phone does not control.
+         */
+        heldFromDevice: Long = 0L,
+    ): Boolean {
+        if (latest.historyCount in 1 until heldFromDevice) return true
+
         if (previous == null) return false
         // A device that has not reported a history yet says nothing either way.
         if (previous.historyCount == 0L || latest.historyCount == 0L) return false
