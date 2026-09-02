@@ -973,7 +973,14 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         // is about the pair. Once noticed it stays noticed: a rewritten history is
         // not undone by the next honest entry, and clearing it silently would
         // hand back exactly what the check was for.
-        if (IntegrityRules.historyRewritten(heartbeats.latest, arrived)) {
+        // The third argument is evidence this phone holds rather than something
+        // the reporting phone said: entries it wrote that arrived here through
+        // the append-only audit section, which it cannot revise from over there.
+        val heldFromDevice = runCatching {
+            AuditReplication(appContext).entries().count { it.by == message.sender }.toLong()
+        }.getOrDefault(0L)
+
+        if (IntegrityRules.historyRewritten(heartbeats.latest, arrived, heldFromDevice)) {
             heartbeats.historySuspect = true
         }
 

@@ -4,6 +4,7 @@ import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.IntegrityProblem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -114,6 +115,8 @@ class IntegrityRulesTest {
         usageAccess: Boolean = true,
         managed: Boolean = true,
         battery: Int = 80,
+        historyCount: Long = 0L,
+        historyHead: String = "",
     ) = Heartbeat(
         sentAt = sentAt,
         policyVersion = 7L,
@@ -121,5 +124,54 @@ class IntegrityRulesTest {
         managed = managed,
         usageAccessGranted = usageAccess,
         suspendedCount = 0,
+        historyHead = historyHead,
+        historyCount = historyCount,
     )
+
+    // ---------- the rewrite that grows the log ----------
+
+    /**
+     * The blind spot: removing entries and adding more leaves a *higher* count
+     * and a different head, which is exactly what honest progress looks like.
+     *
+     * Nothing in the pair of heartbeats can separate them. What can is evidence
+     * the rewriting phone does not control — the entries of its own that already
+     * reached somebody else's replica, through a section that replicates
+     * append-only and refuses to let a later write revise an earlier one.
+     */
+    @Test
+    fun `a rewrite that grows the log is caught by what the other phone already holds`() {
+        val before = heartbeat(historyCount = 40, historyHead = "aaa")
+        // Five removed, six added: the count went up, so both older checks pass.
+        val after = heartbeat(historyCount = 41, historyHead = "bbb")
+
+        assertFalse(IntegrityRules.historyRewritten(before, after))
+        assertTrue(IntegrityRules.historyRewritten(before, after, heldFromDevice = 45))
+    }
+
+    @Test
+    fun `holding fewer entries than were reported is ordinary`() {
+        // The usual case: the replica prunes, the local log counts every entry
+        // ever written, so the floor sits well below the reported total.
+        val before = heartbeat(historyCount = 100, historyHead = "aaa")
+        val after = heartbeat(historyCount = 101, historyHead = "bbb")
+
+        assertFalse(IntegrityRules.historyRewritten(before, after, heldFromDevice = 12))
+    }
+
+    @Test
+    fun `a phone that has reported nothing yet is not accused`() {
+        val after = heartbeat(historyCount = 0, historyHead = "")
+
+        assertFalse(IntegrityRules.historyRewritten(null, after, heldFromDevice = 30))
+    }
+
+    @Test
+    fun `the floor applies even on the first heartbeat ever seen`() {
+        // No previous heartbeat to compare against, but the replica already holds
+        // entries this phone wrote — so a lower total is still impossible.
+        val first = heartbeat(historyCount = 3, historyHead = "aaa")
+
+        assertTrue(IntegrityRules.historyRewritten(null, first, heldFromDevice = 30))
+    }
 }
