@@ -89,6 +89,26 @@ class MessageCryptoTest {
         }
     }
 
+    /**
+     * The derivation cost is a security parameter, so lowering it is a security
+     * regression — and one nothing else would notice, because every test here
+     * passes just as well against a weak key as a strong one.
+     *
+     * Written as a floor rather than an equality so raising it never fails.
+     * Lowering it fails on purpose: the number is affordable because the key is
+     * cached per process rather than derived per message, and if that stops
+     * being true the answer is to record a measurement here, not to quietly
+     * spend less.
+     */
+    @Test
+    fun `the derivation cost is not below current guidance`() {
+        assertTrue(
+            "PBKDF2-HMAC-SHA256 wants 600 000; this build uses " +
+                MessageCrypto.PBKDF2_ITERATIONS,
+            MessageCrypto.PBKDF2_ITERATIONS >= 600_000,
+        )
+    }
+
     @Test
     fun `a short passphrase is refused outright`() {
         assertThrows(IllegalArgumentException::class.java) {

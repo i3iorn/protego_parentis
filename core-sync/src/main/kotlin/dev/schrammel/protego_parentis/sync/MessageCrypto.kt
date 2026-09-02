@@ -58,7 +58,34 @@ object MessageCrypto {
     /** Twelve bytes is the size GCM is defined for; other sizes weaken it. */
     private const val NONCE_BYTES = 12
 
-    private const val PBKDF2_ITERATIONS = 210_000
+    /**
+     * How much work the derivation costs, and therefore how much an attacker's
+     * costs too.
+     *
+     * OWASP's figure for PBKDF2-HMAC-**SHA256** is 600 000. This was 210 000,
+     * which is the figure for PBKDF2-HMAC-SHA512 — the neighbouring row, and a
+     * third of the work against the algorithm actually in use above.
+     *
+     * The number matters more here than in most places. The relay is a public
+     * topic, so somebody who wants the family's traffic already has all of it and
+     * can grind offline at whatever rate their hardware allows, with nobody to
+     * lock them out. This constant is the only multiplier on that cost.
+     *
+     * Affordable because the result is held, not recomputed: `SyncKeying` caches
+     * the derived key per passphrase and topic, so a phone pays this once per
+     * process on a background executor, not once per message. Measured at roughly
+     * 580 ms on an x86 JVM against 265 ms at the old value; a handset from the
+     * minSdk era will be some multiple of that, and it is still a one-off.
+     *
+     * **Re-measure on a real device before release.** If it proves too slow to
+     * live with, lower it deliberately and record the measurement here rather
+     * than leaving a number nobody can account for.
+     *
+     * Changing this changes every derived key, so a phone on one value cannot
+     * talk to a phone on another and the failure is indistinguishable from a
+     * wrong passphrase. Free to change now, while nothing has shipped.
+     */
+    internal const val PBKDF2_ITERATIONS = 600_000
 
     /** Shortest passphrase we will derive from. Shorter is not a secret. */
     const val MIN_PASSPHRASE_LENGTH = 12
