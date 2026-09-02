@@ -113,8 +113,9 @@ data class Enforcement(
     val suspend: Map<PackageName, Reason>,
     val hide: Set<PackageName>,
     /**
-     * Suspensions withheld because a call or navigation session is running.
-     * They apply as soon as that clears — see [DeviceState.suspensionDeferred].
+     * The suspension withheld because that app is running a live navigation
+     * session. At most one entry, and it applies as soon as the session ends —
+     * see [DeviceState.suspensionDeferredFor].
      */
     val deferred: Map<PackageName, Reason>,
     val deviceBudget: BudgetStatus,

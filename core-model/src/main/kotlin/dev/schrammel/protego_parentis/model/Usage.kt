@@ -25,14 +25,26 @@ data class UsageSnapshot(
 /**
  * What the device is doing right now.
  *
- * [callInProgress] and [navigationInProgress] defer suspension rather than
- * cancelling it — see the "never a hard cutoff" principle. The reconciler
- * re-evaluates when they clear.
+ * [navigatingPackage] defers that one app's suspension rather than cancelling it
+ * — see the "never a hard cutoff" principle. The reconciler re-evaluates when it
+ * clears.
  */
 data class DeviceState(
     val foregroundPackage: PackageName? = null,
-    val callInProgress: Boolean = false,
-    val navigationInProgress: Boolean = false,
+    /**
+     * The app currently running a navigation session, if any.
+     *
+     * Bedtime arriving while somebody is walking or driving home must not take
+     * the map with it. Only this app is spared, and only while the session is
+     * live: a blanket lift would make "start navigating" a way to unlock the
+     * whole phone.
+     *
+     * Calls are deliberately not modelled here. The dialer and messaging app are
+     * safety-exempt already, so they are never suspended in the first place, and
+     * reading call state would cost a `READ_PHONE_STATE` declaration to protect
+     * something that is not exposed.
+     */
+    val navigatingPackage: PackageName? = null,
     /**
      * An emergency the child raised (LOC-3).
      *
@@ -46,7 +58,8 @@ data class DeviceState(
      */
     val emergency: Boolean = false,
 ) {
-    val suspensionDeferred: Boolean get() = callInProgress || navigationInProgress
+    /** The one package whose suspension is held back right now, if any. */
+    val suspensionDeferredFor: PackageName? get() = navigatingPackage
 
     companion object {
         val IDLE = DeviceState()
