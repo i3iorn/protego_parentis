@@ -5,6 +5,7 @@ import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.DeviceState
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.Reason
+import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -236,6 +237,55 @@ class PolicyEngineTest {
     }
 
     // ---------- schedules ----------
+
+    /**
+     * The complement of the bedtime case below, through the whole engine rather
+     * than only the model predicate: an including window pauses its named apps
+     * and leaves the rest alone.
+     */
+    @Test
+    fun `an including window pauses only the apps it names`() {
+        val result = PolicyEngine.evaluate(
+            policy = policy(
+                schedules = listOf(
+                    bedtime(
+                        startingOn = "2026-08-21",
+                        allowed = setOf(GAME, YOUTUBE),
+                        mode = ScheduleBlock.Mode.INCLUSIVE,
+                    ),
+                ),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-22", "02:00"),
+        )
+
+        assertEquals(setOf(GAME, YOUTUBE), result.suspend.keys)
+        assertNull("an app the window does not name must carry on", result.suspend[HOMEWORK])
+        assertTrue(result.suspend[GAME] is Reason.ScheduleActive)
+    }
+
+    /**
+     * The same set, read the other way, produces the exact opposite. This is the
+     * inversion that makes the default matter: every schedule saved before modes
+     * existed meant the excluding reading.
+     */
+    @Test
+    fun `the same app set suspends opposite apps in the two modes`() {
+        fun suspendedUnder(mode: ScheduleBlock.Mode) = PolicyEngine.evaluate(
+            policy = policy(
+                schedules = listOf(
+                    bedtime(startingOn = "2026-08-21", allowed = setOf(CLOCK), mode = mode),
+                ),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-22", "02:00"),
+        ).suspend.keys
+
+        assertEquals(setOf(YOUTUBE, GAME, HOMEWORK), suspendedUnder(ScheduleBlock.Mode.EXCLUSIVE))
+        assertEquals(setOf(CLOCK), suspendedUnder(ScheduleBlock.Mode.INCLUSIVE))
+    }
 
     @Test
     fun `bedtime starting friday night is still active at two in the morning`() {

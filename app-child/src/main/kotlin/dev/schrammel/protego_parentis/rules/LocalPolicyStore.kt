@@ -126,8 +126,10 @@ class LocalPolicyStore(context: Context) {
                     start = setting.start,
                     end = setting.end,
                     // Everything on the safety list survives bedtime anyway; this
-                    // set is for apps a family additionally permits.
-                    allowedPackages = emptySet(),
+                    // set is for apps a family additionally permits. Exclusive by
+                    // default, which is bedtime's whole point: the phone winds
+                    // down except for what is named here.
+                    packages = emptySet(),
                     kind = ScheduleBlock.Kind.BEDTIME,
                 ),
             )

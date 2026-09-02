@@ -546,6 +546,13 @@
     <string name="schedules_allowed_hint">Allt annat pausas medan perioden pågår. Telefon, meddelanden och kartor är alltid tillåtna.</string>
     <string name="schedules_allowed_none">Inget extra</string>
     <string name="schedules_allowed_choose">Välj appar</string>
+    <string name="schedules_mode_header">Vad perioden gör</string>
+    <string name="schedules_mode_exclusive">Pausa allt utom apparna jag väljer</string>
+    <string name="schedules_mode_inclusive">Pausa bara apparna jag väljer</string>
+    <string name="schedules_apps_paused_header">Appar som pausas</string>
+    <string name="schedules_apps_paused_hint">Bara de här pausas medan perioden pågår. Allt annat fungerar som vanligt.</string>
+    <string name="schedules_apps_paused_none">Inga appar valda än</string>
+    <string name="schedules_needs_apps">Välj minst en app att pausa, eller byt till att pausa allt utom dina val.</string>
     <string name="schedules_enabled">Aktivt</string>
     <string name="schedules_save">Spara</string>
     <string name="schedules_delete">Ta bort det här schemat</string>
