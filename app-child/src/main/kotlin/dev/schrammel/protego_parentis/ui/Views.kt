@@ -81,7 +81,12 @@ internal fun Activity.group(rows: List<View>): LinearLayout = LinearLayout(this)
     setBackgroundResource(R.drawable.card)
     val side = dimen(R.dimen.card_padding)
     setPadding(side, 0, side, 0)
-    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+    // Same margin as [card], which draws the same surface. Without it a group
+    // sits flush against whatever precedes it wherever no section header
+    // intervenes, and two card edges touching read as one broken card.
+    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+        topMargin = dimen(R.dimen.space_md)
+    }
 
     rows.forEachIndexed { index, row ->
         if (index > 0) addView(divider())
