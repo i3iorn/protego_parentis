@@ -9,6 +9,7 @@ local.properties
 
 # Android Studio / IntelliJ. Most of .idea is per-developer state; the few files
 # worth sharing are listed as exceptions below.
+.idea
 .idea/*
 !.idea/gradle.xml
 !.idea/compiler.xml
