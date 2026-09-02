@@ -9,6 +9,7 @@ import android.util.Log
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RestrictionValue
 import dev.schrammel.protego_parentis.policy.reconcile.DevicePolicyPort
+import dev.schrammel.protego_parentis.policy.reconcile.SupportMessages
 
 /**
  * The Android implementation of [DevicePolicyPort].
@@ -94,6 +95,18 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
                 DevicePolicyManager.PRIVATE_DNS_SET_ERROR_FAILURE_SETTING
             }
         return result == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR
+    }
+
+    override fun currentSupportMessages(): SupportMessages = SupportMessages(
+        short = dpm.getShortSupportMessage(admin)?.toString(),
+        long = dpm.getLongSupportMessage(admin)?.toString(),
+    )
+
+    override fun setSupportMessages(messages: SupportMessages) {
+        runCatching {
+            dpm.setShortSupportMessage(admin, messages.short)
+            dpm.setLongSupportMessage(admin, messages.long)
+        }.onFailure { Log.w(TAG, "Could not set the support messages", it) }
     }
 
     override fun setApplicationRestrictions(

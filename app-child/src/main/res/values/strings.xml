@@ -1033,6 +1033,9 @@
     <string name="perms_usage_steps">1. Tap the button below — it opens the list directly.\n2. Find Dementor Watch in the list.\n3. Turn on “Permit usage access”.\n4. Come back here; this page will say it is on.\n\nIf the button does not open the right screen: Settings → Apps → Special app access → Usage access.</string>
     <string name="perms_usage_action">Open usage access settings</string>
 
+    <string name="support_message_short">A parent set this, not an employer. Open the app to see which rule applies and to ask for it to be changed.</string>
+    <string name="support_message_long">This phone is managed by %1$s, a parental-control app set up by someone in this family — not by a workplace or an IT department. Every rule that applies, and every change anyone has made, is visible in the app on this phone. If something is blocked and you think it should not be, open the app and send a request; it goes to the parent who set the rules.</string>
+
     <string name="nav_watcher_label">Navigation sessions</string>
     <string name="perms_navigation_title">Notification access (navigation)</string>
     <string name="perms_navigation_why">Optional, and only used for one thing: noticing that a map app is running a route, so bedtime or a spent budget does not close it while somebody is still finding their way home.</string>

@@ -2,6 +2,7 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.content.Context
 import android.util.Log
+import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.dpc.AndroidDevicePolicyPort
@@ -20,6 +21,7 @@ import dev.schrammel.protego_parentis.policy.reconcile.DeviceLocker
 import dev.schrammel.protego_parentis.policy.reconcile.LockResult
 import dev.schrammel.protego_parentis.policy.reconcile.DeviceReleaser
 import dev.schrammel.protego_parentis.policy.reconcile.PolicyReconciler
+import dev.schrammel.protego_parentis.policy.reconcile.SupportMessages
 import dev.schrammel.protego_parentis.policy.reconcile.ReleaseResult
 import dev.schrammel.protego_parentis.policy.reconcile.ReconcileResult
 import dev.schrammel.protego_parentis.rules.GrantStore
@@ -187,6 +189,7 @@ class EnforcementCoordinator(context: Context) {
         if (port.isDeviceOwner()) {
             val wanted = WebFilterStore(appContext).countVisits
             if (port.isNetworkLoggingEnabled() != wanted) port.setNetworkLoggingEnabled(wanted)
+            applySupportMessages()
         }
 
         val reconcile = if (port.isDeviceOwner()) {
@@ -209,6 +212,31 @@ class EnforcementCoordinator(context: Context) {
         }
 
         return EnforcementSnapshot(policy, usage, enforcement, reconcile, now)
+    }
+
+    /**
+     * Replaces Android's enterprise wording where the platform lets us.
+     *
+     * Left to Android, a child who taps a setting this app has disabled is told
+     * it is blocked by a work policy and to contact their IT department. On a
+     * family phone that names the wrong relationship and points them at a support
+     * desk that does not exist.
+     *
+     * Re-asserted on every pass rather than written once at provisioning time,
+     * and only when it differs. That is what makes a language change take effect:
+     * the platform stores the literal string it was handed, so the only way it
+     * follows the family's chosen language is for somebody to notice and write it
+     * again. Reading first keeps that from being a write every minute.
+     */
+    private fun applySupportMessages() {
+        val wanted = SupportMessages(
+            short = appContext.getString(R.string.support_message_short),
+            long = appContext.getString(
+                R.string.support_message_long,
+                appContext.getString(R.string.app_name),
+            ),
+        )
+        if (port.currentSupportMessages() != wanted) port.setSupportMessages(wanted)
     }
 
     private companion object {
