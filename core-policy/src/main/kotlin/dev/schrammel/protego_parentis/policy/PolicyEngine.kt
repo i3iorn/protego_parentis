@@ -155,9 +155,11 @@ object PolicyEngine {
             mostRestrictive(reasons)?.let { suspend[pkg] = it }
         }
 
-        // A call or a live navigation session postpones suspension rather than
-        // cancelling it. The reconciler re-evaluates the moment it clears.
-        val deferring = deviceState.suspensionDeferred
+        // A live navigation session postpones that app's suspension rather than
+        // cancelling it. The reconciler re-evaluates the moment it clears. Only
+        // the navigating app is spared: holding back the whole map would turn
+        // "start navigating" into a way round every other rule at once.
+        val deferring = deviceState.suspensionDeferredFor?.takeIf(suspend::containsKey)
 
         // An emergency lifts everything, and lifts it rather than deferring it: a
         // child who has pressed the SOS button must not find the phone closing
@@ -169,11 +171,15 @@ object PolicyEngine {
             policyVersion = policy.version,
             suspend = when {
                 emergency -> emptyMap()
-                deferring -> emptyMap()
+                deferring != null -> suspend - deferring
                 else -> suspend
             },
             hide = if (emergency) emptySet() else hide,
-            deferred = if (deferring && !emergency) suspend else emptyMap(),
+            deferred = if (deferring != null && !emergency) {
+                mapOf(deferring to suspend.getValue(deferring))
+            } else {
+                emptyMap()
+            },
             deviceBudget = deviceBudget,
             appBudgets = appBudgets,
             categoryBudgets = categoryBudgets,

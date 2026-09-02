@@ -102,10 +102,54 @@ interface DevicePolicyPort {
     fun setAlwaysOnVpn(packageName: String?): Boolean
 
     /**
+     * The support messages currently registered with the platform, or nulls.
+     *
+     * Read before writing so the messages are only set when they differ, which is
+     * what lets the caller re-assert them on every pass and pick up a language
+     * change for free.
+     */
+    fun currentSupportMessages(): SupportMessages
+
+    /**
+     * Replaces the text Android shows in place of its own enterprise wording.
+     *
+     * Android's defaults talk about work policies and IT departments, which is
+     * wrong twice over on a family phone: it names the wrong relationship, and it
+     * points a child at a support desk that does not exist. These say who actually
+     * set the rule and where to go about it.
+     *
+     * Not policy — the same two sentences whatever the rules say — so the
+     * reconciler never touches them. See [SupportMessages] for what each one is
+     * shown for.
+     */
+    fun setSupportMessages(messages: SupportMessages)
+
+    /**
      * Relinquishes device ownership. Irreversible without a factory reset, and
      * every policy-clearing call must already have happened — see [DeviceReleaser].
      */
     fun clearDeviceOwner()
+}
+
+/**
+ * The two admin support messages, as the platform models them.
+ *
+ * They are shown in different places and are not interchangeable:
+ *
+ * - [short] appears when someone taps a setting this app has disabled. It is the
+ *   one a child actually meets. Android truncates it past 200 characters.
+ * - [long] appears only in Settings, under the device admin's own entry, for
+ *   somebody who went looking for what is managing the phone.
+ *
+ * Nullable because that is what the platform returns before either has ever been
+ * set, and "never set" has to be distinguishable from "set to something" for the
+ * caller to know whether to write.
+ */
+data class SupportMessages(val short: String?, val long: String?) {
+    companion object {
+        /** Android's own limit; past this it truncates rather than refusing. */
+        const val SHORT_LIMIT = 200
+    }
 }
 
 /**

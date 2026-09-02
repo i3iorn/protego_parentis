@@ -391,6 +391,25 @@
             </intent-filter>
         </receiver>
 
+        <!--
+          Reads notifications only to answer one question: is an app running a
+          navigation route right now? The listener keeps the posting package, the
+          category and the ongoing flag, and nothing else — no title, no text, no
+          sender. It exists so bedtime does not close the map mid-route.
+
+          Exported, because BIND_NOTIFICATION_LISTENER_SERVICE is enforced by the
+          system and only Android may bind it.
+        -->
+        <service
+            android:name=".context.NavigationWatcher"
+            android:exported="true"
+            android:label="@string/nav_watcher_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".enforcement.EnforcementService"
             android:exported="false"

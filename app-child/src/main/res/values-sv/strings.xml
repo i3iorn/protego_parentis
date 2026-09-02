@@ -1037,6 +1037,15 @@
 
     <string name="app_search_hint">Sök appar</string>
     <string name="app_search_none">Ingen app matchar det.</string>
+    <string name="support_message_short">En förälder har ställt in det här, inte en arbetsgivare. Öppna appen för att se vilken regel som gäller och för att be om en ändring.</string>
+    <string name="support_message_long">Den här telefonen sköts av %1$s, en app för föräldrakontroll som någon i familjen har ställt in — inte av en arbetsplats eller en IT-avdelning. Alla regler som gäller, och varje ändring någon har gjort, syns i appen på den här telefonen. Om något är blockerat och du tycker att det inte borde vara det: öppna appen och skicka en förfrågan, så går den till föräldern som satt reglerna.</string>
+
+    <string name="nav_watcher_label">Navigeringssessioner</string>
+    <string name="perms_navigation_title">Aviseringsåtkomst (navigering)</string>
+    <string name="perms_navigation_why">Valfri, och används bara till en sak: att märka att en kartapp kör en rutt, så att läggdags eller en förbrukad budget inte stänger den medan någon fortfarande håller på att hitta hem.</string>
+    <string name="perms_navigation_risk">Vad den ger: Android lämnar över varje avisering som dyker upp till den här appen. Appen sparar bara vilken app som skickade den och om det är en pågående navigering — aldrig en rubrik, ett meddelande eller vem det är från. Låt den vara avstängd om du hellre vill det; alla regler gäller då precis som de är skrivna.</string>
+    <string name="perms_navigation_steps">1. Tryck på knappen nedan — den öppnar listan direkt.\n2. Hitta Dementor Watch i listan.\n3. Slå på den och bekräfta.\n4. Kom tillbaka hit; den här sidan visar då att den är på.\n\nOm knappen inte öppnar rätt skärm: Inställningar → Appar → Särskild appåtkomst → Aviseringsåtkomst.</string>
+    <string name="perms_navigation_action">Öppna aviseringsåtkomst</string>
 
     <string name="perms_notifications_title">Aviseringar</string>
     <string name="perms_notifications_why">Varningar innan tiden tar slut, svar på det som frågats, och beskedet att en förälder sökt efter telefonen. Utan dem sker det tyst, vilket på den sista spelar roll.</string>

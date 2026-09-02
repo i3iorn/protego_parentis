@@ -1035,6 +1035,15 @@
 
     <string name="app_search_hint">Search apps</string>
     <string name="app_search_none">No app matches that.</string>
+    <string name="support_message_short">A parent set this, not an employer. Open the app to see which rule applies and to ask for it to be changed.</string>
+    <string name="support_message_long">This phone is managed by %1$s, a parental-control app set up by someone in this family — not by a workplace or an IT department. Every rule that applies, and every change anyone has made, is visible in the app on this phone. If something is blocked and you think it should not be, open the app and send a request; it goes to the parent who set the rules.</string>
+
+    <string name="nav_watcher_label">Navigation sessions</string>
+    <string name="perms_navigation_title">Notification access (navigation)</string>
+    <string name="perms_navigation_why">Optional, and only used for one thing: noticing that a map app is running a route, so bedtime or a spent budget does not close it while somebody is still finding their way home.</string>
+    <string name="perms_navigation_risk">What it allows: Android hands this app every notification that appears. This app keeps only which app posted it and whether it is an ongoing navigation route — never a title, a message, or who it is from. Leave it off if you would rather not grant it; every rule then applies exactly as written.</string>
+    <string name="perms_navigation_steps">1. Tap the button below — it opens the list directly.\n2. Find Dementor Watch in the list.\n3. Turn it on and confirm.\n4. Come back here; this page will say it is on.\n\nIf the button does not open the right screen: Settings → Apps → Special app access → Notification access.</string>
+    <string name="perms_navigation_action">Open notification access settings</string>
 
     <string name="perms_notifications_title">Notifications</string>
     <string name="perms_notifications_why">Warnings before time runs out, answers to what was asked, and the notice that a parent looked for this phone. Without it those happen silently, which on the last one matters.</string>

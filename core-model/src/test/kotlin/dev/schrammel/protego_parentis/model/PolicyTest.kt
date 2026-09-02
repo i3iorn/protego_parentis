@@ -2,6 +2,7 @@ package dev.schrammel.protego_parentis.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -241,9 +242,18 @@ class UsageSnapshotTest {
 class DeviceStateTest {
 
     @Test
-    fun `suspension is deferred during a call or navigation`() {
-        assertTrue(DeviceState(callInProgress = true).suspensionDeferred)
-        assertTrue(DeviceState(navigationInProgress = true).suspensionDeferred)
-        assertFalse(DeviceState.IDLE.suspensionDeferred)
+    fun `the navigating app is the one whose suspension is deferred`() {
+        val maps = PackageName("com.example.maps")
+
+        assertEquals(maps, DeviceState(navigatingPackage = maps).suspensionDeferredFor)
+        assertNull(DeviceState.IDLE.suspensionDeferredFor)
+    }
+
+    /** Being in the foreground is not navigating; only a live route is. */
+    @Test
+    fun `the foreground app alone defers nothing`() {
+        val maps = PackageName("com.example.maps")
+
+        assertNull(DeviceState(foregroundPackage = maps).suspensionDeferredFor)
     }
 }
