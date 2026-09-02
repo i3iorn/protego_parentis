@@ -72,8 +72,25 @@ object ReplayGuard {
      */
     val CONVERSATION_WINDOW: Duration = 24.hours
 
-    /** How many recent ids to remember. Bounded so the store cannot grow forever. */
-    const val REMEMBERED_IDS = 200
+    /**
+     * A ceiling on remembered ids, as a backstop rather than the mechanism.
+     *
+     * Counting was the mechanism, and it was the wrong one. The property wanted
+     * is "no message is acted on twice while acting on it twice would still do
+     * something", which is a statement about *time* — and a fixed count has no
+     * relationship to the windows in [freshnessFor]. Two hundred ids sounds
+     * ample until you notice that every admitted message consumes one: every
+     * state op, every telemetry write, every digest, every line of a
+     * conversation. A busy half hour evicted a command's id while that command
+     * was still inside its own freshness window, and once evicted there was
+     * nothing left to refuse a replay with.
+     *
+     * So eviction is by age now, and this only bounds what a flood can cost in
+     * storage. Set far above what real traffic reaches inside the longest
+     * window, so hitting it is an anomaly worth reporting rather than an
+     * ordinary Tuesday — see [Remembered.droppedWhileFresh].
+     */
+    const val MAX_REMEMBERED = 5_000
 
     /** The window that applies to [type]. Commands are held to the short one. */
     fun freshnessFor(type: SyncMessageType): Duration = when (type) {
@@ -81,8 +98,8 @@ object ReplayGuard {
         else -> FRESHNESS_WINDOW
     }
 
-    fun admit(message: SyncMessage, now: Instant, seenIds: Collection<String>): Admission {
-        if (message.id in seenIds) return Admission.Reject(RejectReason.ALREADY_SEEN)
+    fun admit(message: SyncMessage, now: Instant, seen: Collection<SeenMessage>): Admission {
+        if (seen.any { it.id == message.id }) return Admission.Reject(RejectReason.ALREADY_SEEN)
 
         val age = now.toEpochMilli() - message.sentAt.toEpochMilli()
         if (age > freshnessFor(message.type).inWholeMilliseconds) {
@@ -95,11 +112,46 @@ object ReplayGuard {
     }
 
     /**
-     * The seen-set after accepting [id], oldest entries dropped once it is full.
+     * The seen-set after accepting [message], with anything too old to matter
+     * dropped.
      *
-     * Newest last, so trimming from the front removes the ids least likely to be
-     * replayed at us again.
+     * An id is worth keeping exactly as long as the message it names could still
+     * be admitted. Past that, [admit] would refuse a replay on freshness alone
+     * and the id is dead weight. Held against the longest window rather than the
+     * message's own, because the set does not record which type each id came
+     * from and the cost of a slightly generous horizon is a few more rows.
      */
-    fun remember(seenIds: List<String>, id: String): List<String> =
-        (seenIds - id + id).takeLast(REMEMBERED_IDS)
+    fun remember(seen: List<SeenMessage>, message: SyncMessage, now: Instant): Remembered {
+        val kept = (seen.filterNot { it.id == message.id } + SeenMessage(message.id, message.sentAt))
+            .filter { !isPastKeeping(it, now) }
+
+        // Only ever reached under a flood: real traffic does not put thousands of
+        // messages inside one window. Whatever is dropped here is still fresh by
+        // definition — everything stale went in the filter above — so the count
+        // is the signal that replay protection was degraded, and by how much.
+        val trimmed = kept.takeLast(MAX_REMEMBERED)
+        return Remembered(seen = trimmed, droppedWhileFresh = kept.size - trimmed.size)
+    }
+
+    /** Whether [entry] names a message that could no longer be admitted anyway. */
+    private fun isPastKeeping(entry: SeenMessage, now: Instant): Boolean {
+        val age = now.toEpochMilli() - entry.sentAt.toEpochMilli()
+        return age > LONGEST_WINDOW.inWholeMilliseconds
+    }
+
+    /** The most generous window any message type is held to. */
+    private val LONGEST_WINDOW: Duration = CONVERSATION_WINDOW
 }
+
+/** An id worth refusing a second time, and when the message claimed to be sent. */
+data class SeenMessage(val id: String, val sentAt: Instant)
+
+/**
+ * The seen-set after remembering one more, and what it cost.
+ *
+ * [droppedWhileFresh] is zero in every ordinary case. Anything else means the
+ * ceiling was reached and ids were discarded while the messages they name could
+ * still be replayed — the moment replay protection weakens, which used to happen
+ * silently and by design.
+ */
+data class Remembered(val seen: List<SeenMessage>, val droppedWhileFresh: Int)

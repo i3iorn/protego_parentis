@@ -73,6 +73,16 @@ enum class DiagnosticEvent {
     /** A correctly signed stranger asked to join the family. */
     SYNC_DEVICE_PENDING,
 
+    /**
+     * The seen-set hit its ceiling and dropped ids that were still replayable.
+     *
+     * Not an ordinary event. It means more messages arrived inside one freshness
+     * window than the store will hold, which real family traffic does not reach —
+     * so it is either a fault or somebody deliberately filling the set to push a
+     * captured message back out of it.
+     */
+    REPLAY_MEMORY_OVERFLOWED,
+
     /** A screen asked for something in the background and did not get it. */
     SCREEN_LOAD_FAILED,
 

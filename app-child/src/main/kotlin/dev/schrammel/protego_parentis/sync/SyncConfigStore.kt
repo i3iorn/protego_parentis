@@ -250,11 +250,36 @@ class SyncConfigStore(context: Context) {
 
     // ---------- replay guard state ----------
 
-    fun seenMessageIds(): List<String> =
-        prefs.getString(KEY_SEEN, null)?.split(SEPARATOR)?.filter(String::isNotBlank).orEmpty()
+    /**
+     * The ids this phone has already acted on, with when each claimed to be sent.
+     *
+     * The timestamp is what lets [ReplayGuard] drop an id once the message it
+     * names is too old to be admitted anyway. Stored as `id@epochSecond`: a
+     * message id is a UUID, so `@` cannot occur inside one and the split is
+     * unambiguous.
+     *
+     * An entry that does not parse is dropped rather than guessed at. That
+     * includes the bare ids written by builds before the timestamp existed —
+     * losing them costs at most one freshness window of protection on the
+     * upgrade, and inventing a send time for them would be worse.
+     */
+    fun seenMessages(): List<SeenMessage> =
+        prefs.getString(KEY_SEEN, null)
+            ?.split(SEPARATOR)
+            ?.mapNotNull(::decodeSeen)
+            .orEmpty()
 
-    fun rememberSeen(ids: List<String>) {
-        prefs.edit { putString(KEY_SEEN, ids.joinToString(SEPARATOR)) }
+    fun rememberSeen(seen: List<SeenMessage>) {
+        prefs.edit {
+            putString(KEY_SEEN, seen.joinToString(SEPARATOR) { "${it.id}$SEEN_AT${it.sentAt.epochSecond}" })
+        }
+    }
+
+    private fun decodeSeen(raw: String): SeenMessage? {
+        val at = raw.lastIndexOf(SEEN_AT)
+        if (at <= 0) return null
+        val seconds = raw.substring(at + 1).toLongOrNull() ?: return null
+        return SeenMessage(raw.substring(0, at), Instant.ofEpochSecond(seconds))
     }
 
     fun lastPolledAt(): Instant = Instant.ofEpochMilli(prefs.getLong(KEY_LAST_POLL, 0L))
@@ -341,6 +366,9 @@ class SyncConfigStore(context: Context) {
 
         const val FILE_NAME = "sync"
         const val SEPARATOR = ","
+
+        /** Splits an id from its send time. A UUID cannot contain one. */
+        const val SEEN_AT = '@'
         const val MAX_NAME_LENGTH = 40
         const val MILLIS_PER_MINUTE = 60_000L
         const val ANNOUNCE_INTERVAL_MINUTES = 60L
