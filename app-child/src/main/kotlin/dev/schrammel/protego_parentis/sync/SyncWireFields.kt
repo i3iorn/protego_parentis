@@ -39,6 +39,9 @@ internal object SyncWireFields {
     const val FIELD_VOUCHED_KEY = "vouchedKey"
     const val FIELD_VOUCHED_ROLE = "vouchedRole"
     const val FIELD_REVOKED_ID = "revokedId"
+
+    /** Rides on DEVICE_ANNOUNCE so a family can see when phones have drifted apart. */
+    const val FIELD_APP_VERSION = "appVersion"
     const val FIELD_LATITUDE = "lat"
     const val FIELD_LONGITUDE = "lon"
     const val FIELD_ACCURACY = "accuracy"

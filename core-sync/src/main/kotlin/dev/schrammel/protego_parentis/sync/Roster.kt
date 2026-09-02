@@ -13,6 +13,14 @@ data class KnownDevice(
     val approvedAt: Instant,
     /** When it last said anything, for showing which phones are still in use. */
     val lastHeardAt: Instant? = null,
+    /**
+     * The app version it last announced, or null if it has never said.
+     *
+     * Null on every device enrolled before this was sent, and on any peer still
+     * running an older build — which is why null is never reported as a
+     * mismatch.
+     */
+    val appVersion: String? = null,
 )
 
 /**

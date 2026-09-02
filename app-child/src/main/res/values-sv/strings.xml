@@ -1041,6 +1041,8 @@
     <string name="perms_usage_risk">Vad den tillåter: att se vilka appar som öppnas och hur länge. Inte vad som görs i dem, och inte vad som syns på skärmen. Android gömmer reglaget väl, för en app som har det kan se hur en telefon används — vilket är precis vad den här appen gör, med resultatet synligt för er båda.</string>
     <string name="perms_usage_steps">1. Tryck på knappen nedan — den öppnar listan direkt.\n2. Hitta Dementor Watch i listan.\n3. Slå på ”Tillåt användningsåtkomst”.\n4. Kom tillbaka hit; sidan säger då att den är på.\n\nOm knappen inte öppnar rätt skärm: Inställningar → Appar → Särskild appåtkomst → Användningsåtkomst.</string>
     <string name="perms_usage_action">Öppna användningsåtkomst</string>
+    <string name="devices_version_mixed">Alla telefoner har inte samma version. Den här har %1$s. Reglerna gäller fortfarande, men en telefon med en äldre version kanske inte förstår nyare.</string>
+    <string name="devices_version_other">Har version %1$s</string>
 
     <string name="app_search_hint">Sök appar</string>
     <string name="app_search_none">Ingen app matchar det.</string>

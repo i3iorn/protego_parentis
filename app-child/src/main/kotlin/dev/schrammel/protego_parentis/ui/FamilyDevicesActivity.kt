@@ -8,12 +8,15 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.sync.DeviceId
 import dev.schrammel.protego_parentis.sync.KnownDevice
+import dev.schrammel.protego_parentis.sync.appVersionName
+import dev.schrammel.protego_parentis.sync.versionsDiffer
 import dev.schrammel.protego_parentis.sync.PendingDevice
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
@@ -118,6 +121,12 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         if (known.isEmpty()) {
             column.addView(bodyText(getString(R.string.devices_none)))
         } else {
+            // Said once above the list rather than repeated on every row: the
+            // interesting fact is that the family has drifted apart, not which
+            // particular phone is the odd one out.
+            if (known.any { versionsDiffer(myVersion, it.appVersion) }) {
+                column.addView(captionText(getString(R.string.devices_version_mixed, myVersion)))
+            }
             column.addView(group(known.map(::knownRow)))
         }
 
@@ -269,7 +278,21 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                 styleAs(R.style.TextAppearance_Dementor_Caption)
             },
         )
+        // Only when it differs. A version that matches is not news, and one we
+        // have never been told is not a mismatch.
+        if (versionsDiffer(myVersion, device.appVersion)) {
+            addView(
+                TextView(context).apply {
+                    text = getString(R.string.devices_version_other, device.appVersion)
+                    styleAs(R.style.TextAppearance_Dementor_Caption)
+                    setTextColor(ContextCompat.getColor(context, R.color.state_warning))
+                },
+            )
+        }
     }
+
+    /** Read once per render; it cannot change while the screen is open. */
+    private val myVersion: String by lazy { appVersionName(this) }
 
     /**
      * Approving is a two-step because it is the security decision on this screen.

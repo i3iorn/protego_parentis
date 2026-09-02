@@ -23,6 +23,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ACCURACY
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ALLOWED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_PREFIX
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ARRIVED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BUCKETS
@@ -130,7 +131,12 @@ class SyncPublisher(context: Context) {
         val now = Instant.now()
         if (!force && !config.announceDue(now)) return
         config.recordAnnouncedAt(now)
-        publish(SyncMessageType.DEVICE_ANNOUNCE, emptyMap())
+        // Carried as an ordinary field rather than in the envelope: older peers
+        // drop unknown fields harmlessly, and the signature already covers them.
+        publish(
+            SyncMessageType.DEVICE_ANNOUNCE,
+            mapOf(FIELD_APP_VERSION to appVersionName(appContext)),
+        )
     }
 
     /**

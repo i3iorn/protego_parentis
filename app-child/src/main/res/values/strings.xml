@@ -1039,6 +1039,8 @@
     <string name="perms_usage_risk">What it allows: seeing which apps are opened and for how long. Not what is done inside them, and not what is on the screen. Android keeps this switch well hidden because an app that has it can watch how a phone is used — which is exactly what this app does, with both of you able to see the result.</string>
     <string name="perms_usage_steps">1. Tap the button below — it opens the list directly.\n2. Find Dementor Watch in the list.\n3. Turn on “Permit usage access”.\n4. Come back here; this page will say it is on.\n\nIf the button does not open the right screen: Settings → Apps → Special app access → Usage access.</string>
     <string name="perms_usage_action">Open usage access settings</string>
+    <string name="devices_version_mixed">Not every phone is on the same version. This one is on %1$s. Rules still apply, but a phone on an older version may not understand newer ones.</string>
+    <string name="devices_version_other">On version %1$s</string>
 
     <string name="app_search_hint">Search apps</string>
     <string name="app_search_none">No app matches that.</string>

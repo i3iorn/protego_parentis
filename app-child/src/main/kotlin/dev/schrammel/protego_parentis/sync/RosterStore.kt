@@ -154,17 +154,30 @@ class RosterStore(context: Context) {
      * already-approved device can do this, and it could already say anything its
      * role permits — a confusing name is not a new power.
      */
-    fun observed(id: DeviceId, name: String?, at: Instant) = synchronized(LOCK) {
+    fun observed(
+        id: DeviceId,
+        name: String?,
+        at: Instant,
+        appVersion: String? = null,
+    ) = synchronized(LOCK) {
         val current = devices
         if (current.none { it.id == id }) return@synchronized
         val chosen = name?.trim()?.takeIf(String::isNotEmpty)
+        // Only DEVICE_ANNOUNCE carries the version, so most messages arrive with
+        // null here. Keeping the last one we were told beats forgetting it on
+        // every heartbeat in between.
+        val version = appVersion?.trim()?.takeIf(String::isNotEmpty)
 
         writeKnown(
             current.map { device ->
                 if (device.id != id) {
                     device
                 } else {
-                    device.copy(lastHeardAt = at, name = chosen ?: device.name)
+                    device.copy(
+                        lastHeardAt = at,
+                        name = chosen ?: device.name,
+                        appVersion = version ?: device.appVersion,
+                    )
                 }
             },
         )
@@ -191,6 +204,7 @@ class RosterStore(context: Context) {
                             put(KEY_PUBLIC_KEY, device.publicKey)
                             put(KEY_APPROVED_AT, device.approvedAt.toEpochMilli())
                             device.lastHeardAt?.let { put(KEY_LAST_HEARD, it.toEpochMilli()) }
+                            device.appVersion?.let { put(KEY_APP_VERSION, it) }
                         }
                     },
                 ).toString(),
@@ -232,6 +246,7 @@ class RosterStore(context: Context) {
             lastHeardAt = json.optLong(KEY_LAST_HEARD, 0L)
                 .takeIf { it > 0L }
                 ?.let(Instant::ofEpochMilli),
+            appVersion = json.optString(KEY_APP_VERSION).takeIf(String::isNotBlank),
         )
     }
 
@@ -274,6 +289,7 @@ class RosterStore(context: Context) {
         const val KEY_PUBLIC_KEY = "publicKey"
         const val KEY_APPROVED_AT = "approvedAt"
         const val KEY_LAST_HEARD = "lastHeardAt"
+        const val KEY_APP_VERSION = "appVersion"
         const val KEY_FIRST_HEARD = "firstHeardAt"
     }
 }
