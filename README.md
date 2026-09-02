@@ -7,8 +7,6 @@ shows the teenager exactly the same numbers their parent sees.
 Enforcement is done through Android's **Device Owner** APIs, so blocked apps are
 suspended by the operating system rather than covered by an overlay.
 
-Full product spec: <https://claude.ai/code/artifact/049658ba-b93f-4733-a1e9-bfcfa45ce64c>
-
 ---
 
 ## Modules
