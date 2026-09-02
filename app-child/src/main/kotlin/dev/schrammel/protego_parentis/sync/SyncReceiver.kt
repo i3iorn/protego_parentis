@@ -35,6 +35,7 @@ import dev.schrammel.protego_parentis.ui.HomeActivity
 import dev.schrammel.protego_parentis.ui.JoinFamilyActivity
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ACCURACY
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ALLOWED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
@@ -247,6 +248,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
                 id = admittance.device.id,
                 name = message.senderName,
                 at = now,
+                appVersion = message.field(FIELD_APP_VERSION),
             )
         }
 
