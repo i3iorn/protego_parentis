@@ -212,7 +212,7 @@ class ReplayGuardTest {
             ReplayGuard.admit(
                 message(id = "c-1", type = SyncMessageType.CHAT_MESSAGE),
                 now,
-                setOf("c-1"),
+                setOf(SeenMessage("c-1", now)),
             ),
         )
     }
@@ -237,7 +237,7 @@ class ReplayGuardTest {
     fun `a message already acted on is refused`() {
         assertEquals(
             Admission.Reject(RejectReason.ALREADY_SEEN),
-            ReplayGuard.admit(message(id = "m-1"), now, setOf("m-1")),
+            ReplayGuard.admit(message(id = "m-1"), now, setOf(SeenMessage("m-1", now))),
         )
     }
 
@@ -260,18 +260,87 @@ class ReplayGuardTest {
 
     @Test
     fun `the seen set stays bounded`() {
-        var seen = emptyList<String>()
-        repeat(ReplayGuard.REMEMBERED_IDS * 3) { seen = ReplayGuard.remember(seen, "m-$it") }
+        var seen = emptyList<SeenMessage>()
+        repeat(ReplayGuard.MAX_REMEMBERED * 2) {
+            seen = ReplayGuard.remember(seen, message(id = "m-$it"), now).seen
+        }
 
-        assertEquals(ReplayGuard.REMEMBERED_IDS, seen.size)
-        // The most recent are the ones kept.
-        assertTrue(seen.contains("m-${ReplayGuard.REMEMBERED_IDS * 3 - 1}"))
+        assertEquals(ReplayGuard.MAX_REMEMBERED, seen.size)
+        assertTrue(seen.any { it.id == "m-${ReplayGuard.MAX_REMEMBERED * 2 - 1}" })
     }
 
     @Test
     fun `remembering the same id twice does not duplicate it`() {
-        val seen = ReplayGuard.remember(ReplayGuard.remember(emptyList(), "m-1"), "m-1")
+        val once = ReplayGuard.remember(emptyList(), message(id = "m-1"), now).seen
+        val twice = ReplayGuard.remember(once, message(id = "m-1"), now).seen
 
-        assertEquals(listOf("m-1"), seen)
+        assertEquals(1, twice.size)
+        assertEquals("m-1", twice.single().id)
+    }
+
+    // ---------- the set is bounded by age, not by how busy the family is ----------
+
+    /**
+     * The defect this replaced: a captured command replayed after the traffic
+     * behind it had pushed its id out of a fixed-size set.
+     *
+     * Every admitted message used to consume one of two hundred slots — every
+     * state op, every telemetry write, every digest, every line of conversation.
+     * Two hundred inside half an hour is not a lot, and once the grant's id was
+     * evicted nothing was left to refuse it with. The flood here is well past the
+     * old ceiling and the grant is still refused.
+     */
+    @Test
+    fun `a captured grant is still refused after heavy traffic`() {
+        val grant = message(id = "the-grant", sentAt = now)
+        var seen = ReplayGuard.remember(emptyList(), grant, now).seen
+
+        repeat(1_000) { seen = ReplayGuard.remember(seen, message(id = "chatter-$it"), now).seen }
+
+        assertEquals(
+            Admission.Reject(RejectReason.ALREADY_SEEN),
+            ReplayGuard.admit(grant, now, seen),
+        )
+    }
+
+    /** And an id stops being kept once its message could not be admitted anyway. */
+    @Test
+    fun `an id too old to be replayed is not kept`() {
+        val ancient = message(id = "last-week", sentAt = now.minusSeconds(60L * 60 * 24 * 7))
+
+        val seen = ReplayGuard.remember(emptyList(), ancient, now).seen
+
+        assertTrue(seen.none { it.id == "last-week" })
+    }
+
+    /**
+     * Hitting the ceiling is reported rather than absorbed.
+     *
+     * It is the moment replay protection weakens, and under the old design it
+     * happened silently on any busy afternoon. Now it takes a deliberate flood,
+     * and says so.
+     */
+    @Test
+    fun `overflowing the memory is counted`() {
+        var seen = emptyList<SeenMessage>()
+        repeat(ReplayGuard.MAX_REMEMBERED) {
+            seen = ReplayGuard.remember(seen, message(id = "m-$it"), now).seen
+        }
+
+        val overflowing = ReplayGuard.remember(seen, message(id = "one-too-many"), now)
+
+        assertEquals(1, overflowing.droppedWhileFresh)
+    }
+
+    /** Ordinary traffic never reaches it. */
+    @Test
+    fun `a normal exchange drops nothing that could still be replayed`() {
+        var seen = emptyList<SeenMessage>()
+
+        repeat(500) {
+            val step = ReplayGuard.remember(seen, message(id = "m-$it"), now)
+            assertEquals(0, step.droppedWhileFresh)
+            seen = step.seen
+        }
     }
 }

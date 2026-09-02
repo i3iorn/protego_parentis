@@ -198,7 +198,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         if (message.sender == config.load().deviceId) return false
 
         val now = Instant.now()
-        val seen = config.seenMessageIds()
+        val seen = config.seenMessages()
         val admission = ReplayGuard.admit(message, now, seen)
         if (admission is Admission.Reject) {
             Log.w(TAG, "Refused message ${message.id}: ${admission.reason}")
@@ -250,7 +250,19 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             )
         }
 
-        config.rememberSeen(ReplayGuard.remember(seen, message.id))
+        val remembered = ReplayGuard.remember(seen, message, now)
+        config.rememberSeen(remembered.seen)
+        if (remembered.droppedWhileFresh > 0) {
+            // The ceiling was reached, which real traffic does not do. Ids were
+            // discarded while the messages they name could still be replayed, so
+            // this is replay protection weakening — and it used to happen on
+            // every busy afternoon without anybody being able to tell.
+            Diagnostics.record(
+                appContext,
+                DiagnosticEvent.REPLAY_MEMORY_OVERFLOWED,
+                mapOf("dropped" to remembered.droppedWhileFresh.toLong()),
+            )
+        }
 
         // What the roster says this sender is, never what the message claims.
         // Replication decides what an op may touch from this, so it has to be
