@@ -150,14 +150,37 @@ object TamperRestrictions {
      * the PIN, the rules, the shared history and the record of which apps were
      * already here, and leaves an app that looks installed and enforces nothing.
      * It also blocks force-stop, which is the other way to silence the service.
+     *
+     * It is worse than "enforces nothing", which is why this is in [ALWAYS] and
+     * not in [LOCKDOWN]. The roster is cleared with everything else, and a phone
+     * with no trusted parents is the bootstrap state — so the app reopens in
+     * first-run setup, on a device that is still device owner, in the hands of
+     * the person the rules are about. They pick the role, choose the PIN, and
+     * enrol their own phone as the founding parent. Losing enforcement is
+     * recoverable and visible; handing over the authority is neither.
      */
     const val NO_CONTROL_APPS = "no_control_apps"
 
     /** Applied only when the family has chosen gated installs (AC-3). */
     const val NO_INSTALL_APPS = "no_install_apps"
 
-    /** Always applied on a provisioned device. */
-    val BASELINE: Set<String> = setOf(
+    /**
+     * Applied on every provisioned device, whether or not the family has asked
+     * for lockdown.
+     *
+     * Only one restriction is in here, and it is the one that protects this app
+     * from being emptied rather than the one that restricts the phone. The
+     * distinction matters: [LOCKDOWN] takes things away from the person holding
+     * the device, and a family may reasonably decline all of it. This does not.
+     * It is what makes every other setting mean anything, because an app whose
+     * data can be cleared has no rules, no PIN, no history and — the part that
+     * took a while to notice — no roster, which hands the person being managed
+     * the founding-parent path. See the note on [NO_CONTROL_APPS].
+     */
+    val ALWAYS: Set<String> = setOf(NO_CONTROL_APPS)
+
+    /** Added when the family has explicitly asked to lock the device down. */
+    val LOCKDOWN: Set<String> = setOf(
         NO_FACTORY_RESET,
         NO_CONFIG_DATE_TIME,
         NO_SAFE_BOOT,
@@ -165,8 +188,10 @@ object TamperRestrictions {
         NO_CONFIG_PRIVATE_DNS,
         NO_CONFIG_VPN,
         NO_ADD_USER,
-        NO_CONTROL_APPS,
     )
+
+    /** Everything a locked-down provisioned device carries. */
+    val BASELINE: Set<String> = ALWAYS + LOCKDOWN
 
     /** Restrictions this app owns. Anything outside this set is left alone. */
     val MANAGED: Set<String> = BASELINE + NO_INSTALL_APPS

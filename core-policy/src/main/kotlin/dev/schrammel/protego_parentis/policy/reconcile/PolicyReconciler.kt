@@ -84,9 +84,15 @@ class PolicyReconciler(
 
         // --- tamper restrictions ---
         val desiredRestrictions = buildSet {
+            // Protecting this app's own data is not part of the lockdown switch.
+            // Everything in LOCKDOWN takes something away from the person holding
+            // the phone, and a family may decline all of it; this only stops the
+            // app being emptied, which is what would hand that person the
+            // founding-parent path. See TamperRestrictions.ALWAYS.
+            addAll(TamperRestrictions.ALWAYS)
             // Only when the family has explicitly asked to lock the device down.
             // Without this, provisioning alone would make the device unresettable.
-            if (policy.tamperProtection) addAll(TamperRestrictions.BASELINE)
+            if (policy.tamperProtection) addAll(TamperRestrictions.LOCKDOWN)
             // Independent of lockdown: a filter that can be switched off from
             // Settings in three taps is not a filter. The VPN lock goes with it,
             // because a VPN carries DNS with it and would route straight past.

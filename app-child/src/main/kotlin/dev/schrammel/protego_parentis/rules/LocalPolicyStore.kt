@@ -278,7 +278,11 @@ class LocalPolicyStore(context: Context) {
      * the phone it affects, not from wherever a parent happens to be.
      */
     var tamperProtection: Boolean
-        get() = prefs.getBoolean(KEY_TAMPER, false)
+        // Defaulted to on, matching Policy's own default, which this disagreed
+        // with. The store is what actually runs, so the disagreement meant a
+        // fresh install carried none of the lockdown while anyone reading the
+        // model would have believed otherwise.
+        get() = prefs.getBoolean(KEY_TAMPER, true)
         set(value) = write { putBoolean(KEY_TAMPER, value) }
 
     // ---------- plumbing ----------
