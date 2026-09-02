@@ -145,6 +145,12 @@ object Audit {
      * — a text editor on a rooted phone, a restored backup, a corrupted write —
      * breaks every link after it. The screen shows the result, because a history
      * whose integrity is never checked is one nobody has any reason to believe.
+     *
+     * What it does not establish: the anchor is read from the same preferences
+     * file as the entries, so anyone able to rewrite one can rewrite the other
+     * and this still returns Intact. It proves the copy is self-consistent. The
+     * evidence that survives a deliberate rewrite is the parent's, via
+     * [witness] — see IntegrityRules.historyRewritten.
      */
     fun check(context: Context): ChainCheck {
         val prefs = prefs(context)

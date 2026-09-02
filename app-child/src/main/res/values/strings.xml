@@ -661,7 +661,7 @@
     <string name="devices_revoke_body">%1$s will stop being trusted. It can ask again, and you can look at it again.</string>
 
     <string name="audit_intact">History adds up</string>
-    <string name="audit_intact_hint">Every entry follows from the one before it, so nothing has been changed or removed outside the app.</string>
+    <string name="audit_intact_hint">Every entry follows from the one before it. This phone is checking its own copy, so it catches damage and accidental loss — it is not proof against deliberate editing on this phone.</string>
     <string name="audit_broken">History has been changed</string>
     <string name="audit_broken_hint">Some entries no longer follow from the ones before them. Something edited or removed part of this record outside the app.</string>
     <string name="audit_device_approved">Approved %1$s as %2$s</string>
