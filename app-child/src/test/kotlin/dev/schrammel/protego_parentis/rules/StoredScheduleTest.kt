@@ -4,6 +4,7 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -29,10 +30,42 @@ class StoredScheduleTest {
     }
 
     @Test
-    fun `carries the apps that stay usable`() {
+    fun `carries the apps the window is about`() {
         val block = schedule(allowed = setOf("com.example.notes")).toDomain()
 
-        assertEquals(setOf(PackageName("com.example.notes")), block?.allowedPackages)
+        assertEquals(setOf(PackageName("com.example.notes")), block?.packages)
+    }
+
+    /**
+     * The default is what every schedule saved before modes existed meant. A
+     * stored schedule that came back as including would pause only its exception
+     * list — the exact inversion of what the family wrote.
+     */
+    @Test
+    fun `a schedule with no mode is exclusive`() {
+        assertEquals(ScheduleBlock.Mode.EXCLUSIVE, schedule().toDomain()?.mode)
+    }
+
+    @Test
+    fun `an including window carries its mode through`() {
+        val block = schedule(
+            allowed = setOf("com.example.game"),
+            mode = ScheduleBlock.Mode.INCLUSIVE,
+        ).toDomain()
+
+        assertEquals(ScheduleBlock.Mode.INCLUSIVE, block?.mode)
+    }
+
+    /** Including nothing pauses nothing, so it is not a finished schedule. */
+    @Test
+    fun `refuses an including window with no apps`() {
+        assertNull(schedule(allowed = emptySet(), mode = ScheduleBlock.Mode.INCLUSIVE).toDomain())
+    }
+
+    /** Excluding nothing pauses everything. That is bedtime, and it is valid. */
+    @Test
+    fun `accepts an excluding window with no apps`() {
+        assertNotNull(schedule(allowed = emptySet(), mode = ScheduleBlock.Mode.EXCLUSIVE).toDomain())
     }
 
     /**
@@ -93,13 +126,15 @@ class StoredScheduleTest {
         start: Int = 16 * 60 + 30,
         end: Int = 18 * 60,
         allowed: Set<String> = emptySet(),
+        mode: ScheduleBlock.Mode = ScheduleBlock.Mode.EXCLUSIVE,
     ) = StoredSchedule(
         id = SCHEDULE_ID,
         name = name,
         days = days,
         startMinuteOfDay = start,
         endMinuteOfDay = end,
-        allowedPackages = allowed,
+        packages = allowed,
+        mode = mode,
     )
 
     private companion object {

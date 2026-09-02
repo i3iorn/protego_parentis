@@ -133,7 +133,7 @@ object PolicyEngine {
                     add(Reason.UnmanagedBrowser)
                 }
                 for (schedule in activeSchedules) {
-                    if (pkg in schedule.allowedPackages) continue
+                    if (!schedule.appliesTo(pkg)) continue
                     val endsAt = ScheduleResolver.endOfActiveWindow(schedule, nowZdt) ?: continue
                     add(Reason.ScheduleActive(schedule.id, schedule.name, endsAt))
                 }

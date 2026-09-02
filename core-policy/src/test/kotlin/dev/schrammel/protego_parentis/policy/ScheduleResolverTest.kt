@@ -17,7 +17,7 @@ class ScheduleResolverTest {
         days = setOf(weekdayOf(startingOn)),
         start = LocalTime.parse("08:00"),
         end = LocalTime.parse("15:00"),
-        allowedPackages = setOf(HOMEWORK),
+        packages = setOf(HOMEWORK),
         kind = ScheduleBlock.Kind.SCHOOL,
     )
 

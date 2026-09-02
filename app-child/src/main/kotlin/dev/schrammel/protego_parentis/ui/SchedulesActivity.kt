@@ -8,6 +8,8 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.protego_parentis.R
@@ -16,6 +18,7 @@ import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.toMinuteOfDay
@@ -181,6 +184,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
     private var start: LocalTime = DEFAULT_START
     private var end: LocalTime = DEFAULT_END
     private var allowed: MutableSet<String> = mutableSetOf()
+    private var mode: ScheduleBlock.Mode = ScheduleBlock.Mode.EXCLUSIVE
     private var enabled: Boolean = true
 
     private val pickAllowed = registerForActivityResult(
@@ -203,7 +207,8 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 .toSet()
             start = existing.start
             end = existing.end
-            allowed = existing.allowedPackages.toMutableSet()
+            allowed = existing.packages.toMutableSet()
+            mode = existing.mode
             enabled = existing.enabled
         }
 
@@ -272,8 +277,65 @@ class ScheduleEditActivity : ParentGatedActivity() {
         )
         column.addView(captionText(getString(R.string.schedules_window_hint)))
 
-        column.addView(sectionHeader(getString(R.string.schedules_allowed_header)))
-        column.addView(captionText(getString(R.string.schedules_allowed_hint)))
+        // The mode comes before the list, because it decides what the list means.
+        // Choosing apps first and the reading afterwards is how somebody ends up
+        // having picked the exact opposite of what they wanted.
+        column.addView(sectionHeader(getString(R.string.schedules_mode_header)))
+        column.addView(
+            RadioGroup(this).apply {
+                orientation = RadioGroup.VERTICAL
+                addView(
+                    RadioButton(context).apply {
+                        id = MODE_EXCLUSIVE_ID
+                        setText(R.string.schedules_mode_exclusive)
+                    },
+                )
+                addView(
+                    RadioButton(context).apply {
+                        id = MODE_INCLUSIVE_ID
+                        setText(R.string.schedules_mode_inclusive)
+                    },
+                )
+                check(
+                    when (mode) {
+                        ScheduleBlock.Mode.EXCLUSIVE -> MODE_EXCLUSIVE_ID
+                        ScheduleBlock.Mode.INCLUSIVE -> MODE_INCLUSIVE_ID
+                    },
+                )
+                setOnCheckedChangeListener { _, checked ->
+                    val chosen = if (checked == MODE_INCLUSIVE_ID) {
+                        ScheduleBlock.Mode.INCLUSIVE
+                    } else {
+                        ScheduleBlock.Mode.EXCLUSIVE
+                    }
+                    if (chosen == mode) return@setOnCheckedChangeListener
+                    mode = chosen
+                    // The chosen apps are kept. They are the same apps either
+                    // way; only what the schedule does with them changes, and
+                    // clearing them would punish somebody for reading the labels
+                    // and correcting themselves.
+                    render()
+                }
+            },
+        )
+
+        val including = mode == ScheduleBlock.Mode.INCLUSIVE
+        column.addView(
+            sectionHeader(
+                getString(
+                    if (including) R.string.schedules_apps_paused_header
+                    else R.string.schedules_allowed_header,
+                ),
+            ),
+        )
+        column.addView(
+            captionText(
+                getString(
+                    if (including) R.string.schedules_apps_paused_hint
+                    else R.string.schedules_allowed_hint,
+                ),
+            ),
+        )
         val summary = TextView(this).apply {
             styleAs(R.style.TextAppearance_Dementor_Body)
         }
@@ -282,8 +344,12 @@ class ScheduleEditActivity : ParentGatedActivity() {
             val apps = InstalledApps(this)
             allowed.map { apps.labelFor(PackageName(it)) }.sorted()
         }) { labels ->
-            summary.text = labels.joinToString(", ")
-                .ifBlank { getString(R.string.schedules_allowed_none) }
+            summary.text = labels.joinToString(", ").ifBlank {
+                getString(
+                    if (including) R.string.schedules_apps_paused_none
+                    else R.string.schedules_allowed_none,
+                )
+            }
         }
         column.addView(
             actionButton().apply {
@@ -292,7 +358,10 @@ class ScheduleEditActivity : ParentGatedActivity() {
                     pickAllowed.launch(
                         AppPickerActivity.intent(
                             context,
-                            getString(R.string.schedules_allowed_header),
+                            getString(
+                                if (including) R.string.schedules_apps_paused_header
+                                else R.string.schedules_allowed_header,
+                            ),
                             allowed,
                         ),
                     )
@@ -340,7 +409,8 @@ class ScheduleEditActivity : ParentGatedActivity() {
             days = days.map { it.value }.toSet(),
             startMinuteOfDay = start.toMinuteOfDay(),
             endMinuteOfDay = end.toMinuteOfDay(),
-            allowedPackages = allowed.toSet(),
+            packages = allowed.toSet(),
+            mode = mode,
             enabled = enabled,
         )
 
@@ -348,6 +418,10 @@ class ScheduleEditActivity : ParentGatedActivity() {
             schedule.name.isBlank() -> R.string.schedules_needs_name
             schedule.days.isEmpty() -> R.string.schedules_needs_days
             schedule.startMinuteOfDay == schedule.endMinuteOfDay -> R.string.schedules_needs_window
+            // Saving this would produce a window that pauses nothing, which
+            // looks from the list exactly like one that works.
+            schedule.mode == ScheduleBlock.Mode.INCLUSIVE && schedule.packages.isEmpty() ->
+                R.string.schedules_needs_apps
             else -> null
         }
         if (problem != null) {
@@ -394,6 +468,12 @@ class ScheduleEditActivity : ParentGatedActivity() {
 
     companion object {
         private const val EXTRA_ID = "scheduleId"
+
+        // Fixed ids because the radios are rebuilt on every render and the group
+        // has to be able to say which one is checked across those rebuilds.
+        private const val MODE_EXCLUSIVE_ID = 1
+        private const val MODE_INCLUSIVE_ID = 2
+
         private val DEFAULT_START: LocalTime = LocalTime.of(8, 0)
         private val DEFAULT_END: LocalTime = LocalTime.of(15, 0)
 

@@ -69,13 +69,15 @@ internal fun bedtime(
     start: String = "22:30",
     end: String = "07:00",
     allowed: Set<PackageName> = setOf(CLOCK),
+    mode: ScheduleBlock.Mode = ScheduleBlock.Mode.EXCLUSIVE,
 ) = ScheduleBlock(
     id = ScheduleId("bedtime"),
     name = "Bedtime",
     days = setOf(weekdayOf(startingOn)),
     start = LocalTime.parse(start),
     end = LocalTime.parse(end),
-    allowedPackages = allowed,
+    packages = allowed,
+    mode = mode,
     kind = ScheduleBlock.Kind.BEDTIME,
 )
 

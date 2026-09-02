@@ -539,6 +539,13 @@
     <string name="schedules_allowed_hint">Everything else is paused while the window runs. The phone, messages and maps are always allowed.</string>
     <string name="schedules_allowed_none">Nothing extra</string>
     <string name="schedules_allowed_choose">Choose apps</string>
+    <string name="schedules_mode_header">What this window does</string>
+    <string name="schedules_mode_exclusive">Pause everything except the apps I choose</string>
+    <string name="schedules_mode_inclusive">Pause only the apps I choose</string>
+    <string name="schedules_apps_paused_header">Apps that get paused</string>
+    <string name="schedules_apps_paused_hint">Only these are paused while the window runs. Everything else carries on as normal.</string>
+    <string name="schedules_apps_paused_none">No apps chosen yet</string>
+    <string name="schedules_needs_apps">Choose at least one app to pause, or switch to pausing everything except your choices.</string>
     <string name="schedules_enabled">Active</string>
     <string name="schedules_save">Save</string>
     <string name="schedules_delete">Delete this schedule</string>
