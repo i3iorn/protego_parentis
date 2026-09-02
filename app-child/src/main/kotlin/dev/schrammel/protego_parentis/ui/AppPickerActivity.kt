@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
@@ -42,6 +43,8 @@ class AppPickerActivity : ParentGatedActivity() {
                 setPadding(0, 0, 0, dimen(R.dimen.space_md))
             },
         )
+        content.addView(searchField { query = it; renderRows() })
+        content.addView(rows)
         showColumn(content)
     }
 
@@ -51,12 +54,35 @@ class AppPickerActivity : ParentGatedActivity() {
         loaded = true
         // Loading every launchable app's label and icon is the slowest thing this
         // screen does, so the list arrives after the frame rather than blocking it.
-        Background.load(this, { InstalledApps(this).launchable() }) { apps ->
-            apps.forEach { app -> content.addView(row(app.pkg.value, app.label, app.icon)) }
+        Background.load(this, { InstalledApps(this).launchable() }) { loadedApps ->
+            apps = loadedApps
+            renderRows()
         }
     }
 
+    /**
+     * Rebuilds only the rows, never [selected].
+     *
+     * That distinction is the whole point. An app ticked and then filtered out of
+     * view is still chosen; rebuilding the selection from whatever happens to be
+     * on screen would quietly discard a parent's choices.
+     */
+    private fun renderRows() {
+        rows.removeAllViews()
+        val visible = AppSearch.filter(apps, query, { it.label }, { it.pkg.value })
+        if (visible.isEmpty() && apps.isNotEmpty()) {
+            rows.addView(noSearchResults())
+            return
+        }
+        visible.forEach { app -> rows.addView(row(app.pkg.value, app.label, app.icon)) }
+    }
+
     private lateinit var content: LinearLayout
+    private val rows: LinearLayout by lazy {
+        LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    }
+    private var apps: List<AppInfo> = emptyList()
+    private var query = ""
     private var loaded = false
     private var authenticated = false
 
