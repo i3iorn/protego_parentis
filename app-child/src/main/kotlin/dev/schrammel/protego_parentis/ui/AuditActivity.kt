@@ -77,11 +77,18 @@ class AuditActivity : DementorActivity() {
     }
 
     /**
-     * Whether the stored history still adds up.
+     * Whether the stored history still adds up against itself.
      *
      * Shown rather than kept internal, because the point of chaining the entries
      * is that both sides can see the answer. A record whose integrity is only
      * known to the app is one nobody has a reason to believe.
+     *
+     * The wording is careful about what this proves. The chain is verified
+     * against an anchor held in the same `SharedPreferences` as the entries, so
+     * it establishes self-consistency and nothing more — it catches damage and
+     * accidental loss, not somebody on this phone who rewrites the entries and
+     * recomputes the anchor to match. Saying "nothing has been changed" would
+     * lend it authority it has not got.
      */
     private fun integrityCard(check: ChainCheck): LinearLayout = card {
         addView(

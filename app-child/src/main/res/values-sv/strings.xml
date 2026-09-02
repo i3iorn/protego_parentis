@@ -668,7 +668,7 @@
     <string name="devices_revoke_body">%1$s slutar vara betrodd. Den kan fråga igen, och du kan titta på den igen.</string>
 
     <string name="audit_intact">Historiken stämmer</string>
-    <string name="audit_intact_hint">Varje rad följer på den föregående, så ingenting har ändrats eller tagits bort utanför appen.</string>
+    <string name="audit_intact_hint">Varje rad följer på den föregående. Telefonen kontrollerar sin egen kopia, så det upptäcker skador och rader som gått förlorade — det är inget bevis mot avsiktliga ändringar på den här telefonen.</string>
     <string name="audit_broken">Historiken har ändrats</string>
     <string name="audit_broken_hint">Några rader följer inte längre på de föregående. Något har ändrat eller tagit bort delar av den här historiken utanför appen.</string>
     <string name="audit_device_approved">Godkände %1$s som %2$s</string>
