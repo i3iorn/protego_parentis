@@ -15,6 +15,7 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.context.NavigationWatcher
 import dev.schrammel.protego_parentis.usage.UsageAccess
 
 /**
@@ -74,6 +75,16 @@ class PermissionsActivity : DementorActivity() {
             steps = R.string.perms_usage_steps,
             action = R.string.perms_usage_action,
             intent = UsageAccess.settingsIntent(),
+        )
+
+        entry(
+            granted = NavigationWatcher.isGranted(this),
+            title = R.string.perms_navigation_title,
+            why = R.string.perms_navigation_why,
+            risk = R.string.perms_navigation_risk,
+            steps = R.string.perms_navigation_steps,
+            action = R.string.perms_navigation_action,
+            intent = NavigationWatcher.settingsIntent(),
         )
 
         entry(

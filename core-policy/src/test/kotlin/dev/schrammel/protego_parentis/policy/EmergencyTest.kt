@@ -78,17 +78,17 @@ class EmergencyTest {
     }
 
     @Test
-    fun `a call still only defers`() {
-        val onCall = PolicyEngine.evaluate(
+    fun `a live route still only defers`() {
+        val navigating = PolicyEngine.evaluate(
             policy = spent,
             installedPackages = setOf(game, chat),
             usage = usage(),
-            deviceState = DeviceState(callInProgress = true),
+            deviceState = DeviceState(navigatingPackage = game),
             now = now,
         )
 
-        assertTrue(onCall.suspend.isEmpty())
-        assertTrue(onCall.deferred.isNotEmpty())
+        assertTrue(game !in navigating.suspend)
+        assertEquals(setOf(game), navigating.deferred.keys)
     }
 
     /** A phone that cannot reach the network cannot reach anyone on it. */

@@ -331,19 +331,45 @@ class PolicyEngineTest {
 
     // ---------- deferral ----------
 
+    private fun budgetSpent(deviceState: DeviceState) = PolicyEngine.evaluate(
+        policy = policy(deviceBudget = WeeklyBudget.flat(1.hours)),
+        installedPackages = ALL_PACKAGES,
+        usage = usage("2026-08-21", deviceTotal = 2.hours),
+        deviceState = deviceState,
+        now = at("2026-08-21", "18:00"),
+    )
+
     @Test
-    fun `a call in progress defers suspension rather than cancelling it`() {
+    fun `a live route defers that app's suspension rather than cancelling it`() {
+        val result = budgetSpent(DeviceState(navigatingPackage = YOUTUBE))
+
+        assertEquals(setOf(YOUTUBE), result.deferred.keys)
+        assertTrue(result.reasonFor(YOUTUBE) is Reason.DeviceBudgetExhausted)
+    }
+
+    /**
+     * The point of per-app deferral. Sparing the map must not spare the game:
+     * a blanket lift would make starting a route a way round every other rule.
+     */
+    @Test
+    fun `deferring one app leaves every other suspension standing`() {
+        val result = budgetSpent(DeviceState(navigatingPackage = YOUTUBE))
+
+        assertEquals(setOf(CLOCK, GAME, HOMEWORK), result.suspend.keys)
+    }
+
+    /** Nothing to hold back, so nothing is recorded as held back. */
+    @Test
+    fun `navigating in an app that is not suspended defers nothing`() {
         val result = PolicyEngine.evaluate(
-            policy = policy(deviceBudget = WeeklyBudget.flat(1.hours)),
+            policy = policy(),
             installedPackages = ALL_PACKAGES,
-            usage = usage("2026-08-21", deviceTotal = 2.hours),
-            deviceState = DeviceState(callInProgress = true),
+            usage = usage("2026-08-21"),
+            deviceState = DeviceState(navigatingPackage = YOUTUBE),
             now = at("2026-08-21", "18:00"),
         )
 
-        assertEquals(emptyMap<Any, Any>(), result.suspend)
-        assertEquals(setOf(CLOCK, YOUTUBE, GAME, HOMEWORK), result.deferred.keys)
-        assertTrue(result.reasonFor(YOUTUBE) is Reason.DeviceBudgetExhausted)
+        assertEquals(emptyMap<Any, Any>(), result.deferred)
     }
 
     // ---------- alarm scheduling ----------

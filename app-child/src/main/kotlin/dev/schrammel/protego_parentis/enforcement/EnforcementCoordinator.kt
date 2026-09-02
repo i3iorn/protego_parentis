@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.dpc.AndroidDevicePolicyPort
 import dev.schrammel.protego_parentis.context.ContextProvider
+import dev.schrammel.protego_parentis.context.NavigationWatcher
 import dev.schrammel.protego_parentis.model.DeviceContext
 import dev.schrammel.protego_parentis.model.DeviceState
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
@@ -160,6 +161,10 @@ class EnforcementCoordinator(context: Context) {
             grants = grants.active(now),
             deviceState = DeviceState(
                 foregroundPackage = usage.foregroundPackage,
+                // Null unless notification access was granted and a route is
+                // actually running, which is the direction that enforces the
+                // rules as written rather than quietly widening them.
+                navigatingPackage = NavigationWatcher.current(),
                 // An emergency lifts everything, so it is read on every pass
                 // rather than pushed — a restart must not quietly end one.
                 emergency = SosStore(appContext).isActive,
