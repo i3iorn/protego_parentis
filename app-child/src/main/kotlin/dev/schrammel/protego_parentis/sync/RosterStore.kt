@@ -33,6 +33,9 @@ class RosterStore(context: Context) {
 
     fun child(): KnownDevice? = devices.firstOrNull { it.role == SyncRole.CHILD }
 
+    /** Every managed phone this family has. #43: more than one is when a picker appears. */
+    fun children(): List<KnownDevice> = devices.filter { it.role == SyncRole.CHILD }
+
     /**
      * Records a device that signed correctly but nobody has vouched for.
      *

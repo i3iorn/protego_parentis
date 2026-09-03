@@ -22,6 +22,8 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.rules.BedtimeSetting
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import java.time.Instant
 import java.time.LocalTime
@@ -249,24 +251,30 @@ class LimitsActivity : ParentGatedActivity() {
 /** The list of categories, with their limits and how many apps each holds. */
 class CategoriesActivity : ParentGatedActivity() {
 
-    private lateinit var store: LocalPolicyStore
+    private lateinit var target: RuleTarget
     private lateinit var column: LinearLayout
+
+    override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = LocalPolicyStore(this)
         column = contentColumn()
         showColumn(column)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+        render()
+    }
 
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.rules_categories_header)))
         column.addView(captionText(getString(R.string.rules_categories_hint)))
+        if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
-        val categories = store.categories.sortedBy { it.name.lowercase() }
+        val categories = policyRuleStore(this, target).categories().sortedBy { it.name.lowercase() }
         if (categories.isEmpty()) {
             column.addView(bodyText(getString(R.string.rules_no_categories)))
         } else {
@@ -284,18 +292,22 @@ class CategoriesActivity : ParentGatedActivity() {
                                     category.packages.size,
                                 ),
                             ),
-                        ) { startActivity(CategoryEditActivity.intent(this, category.id)) }
+                        ) { startActivity(CategoryEditActivity.intent(this, category.id, target.childId)) }
                     },
                 ),
             )
         }
 
-        column.addView(
-            actionButton().apply {
-                setText(R.string.rules_add_category)
-                setOnClickListener { startActivity(CategoryEditActivity.intent(this@CategoriesActivity)) }
-            },
-        )
+        if (canEdit) {
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.rules_add_category)
+                    setOnClickListener {
+                        startActivity(CategoryEditActivity.intent(this@CategoriesActivity, childId = target.childId))
+                    }
+                },
+            )
+        }
     }
 }
 

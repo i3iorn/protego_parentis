@@ -158,6 +158,9 @@
     <string name="places_bad_radius">Radien måste vara minst %1$d m.</string>
     <string name="places_no_map_app">Ingen kartapp är installerad att kontrollera detta i.</string>
     <string name="places_radius_increased">Radien ökades till minimum, för att skydda platsens integritet.</string>
+    <string name="places_rename">Byt namn</string>
+    <string name="places_resize">Ändra radie</string>
+    <string name="places_radius_value">%1$d m</string>
     <string name="home_context_active">Gäller nu: %1$s</string>
 
     <!-- Integritet och logg. -->
@@ -299,6 +302,8 @@
     <string name="rules_row_context_detail">Regler för ett Wi-Fi-nätverk, en plats eller att vara nära någon</string>
     <string name="rules_row_goal">Mål och belöning</string>
     <string name="rules_row_goal_detail">Något att förtjäna genom att hålla sig under en gräns</string>
+    <string name="rules_read_only_hint">Ange PIN-koden för att göra ändringar.</string>
+    <string name="rules_unlock_to_edit">Lås upp för att ändra</string>
     <string name="rules_row_bonus">Extratid</string>
     <string name="rules_row_bonus_detail">Extra minuter bara för i dag</string>
     <string name="rules_row_requests">Förfrågningar</string>
@@ -307,6 +312,9 @@
     <string name="rules_row_sync_detail">Skicka förfrågningar och svar till en annan telefon</string>
     <string name="rules_row_device">Säkerhet och kontroll</string>
     <string name="rules_row_device_detail">PIN-kod, nedlåsning och att lämna tillbaka telefonen</string>
+
+    <string name="rules_picker_title">Vems regler?</string>
+    <string name="rules_picker_hint">Den här familjen har mer än en hanterad telefon. Välj vilken som ska redigeras.</string>
 
     <!-- Regler. -->
     <string name="rules_title">Ändra regler</string>

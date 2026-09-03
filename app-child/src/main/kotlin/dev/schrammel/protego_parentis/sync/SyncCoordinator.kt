@@ -1,7 +1,9 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Heartbeat
+import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.context.PlaceTransition
@@ -147,20 +149,46 @@ class SyncCoordinator(context: Context) {
     fun publishDisband() = publisher.publishDisband()
 
     /**
-     * Records a rule edit made on this phone and sends what changed.
+     * Records an edit to [childId]'s rules and sends what changed — the
+     * managed phone's own edits when [childId] is null, or a parent's edit to
+     * a specific child's ruleset (#43) when it is given.
      *
      * Replaces the old whole-policy push: only the registers that actually
      * differ become ops, and they merge with concurrent edits from other
      * devices rather than overwriting them.
      */
-    fun applyPolicyEdit(snapshot: PolicySnapshot) {
-        PolicyReplication(context).write(snapshot)
+    fun applyPolicyEdit(snapshot: PolicySnapshot, childId: DeviceId? = null) {
+        val replication = PolicyReplication(context)
+        if (childId != null) replication.write(snapshot, childId) else replication.write(snapshot)
         publisher.publishPendingOps()
     }
 
-    /** As [applyPolicyEdit], for a schedule edit made on this phone. */
-    fun applyScheduleEdit(schedules: List<StoredSchedule>) {
-        PolicyReplication(context).writeSchedules(schedules)
+    /** As [applyPolicyEdit], for a schedule edit. */
+    fun applyScheduleEdit(schedules: List<StoredSchedule>, childId: DeviceId? = null) {
+        val replication = PolicyReplication(context)
+        if (childId != null) {
+            replication.writeSchedules(schedules, childId)
+        } else {
+            replication.writeSchedules(schedules)
+        }
+        publisher.publishPendingOps()
+    }
+
+    /** As [applyPolicyEdit], for a contextual-rule edit (#43 — no editor used this before). */
+    fun applyContextRuleEdit(rules: List<ContextRule>, childId: DeviceId? = null) {
+        val replication = PolicyReplication(context)
+        if (childId != null) {
+            replication.writeContextRules(rules, childId)
+        } else {
+            replication.writeContextRules(rules)
+        }
+        publisher.publishPendingOps()
+    }
+
+    /** As [applyPolicyEdit], for a place rename/resize/delete (#43). */
+    fun applyPlaceRefEdit(refs: List<PlaceRef>, childId: DeviceId? = null) {
+        val replication = PolicyReplication(context)
+        if (childId != null) replication.writePlaceRefs(refs, childId) else replication.writePlaceRefs(refs)
         publisher.publishPendingOps()
     }
 

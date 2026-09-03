@@ -10,8 +10,9 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
  * Multi-select list of installed apps.
@@ -52,9 +53,10 @@ class AppPickerActivity : ParentGatedActivity() {
         authenticated = true
         if (loaded) return
         loaded = true
+        val target = RuleTargets.resolve(this) ?: return finish()
         // Loading every launchable app's label and icon is the slowest thing this
         // screen does, so the list arrives after the frame rather than blocking it.
-        Background.load(this, { InstalledApps(this).launchable() }) { loadedApps ->
+        Background.load(this, { appCatalog(this, target).launchable() }) { loadedApps ->
             apps = loadedApps
             renderRows()
         }
@@ -140,10 +142,13 @@ class AppPickerActivity : ParentGatedActivity() {
         const val EXTRA_SELECTED = "selected"
         private const val EXTRA_TITLE = "title"
 
-        fun intent(context: Context, title: String, selected: Collection<String>): Intent =
-            Intent(context, AppPickerActivity::class.java)
-                .putExtra(EXTRA_TITLE, title)
-                .putStringArrayListExtra(EXTRA_SELECTED, ArrayList(selected))
+        fun intent(context: Context, title: String, selected: Collection<String>, childId: DeviceId? = null): Intent =
+            RuleTargets.putExtra(
+                Intent(context, AppPickerActivity::class.java)
+                    .putExtra(EXTRA_TITLE, title)
+                    .putStringArrayListExtra(EXTRA_SELECTED, ArrayList(selected)),
+                childId,
+            )
 
         fun resultFrom(data: Intent?): List<String> =
             data?.getStringArrayListExtra(EXTRA_SELECTED).orEmpty()

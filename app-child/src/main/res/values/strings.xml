@@ -151,6 +151,11 @@
     <string name="places_bad_radius">Radius must be at least %1$d m.</string>
     <string name="places_no_map_app">No map app is installed to check this on.</string>
     <string name="places_radius_increased">Radius increased to the minimum, to protect location privacy.</string>
+    <!-- #43: a parent renaming/resizing a place from their own phone, on a
+         managed phone this device did not create the place on. -->
+    <string name="places_rename">Rename</string>
+    <string name="places_resize">Change radius</string>
+    <string name="places_radius_value">%1$d m</string>
     <string name="home_context_active">Active now: %1$s</string>
 
     <!-- Privacy and diagnostics. -->
@@ -292,6 +297,10 @@
     <string name="rules_row_context_detail">Rules for a Wi-Fi network, a place, or being near someone</string>
     <string name="rules_row_goal">Goal and prize</string>
     <string name="rules_row_goal_detail">Something to earn by staying under a target</string>
+    <!-- Shown on a rules screen before the PIN is entered (#43): the rules
+         are visible but nothing here can be changed until unlocked. -->
+    <string name="rules_read_only_hint">Enter the PIN to make changes.</string>
+    <string name="rules_unlock_to_edit">Unlock to edit</string>
     <string name="rules_row_bonus">Bonus time</string>
     <string name="rules_row_bonus_detail">Extra minutes for today only</string>
     <string name="rules_row_requests">Requests</string>
@@ -300,6 +309,11 @@
     <string name="rules_row_sync_detail">Send requests and answers to another phone</string>
     <string name="rules_row_device">Security and control</string>
     <string name="rules_row_device_detail">PIN, lockdown, and handing the phone back</string>
+
+    <!-- #43: which managed phone's rules to edit, shown only once a family has
+         more than one - see RuleTargets' own doc comment. -->
+    <string name="rules_picker_title">Whose rules?</string>
+    <string name="rules_picker_hint">This family has more than one managed phone. Choose which one to edit.</string>
 
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>

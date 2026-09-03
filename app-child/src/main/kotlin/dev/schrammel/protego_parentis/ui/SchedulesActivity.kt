@@ -14,7 +14,6 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.PackageName
@@ -22,13 +21,20 @@ import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.toMinuteOfDay
-import dev.schrammel.protego_parentis.usage.InstalledApps
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.ui.rules.delete
+import dev.schrammel.protego_parentis.ui.rules.find
+import dev.schrammel.protego_parentis.ui.rules.labelFor
+import dev.schrammel.protego_parentis.ui.rules.scheduleRuleStore
+import dev.schrammel.protego_parentis.ui.rules.upsert
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.util.UUID
 
 /**
- * The family's named schedule windows (SC-2).
+ * The family's named schedule windows (SC-2), on whichever kind of phone
+ * edits [target]'s rules (#43).
  *
  * Bedtime already existed as a single switch; this is everything else — school
  * hours, dinner, homework. Each window names itself, and the name is what appears
@@ -37,17 +43,22 @@ import java.util.UUID
  */
 class SchedulesActivity : ParentGatedActivity() {
 
-    private lateinit var store: ScheduleStore
+    private lateinit var target: RuleTarget
     private lateinit var column: LinearLayout
+
+    override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = ScheduleStore(this)
         column = contentColumn()
         showColumn(column)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+        render()
+    }
 
     override fun onGatedContentHidden() {
         column.removeAllViews()
@@ -57,37 +68,42 @@ class SchedulesActivity : ParentGatedActivity() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.schedules_title)))
         column.addView(captionText(getString(R.string.schedules_hint)))
+        if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         // Bedtime lives in the same store now (see ScheduleStore's own doc
         // comment) but keeps its own switch on the limits screen — this list
         // is the generic add/delete flow bedtime is deliberately kept out of.
-        val schedules = store.schedules
+        val schedules = scheduleRuleStore(this, target).read()
             .filterNot { it.id == ScheduleStore.BEDTIME_ID }
             .sortedBy { it.startMinuteOfDay }
         if (schedules.isEmpty()) {
             column.addView(bodyText(getString(R.string.schedules_empty)))
-            // Offered rather than created. A family that opens this screen and
-            // finds three windows already switched on has had rules made for them
-            // by an app, which is the opposite of what this product is — so these
-            // arrive off, named, and with the times a parent would have typed
-            // anyway, leaving the decision where it belongs.
-            column.addView(sectionHeader(getString(R.string.schedules_starters_header)))
-            column.addView(captionText(getString(R.string.schedules_starters_hint)))
-            column.addView(group(STARTERS.map(::starterRow)))
+            if (canEdit) {
+                // Offered rather than created. A family that opens this screen and
+                // finds three windows already switched on has had rules made for
+                // them by an app, which is the opposite of what this product is —
+                // so these arrive off, named, and with the times a parent would
+                // have typed anyway, leaving the decision where it belongs.
+                column.addView(sectionHeader(getString(R.string.schedules_starters_header)))
+                column.addView(captionText(getString(R.string.schedules_starters_hint)))
+                column.addView(group(STARTERS.map(::starterRow)))
+            }
         } else {
             column.addView(group(schedules.map(::row)))
         }
 
-        column.addView(
-            actionButton().apply {
-                setText(R.string.schedules_add)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dimen(R.dimen.space_md) }
-                setOnClickListener { startActivity(ScheduleEditActivity.intent(context)) }
-            },
-        )
+        if (canEdit) {
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.schedules_add)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { topMargin = dimen(R.dimen.space_md) }
+                    setOnClickListener { startActivity(ScheduleEditActivity.intent(context, childId = target.childId)) }
+                },
+            )
+        }
     }
 
     /**
@@ -101,20 +117,20 @@ class SchedulesActivity : ParentGatedActivity() {
         title = getString(starter.name),
         subtitle = getString(
             R.string.schedules_starter_detail,
-            formatTime(java.time.LocalTime.of(starter.startHour, starter.startMinute)),
-            formatTime(java.time.LocalTime.of(starter.endHour, starter.endMinute)),
+            formatTime(LocalTime.of(starter.startHour, starter.startMinute)),
+            formatTime(LocalTime.of(starter.endHour, starter.endMinute)),
         ),
     ) {
         val created = StoredSchedule(
-            id = java.util.UUID.randomUUID().toString(),
+            id = UUID.randomUUID().toString(),
             name = getString(starter.name),
             days = starter.days,
-            startMinuteOfDay = java.time.LocalTime.of(starter.startHour, starter.startMinute).toMinuteOfDay(),
-            endMinuteOfDay = java.time.LocalTime.of(starter.endHour, starter.endMinute).toMinuteOfDay(),
+            startMinuteOfDay = LocalTime.of(starter.startHour, starter.startMinute).toMinuteOfDay(),
+            endMinuteOfDay = LocalTime.of(starter.endHour, starter.endMinute).toMinuteOfDay(),
             enabled = false,
         )
-        store.upsert(created)
-        startActivity(ScheduleEditActivity.intent(this, created.id))
+        scheduleRuleStore(this, target).upsert(created)
+        startActivity(ScheduleEditActivity.intent(this, created.id, target.childId))
     }
 
     /** A named window a family is likely to want, with the hours already in it. */
@@ -130,7 +146,7 @@ class SchedulesActivity : ParentGatedActivity() {
     private fun row(schedule: StoredSchedule) = navigationRow(
         title = schedule.name.ifBlank { getString(R.string.schedules_unnamed) },
         subtitle = summarise(schedule),
-    ) { startActivity(ScheduleEditActivity.intent(this, schedule.id)) }
+    ) { startActivity(ScheduleEditActivity.intent(this, schedule.id, target.childId)) }
 
     private fun summarise(schedule: StoredSchedule): String {
         val days = DayPicker.describe(
@@ -167,12 +183,13 @@ class SchedulesActivity : ParentGatedActivity() {
             Starter(R.string.schedules_starter_dinner, setOf(1, 2, 3, 4, 5, 6, 7), 18, 0, 19, 0),
         )
 
-        fun intent(context: Context) = Intent(context, SchedulesActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, SchedulesActivity::class.java), childId)
     }
 }
 
 /**
- * Editing one window.
+ * Editing one window, on whichever kind of phone edits [target]'s rules (#43).
  *
  * Saving is refused rather than silently corrected when the window is not one the
  * engine can accept — no name, no days, or a start equal to its end. A schedule
@@ -180,9 +197,10 @@ class SchedulesActivity : ParentGatedActivity() {
  */
 class ScheduleEditActivity : ParentGatedActivity() {
 
-    private lateinit var store: ScheduleStore
+    private lateinit var target: RuleTarget
     private lateinit var column: LinearLayout
     private lateinit var scheduleId: String
+    private var existing: StoredSchedule? = null
 
     private lateinit var nameInput: EditText
     private var days: Set<DayOfWeek> = emptySet()
@@ -201,25 +219,30 @@ class ScheduleEditActivity : ParentGatedActivity() {
         }
     }
 
+    override fun supportsReadOnly() = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = ScheduleStore(this)
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
         scheduleId = intent.getStringExtra(EXTRA_ID) ?: UUID.randomUUID().toString()
 
-        store.find(scheduleId)?.let { existing ->
-            days = existing.days
+        val found = scheduleRuleStore(this, target).find(scheduleId)
+        existing = found
+        found?.let { ex ->
+            days = ex.days
                 .mapNotNull { day -> DayOfWeek.entries.firstOrNull { it.value == day } }
                 .toSet()
-            start = existing.start
-            end = existing.end
-            allowed = existing.packages.toMutableSet()
-            mode = existing.mode
-            enabled = existing.enabled
+            start = ex.start
+            end = ex.end
+            allowed = ex.packages.toMutableSet()
+            mode = ex.mode
+            enabled = ex.enabled
         }
 
         nameInput = EditText(this).apply {
             hint = getString(R.string.schedules_name_hint)
-            setText(store.find(scheduleId)?.name.orEmpty())
+            setText(found?.name.orEmpty())
         }
 
         column = contentColumn()
@@ -235,12 +258,14 @@ class ScheduleEditActivity : ParentGatedActivity() {
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.schedules_edit_title)))
+        if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         column.addView(sectionHeader(getString(R.string.schedules_name_header)))
+        nameInput.isEnabled = canEdit
         column.addView(nameInput)
 
         column.addView(sectionHeader(getString(R.string.schedules_days_header)))
-        column.addView(DayPicker.build(this, days) { days = it })
+        column.addView(DayPicker.build(this, days) { days = it }.apply { setChildrenEnabled(canEdit) })
 
         column.addView(sectionHeader(getString(R.string.schedules_window_header)))
         column.addView(
@@ -249,6 +274,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 addView(
                     Button(context).apply {
                         text = getString(R.string.schedules_from, formatTime(start))
+                        isEnabled = canEdit
                         layoutParams = LinearLayout.LayoutParams(
                             0,
                             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -265,6 +291,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 addView(
                     Button(context).apply {
                         text = getString(R.string.schedules_to, formatTime(end))
+                        isEnabled = canEdit
                         layoutParams = LinearLayout.LayoutParams(
                             0,
                             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -289,16 +316,19 @@ class ScheduleEditActivity : ParentGatedActivity() {
         column.addView(
             RadioGroup(this).apply {
                 orientation = RadioGroup.VERTICAL
+                isEnabled = canEdit
                 addView(
                     RadioButton(context).apply {
                         id = MODE_EXCLUSIVE_ID
                         setText(R.string.schedules_mode_exclusive)
+                        isEnabled = canEdit
                     },
                 )
                 addView(
                     RadioButton(context).apply {
                         id = MODE_INCLUSIVE_ID
                         setText(R.string.schedules_mode_inclusive)
+                        isEnabled = canEdit
                     },
                 )
                 check(
@@ -346,8 +376,8 @@ class ScheduleEditActivity : ParentGatedActivity() {
         }
         column.addView(summary)
         Background.load(this, {
-            val apps = InstalledApps(this)
-            allowed.map { apps.labelFor(PackageName(it)) }.sorted()
+            val catalog = appCatalog(this, target)
+            allowed.map { catalog.labelFor(PackageName(it)) }.sorted()
         }) { labels ->
             summary.text = labels.joinToString(", ").ifBlank {
                 getString(
@@ -356,54 +386,60 @@ class ScheduleEditActivity : ParentGatedActivity() {
                 )
             }
         }
-        column.addView(
-            actionButton().apply {
-                setText(R.string.schedules_allowed_choose)
-                setOnClickListener {
-                    pickAllowed.launch(
-                        AppPickerActivity.intent(
-                            context,
-                            getString(
-                                if (including) R.string.schedules_apps_paused_header
-                                else R.string.schedules_allowed_header,
+        if (canEdit) {
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.schedules_allowed_choose)
+                    setOnClickListener {
+                        pickAllowed.launch(
+                            AppPickerActivity.intent(
+                                context,
+                                getString(
+                                    if (including) R.string.schedules_apps_paused_header
+                                    else R.string.schedules_allowed_header,
+                                ),
+                                allowed,
+                                target.childId,
                             ),
-                            allowed,
-                        ),
-                    )
-                }
-            },
-        )
+                        )
+                    }
+                },
+            )
+        }
 
         column.addView(
             CheckBox(this).apply {
                 setText(R.string.schedules_enabled)
                 isChecked = enabled
+                isEnabled = canEdit
                 setOnCheckedChangeListener { _, checked -> enabled = checked }
             },
         )
 
-        column.addView(
-            actionButton().apply {
-                setText(R.string.schedules_save)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dimen(R.dimen.space_md) }
-                setOnClickListener { save() }
-            },
-        )
-
-        if (store.find(scheduleId) != null) {
+        if (canEdit) {
             column.addView(
                 actionButton().apply {
-                    setText(R.string.schedules_delete)
+                    setText(R.string.schedules_save)
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply { topMargin = dimen(R.dimen.space_sm) }
-                    setOnClickListener { delete() }
+                    ).apply { topMargin = dimen(R.dimen.space_md) }
+                    setOnClickListener { save() }
                 },
             )
+
+            if (existing != null) {
+                column.addView(
+                    actionButton().apply {
+                        setText(R.string.schedules_delete)
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ).apply { topMargin = dimen(R.dimen.space_sm) }
+                        setOnClickListener { delete() }
+                    },
+                )
+            }
         }
     }
 
@@ -434,7 +470,11 @@ class ScheduleEditActivity : ParentGatedActivity() {
             return
         }
 
-        store.upsert(schedule)
+        // A window may be starting right now; the store's own write already
+        // re-runs enforcement at once on the managed phone (LocalScheduleRuleStore),
+        // so there is nothing further to trigger here — and nothing to trigger
+        // at all on a parent's phone editing someone else's schedules.
+        scheduleRuleStore(this, target).upsert(schedule)
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
@@ -442,22 +482,18 @@ class ScheduleEditActivity : ParentGatedActivity() {
             subject = schedule.name,
             after = Audit.timeRange(schedule.start, schedule.end),
         )
-        // A window may be starting right now; applying at once avoids a phone that
-        // stays open until the next tick happens to notice.
-        EnforcementService.start(this)
         finish()
     }
 
     private fun delete() {
-        val name = store.find(scheduleId)?.name.orEmpty()
-        store.delete(scheduleId)
+        val name = existing?.name.orEmpty()
+        scheduleRuleStore(this, target).delete(scheduleId)
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
             action = AuditAction.SCHEDULE_DELETED,
             subject = name,
         )
-        EnforcementService.start(this)
         finish()
     }
 
@@ -482,9 +518,12 @@ class ScheduleEditActivity : ParentGatedActivity() {
         private val DEFAULT_START: LocalTime = LocalTime.of(8, 0)
         private val DEFAULT_END: LocalTime = LocalTime.of(15, 0)
 
-        fun intent(context: Context, scheduleId: String? = null) =
-            Intent(context, ScheduleEditActivity::class.java).apply {
-                scheduleId?.let { putExtra(EXTRA_ID, it) }
-            }
+        fun intent(context: Context, scheduleId: String? = null, childId: DeviceId? = null) =
+            RuleTargets.putExtra(
+                Intent(context, ScheduleEditActivity::class.java).apply {
+                    scheduleId?.let { putExtra(EXTRA_ID, it) }
+                },
+                childId,
+            )
     }
 }

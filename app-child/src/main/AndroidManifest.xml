@@ -145,7 +145,7 @@
             android:parentActivityName=".ui.ParentHomeActivity" />
 
         <activity
-            android:name=".ui.ParentRulesActivity"
+            android:name=".ui.RulesetPickerActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
 

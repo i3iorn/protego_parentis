@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.protego_parentis.R
@@ -19,28 +20,34 @@ import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.policy.CategoryHierarchy
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
-import dev.schrammel.protego_parentis.usage.InstalledApps
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.deleteCategory
+import dev.schrammel.protego_parentis.ui.rules.labelFor
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.upsertCategory
 import java.util.UUID
 
 /**
- * Creates or edits one category: a name, a daily limit, and the apps in it.
+ * Creates or edits one category: a name, a daily limit, and the apps in it —
+ * on whichever kind of phone edits [target]'s rules (#43).
  *
  * An app may be picked here and in any number of other categories — membership is
  * many-to-many by design, and every category it lands in is enforced separately.
  */
 class CategoryEditActivity : ParentGatedActivity() {
 
-    private lateinit var store: LocalPolicyStore
-    private lateinit var installedApps: InstalledApps
+    private lateinit var target: RuleTarget
 
+    private var existing: StoredCategory? = null
     private var categoryId: String = ""
     private var packages = linkedSetOf<String>()
     private var nested = linkedSetOf<String>()
+    private var limitMinutes: Int = 0
 
     private lateinit var nameInput: EditText
-    private var limitMinutes: Int = 0
     private lateinit var appsSummary: TextView
     private lateinit var nestedSummary: TextView
 
@@ -53,18 +60,23 @@ class CategoryEditActivity : ParentGatedActivity() {
         refreshAppsSummary()
     }
 
+    override fun supportsReadOnly() = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = LocalPolicyStore(this)
-        installedApps = InstalledApps(this)
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
 
-        val existing = intent.getStringExtra(EXTRA_ID)
-            ?.let { id -> store.categories.firstOrNull { it.id == id } }
+        val store = policyRuleStore(this, target)
+        val found = intent.getStringExtra(EXTRA_ID)?.let { id -> store.categories().firstOrNull { it.id == id } }
+        existing = found
+        categoryId = found?.id ?: UUID.randomUUID().toString()
+        packages = LinkedHashSet(found?.packages.orEmpty())
+        nested = LinkedHashSet(found?.subcategories.orEmpty())
+        limitMinutes = found?.limitMinutes ?: defaultLimitMinutes
+    }
 
-        categoryId = existing?.id ?: UUID.randomUUID().toString()
-        packages = LinkedHashSet(existing?.packages.orEmpty())
-        nested = LinkedHashSet(existing?.subcategories.orEmpty())
-
+    override fun onGatedContentVisible() {
         showColumn(buildLayout(existing))
         refreshAppsSummary()
         refreshNestedSummary()
@@ -74,43 +86,49 @@ class CategoryEditActivity : ParentGatedActivity() {
         val content = contentColumn()
 
         content.addView(heading(getString(R.string.category_title), 28f))
+        if (!canEdit) content.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         nameInput = EditText(this).apply {
             hint = getString(R.string.category_name_hint)
             setText(existing?.name.orEmpty())
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+            isEnabled = canEdit
         }
         content.addView(nameInput)
 
         content.addView(heading(getString(R.string.category_limit_header), 20f))
-        limitMinutes = existing?.limitMinutes ?: defaultLimitMinutes
         content.addView(
             limitSliderBlock(
                 initialMinutes = limitMinutes,
                 onChanged = { minutes -> limitMinutes = minutes },
-            ),
+            ).apply {
+                (getChildAt(1) as? SeekBar)?.isEnabled = canEdit
+            },
         )
 
         content.addView(heading(getString(R.string.category_apps_header), 20f))
         appsSummary = TextView(this).apply { styleAs(R.style.TextAppearance_Dementor_Body) }
         content.addView(appsSummary)
 
-        content.addView(
-            Button(this).apply {
-                setText(R.string.category_choose_apps)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_sm) }
-                setOnClickListener {
-                    pickApps.launch(
-                        AppPickerActivity.intent(
-                            this@CategoryEditActivity,
-                            getString(R.string.category_apps_header),
-                            packages,
-                        ),
-                    )
-                }
-            },
-        )
+        if (canEdit) {
+            content.addView(
+                Button(this).apply {
+                    setText(R.string.category_choose_apps)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_sm) }
+                    setOnClickListener {
+                        pickApps.launch(
+                            AppPickerActivity.intent(
+                                this@CategoryEditActivity,
+                                getString(R.string.category_apps_header),
+                                packages,
+                                target.childId,
+                            ),
+                        )
+                    }
+                },
+            )
+        }
 
         content.addView(heading(getString(R.string.category_nested_header), 20f))
         content.addView(
@@ -121,42 +139,44 @@ class CategoryEditActivity : ParentGatedActivity() {
         )
         nestedSummary = TextView(this).apply { styleAs(R.style.TextAppearance_Dementor_Body) }
         content.addView(nestedSummary)
-        content.addView(
-            Button(this).apply {
-                setText(R.string.category_choose_nested)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_sm) }
-                setOnClickListener { chooseNested() }
-            },
-        )
-
-        content.addView(
-            Button(this).apply {
-                setText(R.string.category_save)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.section_spacing) }
-                setOnClickListener { save() }
-            },
-        )
-
-        if (existing != null) {
+        if (canEdit) {
             content.addView(
                 Button(this).apply {
-                    setText(R.string.category_delete)
+                    setText(R.string.category_choose_nested)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                         .apply { topMargin = dimen(R.dimen.space_sm) }
-                    setOnClickListener {
-                        store.deleteCategory(categoryId)
-                        Audit.record(
-                            context = this@CategoryEditActivity,
-                            actor = AuditActor.PARENT,
-                            action = AuditAction.CATEGORY_DELETED,
-                            subject = existing.name,
-                        )
-                        finish()
-                    }
+                    setOnClickListener { chooseNested() }
                 },
             )
+
+            content.addView(
+                Button(this).apply {
+                    setText(R.string.category_save)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.section_spacing) }
+                    setOnClickListener { save() }
+                },
+            )
+
+            if (existing != null) {
+                content.addView(
+                    Button(this).apply {
+                        setText(R.string.category_delete)
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                            .apply { topMargin = dimen(R.dimen.space_sm) }
+                        setOnClickListener {
+                            policyRuleStore(this@CategoryEditActivity, target).deleteCategory(categoryId)
+                            Audit.record(
+                                context = this@CategoryEditActivity,
+                                actor = AuditActor.PARENT,
+                                action = AuditAction.CATEGORY_DELETED,
+                                subject = existing.name,
+                            )
+                            finish()
+                        }
+                    },
+                )
+            }
         }
 
         return content
@@ -170,7 +190,7 @@ class CategoryEditActivity : ParentGatedActivity() {
         }
 
         val minutes = limitMinutes
-        store.upsertCategory(
+        policyRuleStore(this, target).upsertCategory(
             StoredCategory(
                 id = categoryId,
                 name = name,
@@ -197,14 +217,15 @@ class CategoryEditActivity : ParentGatedActivity() {
      * left with a hierarchy that quietly does something else.
      */
     private fun chooseNested() {
-        val all = store.categories.filter { it.id != categoryId }
+        val store = policyRuleStore(this, target)
+        val all = store.categories().filter { it.id != categoryId }
         if (all.isEmpty()) {
             toast(R.string.category_no_nested)
             return
         }
 
         // Evaluate against the hierarchy as it would be with this edit applied.
-        val pending = store.categories.map { candidate ->
+        val pending = store.categories().map { candidate ->
             if (candidate.id == categoryId) candidate.copy(subcategories = nested) else candidate
         }.map(::toDomain)
 
@@ -233,7 +254,7 @@ class CategoryEditActivity : ParentGatedActivity() {
             .setNegativeButton(android.R.string.cancel) { _, _ ->
                 // Restore, since the listener has already mutated the set.
                 nested = LinkedHashSet(
-                    store.categories.firstOrNull { it.id == categoryId }?.subcategories.orEmpty(),
+                    store.categories().firstOrNull { it.id == categoryId }?.subcategories.orEmpty(),
                 )
                 refreshNestedSummary()
             }
@@ -249,7 +270,7 @@ class CategoryEditActivity : ParentGatedActivity() {
     )
 
     private fun refreshNestedSummary() {
-        val byId = store.categories.associateBy { it.id }
+        val byId = policyRuleStore(this, target).categories().associateBy { it.id }
         nestedSummary.text = nested
             .mapNotNull { byId[it]?.name }
             .sorted()
@@ -258,10 +279,11 @@ class CategoryEditActivity : ParentGatedActivity() {
     }
 
     private fun refreshAppsSummary() {
+        val catalog = appCatalog(this, target)
         appsSummary.text = when {
             packages.isEmpty() -> getString(R.string.category_no_apps)
             else -> packages
-                .map { installedApps.labelFor(PackageName(it)) }
+                .map { catalog.labelFor(PackageName(it)) }
                 .sorted()
                 .joinToString(", ")
         }
@@ -276,8 +298,11 @@ class CategoryEditActivity : ParentGatedActivity() {
     companion object {
         private const val EXTRA_ID = "categoryId"
 
-        fun intent(context: Context, categoryId: String? = null): Intent =
-            Intent(context, CategoryEditActivity::class.java)
-                .apply { categoryId?.let { putExtra(EXTRA_ID, it) } }
+        fun intent(context: Context, categoryId: String? = null, childId: DeviceId? = null): Intent =
+            RuleTargets.putExtra(
+                Intent(context, CategoryEditActivity::class.java)
+                    .apply { categoryId?.let { putExtra(EXTRA_ID, it) } },
+                childId,
+            )
     }
 }

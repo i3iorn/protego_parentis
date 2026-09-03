@@ -339,7 +339,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.WEB_SUMMARY -> rememberWebSummary(message)
         SyncMessageType.CHAT_MESSAGE -> rememberChat(message)
         SyncMessageType.POLICY_SNAPSHOT -> rememberPolicySnapshot(message)
-        SyncMessageType.APP_INVENTORY -> rememberAppInventory(message)
+        SyncMessageType.APP_INVENTORY -> rememberAppInventory(message, senderId)
         SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
@@ -980,9 +980,9 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         return PolicyReplication(appContext).write(snapshot).isNotEmpty()
     }
 
-    /** Caches which apps the child's phone can launch, for a rule editor to offer. */
-    private fun rememberAppInventory(message: SyncMessage): Boolean {
-        AppInventoryStore(appContext).apps = AppInventoryCodec.decode(message.field(FIELD_APPS_JSON))
+    /** Caches which apps [senderId]'s phone can launch, for a rule editor to offer. */
+    private fun rememberAppInventory(message: SyncMessage, senderId: DeviceId): Boolean {
+        AppInventoryStore(appContext).setApps(senderId, AppInventoryCodec.decode(message.field(FIELD_APPS_JSON)))
         return true
     }
 
