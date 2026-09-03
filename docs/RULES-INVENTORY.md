@@ -19,17 +19,17 @@ each was added without the question being asked.
 | **Local only** | Deliberately never remote. The reason is recorded next to the entry. |
 | **Not a rule** | Persisted, but not a rule — bookkeeping, or state the app keeps about itself. |
 
-**8 settings are Pending.** That number is asserted by the test, so it can only
+**1 setting is Pending.** That number is asserted by the test, so it can only
 change on purpose. It started at 78; [#41](https://github.com/i3iorn/dementor_watch/issues/41)
 made the 9 schedule fields Parent, then the 11 contextual-rule condition/effect/
 target fields, then the 2 places-list fields — everything about a place except
 its coordinates, which move to Local only instead, below. [#42](https://github.com/i3iorn/dementor_watch/issues/42)
-made web filtering, the goal's three settable fields, and every optional
-`Feature` reachable, and reclassified `NotificationPreferences` and the three
-non-optional `Feature`s (never really Pending — see their own sections) rather
-than closing them. What's left: `announce_arrivals` (below) and
-`AutoApprovalStore`, a list of records rather than flat scalars and #42's own
-next slice.
+made web filtering, the goal's three settable fields, every optional
+`Feature`, and finally `AutoApprovalStore`'s 7 fields reachable, and
+reclassified `NotificationPreferences` and the three non-optional `Feature`s
+(never really Pending — see their own sections) rather than closing them.
+What's left: `announce_arrivals` (below), tied to the places/coordinates
+privacy question rather than to #42.
 
 ## LocalPolicyStore — `local_policy`
 
@@ -151,16 +151,22 @@ membership-set channel `dailyLimitMinutes` and the packages sets already use
 below: two parents editing different URLs both survive). Wiring only in this
 slice — no parent-phone web filter screen yet.
 
-## AutoApprovalStore — `auto_approval` · 7 Pending, 1 not a rule
+## AutoApprovalStore — `auto_approval` · 7 Parent, 1 not a rule
 
 `rules`, `id`, `name`, `enabled`, `maxMinutes`, `maxPerWindow`, `window`
 
 `fired_total` is a running count the phone keeps about itself — not a rule.
 
-The one #42 slice still outstanding: a list of records (the schedules/
-contextual-rules shape — one path per field per rule, a `deleted` marker),
-not the flat-scalar shape the rest of #42 closed, so it belongs in its own
-milestone slice rather than riding `PolicySnapshot`.
+[#42](https://github.com/i3iorn/dementor_watch/issues/42)'s final slice closed
+this store the schedules/contextual-rules way rather than riding
+`PolicySnapshot`: a list of records, one path per field per rule under
+`policy/<childId>/autoApproval/`, with a `deleted` marker rather than a
+whole-record tombstone — see `PolicyReplication.flattenSchedules`'s own doc
+comment for why a marker rather than nulling every field on delete.
+`AutoApproval.target` does not replicate: `AutoApprovalStore` itself has never
+persisted it either (no editor screen sets it), so a rule read back always
+carries `target = null`, the same as one read from local storage. Wiring
+only — no parent-phone auto-approval screen yet.
 
 ## GoalStore — `goal` · 3 Parent, 6 not a rule
 

@@ -125,16 +125,19 @@ class RulesInventoryTest {
         "KEY_COUNT_VISITS=count_visits" to PARENT,
     )
 
+    // #42 closed this store: field-per-path with a `deleted` marker, the
+    // same shape schedules and contextual rules already use for a list of
+    // records.
     private val autoApproval = mapOf(
-        "KEY_RULES=rules" to PENDING,
+        "KEY_RULES=rules" to PARENT,
         // A running total the phone keeps about itself, not a rule.
         "KEY_FIRED=fired_total" to NOT_A_RULE,
-        "KEY_ID=id" to PENDING,
-        "KEY_NAME=name" to PENDING,
-        "KEY_ENABLED=enabled" to PENDING,
-        "KEY_MAX_MINUTES=maxMinutes" to PENDING,
-        "KEY_MAX_PER_WINDOW=maxPerWindow" to PENDING,
-        "KEY_WINDOW=window" to PENDING,
+        "KEY_ID=id" to PARENT,
+        "KEY_NAME=name" to PARENT,
+        "KEY_ENABLED=enabled" to PARENT,
+        "KEY_MAX_MINUTES=maxMinutes" to PARENT,
+        "KEY_MAX_PER_WINDOW=maxPerWindow" to PARENT,
+        "KEY_WINDOW=window" to PARENT,
     )
 
     private val goals = mapOf(
@@ -271,8 +274,12 @@ class RulesInventoryTest {
          * the one #42 slice still outstanding, a list of records rather
          * than flat scalars, its own milestone slice. Notifications and the
          * 3 non-optional Features were reclassified rather than closed:
-         * never really Pending — see the two maps' own comments.
+         * never really Pending — see the two maps' own comments. #42's
+         * final slice made the 7 auto-approval fields reachable too, the
+         * same field-per-path-with-a-`deleted`-marker shape schedules and
+         * contextual rules already use (1 left): `announce_arrivals`, tied
+         * to the places/coordinates privacy question rather than to #42.
          */
-        const val PENDING_AT_M0 = 8
+        const val PENDING_AT_M0 = 1
     }
 }

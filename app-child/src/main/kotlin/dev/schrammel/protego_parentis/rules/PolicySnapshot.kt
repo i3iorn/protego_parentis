@@ -34,10 +34,13 @@ import kotlin.time.Duration.Companion.minutes
  * off joined as of #42 — all flat scalars or small sets, the same shape as
  * [dailyLimitMinutes] and the packages sets below, so they ride this same
  * channel rather than getting one of their own the way schedules needed.
- * `AutoApprovalStore` and `NotificationPreferences` are the two #42 does not
- * close: the former is a list of records (the schedules/contextual-rules
- * shape, not this one) and belongs in its own milestone slice; the latter
- * was decided to stay local-only — see `docs/RULES-INVENTORY.md`.
+ * `AutoApprovalStore` is deliberately absent, for the same reason bedtime is:
+ * a list of records, the schedules/contextual-rules shape rather than this
+ * one, so it travels through
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.writeAutoApprovals]/
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.readAutoApprovals]
+ * instead. `NotificationPreferences` was decided to stay local-only — see
+ * `docs/RULES-INVENTORY.md`.
  */
 data class PolicySnapshot(
     val version: Long,
