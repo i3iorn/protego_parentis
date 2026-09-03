@@ -30,10 +30,10 @@ internal object SyncKeying {
     /**
      * The family key, derived once and kept.
      *
-     * Deriving it stretches the passphrase with 210,000 rounds of PBKDF2, which is
-     * the right cost to pay against someone guessing at the passphrase and quite
-     * the wrong cost to pay every fifteen seconds — which is how often the
-     * enforcement tick polls while a limit is close.
+     * Deriving it stretches the passphrase with [MessageCrypto.PBKDF2_ITERATIONS]
+     * rounds of PBKDF2, which is the right cost to pay against someone guessing at
+     * the passphrase and quite the wrong cost to pay every fifteen seconds — which
+     * is how often the enforcement tick polls while a limit is close.
      *
      * Cached against the passphrase and topic it was derived from, so changing
      * either produces a new key rather than a stale one. Must only ever be called
