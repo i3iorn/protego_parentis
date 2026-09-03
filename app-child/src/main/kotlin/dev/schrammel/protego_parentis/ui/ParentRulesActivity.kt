@@ -28,6 +28,7 @@ import dev.schrammel.protego_parentis.rules.toMinuteOfDay
 import dev.schrammel.protego_parentis.sync.AppInventoryEntry
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
 import dev.schrammel.protego_parentis.sync.PolicyReplication
+import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -82,6 +83,14 @@ class ParentRulesActivity : ParentRoleActivity() {
      * Losing what a parent typed because they ticked a box is not acceptable.
      */
     private var appQuery = ""
+
+    /**
+     * The apps [inventory] has cached for the family's one managed phone —
+     * this screen (unlike the rules screens it will be replaced by, #43)
+     * has never known how to address more than one.
+     */
+    private fun knownApps(): List<AppInventoryEntry> =
+        RosterStore(this).child()?.id?.let(inventory::apps).orEmpty()
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
@@ -195,7 +204,7 @@ class ParentRulesActivity : ParentRoleActivity() {
         )
 
         column.addView(sectionHeader(getString(R.string.parent_rules_apps_header)))
-        val apps = inventory.apps
+        val apps = knownApps()
         if (apps.isEmpty()) {
             // Nothing heard from the managed phone yet. Distinct from a search
             // that matched nothing: the fix for each is a different action.
@@ -703,7 +712,7 @@ class ParentRulesActivity : ParentRoleActivity() {
         title: String = getString(R.string.category_apps_header),
         onChosen: (Set<String>) -> Unit,
     ) {
-        val apps = inventory.apps
+        val apps = knownApps()
         if (apps.isEmpty()) {
             toast(R.string.parent_rules_apps_none)
             return
