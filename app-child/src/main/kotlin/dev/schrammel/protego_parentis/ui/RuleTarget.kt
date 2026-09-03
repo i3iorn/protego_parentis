@@ -51,7 +51,7 @@ object RuleTargets {
         if (requested != null) {
             return RuleTarget(requested, isOwnDevice = requested == ownId)
         }
-        return RosterStore(activity).child()?.let { RuleTarget(it.id, isOwnDevice = false) }
+        return RosterStore(activity).children().singleOrNull()?.let { RuleTarget(it.id, isOwnDevice = false) }
     }
 
     /** Whether [target] is still a device this phone's family actually has. */
