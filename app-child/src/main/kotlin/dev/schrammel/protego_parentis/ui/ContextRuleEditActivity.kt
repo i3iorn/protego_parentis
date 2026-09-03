@@ -469,6 +469,7 @@ class PlacesActivity : ParentGatedActivity() {
         )
 
         val places = store.places
+        val clampedIds = store.clampedPlaceIds
         if (places.isEmpty()) {
             container.addView(
                 TextView(this).apply {
@@ -487,6 +488,15 @@ class PlacesActivity : ParentGatedActivity() {
                     setOnClickListener { confirmDelete(place) }
                 },
             )
+            if (place.id in clampedIds) {
+                container.addView(
+                    TextView(this).apply {
+                        setText(R.string.places_radius_increased)
+                        styleAs(R.style.TextAppearance_Dementor_Caption)
+                        setPadding(0, 0, 0, dimen(R.dimen.space_sm))
+                    },
+                )
+            }
         }
 
         container.addView(

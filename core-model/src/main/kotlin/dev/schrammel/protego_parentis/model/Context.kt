@@ -42,10 +42,23 @@ data class Place(
 
     companion object {
         /**
-         * Below this, ordinary GPS jitter puts the phone in and out of the place
-         * every few seconds, and rules would flicker with it.
+         * Two reasons, not one. Below this, ordinary GPS jitter puts the phone in
+         * and out of the place every few seconds, and rules would flicker with
+         * it — the original reason this existed. #56 added the second: places
+         * never carry a coordinate off this device (see this class's own doc
+         * comment), but a radius small enough pins a position down almost as
+         * precisely as one would, the moment anything — a fired rule, a
+         * notification — reveals "inside" versus "outside". 100m keeps a family
+         * able to tell home from school from the mall without being able to
+         * tell which room, or which building, someone is in.
+         *
+         * Raising this number does not reject an existing place with a smaller
+         * radius — see [dev.schrammel.protego_parentis.rules.ContextRuleStore]'s
+         * decode, which clamps up instead — but it does mean an existing family
+         * gets more protection than they explicitly asked for. Worth being
+         * deliberate about the number for that reason.
          */
-        const val MINIMUM_RADIUS_METRES = 75
+        const val MINIMUM_RADIUS_METRES = 100
     }
 }
 
