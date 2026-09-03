@@ -19,8 +19,9 @@ each was added without the question being asked.
 | **Local only** | Deliberately never remote. The reason is recorded next to the entry. |
 | **Not a rule** | Persisted, but not a rule — bookkeeping, or state the app keeps about itself. |
 
-**78 settings are Pending.** That number is asserted by the test, so it can only
-change on purpose.
+**69 settings are Pending.** That number is asserted by the test, so it can only
+change on purpose. It started at 78; [#41](https://github.com/i3iorn/dementor_watch/issues/41)
+made the 9 schedule fields Parent, below.
 
 ## LocalPolicyStore — `local_policy`
 
@@ -50,11 +51,17 @@ Flipping it with nobody standing at the phone is the single rule change this app
 treats as too dangerous to make from a distance — see `LocalPolicyStore`'s own
 doc comment. It stays out of scope for #37.
 
-## ScheduleStore — `schedules` · 9 Pending
+## ScheduleStore — `schedules` · 9 Parent
 
 `KEY_SCHEDULES` holds the list; the rest are the fields of one schedule inside
-it. All Pending — this is the gap behind [#12](https://github.com/i3iorn/dementor_watch/issues/12),
-and [#41](https://github.com/i3iorn/dementor_watch/issues/41) closes it.
+it. Was the gap behind [#12](https://github.com/i3iorn/dementor_watch/issues/12);
+[#41](https://github.com/i3iorn/dementor_watch/issues/41) closed it —
+`PolicyReplication.writeSchedules`/`readSchedules`/`pushSchedulesFromLocal`/
+`pullSchedulesIntoLocal` replicate the whole list under `policy/<childId>/schedules/`,
+one path per field per schedule with a `deleted` marker rather than a
+whole-record tombstone (see [#40](https://github.com/i3iorn/dementor_watch/issues/40)),
+and `ParentRulesActivity` gained a Schedules section to edit it from a parent's
+own phone.
 
 `schedules`, `id`, `name`, `days`, `start`, `end`, `allowed`, `mode`, `enabled`
 

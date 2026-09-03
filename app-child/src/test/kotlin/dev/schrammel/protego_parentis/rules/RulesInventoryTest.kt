@@ -68,17 +68,17 @@ class RulesInventoryTest {
     )
 
     private val schedules = mapOf(
-        "KEY_SCHEDULES=schedules" to PENDING,
-        "KEY_ID=id" to PENDING,
-        "KEY_NAME=name" to PENDING,
-        "KEY_DAYS=days" to PENDING,
-        "KEY_START=start" to PENDING,
-        "KEY_END=end" to PENDING,
+        "KEY_SCHEDULES=schedules" to PARENT,
+        "KEY_ID=id" to PARENT,
+        "KEY_NAME=name" to PARENT,
+        "KEY_DAYS=days" to PARENT,
+        "KEY_START=start" to PARENT,
+        "KEY_END=end" to PARENT,
         // Named "allowed" on disk and `packages` in the model, deliberately: see
         // ScheduleStore.KEY_PACKAGES.
-        "KEY_PACKAGES=allowed" to PENDING,
-        "KEY_MODE=mode" to PENDING,
-        "KEY_ENABLED=enabled" to PENDING,
+        "KEY_PACKAGES=allowed" to PARENT,
+        "KEY_MODE=mode" to PARENT,
+        "KEY_ENABLED=enabled" to PARENT,
     )
 
     private val contextRules = mapOf(
@@ -221,11 +221,14 @@ class RulesInventoryTest {
 
     private companion object {
         /**
-         * Settings a parent's phone cannot reach, at the start of #37.
+         * Settings a parent's phone still cannot reach.
          *
-         * 9 schedules + 16 contextual rules and places + 9 web filter +
-         * 7 auto-approval + 4 goals + 17 features + 16 notifications.
+         * Was 78 at the start of #37 (9 schedules + 16 contextual rules and
+         * places + 9 web filter + 7 auto-approval + 4 goals + 17 features + 16
+         * notifications). #41/M3 made the 9 schedule fields reachable, leaving
+         * 16 contextual rules and places + 9 web filter + 7 auto-approval + 4
+         * goals + 17 features + 16 notifications.
          */
-        const val PENDING_AT_M0 = 78
+        const val PENDING_AT_M0 = 69
     }
 }
