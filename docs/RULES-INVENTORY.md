@@ -19,9 +19,10 @@ each was added without the question being asked.
 | **Local only** | Deliberately never remote. The reason is recorded next to the entry. |
 | **Not a rule** | Persisted, but not a rule — bookkeeping, or state the app keeps about itself. |
 
-**69 settings are Pending.** That number is asserted by the test, so it can only
+**58 settings are Pending.** That number is asserted by the test, so it can only
 change on purpose. It started at 78; [#41](https://github.com/i3iorn/dementor_watch/issues/41)
-made the 9 schedule fields Parent, below.
+made the 9 schedule fields Parent, then the 11 contextual-rule condition/effect/
+target fields, below.
 
 ## LocalPolicyStore — `local_policy`
 
@@ -69,17 +70,41 @@ own phone.
 in the model when schedules gained a mode and deliberately not renamed on disk,
 because that would empty the exception list of every schedule already saved.
 
-## ContextRuleStore — `context_rules` · 16 Pending
+## ContextRuleStore — `context_rules` · 7 Parent, 5 Pending
 
 Contextual rules and the places they refer to, in one store.
 
-`announce_arrivals`, `rules`, `places`, `id`, `name`, `enabled`, `condition`,
-`effect`, `target`, `kind`, `value`, `parts`, `minutes`, `lat`, `lon`, `radius`
+`rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`
+
+[#41](https://github.com/i3iorn/dementor_watch/issues/41) closed the rule half
+of this store the way [#40](https://github.com/i3iorn/dementor_watch/issues/40)
+closed schedules: `PolicyReplication.writeContextRules`/`readContextRules`/
+`pushContextRulesFromLocal`/`pullContextRulesIntoLocal` replicate the rule list
+under `policy/<childId>/contextRules/`, one path per field per rule with a
+`deleted` marker rather than a whole-record tombstone. `condition`, `effect` and
+`target` each replicate as one opaque JSON-string register rather than being
+decomposed further — a condition can nest `AllOf`/`AnyOf`/`Not` arbitrarily, and
+splitting that tree into paths was judged not worth the complexity for how
+rarely two parents edit the exact same rule's logic at once. This milestone is
+wiring only: no parent-phone condition-builder UI yet.
+
+Pending: `announce_arrivals`, `places`, `lat`, `lon`, `radius`
 
 `lat`, `lon` and `radius` are coordinates a family deliberately marked.
 Replicating them means positions leaving the phone, which is a privacy question
-and not only a sync one — #41 has to answer it against the README's privacy
-section before it ships.
+and not only a sync one — #41's places slice has to answer it against the
+README's privacy section before it ships.
+
+## ContextRuleCodec — `kind`/`value`/`parts`/`minutes` · 4 Parent
+
+Not a `SharedPreferences`-backed store — the JSON codec `ContextRuleStore` and
+`PolicyReplication` share for a rule's `condition`/`effect`/`target`, extracted
+so both use exactly the same wire shape. `kind`/`value`/`parts`/`minutes` are
+its field names *within* that JSON, not preference keys, but the inventory
+test reaches them the same way (by reflection over `KEY_*` constants) so a new
+condition or effect kind is still forced through classification. Deliberately
+open-ended: a future `Xor` condition, say, is a new `KIND` constant and a new
+branch in the codec, never a change to this shape.
 
 ## WebFilterStore — `web_filter` · 9 Pending
 
