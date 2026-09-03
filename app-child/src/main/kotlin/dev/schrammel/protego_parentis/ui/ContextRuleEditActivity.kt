@@ -100,7 +100,10 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         showColumn(container)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        if (!requireStillInFamily(target)) return
+        render()
+    }
 
     private fun render() {
         container.removeAllViews()
@@ -482,7 +485,10 @@ class PlacesActivity : ParentGatedActivity() {
         showColumn(container)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        if (!requireStillInFamily(target)) return
+        render()
+    }
 
     private fun render() {
         container.removeAllViews()

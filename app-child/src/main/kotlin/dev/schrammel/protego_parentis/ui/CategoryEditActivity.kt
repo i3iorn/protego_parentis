@@ -77,6 +77,7 @@ class CategoryEditActivity : ParentGatedActivity() {
     }
 
     override fun onGatedContentVisible() {
+        if (!requireStillInFamily(target)) return
         showColumn(buildLayout(existing))
         refreshAppsSummary()
         refreshNestedSummary()
