@@ -9,10 +9,6 @@ class PolicySnapshotTest {
     private fun snapshot() = PolicySnapshot(
         version = 7L,
         dailyLimitMinutes = 120,
-        bedtimeEnabled = true,
-        bedtimeStartMinute = 21 * 60,
-        bedtimeEndMinute = 7 * 60,
-        bedtimeDays = setOf(1, 2, 3, 4, 5),
         categories = listOf(
             StoredCategory(
                 id = "games",

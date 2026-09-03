@@ -184,6 +184,23 @@ class PolicyReplicationScheduleTest {
         assertTrue(replication().readSchedules(childId).isEmpty())
     }
 
+    /** #12: bedtime replicates through this channel now, kind included. */
+    @Test
+    fun `a bedtime-kind schedule round-trips its kind`() {
+        val bedtime = StoredSchedule(
+            id = ScheduleStore.BEDTIME_ID,
+            name = "Bedtime",
+            days = setOf(1, 2, 3, 4, 5),
+            startMinuteOfDay = 21 * 60,
+            endMinuteOfDay = 7 * 60,
+            kind = ScheduleBlock.Kind.BEDTIME,
+        )
+
+        replication().writeSchedules(listOf(bedtime), childId)
+
+        assertEquals(ScheduleBlock.Kind.BEDTIME, replication().readSchedules(childId).single().kind)
+    }
+
     // ---------- the bridge to ScheduleStore ----------
 
     @Test

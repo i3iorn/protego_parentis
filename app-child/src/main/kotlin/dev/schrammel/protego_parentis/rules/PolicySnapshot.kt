@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.rules
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.DayOfWeek
 import java.time.Instant
 
 /**
@@ -20,14 +19,16 @@ import java.time.Instant
  * Tamper protection is deliberately absent. Flipping it remotely without anyone
  * standing at the phone is the one rule change this app treats as too dangerous
  * to make from a distance — see its own doc comment in [LocalPolicyStore].
+ *
+ * Bedtime is deliberately absent too, as of #12: it travels as an ordinary
+ * [StoredSchedule] through [dev.schrammel.protego_parentis.sync.PolicyReplication.writeSchedules]/
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.readSchedules] now,
+ * the same channel every other schedule already used, rather than as four
+ * fields duplicated here. See [LocalPolicyStore.bedtime].
  */
 data class PolicySnapshot(
     val version: Long,
     val dailyLimitMinutes: Int,
-    val bedtimeEnabled: Boolean,
-    val bedtimeStartMinute: Int,
-    val bedtimeEndMinute: Int,
-    val bedtimeDays: Set<Int>,
     val categories: List<StoredCategory>,
     val appLimits: Map<String, Int>,
     val exemptPackages: Set<String>,
@@ -40,10 +41,6 @@ data class PolicySnapshot(
     fun toJson(): JSONObject = JSONObject().apply {
         put(KEY_VERSION, version)
         put(KEY_DAILY_LIMIT, dailyLimitMinutes)
-        put(KEY_BEDTIME_ENABLED, bedtimeEnabled)
-        put(KEY_BEDTIME_START, bedtimeStartMinute)
-        put(KEY_BEDTIME_END, bedtimeEndMinute)
-        put(KEY_BEDTIME_DAYS, JSONArray(bedtimeDays.toList()))
         put(KEY_CATEGORIES, JSONArray(categories.map(StoredCategory::toJson)))
         put(KEY_APP_LIMITS, JSONObject(appLimits))
         put(KEY_EXEMPT, JSONArray(exemptPackages.toList()))
@@ -59,10 +56,6 @@ data class PolicySnapshot(
     companion object {
         private const val KEY_VERSION = "version"
         private const val KEY_DAILY_LIMIT = "dailyLimitMinutes"
-        private const val KEY_BEDTIME_ENABLED = "bedtimeEnabled"
-        private const val KEY_BEDTIME_START = "bedtimeStart"
-        private const val KEY_BEDTIME_END = "bedtimeEnd"
-        private const val KEY_BEDTIME_DAYS = "bedtimeDays"
         private const val KEY_CATEGORIES = "categories"
         private const val KEY_APP_LIMITS = "appLimits"
         private const val KEY_EXEMPT = "exemptPackages"
@@ -86,17 +79,9 @@ data class PolicySnapshot(
                 (0 until array.length()).mapNotNull { array.optJSONObject(it)?.let(StoredCategory::fromJson) }
             }.orEmpty()
 
-            val bedtimeDays = json.optJSONArray(KEY_BEDTIME_DAYS)?.let { array ->
-                (0 until array.length()).map { array.optInt(it) }
-            }.orEmpty().toSet()
-
             return PolicySnapshot(
                 version = json.optLong(KEY_VERSION, 0L),
                 dailyLimitMinutes = json.optInt(KEY_DAILY_LIMIT, 0),
-                bedtimeEnabled = json.optBoolean(KEY_BEDTIME_ENABLED, false),
-                bedtimeStartMinute = json.optInt(KEY_BEDTIME_START, 0),
-                bedtimeEndMinute = json.optInt(KEY_BEDTIME_END, 0),
-                bedtimeDays = bedtimeDays,
                 categories = categories,
                 appLimits = appLimits,
                 exemptPackages = strings(KEY_EXEMPT),
@@ -118,14 +103,9 @@ data class PolicySnapshot(
 
 /** Reads the current rules off this phone, in the shape a message can carry. */
 fun LocalPolicyStore.snapshot(): PolicySnapshot {
-    val setting = bedtime
     return PolicySnapshot(
         version = load().version,
         dailyLimitMinutes = dailyLimitMinutes,
-        bedtimeEnabled = setting.enabled,
-        bedtimeStartMinute = setting.start.toMinuteOfDay(),
-        bedtimeEndMinute = setting.end.toMinuteOfDay(),
-        bedtimeDays = setting.days.map(DayOfWeek::getValue).toSet(),
         categories = categories,
         appLimits = appLimits,
         exemptPackages = exemptPackages,
@@ -137,22 +117,17 @@ fun LocalPolicyStore.snapshot(): PolicySnapshot {
     )
 }
 
-/** Writes every field of [snapshot] onto this phone's own rules. */
+/**
+ * Writes every field of [snapshot] onto this phone's own rules.
+ *
+ * Bedtime is not among them any more — it arrives (and is applied) through
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.pullSchedulesIntoLocal],
+ * which [dev.schrammel.protego_parentis.sync.SyncReceiver] already calls
+ * alongside this on every policy change, the same way every other schedule
+ * already did before bedtime joined them.
+ */
 fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) {
     dailyLimitMinutes = snapshot.dailyLimitMinutes
-    bedtime = BedtimeSetting(
-        enabled = snapshot.bedtimeEnabled,
-        start = snapshot.bedtimeStartMinute.toLocalTime(),
-        end = snapshot.bedtimeEndMinute.toLocalTime(),
-        // No days is a real answer — a bedtime with no nights is off, which is
-        // how the switch expresses "not this week" without losing the times.
-        // Substituting every night here meant clearing them all was silently
-        // undone: the replica said none, this wrote seven, and the next push
-        // sent seven back to the phone that had just cleared them.
-        days = snapshot.bedtimeDays
-            .mapNotNull { value -> DayOfWeek.entries.firstOrNull { it.value == value } }
-            .toSet(),
-    )
     categories = snapshot.categories
     appLimits = snapshot.appLimits
     exemptPackages = snapshot.exemptPackages

@@ -175,10 +175,6 @@ class PolicyReplication(context: Context) {
         return PolicySnapshot(
             version = 0L,
             dailyLimitMinutes = number(PATH_DAILY_LIMIT, 0),
-            bedtimeEnabled = value(PATH_BEDTIME_ENABLED)?.toBooleanStrictOrNull() ?: false,
-            bedtimeStartMinute = number(PATH_BEDTIME_START, 0),
-            bedtimeEndMinute = number(PATH_BEDTIME_END, 0),
-            bedtimeDays = members("$root/$PATH_BEDTIME_DAYS").mapNotNull(String::toIntOrNull).toSet(),
             categories = state.idsUnder("$root/$PATH_CATEGORIES").mapNotNull { catId ->
                 StoredCategory(
                     id = catId,
@@ -254,6 +250,8 @@ class PolicyReplication(context: Context) {
                 mode = ScheduleBlock.Mode.entries.firstOrNull { it.name == fields[FIELD_SCHEDULE_MODE] }
                     ?: ScheduleBlock.Mode.EXCLUSIVE,
                 enabled = fields[FIELD_SCHEDULE_ENABLED]?.toBooleanStrictOrNull() ?: true,
+                kind = ScheduleBlock.Kind.entries.firstOrNull { it.name == fields[FIELD_SCHEDULE_KIND] }
+                    ?: ScheduleBlock.Kind.CUSTOM,
             ).takeIf { it.isComplete }
         }
     }
@@ -325,6 +323,7 @@ class PolicyReplication(context: Context) {
             put("$scheduleRoot/$FIELD_SCHEDULE_END", schedule.endMinuteOfDay.toString())
             put("$scheduleRoot/$FIELD_SCHEDULE_MODE", schedule.mode.name)
             put("$scheduleRoot/$FIELD_SCHEDULE_ENABLED", schedule.enabled.toString())
+            put("$scheduleRoot/$FIELD_SCHEDULE_KIND", schedule.kind.name)
             putMembers("$scheduleRoot/$FIELD_SCHEDULE_DAYS", schedule.days.map(Int::toString).toSet())
             putMembers("$scheduleRoot/$FIELD_SCHEDULE_PACKAGES", schedule.packages)
         }
@@ -553,10 +552,6 @@ class PolicyReplication(context: Context) {
     private fun flatten(snapshot: PolicySnapshot, childId: DeviceId): Map<String, String?> = buildMap {
         val root = "$POLICY/${childId.value}"
         put("$root/$PATH_DAILY_LIMIT", snapshot.dailyLimitMinutes.toString())
-        put("$root/$PATH_BEDTIME_ENABLED", snapshot.bedtimeEnabled.toString())
-        put("$root/$PATH_BEDTIME_START", snapshot.bedtimeStartMinute.toString())
-        put("$root/$PATH_BEDTIME_END", snapshot.bedtimeEndMinute.toString())
-        putMembers("$root/$PATH_BEDTIME_DAYS", snapshot.bedtimeDays.map(Int::toString).toSet())
 
         snapshot.categories.forEach { category ->
             val catRoot = "$root/$PATH_CATEGORIES/${category.id}"
@@ -608,10 +603,6 @@ class PolicyReplication(context: Context) {
         const val NEVER = -1L
 
         const val PATH_DAILY_LIMIT = "dailyLimitMinutes"
-        const val PATH_BEDTIME_ENABLED = "bedtime/enabled"
-        const val PATH_BEDTIME_START = "bedtime/start"
-        const val PATH_BEDTIME_END = "bedtime/end"
-        const val PATH_BEDTIME_DAYS = "bedtime/days"
         const val PATH_CATEGORIES = "categories"
         const val PATH_APP_LIMITS = "appLimits"
         const val PATH_EXEMPT = "exempt"
@@ -629,6 +620,7 @@ class PolicyReplication(context: Context) {
         const val FIELD_SCHEDULE_ENABLED = "enabled"
         const val FIELD_SCHEDULE_DAYS = "days"
         const val FIELD_SCHEDULE_PACKAGES = "packages"
+        const val FIELD_SCHEDULE_KIND = "kind"
 
         /**
          * A schedule id under this marker is gone, whatever its other fields say.

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
@@ -13,7 +14,6 @@ import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.ScheduleBlock
-import dev.schrammel.protego_parentis.model.ScheduleId
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONObject
 import java.time.DayOfWeek
@@ -86,7 +86,10 @@ class LocalPolicyStore(context: Context) {
         deviceBudget = budgetOf(dailyLimitMinutes),
         appRules = appRules(),
         categories = categories.map(::toDomain),
-        schedules = schedules(),
+        // Bedtime is a StoredSchedule like any other now (see ScheduleStore's
+        // own doc comment) — active() already includes it once enabled, with
+        // no special-casing needed here any more.
+        schedules = scheduleStore.active(),
         contextRules = contextRuleStore.rules,
         safetyAllowlist = SafetyAllowlist.of(appContext),
         dnsFilter = webFilterStore.filter(),
@@ -115,28 +118,6 @@ class LocalPolicyStore(context: Context) {
         hiddenPackages.forEach { pkg -> put(PackageName(pkg), AppRule.Blocked(hidden = true)) }
     }
 
-    private fun schedules(): List<ScheduleBlock> = buildList {
-        val setting = bedtime
-        if (setting.isActive && setting.start != setting.end) {
-            add(
-                ScheduleBlock(
-                    id = ScheduleId(BEDTIME_ID),
-                    name = appContext.getString(R.string.rules_bedtime_name),
-                    days = setting.days,
-                    start = setting.start,
-                    end = setting.end,
-                    // Everything on the safety list survives bedtime anyway; this
-                    // set is for apps a family additionally permits. Exclusive by
-                    // default, which is bedtime's whole point: the phone winds
-                    // down except for what is named here.
-                    packages = emptySet(),
-                    kind = ScheduleBlock.Kind.BEDTIME,
-                ),
-            )
-        }
-        addAll(scheduleStore.active())
-    }
-
     private fun toDomain(stored: StoredCategory) = Category(
         id = CategoryId(stored.id),
         name = stored.name,
@@ -158,23 +139,48 @@ class LocalPolicyStore(context: Context) {
 
     // ---------- bedtime ----------
 
+    /**
+     * Bedtime, backed by the one fixed-id entry [ScheduleStore] treats
+     * specially — see its own doc comment. This property's shape is
+     * unchanged from when it read a dedicated set of fields, so nothing that
+     * already called it (this device's own rules screen included) needed to
+     * change; only where the answer comes from moved.
+     */
     var bedtime: BedtimeSetting
-        get() = BedtimeSetting(
-            enabled = prefs.getBoolean(KEY_BEDTIME_ENABLED, BedtimeSetting.OFF.enabled),
-            start = prefs.readTime(KEY_BEDTIME_START, Defaults.BEDTIME_START),
-            end = prefs.readTime(KEY_BEDTIME_END, Defaults.BEDTIME_END),
-            // Absent for anyone upgrading from a build where bedtime ran nightly.
-            // Defaulting to every night keeps their bedtime exactly as it was.
-            days = prefs.getStringSet(KEY_BEDTIME_DAYS, null)
-                ?.mapNotNull { stored -> stored.toIntOrNull()?.let(::dayOf) }
-                ?.toSet()
-                ?: BedtimeSetting.ALL_DAYS,
-        )
-        set(value) = write {
-            putBoolean(KEY_BEDTIME_ENABLED, value.enabled)
-            putInt(KEY_BEDTIME_START, value.start.toMinuteOfDay())
-            putInt(KEY_BEDTIME_END, value.end.toMinuteOfDay())
-            putStringSet(KEY_BEDTIME_DAYS, value.days.map { it.value.toString() }.toSet())
+        get() {
+            val schedule = scheduleStore.find(ScheduleStore.BEDTIME_ID) ?: return BedtimeSetting.OFF
+            return BedtimeSetting(
+                enabled = schedule.enabled,
+                start = schedule.start,
+                end = schedule.end,
+                days = schedule.days.mapNotNull(::dayOf).toSet(),
+            )
+        }
+        set(value) {
+            scheduleStore.upsert(
+                StoredSchedule(
+                    id = ScheduleStore.BEDTIME_ID,
+                    name = appContext.getString(R.string.rules_bedtime_name),
+                    days = value.days.map { it.value }.toSet(),
+                    startMinuteOfDay = value.start.toMinuteOfDay(),
+                    endMinuteOfDay = value.end.toMinuteOfDay(),
+                    // Everything on the safety list survives bedtime anyway; a
+                    // family additionally permitting something during it was
+                    // never offered here, so this stays fixed rather than
+                    // exposing a control bedtime's own card never had.
+                    packages = emptySet(),
+                    mode = ScheduleBlock.Mode.EXCLUSIVE,
+                    kind = ScheduleBlock.Kind.BEDTIME,
+                    enabled = value.enabled,
+                ),
+            )
+            // ScheduleStore is a different SharedPreferences file from this
+            // store's own, so the version bump every other setter here relies
+            // on to signal a change never happens for this one — starting
+            // enforcement directly, the same way SchedulesActivity already
+            // does for every other schedule edit, is what SchedulesActivity's
+            // own comment calls out: a window may be starting right now.
+            EnforcementService.start(appContext)
         }
 
     // ---------- categories ----------
@@ -295,12 +301,6 @@ class LocalPolicyStore(context: Context) {
     private fun dayOf(value: Int): DayOfWeek? =
         DayOfWeek.entries.firstOrNull { it.value == value }
 
-    private fun SharedPreferences.readTime(key: String, fallback: LocalTime): LocalTime {
-        val stored = getInt(key, NOT_SET)
-        if (stored !in 0 until MINUTES_PER_DAY) return fallback
-        return stored.toLocalTime()
-    }
-
     /**
      * Every write bumps the version. The enforcement service compares it to decide
      * whether anything needs re-applying, and the audit log records it.
@@ -322,15 +322,9 @@ class LocalPolicyStore(context: Context) {
         const val FILE_NAME = "local_policy"
         const val INITIAL_VERSION = 1L
         const val LOCAL_CHILD_ID = "local"
-        const val BEDTIME_ID = "bedtime"
-        const val NOT_SET = -1
 
         const val KEY_VERSION = "version"
         const val KEY_DAILY_LIMIT = "daily_limit_minutes"
-        const val KEY_BEDTIME_ENABLED = "bedtime_enabled"
-        const val KEY_BEDTIME_START = "bedtime_start_minute_of_day"
-        const val KEY_BEDTIME_END = "bedtime_end_minute_of_day"
-        const val KEY_BEDTIME_DAYS = "bedtime_days"
         const val KEY_BLOCKED = "blocked_packages"
         const val KEY_HIDDEN = "hidden_packages"
         const val KEY_INSTALL_WINDOW = "install_window_until"
