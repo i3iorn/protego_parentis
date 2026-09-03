@@ -19,11 +19,17 @@ each was added without the question being asked.
 | **Local only** | Deliberately never remote. The reason is recorded next to the entry. |
 | **Not a rule** | Persisted, but not a rule — bookkeeping, or state the app keeps about itself. |
 
-**54 settings are Pending.** That number is asserted by the test, so it can only
+**8 settings are Pending.** That number is asserted by the test, so it can only
 change on purpose. It started at 78; [#41](https://github.com/i3iorn/dementor_watch/issues/41)
 made the 9 schedule fields Parent, then the 11 contextual-rule condition/effect/
 target fields, then the 2 places-list fields — everything about a place except
-its coordinates, which move to Local only instead, below.
+its coordinates, which move to Local only instead, below. [#42](https://github.com/i3iorn/dementor_watch/issues/42)
+made web filtering, the goal's three settable fields, and every optional
+`Feature` reachable, and reclassified `NotificationPreferences` and the three
+non-optional `Feature`s (never really Pending — see their own sections) rather
+than closing them. What's left: `announce_arrivals` (below) and
+`AutoApprovalStore`, a list of records rather than flat scalars and #42's own
+next slice.
 
 ## LocalPolicyStore — `local_policy`
 
@@ -133,10 +139,17 @@ condition or effect kind is still forced through classification. Deliberately
 open-ended: a future `Xor` condition, say, is a new `KIND` constant and a new
 branch in the codec, never a change to this shape.
 
-## WebFilterStore — `web_filter` · 9 Pending
+## WebFilterStore — `web_filter` · 9 Parent
 
 `profile`, `custom_host`, `safe_search`, `youtube`, `incognito`, `blocked`,
 `allowed`, `suspend_browsers`, `count_visits`
+
+[#42](https://github.com/i3iorn/dementor_watch/issues/42) closed this store —
+all nine fields joined `PolicySnapshot`, riding the same flat-scalar and
+membership-set channel `dailyLimitMinutes` and the packages sets already use
+(`blocked`/`allowed` as URL membership sets, same reasoning as `exemptPackages`
+below: two parents editing different URLs both survive). Wiring only in this
+slice — no parent-phone web filter screen yet.
 
 ## AutoApprovalStore — `auto_approval` · 7 Pending, 1 not a rule
 
@@ -144,14 +157,23 @@ branch in the codec, never a change to this shape.
 
 `fired_total` is a running count the phone keeps about itself — not a rule.
 
-## GoalStore — `goal` · 4 Pending, 5 not a rule
+The one #42 slice still outstanding: a list of records (the schedules/
+contextual-rules shape — one path per field per rule, a `deleted` marker),
+not the flat-scalar shape the rest of #42 closed, so it belongs in its own
+milestone slice rather than riding `PolicySnapshot`.
 
-Rules: `enabled`, `max_minutes`, `prize`, `effective_from`
+## GoalStore — `goal` · 3 Parent, 6 not a rule
 
-Not rules — what has happened rather than what may: `celebrated_days`,
-`pending_day`, `pending_used`, `pending_target`, `pending_prize`
+Parent, via `PolicySnapshot` as of #42: `enabled`, `max_minutes`, `prize`.
 
-## FeatureFlags — `features` · 17 Pending
+Not rules — what has happened rather than what may, or bookkeeping nobody
+chooses: `effective_from` (reclassified alongside #42 — it's
+`GoalStore.save`'s own restart-detection recording when progress last reset,
+the same kind of fact `KEY_VERSION` already is, never something a parent
+picks), `celebrated_days`, `pending_day`, `pending_used`, `pending_target`,
+`pending_prize`.
+
+## FeatureFlags — `features` · 14 Parent, 3 not a rule
 
 Enum-backed, so the settings are the `Feature` entries rather than keys:
 
@@ -159,14 +181,15 @@ Enum-backed, so the settings are the `Feature` entries rather than keys:
 `CONTEXT_RULES`, `PLACES`, `GOALS`, `APP_CONTROL`, `WEB_FILTER`, `WEB_ACTIVITY`,
 `LOCATION`, `CHAT`, `EMERGENCY`, `HISTORY`, `TRANSPARENCY`
 
-Three of these are marked `optional = false` in the enum and cannot be switched
-off at all. They are listed as Pending because the *flag* is unreachable from a
-parent, not because a parent should be able to remove the emergency button.
-[#42](https://github.com/i3iorn/dementor_watch/issues/42) should decide whether
-a parent turning a whole feature off remotely is a rule change or something
-larger.
+[#42](https://github.com/i3iorn/dementor_watch/issues/42) decided: a parent can
+switch any of the 14 optional features off remotely, via
+`LocalPolicyStore.disabledFeatures`. The remaining three (`EMERGENCY`,
+`HISTORY`, `TRANSPARENCY`) are marked `optional = false` in the enum and
+`setEnabled` always refuses them — on every phone, not only remotely — so they
+were never really a Pending rule waiting to be reached; reclassified to Not a
+rule rather than left as backlog.
 
-## NotificationPreferences — `notifications` · 16 Pending
+## NotificationPreferences — `notifications` · 10 Local only, 6 not a rule
 
 Enum-backed on `NotificationKind`:
 
@@ -175,9 +198,15 @@ Enum-backed on `NotificationKind`:
 `PLACE_TRANSITION`, `EMERGENCY`, `DEVICE_PENDING`, `DEVICE_ADDED`,
 `DEVICE_REMOVED`, `FAMILY_DISBANDED`, `CHAT_MESSAGE`
 
-These govern what the *child* is told. A parent silencing them from a distance
-deserves weighing against the product's position that the child can see
-everything that applies to them — again #42.
+These govern what the *child* is told. Decided alongside #42: **stays
+local-only.** A parent silencing what the other side of the family is told
+about, from a distance, was weighed against the product's stated position
+that the child can see everything that applies to them, and the answer was no
+— each phone keeps deciding what it itself notifies about. The six marked
+`optional = false` (`LOCATED`, `LOCKED`, `EMERGENCY`, `DEVICE_ADDED`,
+`DEVICE_REMOVED`, `FAMILY_DISBANDED`) were never a Pending rule either, for
+the same reason as `FeatureFlags`' three above: `setEnabled` always refuses
+them.
 
 ## Adding a rule
 
