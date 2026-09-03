@@ -42,15 +42,26 @@ object ReplicationRules {
     const val AUDIT = "audit"
 
     /**
-     * Whether a device of [role] may write [path].
+     * Whether a device of [role], identified as [writerId], may write [path].
      *
      * Read as a sentence: the managed phone owns what it observes and what it
      * asks for; parents own what is imposed on it; both may talk.
+     *
+     * [writerId] is the identity the *roster* established for the sender — the
+     * device whose signature verified against a known public key — never
+     * [StateOp.origin]. `origin` is a plain field on the wire, set by whoever
+     * encoded the op, and nothing here or in [StateMerge] ever checks it against
+     * who actually signed the message it arrived in. Using it for authorisation
+     * would let a compromised sender simply write a different id into that
+     * field and claim to be someone else. It exists only to break ties between
+     * two writes that land on the same path at the same logical time.
      */
-    fun mayWrite(role: SyncRole?, path: String): Boolean {
+    fun mayWrite(role: SyncRole?, path: String, writerId: DeviceId? = null): Boolean {
         val section = path.substringBefore(SEPARATOR)
         return when (section) {
-            // Both, and this one is worth the paragraph.
+            // A parent may write any child's rules. The managed phone may only
+            // write its own — worth the paragraph, because it used to be
+            // simpler than this and the simpler version was right once.
             //
             // The tempting rule is "only a parent may write the rules", and it
             // was the rule here first. It does not survive contact with the
@@ -62,18 +73,31 @@ object ReplicationRules {
             // could never agree, so every digest exchange found the same
             // difference and asked for the same repair, forever.
             //
-            // So the boundary for the rules is the PIN, not the device. An edit
-            // made at the managed phone has already been authorised by somebody
-            // who knows the PIN, which is the same reasoning that lets that
-            // phone enrol the founding parent (see [Enrolment]). What this gives
-            // up is real and worth stating plainly: a managed phone whose app
-            // has been modified can publish a policy its parents will believe.
-            // Such a phone could already ignore that policy outright, so what is
-            // lost is the parents' *view* being trustworthy, not enforcement —
-            // and the shared history still records which device wrote what.
+            // So the boundary for the rules is the PIN, not the device — within
+            // the managed phone's *own* rules. That reasoning never argued for
+            // one managed phone being able to write a second one's rules, and
+            // with more than one child device in a family that is exactly what
+            // an unscoped rule would allow. So a child may write only the
+            // subtree at `policy/<its own id>/…`; a parent, having no subtree
+            // of its own to be confined to, may write any child's.
+            //
+            // An edit made at the managed phone has already been authorised by
+            // somebody who knows the PIN, which is the same reasoning that lets
+            // that phone enrol the founding parent (see [Enrolment]). What this
+            // gives up is real and worth stating plainly: a managed phone whose
+            // app has been modified can publish a policy its parents will
+            // believe, for its own subtree. Such a phone could already ignore
+            // that policy outright, so what is lost is the parents' *view* being
+            // trustworthy for that one child, not enforcement, and not any other
+            // child's rules — and the shared history still records which device
+            // wrote what.
             //
             // Trust itself is not on this footing. See ROSTER below.
-            POLICY -> role != null
+            POLICY -> when (role) {
+                SyncRole.PARENT -> true
+                SyncRole.CHILD -> writerId != null && ownsPolicySubtree(path, writerId)
+                null -> false
+            }
 
             // Enrolment stays a parent's decision, exactly as it was before
             // replication existed, and unlike POLICY above it does not soften.
@@ -150,15 +174,26 @@ object ReplicationRules {
     fun isAppendOnly(path: String): Boolean = path.substringBefore(SEPARATOR) == AUDIT
 
     /**
-     * Whether a device of [role] may write this op at all.
+     * Whether a device of [role], identified as [writerId], may write this op
+     * at all.
      *
      * Authorisation only. What happens when two authorised writes contend for
      * one path is [StateMerge]'s business, and deliberately not decided here —
      * anything that depends on what this replica already holds would make the
      * outcome depend on arrival order.
      */
-    fun accepts(role: SyncRole?, op: StateOp): Boolean =
-        isWellFormed(op) && mayWrite(role, op.path) && mayWriteRequestField(role, op.path)
+    fun accepts(role: SyncRole?, op: StateOp, writerId: DeviceId? = null): Boolean =
+        isWellFormed(op) && mayWrite(role, op.path, writerId) && mayWriteRequestField(role, op.path)
+
+    /**
+     * Whether [path] falls under the policy subtree owned by [writerId].
+     *
+     * The child id is the path's second segment — `policy/<childId>/…` — so a
+     * managed phone may write its own rules but not another child's, even
+     * though both live in the same [POLICY] section.
+     */
+    private fun ownsPolicySubtree(path: String, writerId: DeviceId): Boolean =
+        path.split(SEPARATOR).getOrNull(1) == writerId.value
 
     // ---------- what a path and a value may look like ----------
 

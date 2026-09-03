@@ -67,8 +67,8 @@ class ReplicatedStateStoreTest {
         val early = store()
         val busy = store()
 
-        repeat(3) { i -> busy.write("policy/dailyLimitMinutes", "$i", "BUSY") }
-        early.write("policy/dailyLimitMinutes", "90", "EARLY")
+        repeat(3) { i -> busy.write("policy/dailyLimitMinutes", "$i", "BUSY", SyncRole.PARENT) }
+        early.write("policy/dailyLimitMinutes", "90", "EARLY", SyncRole.PARENT)
 
         assertEquals("90", store().value("policy/dailyLimitMinutes"))
     }
@@ -79,8 +79,8 @@ class ReplicatedStateStoreTest {
         val a = store()
         val b = store()
 
-        val first = a.write("policy/dailyLimitMinutes", "60", "A")
-        val second = b.write("policy/bedtime/enabled", "1", "B")
+        val first = a.write("policy/dailyLimitMinutes", "60", "A", SyncRole.PARENT)
+        val second = b.write("policy/bedtime/enabled", "1", "B", SyncRole.PARENT)
 
         assertNotEquals(first?.lamport, second?.lamport)
     }
@@ -96,11 +96,11 @@ class ReplicatedStateStoreTest {
     @Test
     fun `leaving a family drops the clock as well as the replica`() {
         val busy = store()
-        repeat(20) { i -> busy.write("policy/appLimits/com.example.$i", "$i", "OLD") }
-        val before = busy.write("policy/dailyLimitMinutes", "10", "OLD")?.lamport ?: 0
+        repeat(20) { i -> busy.write("policy/appLimits/com.example.$i", "$i", "OLD", SyncRole.PARENT) }
+        val before = busy.write("policy/dailyLimitMinutes", "10", "OLD", SyncRole.PARENT)?.lamport ?: 0
 
         busy.forgetAll()
-        val after = store().write("policy/dailyLimitMinutes", "10", "NEW")?.lamport ?: 0
+        val after = store().write("policy/dailyLimitMinutes", "10", "NEW", SyncRole.PARENT)?.lamport ?: 0
 
         assertTrue("clock carried over: $before then $after", after < before)
     }
@@ -109,7 +109,7 @@ class ReplicatedStateStoreTest {
 
     @Test
     fun `a write is readable and queued for the family`() {
-        store().write("policy/dailyLimitMinutes", "90", "A")
+        store().write("policy/dailyLimitMinutes", "90", "A", SyncRole.PARENT)
 
         assertEquals("90", store().value("policy/dailyLimitMinutes"))
         assertEquals(listOf("policy/dailyLimitMinutes"), store().pending.map { it.path })
@@ -125,10 +125,10 @@ class ReplicatedStateStoreTest {
      */
     @Test
     fun `writing the value it already holds queues nothing`() {
-        store().write("policy/dailyLimitMinutes", "90", "A")
+        store().write("policy/dailyLimitMinutes", "90", "A", SyncRole.PARENT)
         val queuedAfterFirst = store().pending.size
 
-        val op = store().write("policy/dailyLimitMinutes", "90", "A")
+        val op = store().write("policy/dailyLimitMinutes", "90", "A", SyncRole.PARENT)
 
         assertNull(op)
         assertEquals(queuedAfterFirst, store().pending.size)
@@ -146,7 +146,7 @@ class ReplicatedStateStoreTest {
     fun `a value no peer would accept is not written locally either`() {
         val tooLong = "x".repeat(ReplicationRules.MAX_VALUE_LENGTH + 1)
 
-        val op = store().write("policy/appLimits/com.example.a", tooLong, "A")
+        val op = store().write("policy/appLimits/com.example.a", tooLong, "A", SyncRole.PARENT)
 
         assertNull(op)
         assertNull(store().value("policy/appLimits/com.example.a"))
@@ -154,7 +154,7 @@ class ReplicatedStateStoreTest {
 
     @Test
     fun `clearing pending leaves the value behind`() {
-        val op = store().write("policy/dailyLimitMinutes", "90", "A")
+        val op = store().write("policy/dailyLimitMinutes", "90", "A", SyncRole.PARENT)
 
         store().clearPending(listOfNotNull(op))
 
@@ -210,10 +210,10 @@ class ReplicatedStateStoreTest {
      */
     @Test
     fun `an op from a peer that ran ahead pulls this device's clock forward`() {
-        store().write("policy/dailyLimitMinutes", "60", "US")
+        store().write("policy/dailyLimitMinutes", "60", "US", SyncRole.PARENT)
 
         store().receive(listOf(StateOp("policy/bedtime/enabled", "1", 500, "THEM")))
-        val next = store().write("policy/dailyLimitMinutes", "70", "US")
+        val next = store().write("policy/dailyLimitMinutes", "70", "US", SyncRole.PARENT)
 
         assertTrue("local write did not sort after the peer", (next?.lamport ?: 0) > 500)
     }
@@ -237,7 +237,7 @@ class ReplicatedStateStoreTest {
         store().receive(listOf(heard))
 
         assertTrue(store().receive(listOf(heard)).isEmpty())
-        val next = ReplicatedStateStore(context).write("policy/dailyLimitMinutes", "70", "US")
+        val next = ReplicatedStateStore(context).write("policy/dailyLimitMinutes", "70", "US", SyncRole.PARENT)
 
         assertTrue("clock did not survive a no-op receive", (next?.lamport ?: 0) > 500)
     }
@@ -252,7 +252,7 @@ class ReplicatedStateStoreTest {
      */
     @Test
     fun `a queued op survives the store being rebuilt`() {
-        store().write("policy/dailyLimitMinutes", "90", "A")
+        store().write("policy/dailyLimitMinutes", "90", "A", SyncRole.PARENT)
 
         val rebuilt = ReplicatedStateStore(context)
 
@@ -262,8 +262,8 @@ class ReplicatedStateStoreTest {
 
     @Test
     fun `leaving a family leaves nothing behind`() {
-        store().write("policy/dailyLimitMinutes", "90", "A")
-        store().write("chat/1700000000-a/text", "hello", "A")
+        store().write("policy/dailyLimitMinutes", "90", "A", SyncRole.PARENT)
+        store().write("chat/1700000000-a/text", "hello", "A", SyncRole.PARENT)
 
         store().forgetAll()
 
@@ -282,6 +282,7 @@ class ReplicatedStateStoreTest {
                 "policy/categories/games/apps/com.example.a" to "1",
             ),
             "A",
+            SyncRole.PARENT,
         )
 
         assertEquals(setOf("games", "social"), store().idsUnder("policy/categories"))
@@ -289,9 +290,39 @@ class ReplicatedStateStoreTest {
 
     @Test
     fun `a deleted key is not offered as a child`() {
-        store().write("policy/appLimits/com.example.a", "30", "A")
-        store().write("policy/appLimits/com.example.a", null, "A")
+        store().write("policy/appLimits/com.example.a", "30", "A", SyncRole.PARENT)
+        store().write("policy/appLimits/com.example.a", null, "A", SyncRole.PARENT)
 
         assertEquals(emptyMap<String, String>(), store().children("policy/appLimits"))
+    }
+
+    // ---------- the write-time gate ----------
+
+    /**
+     * A write this device is not allowed to make is refused here, before it is
+     * ever queued — not merely dropped by every peer once published.
+     *
+     * This is the asymmetry [ReplicationRules.mayWrite] warns about: a receiver
+     * refusing a peer's op was already tested, but a local write went straight
+     * into the map and the outbound queue with no equivalent check, so the two
+     * replicas disagreed on every digest exchange forever. See
+     * [dev.schrammel.protego_parentis.sync.ReplicationRulesTest].
+     */
+    @Test
+    fun `a write this device may not make is refused, not merely queued and later refused`() {
+        val op = store().write("policy/OTHER_CHILD/dailyLimitMinutes", "90", "SELF", SyncRole.CHILD)
+
+        assertNull(op)
+        assertNull(store().value("policy/OTHER_CHILD/dailyLimitMinutes"))
+        assertTrue(store().pending.isEmpty())
+    }
+
+    /** The mirror: a managed phone writing its own subtree is still let through. */
+    @Test
+    fun `a child may still write its own policy subtree locally`() {
+        val op = store().write("policy/SELF/dailyLimitMinutes", "90", "SELF", SyncRole.CHILD)
+
+        assertEquals("90", op?.value)
+        assertEquals("90", store().value("policy/SELF/dailyLimitMinutes"))
     }
 }

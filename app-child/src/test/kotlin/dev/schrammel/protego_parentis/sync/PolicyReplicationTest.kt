@@ -37,7 +37,9 @@ class PolicyReplicationTest {
      * break rather than a refactor. A test written in terms of the constant
      * would follow such a rename without a word; this one does not.
      */
-    private val dailyLimitPath = "policy/dailyLimitMinutes"
+    private val dailyLimitPath = "policy/THISPHONE/dailyLimitMinutes"
+
+    private val thisChildId = DeviceId("THISPHONE")
 
     @Before
     fun useAKnownIdentity() {
@@ -54,7 +56,7 @@ class PolicyReplicationTest {
 
     private fun rules() = LocalPolicyStore(context)
 
-    private fun push() = PolicyReplication(context).pushFromLocalPolicy()
+    private fun push() = PolicyReplication(context).pushFromLocalPolicy(thisChildId)
 
     // ---------- the gate ----------
 

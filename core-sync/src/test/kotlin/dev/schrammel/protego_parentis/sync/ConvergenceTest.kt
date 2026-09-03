@@ -51,15 +51,18 @@ class ConvergenceTest {
             StateCodec.batch(pending).map(StateCodec::encodeOps).also { pending.clear() }
 
         /**
-         * Everything a message from [sender] changes here.
+         * Everything a message from [sender], identified as [senderId], changes
+         * here.
          *
          * Ops that [sender] is not allowed to write are dropped, exactly as the
          * receiver drops them — which is the step that made the whole thing
          * fail, and the reason this test decodes rather than passing ops
-         * straight across.
+         * straight across. [senderId] is the roster-verified id, standing in
+         * here for what [dev.schrammel.protego_parentis.sync.RosterRules.admit]
+         * would have established in the real receiver.
          */
-        fun receive(sender: SyncRole, body: String) {
-            val ops = StateCodec.decodeOps(body).filter { ReplicationRules.accepts(sender, it) }
+        fun receive(sender: SyncRole, senderId: DeviceId, body: String) {
+            val ops = StateCodec.decodeOps(body).filter { ReplicationRules.accepts(sender, it, senderId) }
             ops.forEach { clock.observe(it.lamport) }
             state = StateMerge.apply(state, ops)
         }
@@ -73,11 +76,11 @@ class ConvergenceTest {
     private fun exchange(a: Device, b: Device) {
         val fromA = a.outbox()
         val fromB = b.outbox()
-        fromA.forEach { b.receive(a.role, it) }
-        fromB.forEach { a.receive(b.role, it) }
+        fromA.forEach { b.receive(a.role, DeviceId(a.id), it) }
+        fromB.forEach { a.receive(b.role, DeviceId(b.id), it) }
     }
 
-    private fun child() = Device(SyncRole.CHILD, "CHILD")
+    private fun child(id: String = "CHILD") = Device(SyncRole.CHILD, id)
 
     private fun parent() = Device(SyncRole.PARENT, "PARENT")
 
@@ -97,10 +100,10 @@ class ConvergenceTest {
         val child = child()
         val parent = parent()
 
-        child.write("policy/dailyLimitMinutes", "90")
+        child.write("policy/${child.id}/dailyLimitMinutes", "90")
         exchange(child, parent)
 
-        assertEquals("90", parent.value("policy/dailyLimitMinutes"))
+        assertEquals("90", parent.value("policy/${child.id}/dailyLimitMinutes"))
     }
 
     /** And the direction that always worked, so the fix did not trade one for the other. */
@@ -109,10 +112,10 @@ class ConvergenceTest {
         val child = child()
         val parent = parent()
 
-        parent.write("policy/dailyLimitMinutes", "45")
+        parent.write("policy/${child.id}/dailyLimitMinutes", "45")
         exchange(child, parent)
 
-        assertEquals("45", child.value("policy/dailyLimitMinutes"))
+        assertEquals("45", child.value("policy/${child.id}/dailyLimitMinutes"))
     }
 
     /**
@@ -131,9 +134,9 @@ class ConvergenceTest {
         val parent = parent()
         val now = 1_700_000_000L
 
-        child.write("policy/dailyLimitMinutes", "90")
-        child.write("policy/bedtime/enabled", "1")
-        parent.write("policy/categories/games/limitMinutes", "30")
+        child.write("policy/${child.id}/dailyLimitMinutes", "90")
+        child.write("policy/${child.id}/bedtime/enabled", "1")
+        parent.write("policy/${child.id}/categories/games/limitMinutes", "30")
         exchange(child, parent)
 
         assertEquals(child.state, parent.state)
@@ -202,7 +205,7 @@ class ConvergenceTest {
                 "a message of ${body.length} chars exceeds the ceiling",
                 body.length <= StateCodec.MAX_MESSAGE_CHARS,
             )
-            parent.receive(child.role, body)
+            parent.receive(child.role, DeviceId(child.id), body)
         }
 
         assertEquals(120, parent.state.keys.count { it.startsWith("chat/") })
@@ -222,15 +225,18 @@ class ConvergenceTest {
         val child = child()
         val parent = parent()
 
-        child.write("policy/dailyLimitMinutes", "90")
-        parent.write("policy/dailyLimitMinutes", "45")
+        child.write("policy/${child.id}/dailyLimitMinutes", "90")
+        parent.write("policy/${child.id}/dailyLimitMinutes", "45")
         exchange(child, parent)
         // Twice, because the first exchange is what a real pair of phones would
         // do on one poll and convergence must not need a lucky second round.
         exchange(child, parent)
 
         assertEquals(child.state, parent.state)
-        assertEquals(child.value("policy/dailyLimitMinutes"), parent.value("policy/dailyLimitMinutes"))
+        assertEquals(
+            child.value("policy/${child.id}/dailyLimitMinutes"),
+            parent.value("policy/${child.id}/dailyLimitMinutes"),
+        )
     }
 
     /**
@@ -246,13 +252,53 @@ class ConvergenceTest {
         val child = child()
         val parent = parent()
 
-        repeat(50) { i -> child.write("policy/appLimits/com.example.$i", "10") }
+        repeat(50) { i -> child.write("policy/${child.id}/appLimits/com.example.$i", "10") }
         exchange(child, parent)
 
-        parent.write("policy/dailyLimitMinutes", "45")
+        parent.write("policy/${child.id}/dailyLimitMinutes", "45")
         exchange(child, parent)
 
-        assertEquals("45", child.value("policy/dailyLimitMinutes"))
+        assertEquals("45", child.value("policy/${child.id}/dailyLimitMinutes"))
         assertEquals(child.state, parent.state)
+    }
+
+    /**
+     * A family with two managed phones keeps their rules apart.
+     *
+     * A replica still holds both children's rules — nothing here scopes what a
+     * device *stores*, only what it may *write*. The point of a per-child
+     * address space is the second half of this test: neither managed phone's
+     * write can land in the other's subtree, not because the parent is
+     * careful, but because [ReplicationRules.mayWrite] refuses it
+     * structurally.
+     */
+    @Test
+    fun `two children converge on two independent rulesets`() {
+        val childA = child("CHILD_A")
+        val childB = child("CHILD_B")
+        val parent = parent()
+
+        parent.write("policy/${childA.id}/dailyLimitMinutes", "60")
+        parent.write("policy/${childB.id}/dailyLimitMinutes", "120")
+        // A real family syncs over a pub/sub relay: one broadcast reaches every
+        // subscriber, not one peer at a time. So the parent's outbox is drained
+        // once and handed to both children, the way [exchange] cannot.
+        val fromParent = parent.outbox()
+        fromParent.forEach { childA.receive(parent.role, DeviceId(parent.id), it) }
+        fromParent.forEach { childB.receive(parent.role, DeviceId(parent.id), it) }
+
+        assertEquals("60", childA.value("policy/${childA.id}/dailyLimitMinutes"))
+        assertEquals("120", childB.value("policy/${childB.id}/dailyLimitMinutes"))
+
+        // Each managed phone may write only its own subtree...
+        childA.write("policy/${childA.id}/bedtime/enabled", "1")
+        exchange(childA, parent)
+        assertEquals("1", parent.value("policy/${childA.id}/bedtime/enabled"))
+
+        // ...and an attempt at the other child's subtree is refused on arrival,
+        // leaving what the parent set untouched.
+        childA.write("policy/${childB.id}/dailyLimitMinutes", "999")
+        exchange(childA, parent)
+        assertEquals("120", parent.value("policy/${childB.id}/dailyLimitMinutes"))
     }
 }

@@ -18,28 +18,52 @@ class ReplicationRulesTest {
     private fun op(path: String, value: String? = "x", lamport: Long = 1L) =
         StateOp(path, value, lamport, "AAAA")
 
+    private val childA = DeviceId("CHILD_A")
+    private val childB = DeviceId("CHILD_B")
+
     // ---------- the rule the product rests on ----------
 
     /**
-     * Both devices write the rules, and that is deliberate.
+     * A parent may write any child's rules; the managed phone may write only
+     * its own subtree — `policy/<its own id>/…`.
      *
      * The rules live on the managed phone and can be edited standing at it,
      * behind the parent PIN. Refusing its writes meant a parent's phone never
      * learned them at all and the two replicas could never agree — so the
-     * boundary for the rules is the PIN rather than the device. See
-     * [ReplicationRules.mayWrite] for what that gives up.
+     * boundary for one child's own rules is the PIN rather than the device.
+     * See [ReplicationRules.mayWrite] for what that gives up, and why the
+     * scope is nonetheless narrowed to the child's own subtree now that a
+     * family can have more than one managed phone.
      */
     @Test
-    fun `either phone may write the rules`() {
+    fun `either phone may write a child's rules, within that child's subtree`() {
         listOf(
-            "policy/dailyLimitMinutes",
-            "policy/bedtime/enabled",
-            "policy/categories/games/limitMinutes",
-            "policy/appLimits/com.example.a",
+            "policy/${childA.value}/dailyLimitMinutes",
+            "policy/${childA.value}/bedtime/enabled",
+            "policy/${childA.value}/categories/games/limitMinutes",
+            "policy/${childA.value}/appLimits/com.example.a",
         ).forEach { path ->
-            assertTrue(path, ReplicationRules.mayWrite(SyncRole.CHILD, path))
+            assertTrue(path, ReplicationRules.mayWrite(SyncRole.CHILD, path, childA))
             assertTrue(path, ReplicationRules.mayWrite(SyncRole.PARENT, path))
         }
+    }
+
+    /**
+     * The scoping that per-child address space exists for: a second managed
+     * phone in the family may not touch the first one's rules, even though
+     * both write the same [ReplicationRules.POLICY] section.
+     */
+    @Test
+    fun `a child may not write another child's policy subtree`() {
+        val path = "policy/${childA.value}/dailyLimitMinutes"
+        assertFalse(ReplicationRules.mayWrite(SyncRole.CHILD, path, childB))
+        assertTrue(ReplicationRules.mayWrite(SyncRole.PARENT, path, childB))
+    }
+
+    /** No verified writer id at all is refused, not silently granted. */
+    @Test
+    fun `a child with no established writer id may not write policy`() {
+        assertFalse(ReplicationRules.mayWrite(SyncRole.CHILD, "policy/${childA.value}/dailyLimitMinutes"))
     }
 
     /**
@@ -122,12 +146,15 @@ class ReplicationRulesTest {
     @Test
     fun `ordinary paths may be rewritten freely`() {
         assertTrue(
-            ReplicationRules.accepts(SyncRole.PARENT, op("policy/dailyLimitMinutes", "90", 2L)),
+            ReplicationRules.accepts(SyncRole.PARENT, op("policy/${childA.value}/dailyLimitMinutes", "90", 2L)),
         )
     }
 
     /**
-     * The whole boundary in one place, as a table.
+     * The whole boundary in one place, as a table — every section except
+     * [ReplicationRules.POLICY], which is no longer a plain "these roles may
+     * write this section" rule now that it is scoped per child. See the
+     * dedicated policy tests above for that one.
      *
      * Worth pinning explicitly because of how the failure shows up when it is
      * wrong. Each adapter writes its own section locally, and a local write is
@@ -145,9 +172,6 @@ class ReplicationRulesTest {
     @Test
     fun `each section says exactly who may write it`() {
         val expected = mapOf(
-            // Written by the managed phone on every rules change, and by a
-            // parent from the Rules screen. Both must be able to.
-            ReplicationRules.POLICY to setOf(SyncRole.CHILD, SyncRole.PARENT),
             // Written only by parents, and pulled into trust by everyone.
             ReplicationRules.ROSTER to setOf(SyncRole.PARENT),
             // Written only by the phone that can actually observe itself.
