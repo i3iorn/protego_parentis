@@ -12,17 +12,18 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.AppReviewStore
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.sync.DeviceId
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
- * Which apps are allowed on this phone, and what is new (AC-2, AC-3).
+ * Which apps are allowed on [target]'s phone, and what is new (AC-2, AC-3),
+ * on whichever kind of phone edits it (#43).
  *
  * One screen rather than two, because "review the app that just appeared" and
  * "block an app" are the same decision reached from different directions. A
@@ -32,28 +33,36 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  * New apps sit at the top with an explicit Allow and Block, and stay there until
  * one of the two is pressed. Opening the screen is not an answer: a glance that
  * gets interrupted must not silently count as approval.
+ *
+ * The "new arrivals" section only ever has anything in it on the managed phone
+ * itself: [AppReviewStore]'s pending list is local bookkeeping tied to the
+ * install broadcast on that one device, nothing a parent's phone has a
+ * replicated copy of. Editing a remote child's rules from here still works —
+ * the blocked/network-blocked switches are ordinary [PolicySnapshot] fields —
+ * it just never has a "new" section to show.
  */
 class AppControlActivity : ParentGatedActivity() {
 
-    private lateinit var store: LocalPolicyStore
-    private lateinit var review: AppReviewStore
-    private lateinit var sync: SyncCoordinator
+    private lateinit var target: RuleTarget
     private lateinit var column: LinearLayout
     private lateinit var rows: LinearLayout
     private var fresh: List<AppInfo> = emptyList()
     private var known: List<AppInfo> = emptyList()
     private var query = ""
 
+    override fun supportsReadOnly() = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = LocalPolicyStore(this)
-        review = AppReviewStore(this)
-        sync = SyncCoordinator(this)
         column = contentColumn()
         showColumn(column)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+        render()
+    }
 
     override fun onGatedContentHidden() {
         column.removeAllViews()
@@ -64,6 +73,7 @@ class AppControlActivity : ParentGatedActivity() {
         column.addView(screenTitle(getString(R.string.apps_title)))
         column.addView(captionText(getString(R.string.apps_hint)))
         column.addView(captionText(getString(R.string.apps_network_hint)))
+        if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
         // Outside the part that gets rebuilt on each keystroke, which would take
         // the cursor and the typed text with it. Prefilled because render() runs
         // again after a decision, and an empty box over a filtered list is worse
@@ -73,9 +83,13 @@ class AppControlActivity : ParentGatedActivity() {
         column.addView(rows)
 
         Background.load(this, {
-            val apps = InstalledApps(this).launchable()
-            val pending = review.pending
-            apps.partition { it.pkg.value in pending }
+            val apps = appCatalog(this, target).launchable()
+            if (target.isOwnDevice) {
+                val pending = AppReviewStore(this).pending
+                apps.partition { it.pkg.value in pending }
+            } else {
+                emptyList<AppInfo>() to apps
+            }
         }) { (pending, rest) ->
             fresh = pending
             known = rest
@@ -108,7 +122,7 @@ class AppControlActivity : ParentGatedActivity() {
         }
     }
 
-    /** A new arrival: name, icon, and the two answers. */
+    /** A new arrival: name, icon, and the two answers. Only ever shown on the managed phone itself. */
     private fun newAppRow(app: AppInfo): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
@@ -154,11 +168,14 @@ class AppControlActivity : ParentGatedActivity() {
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
 
+        val snapshot = policyRuleStore(this@AppControlActivity, target).read()
+
         addView(identity(app, weighted = true))
         addView(
             CheckBox(context).apply {
                 setText(R.string.apps_blocked)
-                isChecked = app.pkg.value in store.blockedPackages
+                isChecked = app.pkg.value in snapshot?.blockedPackages.orEmpty()
+                isEnabled = canEdit
                 setOnCheckedChangeListener { _, blocked ->
                     decide(app, blocked, wasNew = false)
                 }
@@ -167,9 +184,17 @@ class AppControlActivity : ParentGatedActivity() {
         addView(
             CheckBox(context).apply {
                 setText(R.string.apps_network_blocked)
-                isChecked = app.pkg.value in store.networkBlockedPackages
+                isChecked = app.pkg.value in snapshot?.networkBlockedPackages.orEmpty()
+                isEnabled = canEdit
                 setOnCheckedChangeListener { _, offline ->
-                    store.setNetworkBlocked(app.pkg.value, offline)
+                    val store = policyRuleStore(this@AppControlActivity, target)
+                    val current = store.read() ?: return@setOnCheckedChangeListener
+                    val updated = if (offline) {
+                        current.networkBlockedPackages + app.pkg.value
+                    } else {
+                        current.networkBlockedPackages - app.pkg.value
+                    }
+                    store.write(current.copy(networkBlockedPackages = updated))
                     Audit.record(
                         context = this@AppControlActivity,
                         actor = AuditActor.PARENT,
@@ -177,7 +202,6 @@ class AppControlActivity : ParentGatedActivity() {
                         subject = app.label,
                         after = Audit.flag(offline),
                     )
-                    EnforcementService.start(this@AppControlActivity)
                 }
             },
         )
@@ -211,7 +235,10 @@ class AppControlActivity : ParentGatedActivity() {
         }
 
     private fun decide(app: AppInfo, blocked: Boolean, wasNew: Boolean) {
-        store.setBlocked(app.pkg.value, blocked)
+        val store = policyRuleStore(this, target)
+        val snapshot = store.read() ?: return
+        val updated = if (blocked) snapshot.blockedPackages + app.pkg.value else snapshot.blockedPackages - app.pkg.value
+        store.write(snapshot.copy(blockedPackages = updated))
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
@@ -221,7 +248,9 @@ class AppControlActivity : ParentGatedActivity() {
         )
 
         if (wasNew) {
-            review.markReviewed(app.pkg.value)
+            // Only reachable when target.isOwnDevice — see this class's own doc
+            // comment — so review/publishAppDecision are always this device's own.
+            AppReviewStore(this).markReviewed(app.pkg.value)
             Audit.record(
                 context = this,
                 actor = AuditActor.PARENT,
@@ -230,14 +259,13 @@ class AppControlActivity : ParentGatedActivity() {
             )
             // Tell the parent phones, so the same app does not sit in their list
             // waiting for an answer that has already been given here.
-            sync.publishAppDecision(app.pkg.value, blocked)
+            SyncCoordinator(this).publishAppDecision(app.pkg.value, blocked)
             render()
         }
-
-        EnforcementService.start(this)
     }
 
     companion object {
-        fun intent(context: Context) = Intent(context, AppControlActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, AppControlActivity::class.java), childId)
     }
 }

@@ -30,16 +30,25 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
+import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
+import dev.schrammel.protego_parentis.ui.rules.delete
+import dev.schrammel.protego_parentis.ui.rules.find
+import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.upsert
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Builds one rule, read as a sentence: *when this, do that, to those.*
+ * Builds one rule, read as a sentence: *when this, do that, to those* — on
+ * whichever kind of phone edits [target]'s rules (#43).
  *
  * The three parts are chosen separately rather than offered as a list of preset
  * rules, because the useful combinations are family-specific. "Block games on the
@@ -47,8 +56,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 class ContextRuleEditActivity : ParentGatedActivity() {
 
-    private lateinit var store: ContextRuleStore
-    private lateinit var policyStore: LocalPolicyStore
+    private lateinit var target: dev.schrammel.protego_parentis.ui.RuleTarget
     private lateinit var container: LinearLayout
 
     private var ruleId: String = ""
@@ -57,29 +65,32 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private var negate: Boolean = false
     private var condition: Condition = Condition.Always
     private var effect: RuleEffect = RuleEffect.Block
-    private var target: RuleTarget = RuleTarget.Everything
+    private var ruleTarget: RuleTarget = RuleTarget.Everything
 
     private val pickApps = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         val picked = AppPickerActivity.resultFrom(result.data)
         if (picked.isNotEmpty()) {
-            target = RuleTarget.Apps(picked.map(::PackageName).toSet())
+            ruleTarget = RuleTarget.Apps(picked.map(::PackageName).toSet())
         }
         render()
     }
 
+    override fun supportsReadOnly() = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = ContextRuleStore(this)
-        policyStore = LocalPolicyStore(this)
+        val resolved = dev.schrammel.protego_parentis.ui.RuleTargets.resolve(this) ?: return finish()
+        target = resolved
 
-        val existing = intent.getStringExtra(EXTRA_ID)?.let { id -> store.rules.firstOrNull { it.id == id } }
+        val existing = intent.getStringExtra(EXTRA_ID)
+            ?.let { id -> contextRuleRuleStore(this, target).find(id) }
         ruleId = existing?.id ?: UUID.randomUUID().toString()
         name = existing?.name.orEmpty()
         enabled = existing?.enabled ?: true
         effect = existing?.effect ?: RuleEffect.Block
-        target = existing?.target ?: RuleTarget.Everything
+        ruleTarget = existing?.target ?: RuleTarget.Everything
         // A negated condition is stored wrapped; unwrap so the toggle reflects it.
         val stored = existing?.condition ?: Condition.Always
         negate = stored is Condition.Not
@@ -94,12 +105,14 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun render() {
         container.removeAllViews()
         container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
+        if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         container.addView(
             EditText(this).apply {
                 hint = getString(R.string.context_name_hint)
                 setText(name)
                 setSingleLine()
+                isEnabled = canEdit
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                 addTextChangedListener(SimpleWatcher { name = it })
             },
@@ -108,6 +121,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             CheckBox(this).apply {
                 setText(R.string.context_enabled)
                 isChecked = enabled
+                isEnabled = canEdit
                 setOnCheckedChangeListener { _, checked -> enabled = checked }
             },
         )
@@ -119,6 +133,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             CheckBox(this).apply {
                 setText(R.string.context_invert)
                 isChecked = negate
+                isEnabled = canEdit
                 setOnCheckedChangeListener { _, checked ->
                     negate = checked
                     render()
@@ -134,39 +149,44 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         container.addView(heading(getString(R.string.context_to_header), R.style.TextAppearance_Dementor_Section))
         container.addView(choice(describeTarget()) { chooseTarget() })
 
-        container.addView(
-            Button(this).apply {
-                setText(R.string.context_save)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_xl) }
-                setOnClickListener { save() }
-            },
-        )
-        if (intent.hasExtra(EXTRA_ID)) {
+        if (canEdit) {
             container.addView(
                 Button(this).apply {
-                    setText(R.string.context_delete)
+                    setText(R.string.context_save)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    setOnClickListener {
-                        val deleted = name
-                        store.delete(ruleId)
-                        Audit.record(
-                            context = this@ContextRuleEditActivity,
-                            actor = AuditActor.PARENT,
-                            action = AuditAction.CONTEXT_RULE_DELETED,
-                            subject = deleted,
-                        )
-                        finish()
-                    }
+                        .apply { topMargin = dimen(R.dimen.space_xl) }
+                    setOnClickListener { save() }
                 },
             )
+            if (intent.hasExtra(EXTRA_ID)) {
+                container.addView(
+                    Button(this).apply {
+                        setText(R.string.context_delete)
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        setOnClickListener {
+                            val deleted = name
+                            contextRuleRuleStore(this@ContextRuleEditActivity, target).delete(ruleId)
+                            Audit.record(
+                                context = this@ContextRuleEditActivity,
+                                actor = AuditActor.PARENT,
+                                action = AuditAction.CONTEXT_RULE_DELETED,
+                                subject = deleted,
+                            )
+                            finish()
+                        }
+                    },
+                )
+            }
         }
     }
+
+    private fun places(): List<PlaceRef> = placeRuleStore(this, target).read()
 
     // ---------- choosing ----------
 
     private fun chooseCondition() {
-        val places = store.places
+        if (!canEdit) return
+        val places = places()
         val options = buildList {
             add(getString(R.string.context_when_always) to { condition = Condition.Always; render() })
             add(getString(R.string.context_choose_wifi) to { askForWifi() })
@@ -231,6 +251,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     private fun chooseEffect() {
+        if (!canEdit) return
         menu(
             R.string.context_do_header,
             listOf(
@@ -256,11 +277,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     private fun chooseTarget() {
+        if (!canEdit) return
         menu(
             R.string.context_to_header,
             listOf(
                 getString(R.string.context_target_everything) to {
-                    target = RuleTarget.Everything
+                    ruleTarget = RuleTarget.Everything
                     render()
                 },
                 getString(R.string.context_choose_categories) to { chooseCategories() },
@@ -269,7 +291,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                         AppPickerActivity.intent(
                             this,
                             getString(R.string.context_choose_apps),
-                            (target as? RuleTarget.Apps)?.packages?.map { it.value }.orEmpty(),
+                            (ruleTarget as? RuleTarget.Apps)?.packages?.map { it.value }.orEmpty(),
+                            target.childId,
                         ),
                     )
                 },
@@ -278,12 +301,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     private fun chooseCategories() {
-        val categories = policyStore.categories
+        val categories = policyRuleStore(this, target).categories()
         if (categories.isEmpty()) {
             toast(getString(R.string.rules_no_categories))
             return
         }
-        val selected = (target as? RuleTarget.Categories)?.categories?.map { it.value }.orEmpty()
+        val selected = (ruleTarget as? RuleTarget.Categories)?.categories?.map { it.value }.orEmpty()
         val checked = categories.map { it.id in selected }.toBooleanArray()
         val chosen = selected.toMutableSet()
 
@@ -297,7 +320,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 if (isChecked) chosen += id else chosen -= id
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                target = RuleTarget.Categories(chosen.map(::CategoryId).toSet())
+                ruleTarget = RuleTarget.Categories(chosen.map(::CategoryId).toSet())
                 render()
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -309,14 +332,14 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             toast(getString(R.string.context_name_required))
             return
         }
-        store.upsert(
+        contextRuleRuleStore(this, target).upsert(
             ContextRule(
                 id = ruleId,
                 name = name.trim(),
                 enabled = enabled,
                 condition = if (negate) Condition.Not(condition) else condition,
                 effect = effect,
-                target = target,
+                target = ruleTarget,
             ),
         )
         Audit.record(
@@ -364,7 +387,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             is Condition.NearDevice -> getString(R.string.context_when_near, current.tag.value)
             is Condition.AtPlace -> getString(
                 R.string.context_when_place,
-                store.places.firstOrNull { it.id == current.place }?.name
+                places().firstOrNull { it.id == current.place }?.name
                     ?: getString(R.string.context_place_unknown),
             )
 
@@ -382,7 +405,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             getString(R.string.context_effect_budget, formatDuration(current.budget.default))
     }
 
-    private fun describeTarget(): String = when (val current = target) {
+    private fun describeTarget(): String = when (val current = ruleTarget) {
         is RuleTarget.Everything -> getString(R.string.context_target_everything)
         is RuleTarget.Apps -> resources.getQuantityString(
             R.plurals.rules_category_apps,
@@ -391,7 +414,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         )
 
         is RuleTarget.Categories -> current.categories
-            .mapNotNull { id -> policyStore.categories.firstOrNull { it.id == id.value }?.name }
+            .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
             .joinToString(", ")
             .ifBlank { getString(R.string.context_target_categories) }
     }
@@ -407,6 +430,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     private fun choice(text: String, onClick: () -> Unit) = Button(this).apply {
         this.text = text
+        isEnabled = canEdit
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         setOnClickListener { onClick() }
     }
@@ -425,27 +449,34 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         private const val DEFAULT_BATTERY_PERCENT = 20
         private const val MAX_BATTERY_PERCENT = 100
 
-        fun intent(context: Context, ruleId: String? = null): Intent =
-            Intent(context, ContextRuleEditActivity::class.java)
-                .apply { ruleId?.let { putExtra(EXTRA_ID, it) } }
+        fun intent(context: Context, ruleId: String? = null, childId: DeviceId? = null): Intent =
+            dev.schrammel.protego_parentis.ui.RuleTargets.putExtra(
+                Intent(context, ContextRuleEditActivity::class.java)
+                    .apply { ruleId?.let { putExtra(EXTRA_ID, it) } },
+                childId,
+            )
     }
 }
 
 /**
- * Names the places rules can refer to.
- *
- * A place is saved from where the phone is standing, which avoids needing a map
- * and, more importantly, avoids the app ever holding a location the family did
- * not deliberately mark.
+ * Names the places rules can refer to — on whichever kind of phone edits
+ * [target]'s rules (#43), with one structural asymmetry: creating a *new*
+ * place, or moving one, still only ever happens on the managed phone itself
+ * ([PlaceRuleStore] deliberately has no such operation for a remote target —
+ * see its own doc comment). A parent's phone can rename, resize or remove a
+ * place a managed phone has already created, never add one.
  */
 class PlacesActivity : ParentGatedActivity() {
 
-    private lateinit var store: ContextRuleStore
+    private lateinit var target: dev.schrammel.protego_parentis.ui.RuleTarget
     private lateinit var container: LinearLayout
+
+    override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = ContextRuleStore(this)
+        val resolved = dev.schrammel.protego_parentis.ui.RuleTargets.resolve(this) ?: return finish()
+        target = resolved
 
         container = contentColumn()
         showColumn(container)
@@ -467,7 +498,15 @@ class PlacesActivity : ParentGatedActivity() {
                 styleAs(R.style.TextAppearance_Dementor_Caption)
             },
         )
+        if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
+        if (target.isOwnDevice) renderLocal() else renderRemote()
+    }
+
+    // ---------- the managed phone editing its own places: unchanged, coordinates and all ----------
+
+    private fun renderLocal() {
+        val store = ContextRuleStore(this)
         val places = store.places
         val clampedIds = store.clampedPlaceIds
         if (places.isEmpty()) {
@@ -485,7 +524,7 @@ class PlacesActivity : ParentGatedActivity() {
                     text = getString(R.string.places_row, place.name, place.radiusMetres)
                     styleAs(R.style.TextAppearance_Dementor_ListItem)
                     setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
-                    setOnClickListener { confirmDelete(place) }
+                    if (canEdit) setOnClickListener { confirmDelete(store, place) }
                 },
             )
             if (place.id in clampedIds) {
@@ -499,26 +538,28 @@ class PlacesActivity : ParentGatedActivity() {
             }
         }
 
-        container.addView(
-            Button(this).apply {
-                setText(R.string.places_add_here)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_lg) }
-                setOnClickListener { addHere() }
-            },
-        )
-        container.addView(
-            Button(this).apply {
-                setText(R.string.places_add_by_coordinates)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_sm) }
-                setOnClickListener { addByCoordinates() }
-            },
-        )
+        if (canEdit) {
+            container.addView(
+                Button(this).apply {
+                    setText(R.string.places_add_here)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_lg) }
+                    setOnClickListener { addHere(store) }
+                },
+            )
+            container.addView(
+                Button(this).apply {
+                    setText(R.string.places_add_by_coordinates)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_sm) }
+                    setOnClickListener { addByCoordinates(store) }
+                },
+            )
+        }
     }
 
     @SuppressLint("MissingPermission")
-    private fun addHere() {
+    private fun addHere(store: ContextRuleStore) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -566,7 +607,7 @@ class PlacesActivity : ParentGatedActivity() {
      * why). [checkOnMap] hands off to whatever map app is already installed
      * instead, so a typo is still catchable before saving.
      */
-    private fun addByCoordinates() {
+    private fun addByCoordinates(store: ContextRuleStore) {
         val nameInput = EditText(this).apply {
             hint = getString(R.string.places_name_hint)
             setSingleLine()
@@ -619,13 +660,14 @@ class PlacesActivity : ParentGatedActivity() {
         // invalid field Toast and leave the dialog open instead.
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                addByCoordinatesConfirmed(nameInput, latInput, lonInput, radiusInput, dialog)
+                addByCoordinatesConfirmed(store, nameInput, latInput, lonInput, radiusInput, dialog)
             }
         }
         dialog.show()
     }
 
     private fun addByCoordinatesConfirmed(
+        store: ContextRuleStore,
         nameInput: EditText,
         latInput: EditText,
         lonInput: EditText,
@@ -684,7 +726,7 @@ class PlacesActivity : ParentGatedActivity() {
         }
     }
 
-    private fun confirmDelete(place: Place) {
+    private fun confirmDelete(store: ContextRuleStore, place: Place) {
         AlertDialog.Builder(this)
             .setTitle(place.name)
             // Rules referring to it go too, rather than being left permanently
@@ -698,10 +740,76 @@ class PlacesActivity : ParentGatedActivity() {
             .show()
     }
 
+    // ---------- a parent editing another device's places: rename, resize, delete only ----------
+
+    private fun renderRemote() {
+        val store = placeRuleStore(this, target)
+        val refs = store.read()
+        if (refs.isEmpty()) {
+            container.addView(
+                TextView(this).apply {
+                    setText(R.string.places_none)
+                    styleAs(R.style.TextAppearance_Dementor_Body)
+                    setPadding(0, dimen(R.dimen.space_md), 0, 0)
+                },
+            )
+        }
+        refs.forEach { ref ->
+            container.addView(
+                TextView(this).apply {
+                    text = getString(R.string.places_row, ref.name, ref.radiusMetres)
+                    styleAs(R.style.TextAppearance_Dementor_ListItem)
+                    setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
+                    if (canEdit) setOnClickListener { editRemotePlace(store, ref) }
+                },
+            )
+        }
+    }
+
+    private fun editRemotePlace(store: dev.schrammel.protego_parentis.ui.rules.PlaceRuleStore, ref: PlaceRef) {
+        AlertDialog.Builder(this)
+            .setTitle(ref.name)
+            .setItems(
+                arrayOf(
+                    getString(R.string.places_rename),
+                    getString(R.string.places_resize),
+                    getString(R.string.places_delete),
+                ),
+            ) { _, index ->
+                when (index) {
+                    0 -> promptForText(R.string.places_rename, R.string.places_name_hint, prefill = ref.name) { name ->
+                        store.rename(ref.id, name)
+                        render()
+                    }
+                    1 -> sliderDialog(
+                        title = R.string.places_resize,
+                        max = MAX_RADIUS_METRES,
+                        initialProgress = ref.radiusMetres,
+                        format = { getString(R.string.places_radius_value, it) },
+                    ) { radius ->
+                        store.resize(ref.id, radius.coerceAtLeast(Place.MINIMUM_RADIUS_METRES))
+                        render()
+                    }
+                    2 -> AlertDialog.Builder(this)
+                        .setTitle(ref.name)
+                        .setMessage(R.string.places_delete_warning)
+                        .setPositiveButton(R.string.places_delete) { _, _ ->
+                            store.delete(ref.id)
+                            render()
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                }
+            }
+            .show()
+    }
+
     companion object {
         private const val REQUEST_LOCATION = 12
         private const val DEFAULT_RADIUS_METRES = 150
+        private const val MAX_RADIUS_METRES = 5000
 
-        fun intent(context: Context) = Intent(context, PlacesActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            dev.schrammel.protego_parentis.ui.RuleTargets.putExtra(Intent(context, PlacesActivity::class.java), childId)
     }
 }

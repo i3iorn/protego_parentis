@@ -7,44 +7,56 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.context.ContextCapabilities
 import dev.schrammel.protego_parentis.context.ContextProvider
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
-import dev.schrammel.protego_parentis.model.Place
+import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
-import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
+import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 
 /**
- * Rule-making, on its own screen.
+ * Rule-making, on its own screen, on whichever kind of phone edits [target]'s
+ * rules (#43).
  *
  * Split out because contextual rules are a different kind of thing from a daily
  * limit: a limit is one number, a rule is a sentence — *when this, do that to
  * those*. Mixing them into the settings list made both harder to read.
  *
- * The screen leads with which context sources actually work on this phone. A rule
- * that silently never fires because a permission was refused is the worst outcome
- * here, so the state is stated before any rule is written.
+ * The screen leads with which context sources actually work on this phone —
+ * only on the managed phone itself, though: [ContextProvider.capabilities]
+ * describes whichever device is running the code, which on a parent's phone
+ * would answer the wrong question entirely. Editing a remote child's rules
+ * skips that section rather than showing a capability reading for the wrong
+ * device.
  */
 class ContextRulesActivity : ParentGatedActivity() {
 
-    private lateinit var store: ContextRuleStore
-    private lateinit var policyStore: LocalPolicyStore
+    private lateinit var target: dev.schrammel.protego_parentis.ui.RuleTarget
     private lateinit var container: LinearLayout
+
+    override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = ContextRuleStore(this)
-        policyStore = LocalPolicyStore(this)
-
         container = contentColumn()
         showColumn(container)
     }
 
     override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+
         Background.load(this, {
-            Triple(store.rules, store.places, ContextProvider(this).capabilities())
+            val rules = contextRuleRuleStore(this, target).read()
+            val places = placeRuleStore(this, target).read()
+            val capabilities = if (target.isOwnDevice) ContextProvider(this).capabilities() else null
+            Triple(rules, places, capabilities)
         }) { (rules, places, capabilities) ->
             render(rules, places, capabilities)
         }
@@ -52,47 +64,53 @@ class ContextRulesActivity : ParentGatedActivity() {
 
     private fun render(
         rules: List<ContextRule>,
-        places: List<Place>,
-        capabilities: dev.schrammel.protego_parentis.context.ContextCapabilities,
+        places: List<PlaceRef>,
+        capabilities: ContextCapabilities?,
     ) {
         container.removeAllViews()
         container.addView(title(getString(R.string.context_title), R.style.TextAppearance_Dementor_Title))
         container.addView(caption(getString(R.string.context_explainer)))
+        if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
-        // What works right now, stated up front.
-        container.addView(title(getString(R.string.context_sources_header), R.style.TextAppearance_Dementor_Section))
-        container.addView(
-            caption(
-                getString(
-                    if (capabilities.canReadWifi) R.string.context_wifi_ready else R.string.context_wifi_blocked,
+        // What works right now, stated up front — only meaningful for this
+        // device's own sensors.
+        if (capabilities != null) {
+            container.addView(title(getString(R.string.context_sources_header), R.style.TextAppearance_Dementor_Section))
+            container.addView(
+                caption(
+                    getString(
+                        if (capabilities.canReadWifi) R.string.context_wifi_ready else R.string.context_wifi_blocked,
+                    ),
                 ),
-            ),
-        )
-        container.addView(
-            caption(
-                getString(
-                    if (capabilities.canReadLocation) R.string.context_place_ready else R.string.context_place_blocked,
+            )
+            container.addView(
+                caption(
+                    getString(
+                        if (capabilities.canReadLocation) R.string.context_place_ready else R.string.context_place_blocked,
+                    ),
                 ),
-            ),
-        )
-        container.addView(
-            caption(
-                getString(
-                    if (capabilities.canReadNearbyDevices) {
-                        R.string.context_near_ready
-                    } else {
-                        R.string.context_near_blocked
-                    },
+            )
+            container.addView(
+                caption(
+                    getString(
+                        if (capabilities.canReadNearbyDevices) {
+                            R.string.context_near_ready
+                        } else {
+                            R.string.context_near_blocked
+                        },
+                    ),
                 ),
-            ),
-        )
+            )
+        }
 
         container.addView(
             Button(this).apply {
                 setText(R.string.context_manage_places)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     .apply { topMargin = dimen(R.dimen.space_md) }
-                setOnClickListener { startActivity(PlacesActivity.intent(this@ContextRulesActivity)) }
+                setOnClickListener {
+                    startActivity(PlacesActivity.intent(this@ContextRulesActivity, target.childId))
+                }
             },
         )
 
@@ -103,26 +121,28 @@ class ContextRulesActivity : ParentGatedActivity() {
             rules.forEach { container.addView(ruleRow(it, places)) }
         }
 
-        container.addView(
-            Button(this).apply {
-                setText(R.string.context_add_rule)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_md) }
-                setOnClickListener {
-                    startActivity(ContextRuleEditActivity.intent(this@ContextRulesActivity))
-                }
-            },
-        )
+        if (canEdit) {
+            container.addView(
+                Button(this).apply {
+                    setText(R.string.context_add_rule)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_md) }
+                    setOnClickListener {
+                        startActivity(ContextRuleEditActivity.intent(this@ContextRulesActivity, childId = target.childId))
+                    }
+                },
+            )
+        }
     }
 
-    private fun ruleRow(rule: ContextRule, places: List<Place>): LinearLayout =
+    private fun ruleRow(rule: ContextRule, places: List<PlaceRef>): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
             isClickable = true
             setOnClickListener {
                 startActivity(
-                    ContextRuleEditActivity.intent(this@ContextRulesActivity, rule.id),
+                    ContextRuleEditActivity.intent(this@ContextRulesActivity, rule.id, target.childId),
                 )
             }
 
@@ -141,30 +161,30 @@ class ContextRulesActivity : ParentGatedActivity() {
         }
 
     /** The rule as a sentence, which is how a parent thinks about it. */
-    private fun describe(rule: ContextRule, places: List<Place>): String {
+    private fun describe(rule: ContextRule, places: List<PlaceRef>): String {
         val what = when (val effect = rule.effect) {
             is RuleEffect.Block -> getString(R.string.context_effect_block)
             is RuleEffect.Allow -> getString(R.string.context_effect_allow)
             is RuleEffect.SetDeviceBudget ->
                 getString(R.string.context_effect_budget, formatDuration(effect.budget.default))
         }
-        val who = when (val target = rule.target) {
+        val who = when (val ruleTarget = rule.target) {
             is RuleTarget.Everything -> getString(R.string.context_target_everything)
             is RuleTarget.Apps -> resources.getQuantityString(
                 R.plurals.rules_category_apps,
-                target.packages.size,
-                target.packages.size,
+                ruleTarget.packages.size,
+                ruleTarget.packages.size,
             )
 
-            is RuleTarget.Categories -> target.categories
-                .mapNotNull { id -> policyStore.categories.firstOrNull { it.id == id.value }?.name }
+            is RuleTarget.Categories -> ruleTarget.categories
+                .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
                 .joinToString(", ")
                 .ifBlank { getString(R.string.context_target_categories) }
         }
         return getString(R.string.context_rule_summary, describeCondition(rule.condition, places), what, who)
     }
 
-    private fun describeCondition(condition: Condition, places: List<Place>): String = when (condition) {
+    private fun describeCondition(condition: Condition, places: List<PlaceRef>): String = when (condition) {
         is Condition.Always -> getString(R.string.context_when_always)
         is Condition.OnWifi -> getString(R.string.context_when_wifi, condition.ssid)
         is Condition.NearDevice -> getString(R.string.context_when_near, condition.tag.value)
@@ -202,6 +222,7 @@ class ContextRulesActivity : ParentGatedActivity() {
     }
 
     companion object {
-        fun intent(context: Context) = Intent(context, ContextRulesActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, ContextRulesActivity::class.java), childId)
     }
 }

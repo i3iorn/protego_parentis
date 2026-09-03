@@ -11,12 +11,14 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
- * A daily limit for one individual app.
+ * A daily limit for one individual app, on whichever kind of phone edits
+ * [target]'s rules (#43).
  *
  * Separate from categories on purpose: a category answers "an hour of games in
  * total", this answers "and no more than twenty minutes of that one". Both apply,
@@ -24,16 +26,17 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  */
 class AppLimitsActivity : ParentGatedActivity() {
 
-    private lateinit var store: LocalPolicyStore
+    private lateinit var target: RuleTarget
     private lateinit var container: LinearLayout
     private lateinit var rows: LinearLayout
     private var apps: List<AppInfo> = emptyList()
     private var limits: Map<String, Int> = emptyMap()
     private var query = ""
 
+    override fun supportsReadOnly() = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = LocalPolicyStore(this)
         container = contentColumn()
         container.addView(
             TextView(this).apply {
@@ -57,9 +60,14 @@ class AppLimitsActivity : ParentGatedActivity() {
     }
 
     override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+
         Background.load(this, {
-            // Both the app list and the stored limits come off disk.
-            InstalledApps(this).launchable() to store.appLimits
+            // Both the app list and the stored limits come off disk (or, for a
+            // parent editing another device's rules, off the replica).
+            appCatalog(this, target).launchable() to
+                (policyRuleStore(this, target).read()?.appLimits ?: emptyMap())
         }) { (loadedApps, loadedLimits) ->
             apps = loadedApps
             limits = loadedLimits
@@ -69,6 +77,9 @@ class AppLimitsActivity : ParentGatedActivity() {
 
     private fun renderRows() {
         rows.removeAllViews()
+        if (!canEdit) {
+            rows.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+        }
 
         // Apps that already have a limit float to the top, so the ones the family
         // actually cares about are not buried in an alphabetical list of hundreds.
@@ -87,7 +98,7 @@ class AppLimitsActivity : ParentGatedActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
-            isClickable = true
+            isClickable = canEdit
 
             addView(
                 ImageView(context).apply {
@@ -110,7 +121,9 @@ class AppLimitsActivity : ParentGatedActivity() {
                 },
             )
 
-            setOnClickListener { promptForLimit(app, limitMinutes) }
+            if (canEdit) {
+                setOnClickListener { promptForLimit(app, limitMinutes) }
+            }
         }
 
     private fun promptForLimit(app: AppInfo, current: Int) {
@@ -122,7 +135,12 @@ class AppLimitsActivity : ParentGatedActivity() {
             positiveText = R.string.app_limits_save,
         ) { progress ->
             val minutes = LimitSlider.minutesFor(progress)
-            store.setAppLimit(app.pkg.value, minutes)
+            val store = policyRuleStore(this, target)
+            val snapshot = store.read() ?: return@sliderDialog
+            val updatedLimits = snapshot.appLimits.toMutableMap().apply {
+                if (minutes > 0) put(app.pkg.value, minutes) else remove(app.pkg.value)
+            }
+            store.write(snapshot.copy(appLimits = updatedLimits))
             Audit.record(
                 context = this,
                 actor = AuditActor.PARENT,
@@ -136,6 +154,7 @@ class AppLimitsActivity : ParentGatedActivity() {
     }
 
     companion object {
-        fun intent(context: Context) = Intent(context, AppLimitsActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, AppLimitsActivity::class.java), childId)
     }
 }
