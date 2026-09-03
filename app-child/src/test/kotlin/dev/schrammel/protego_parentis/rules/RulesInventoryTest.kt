@@ -49,10 +49,8 @@ class RulesInventoryTest {
         // Not a rule: the counter that tells a parent's copy from a stale one.
         "KEY_VERSION=version" to NOT_A_RULE,
         "KEY_DAILY_LIMIT=daily_limit_minutes" to PARENT,
-        "KEY_BEDTIME_ENABLED=bedtime_enabled" to PARENT,
-        "KEY_BEDTIME_START=bedtime_start_minute_of_day" to PARENT,
-        "KEY_BEDTIME_END=bedtime_end_minute_of_day" to PARENT,
-        "KEY_BEDTIME_DAYS=bedtime_days" to PARENT,
+        // Bedtime moved out entirely as of #12 — it's a StoredSchedule now,
+        // see the schedules map below, not a LocalPolicyStore field.
         "KEY_BLOCKED=blocked_packages" to PARENT,
         "KEY_HIDDEN=hidden_packages" to PARENT,
         "KEY_INSTALL_WINDOW=install_window_until" to PARENT,
@@ -79,6 +77,9 @@ class RulesInventoryTest {
         "KEY_PACKAGES=allowed" to PARENT,
         "KEY_MODE=mode" to PARENT,
         "KEY_ENABLED=enabled" to PARENT,
+        // Bedtime is the one fixed-id entry here now (#12) — see
+        // ScheduleStore's own doc comment.
+        "KEY_KIND=kind" to PARENT,
     )
 
     private val contextRules = mapOf(
@@ -239,7 +240,10 @@ class RulesInventoryTest {
          * except a coordinate, which stays Local only rather than Pending
          * since replicating it is not a goal (54 left): 1 places field
          * (`announce_arrivals`) + 9 web filter + 7 auto-approval + 4 goals +
-         * 17 features + 16 notifications.
+         * 17 features + 16 notifications. #12 then folded bedtime's four
+         * dedicated LocalPolicyStore fields into a StoredSchedule (`kind`
+         * joining the schedules map) — both already Parent, so this number
+         * doesn't move for it.
          */
         const val PENDING_AT_M0 = 54
     }

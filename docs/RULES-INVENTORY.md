@@ -27,17 +27,13 @@ its coordinates, which move to Local only instead, below.
 
 ## LocalPolicyStore — `local_policy`
 
-The only store a parent already reaches. Its 13 Parent rows are exactly what
+The only store a parent already reaches. Its 9 Parent rows are exactly what
 `PolicySnapshot` carries, plus `version`.
 
 | Key | Stored as | Reach |
 |---|---|---|
 | `KEY_VERSION` | `version` | Not a rule — tells a parent's copy from a stale one |
 | `KEY_DAILY_LIMIT` | `daily_limit_minutes` | Parent |
-| `KEY_BEDTIME_ENABLED` | `bedtime_enabled` | Parent |
-| `KEY_BEDTIME_START` | `bedtime_start_minute_of_day` | Parent |
-| `KEY_BEDTIME_END` | `bedtime_end_minute_of_day` | Parent |
-| `KEY_BEDTIME_DAYS` | `bedtime_days` | Parent |
 | `KEY_BLOCKED` | `blocked_packages` | Parent |
 | `KEY_HIDDEN` | `hidden_packages` | Parent |
 | `KEY_INSTALL_WINDOW` | `install_window_until` | Parent |
@@ -53,11 +49,15 @@ Flipping it with nobody standing at the phone is the single rule change this app
 treats as too dangerous to make from a distance — see `LocalPolicyStore`'s own
 doc comment. It stays out of scope for #37.
 
-## ScheduleStore — `schedules` · 9 Parent
+Bedtime used to be four fields here (`bedtime_enabled`/`bedtime_start_minute_of_day`/
+`bedtime_end_minute_of_day`/`bedtime_days`). [#12](https://github.com/i3iorn/dementor_watch/issues/12)
+removed them — bedtime is a `StoredSchedule` now, see `ScheduleStore` below.
+
+## ScheduleStore — `schedules` · 10 Parent
 
 `KEY_SCHEDULES` holds the list; the rest are the fields of one schedule inside
-it. Was the gap behind [#12](https://github.com/i3iorn/dementor_watch/issues/12);
-[#41](https://github.com/i3iorn/dementor_watch/issues/41) closed it —
+it. Was the gap behind #12 (below); [#41](https://github.com/i3iorn/dementor_watch/issues/41)
+closed the remote-editing gap first —
 `PolicyReplication.writeSchedules`/`readSchedules`/`pushSchedulesFromLocal`/
 `pullSchedulesIntoLocal` replicate the whole list under `policy/<childId>/schedules/`,
 one path per field per schedule with a `deleted` marker rather than a
@@ -65,11 +65,23 @@ whole-record tombstone (see [#40](https://github.com/i3iorn/dementor_watch/issue
 and `ParentRulesActivity` gained a Schedules section to edit it from a parent's
 own phone.
 
-`schedules`, `id`, `name`, `days`, `start`, `end`, `allowed`, `mode`, `enabled`
+`schedules`, `id`, `name`, `days`, `start`, `end`, `allowed`, `mode`, `enabled`, `kind`
 
 `allowed` is the on-disk name of what the model calls `packages`; it was renamed
 in the model when schedules gained a mode and deliberately not renamed on disk,
 because that would empty the exception list of every schedule already saved.
+
+`kind` is new as of #12: `BEDTIME` for the one fixed-id (`bedtime`) entry
+`ScheduleStore` and its screens treat specially, `CUSTOM` for everything else,
+absent-reads-as-`CUSTOM` for anything saved before this field existed. Bedtime
+replicates through this same channel now instead of through four dedicated
+`LocalPolicyStore` fields — the engine already treated a replicated schedule and
+the synthesised bedtime block as the same kind of object once assembled, and
+this made storage agree. It keeps its own dedicated card on both kinds of
+phone rather than appearing in the generic schedules list, so a family tidying
+up a homework block can't delete it by accident — the risk that kept it
+separate in the first place, now handled by every screen that lists these
+windows filtering `bedtime` out instead.
 
 ## ContextRuleStore — `context_rules` · 9 Parent, 1 Pending, 2 Local only
 

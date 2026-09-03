@@ -58,7 +58,12 @@ class SchedulesActivity : ParentGatedActivity() {
         column.addView(screenTitle(getString(R.string.schedules_title)))
         column.addView(captionText(getString(R.string.schedules_hint)))
 
-        val schedules = store.schedules.sortedBy { it.startMinuteOfDay }
+        // Bedtime lives in the same store now (see ScheduleStore's own doc
+        // comment) but keeps its own switch on the limits screen — this list
+        // is the generic add/delete flow bedtime is deliberately kept out of.
+        val schedules = store.schedules
+            .filterNot { it.id == ScheduleStore.BEDTIME_ID }
+            .sortedBy { it.startMinuteOfDay }
         if (schedules.isEmpty()) {
             column.addView(bodyText(getString(R.string.schedules_empty)))
             // Offered rather than created. A family that opens this screen and

@@ -16,13 +16,14 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
+import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.PolicyMirrorStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
+import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.StoredSchedule
-import dev.schrammel.protego_parentis.rules.toLocalTime
 import dev.schrammel.protego_parentis.rules.toMinuteOfDay
 import dev.schrammel.protego_parentis.sync.AppInventoryEntry
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
@@ -159,7 +160,7 @@ class ParentRulesActivity : ParentRoleActivity() {
         )
 
         column.addView(sectionHeader(getString(R.string.rules_bedtime_name)))
-        column.addView(bedtimeCard(snapshot))
+        column.addView(bedtimeCard())
 
         column.addView(sectionHeader(getString(R.string.parent_rules_install_header)))
         column.addView(installPolicyCard(snapshot))
@@ -178,8 +179,13 @@ class ParentRulesActivity : ParentRoleActivity() {
 
         column.addView(sectionHeader(getString(R.string.parent_rules_schedules_header)))
         column.addView(captionText(getString(R.string.schedules_hint)))
-        if (editedSchedules.isNotEmpty()) {
-            column.addView(group(editedSchedules.sortedBy { it.startMinuteOfDay }.map(::scheduleCard)))
+        // Bedtime lives in editedSchedules too now, but keeps its own card
+        // above rather than appearing here — see ScheduleStore's doc comment
+        // for why: this list's generic add/delete flow is exactly what a
+        // dedicated bedtime card protects against.
+        val customSchedules = editedSchedules.filterNot { it.id == ScheduleStore.BEDTIME_ID }
+        if (customSchedules.isNotEmpty()) {
+            column.addView(group(customSchedules.sortedBy { it.startMinuteOfDay }.map(::scheduleCard)))
         }
         column.addView(
             actionButton().apply {
@@ -224,22 +230,30 @@ class ParentRulesActivity : ParentRoleActivity() {
 
     // ---------- bedtime ----------
 
-    private fun bedtimeCard(snapshot: PolicySnapshot): LinearLayout = card {
+    /**
+     * Bedtime's own card, backed by the fixed [ScheduleStore.BEDTIME_ID] entry
+     * in [editedSchedules] rather than [PolicySnapshot] — see #12. Shaped
+     * identically to before, and deliberately not the generic [scheduleCard]:
+     * bedtime never exposed a rename, a mode, or an app picker, and giving it
+     * those now would be a bigger change than the one #12 asked for.
+     */
+    private fun bedtimeCard(): LinearLayout = card {
+        val bedtime = editedBedtime()
         val start = Button(this@ParentRulesActivity).apply {
-            text = formatTime(snapshot.bedtimeStartMinute.toLocalTime())
+            text = formatTime(bedtime.start)
             layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
             setOnClickListener {
-                pickTime(snapshot.bedtimeStartMinute.toLocalTime()) { picked ->
-                    update { it.copy(bedtimeStartMinute = picked.toMinuteOfDay()) }
+                pickTime(bedtime.start) { picked ->
+                    updateBedtime(bedtime.copy(startMinuteOfDay = picked.toMinuteOfDay()))
                 }
             }
         }
         val end = Button(this@ParentRulesActivity).apply {
-            text = formatTime(snapshot.bedtimeEndMinute.toLocalTime())
+            text = formatTime(bedtime.end)
             layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
             setOnClickListener {
-                pickTime(snapshot.bedtimeEndMinute.toLocalTime()) { picked ->
-                    update { it.copy(bedtimeEndMinute = picked.toMinuteOfDay()) }
+                pickTime(bedtime.end) { picked ->
+                    updateBedtime(bedtime.copy(endMinuteOfDay = picked.toMinuteOfDay()))
                 }
             }
         }
@@ -247,13 +261,13 @@ class ParentRulesActivity : ParentRoleActivity() {
         addView(
             CheckBox(this@ParentRulesActivity).apply {
                 setText(R.string.rules_bedtime_enable)
-                isChecked = snapshot.bedtimeEnabled
+                isChecked = bedtime.enabled
                 setOnCheckedChangeListener { _, checked ->
-                    update { it.copy(bedtimeEnabled = checked) }
+                    updateBedtime(bedtime.copy(enabled = checked))
                 }
             },
         )
-        if (snapshot.bedtimeEnabled) {
+        if (bedtime.enabled) {
             addView(
                 LinearLayout(this@ParentRulesActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -262,14 +276,33 @@ class ParentRulesActivity : ParentRoleActivity() {
                 },
             )
             addView(captionText(getString(R.string.rules_bedtime_nights)))
-            val days = snapshot.bedtimeDays.mapNotNull { value -> DayOfWeek.entries.firstOrNull { it.value == value } }
+            val days = bedtime.days.mapNotNull { value -> DayOfWeek.entries.firstOrNull { it.value == value } }
                 .toSet()
             addView(
                 DayPicker.build(this@ParentRulesActivity, days) { chosen ->
-                    update { it.copy(bedtimeDays = chosen.map(DayOfWeek::getValue).toSet()) }
+                    updateBedtime(bedtime.copy(days = chosen.map(DayOfWeek::getValue).toSet()))
                 },
             )
         }
+    }
+
+    /** The bedtime entry in [editedSchedules], or an off default if none has replicated yet. */
+    private fun editedBedtime(): StoredSchedule =
+        editedSchedules.firstOrNull { it.id == ScheduleStore.BEDTIME_ID } ?: StoredSchedule(
+            id = ScheduleStore.BEDTIME_ID,
+            name = getString(R.string.rules_bedtime_name),
+            days = DayOfWeek.entries.map(DayOfWeek::getValue).toSet(),
+            startMinuteOfDay = Defaults.BEDTIME_START.toMinuteOfDay(),
+            endMinuteOfDay = Defaults.BEDTIME_END.toMinuteOfDay(),
+            packages = emptySet(),
+            mode = ScheduleBlock.Mode.EXCLUSIVE,
+            kind = ScheduleBlock.Kind.BEDTIME,
+            enabled = false,
+        )
+
+    private fun updateBedtime(changed: StoredSchedule) {
+        editedSchedules = editedSchedules.filterNot { it.id == ScheduleStore.BEDTIME_ID } + changed
+        render()
     }
 
     private fun pickTime(current: LocalTime, onPicked: (LocalTime) -> Unit) {

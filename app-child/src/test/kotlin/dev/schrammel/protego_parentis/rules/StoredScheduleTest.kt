@@ -120,6 +120,14 @@ class StoredScheduleTest {
         assertEquals(LocalTime.of(16, 30), schedule(start = 16 * 60 + 30).start)
     }
 
+    /** #12: bedtime is a StoredSchedule with this kind now, not a separate field. */
+    @Test
+    fun `carries the bedtime kind through to the domain block`() {
+        val block = schedule(kind = ScheduleBlock.Kind.BEDTIME).toDomain()
+
+        assertEquals(ScheduleBlock.Kind.BEDTIME, block?.kind)
+    }
+
     private fun schedule(
         name: String = "Homework",
         days: Set<Int> = setOf(1, 3),
@@ -127,6 +135,7 @@ class StoredScheduleTest {
         end: Int = 18 * 60,
         allowed: Set<String> = emptySet(),
         mode: ScheduleBlock.Mode = ScheduleBlock.Mode.EXCLUSIVE,
+        kind: ScheduleBlock.Kind = ScheduleBlock.Kind.CUSTOM,
     ) = StoredSchedule(
         id = SCHEDULE_ID,
         name = name,
@@ -135,6 +144,7 @@ class StoredScheduleTest {
         endMinuteOfDay = end,
         packages = allowed,
         mode = mode,
+        kind = kind,
     )
 
     private companion object {
