@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.sync
 import android.content.Context
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.model.RequestState
+import dev.schrammel.protego_parentis.security.RoleStore
 import java.time.Instant
 
 /**
@@ -340,7 +341,7 @@ class RosterReplication(context: Context) {
                         .forEach { put(it, null) }
                 }
         }
-        return state.writeAll(values, origin)
+        return state.writeAll(values, origin, RoleStore(appContext).roleOrChild.toSyncRole())
     }
 
     /**

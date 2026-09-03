@@ -8,6 +8,7 @@ import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
+import dev.schrammel.protego_parentis.security.RoleStore
 
 /**
  * The rules, as paths.
@@ -52,9 +53,22 @@ class PolicyReplication(context: Context) {
     private val appContext = context.applicationContext
     private val store = LocalPolicyStore(appContext)
     private val state = ReplicatedStateStore(appContext)
+    private val roster = RosterStore(appContext)
 
     /** Which rules version was last flattened into the replica, on this phone. */
     private val prefs = appContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+
+    /**
+     * The one managed phone in the family, when this phone knows of exactly one.
+     *
+     * A family can now have more than one, and a caller that means a particular
+     * child must say so explicitly by passing [DeviceId]. This exists only so a
+     * single-child family — still by far the common case — keeps working exactly
+     * as it did before this class knew about scoping at all. Choosing *which*
+     * child on a multi-child family's screens is a UI question for later work,
+     * not something this class can answer on its own.
+     */
+    private fun defaultChildId(): DeviceId? = roster.child()?.id
 
     /**
      * Records this phone's own rules as replicated writes.
@@ -71,7 +85,7 @@ class PolicyReplication(context: Context) {
      * is a poor thing to do all day on a battery. [Policy.version] increments on
      * every local write, so it is a sufficient answer to "is this worth doing".
      */
-    fun pushFromLocalPolicy(): List<StateOp> {
+    fun pushFromLocalPolicy(childId: DeviceId? = defaultChildId()): List<StateOp> {
         val version = store.load().version
         if (version == prefs.getLong(KEY_PUSHED_VERSION, NEVER)) return emptyList()
 
@@ -85,7 +99,7 @@ class PolicyReplication(context: Context) {
         // itself introduced, one step further along.
         if (LocalDeviceId.current() == null) return emptyList()
 
-        val ops = write(store.snapshot())
+        val ops = write(store.snapshot(), childId)
         prefs.edit { putLong(KEY_PUSHED_VERSION, version) }
         return ops
     }
@@ -102,36 +116,50 @@ class PolicyReplication(context: Context) {
      */
     fun forgetPushed() = prefs.edit { remove(KEY_PUSHED_VERSION) }
 
-    /** Records an edit made on a parent's phone, which holds no local rules. */
-    fun write(snapshot: PolicySnapshot): List<StateOp> {
+    /**
+     * Records an edit to [childId]'s rules.
+     *
+     * Called both from the managed phone, editing its own rules under its own
+     * id, and from a parent's phone, editing the rules of whichever child the
+     * screen is showing. [ReplicatedStateStore.writeAll] refuses anything this
+     * device's role and identity do not permit — a child device passing another
+     * child's id here simply produces no ops.
+     */
+    fun write(snapshot: PolicySnapshot, childId: DeviceId? = defaultChildId()): List<StateOp> {
+        val id = childId ?: return emptyList()
         val origin = LocalDeviceId.current() ?: return emptyList()
-        return state.writeAll(flatten(snapshot), origin)
+        val role = RoleStore(appContext).roleOrChild.toSyncRole()
+        return state.writeAll(flatten(snapshot, id), origin, role)
     }
 
     /**
      * Writes the replicated rules back onto this phone.
      *
-     * Only ever called on the managed phone, and only for state that arrived
-     * from a device permitted to write it — [ReplicationRules] has already
-     * refused anything else by the time this runs.
+     * Only ever called on the managed phone, for its own id, and only for
+     * state that arrived from a device permitted to write it —
+     * [ReplicationRules] has already refused anything else by the time this
+     * runs.
      */
-    fun pullIntoLocalPolicy() {
-        store.applySnapshot(read() ?: return)
+    fun pullIntoLocalPolicy(childId: DeviceId? = defaultChildId()) {
+        store.applySnapshot(read(childId) ?: return)
     }
 
     /**
-     * The replicated rules, or null if none have arrived.
+     * [childId]'s replicated rules, or null if none have arrived, or if this
+     * phone does not yet know which child [childId] resolves to.
      *
      * Null rather than an empty policy on purpose: a family whose other phones
      * are still on an older build, or a replica before its first exchange, holds
      * no policy paths at all — and applying an empty one would silently clear
      * every rule the family had.
      */
-    fun read(): PolicySnapshot? {
+    fun read(childId: DeviceId? = defaultChildId()): PolicySnapshot? {
+        val id = childId ?: return null
+        val root = "$POLICY/${id.value}"
         val held = state.entries
-        if (held.keys.none { it.startsWith("$POLICY/") }) return null
+        if (held.keys.none { it.startsWith("$root/") }) return null
 
-        fun value(path: String): String? = held["$POLICY/$path"]?.value
+        fun value(path: String): String? = held["$root/$path"]?.value
         fun number(path: String, fallback: Int) = value(path)?.toIntOrNull() ?: fallback
 
         return PolicySnapshot(
@@ -140,25 +168,25 @@ class PolicyReplication(context: Context) {
             bedtimeEnabled = value(PATH_BEDTIME_ENABLED)?.toBooleanStrictOrNull() ?: false,
             bedtimeStartMinute = number(PATH_BEDTIME_START, 0),
             bedtimeEndMinute = number(PATH_BEDTIME_END, 0),
-            bedtimeDays = members("$POLICY/$PATH_BEDTIME_DAYS").mapNotNull(String::toIntOrNull).toSet(),
-            categories = state.idsUnder("$POLICY/$PATH_CATEGORIES").mapNotNull { id ->
+            bedtimeDays = members("$root/$PATH_BEDTIME_DAYS").mapNotNull(String::toIntOrNull).toSet(),
+            categories = state.idsUnder("$root/$PATH_CATEGORIES").mapNotNull { catId ->
                 StoredCategory(
-                    id = id,
+                    id = catId,
                     // A category whose name is gone is a category that was
                     // deleted; its other registers may still be catching up.
-                    name = value("$PATH_CATEGORIES/$id/name") ?: return@mapNotNull null,
-                    limitMinutes = number("$PATH_CATEGORIES/$id/limitMinutes", 0),
-                    packages = members("$POLICY/$PATH_CATEGORIES/$id/packages"),
-                    subcategories = members("$POLICY/$PATH_CATEGORIES/$id/subcategories"),
+                    name = value("$PATH_CATEGORIES/$catId/name") ?: return@mapNotNull null,
+                    limitMinutes = number("$PATH_CATEGORIES/$catId/limitMinutes", 0),
+                    packages = members("$root/$PATH_CATEGORIES/$catId/packages"),
+                    subcategories = members("$root/$PATH_CATEGORIES/$catId/subcategories"),
                 )
             },
-            appLimits = state.children("$POLICY/$PATH_APP_LIMITS")
+            appLimits = state.children("$root/$PATH_APP_LIMITS")
                 .mapNotNull { (pkg, minutes) -> minutes.toIntOrNull()?.let { pkg to it } }
                 .toMap(),
-            exemptPackages = members("$POLICY/$PATH_EXEMPT"),
-            blockedPackages = members("$POLICY/$PATH_BLOCKED"),
-            hiddenPackages = members("$POLICY/$PATH_HIDDEN"),
-            networkBlockedPackages = members("$POLICY/$PATH_NETWORK_BLOCKED"),
+            exemptPackages = members("$root/$PATH_EXEMPT"),
+            blockedPackages = members("$root/$PATH_BLOCKED"),
+            hiddenPackages = members("$root/$PATH_HIDDEN"),
+            networkBlockedPackages = members("$root/$PATH_NETWORK_BLOCKED"),
             installPolicy = value(PATH_INSTALL_POLICY) ?: InstallPolicy.NOTIFY.name,
             installWindowUntil = value(PATH_INSTALL_WINDOW)?.toLongOrNull(),
         )
@@ -175,40 +203,41 @@ class PolicyReplication(context: Context) {
      * every other device keep the app forever, and the next digest repair would
      * hand it back.
      */
-    private fun flatten(snapshot: PolicySnapshot): Map<String, String?> = buildMap {
-        put("$POLICY/$PATH_DAILY_LIMIT", snapshot.dailyLimitMinutes.toString())
-        put("$POLICY/$PATH_BEDTIME_ENABLED", snapshot.bedtimeEnabled.toString())
-        put("$POLICY/$PATH_BEDTIME_START", snapshot.bedtimeStartMinute.toString())
-        put("$POLICY/$PATH_BEDTIME_END", snapshot.bedtimeEndMinute.toString())
-        putMembers("$POLICY/$PATH_BEDTIME_DAYS", snapshot.bedtimeDays.map(Int::toString).toSet())
+    private fun flatten(snapshot: PolicySnapshot, childId: DeviceId): Map<String, String?> = buildMap {
+        val root = "$POLICY/${childId.value}"
+        put("$root/$PATH_DAILY_LIMIT", snapshot.dailyLimitMinutes.toString())
+        put("$root/$PATH_BEDTIME_ENABLED", snapshot.bedtimeEnabled.toString())
+        put("$root/$PATH_BEDTIME_START", snapshot.bedtimeStartMinute.toString())
+        put("$root/$PATH_BEDTIME_END", snapshot.bedtimeEndMinute.toString())
+        putMembers("$root/$PATH_BEDTIME_DAYS", snapshot.bedtimeDays.map(Int::toString).toSet())
 
         snapshot.categories.forEach { category ->
-            val root = "$POLICY/$PATH_CATEGORIES/${category.id}"
-            put("$root/name", category.name)
-            put("$root/limitMinutes", category.limitMinutes.toString())
-            putMembers("$root/packages", category.packages)
-            putMembers("$root/subcategories", category.subcategories)
+            val catRoot = "$root/$PATH_CATEGORIES/${category.id}"
+            put("$catRoot/name", category.name)
+            put("$catRoot/limitMinutes", category.limitMinutes.toString())
+            putMembers("$catRoot/packages", category.packages)
+            putMembers("$catRoot/subcategories", category.subcategories)
         }
         // A category deleted here has to be deleted everywhere, and its whole
         // subtree with it — a stale name left behind would be a category that
         // reappeared at the next repair.
         val live = snapshot.categories.map { it.id }.toSet()
-        state.idsUnder("$POLICY/$PATH_CATEGORIES")
+        state.idsUnder("$root/$PATH_CATEGORIES")
             .filterNot { it in live }
             .forEach { gone ->
                 state.entries.keys
-                    .filter { it.startsWith("$POLICY/$PATH_CATEGORIES/$gone/") }
+                    .filter { it.startsWith("$root/$PATH_CATEGORIES/$gone/") }
                     .forEach { put(it, null) }
             }
 
-        putMembers("$POLICY/$PATH_EXEMPT", snapshot.exemptPackages)
-        putMembers("$POLICY/$PATH_BLOCKED", snapshot.blockedPackages)
-        putMembers("$POLICY/$PATH_HIDDEN", snapshot.hiddenPackages)
-        putMembers("$POLICY/$PATH_NETWORK_BLOCKED", snapshot.networkBlockedPackages)
-        putValues("$POLICY/$PATH_APP_LIMITS", snapshot.appLimits.mapValues { it.value.toString() })
+        putMembers("$root/$PATH_EXEMPT", snapshot.exemptPackages)
+        putMembers("$root/$PATH_BLOCKED", snapshot.blockedPackages)
+        putMembers("$root/$PATH_HIDDEN", snapshot.hiddenPackages)
+        putMembers("$root/$PATH_NETWORK_BLOCKED", snapshot.networkBlockedPackages)
+        putValues("$root/$PATH_APP_LIMITS", snapshot.appLimits.mapValues { it.value.toString() })
 
-        put("$POLICY/$PATH_INSTALL_POLICY", snapshot.installPolicy)
-        put("$POLICY/$PATH_INSTALL_WINDOW", snapshot.installWindowUntil?.toString())
+        put("$root/$PATH_INSTALL_POLICY", snapshot.installPolicy)
+        put("$root/$PATH_INSTALL_WINDOW", snapshot.installWindowUntil?.toString())
     }
 
     private fun MutableMap<String, String?>.putMembers(root: String, members: Set<String>) =
