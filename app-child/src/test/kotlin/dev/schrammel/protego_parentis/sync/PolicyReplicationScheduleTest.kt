@@ -2,6 +2,7 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import dev.schrammel.protego_parentis.model.ScheduleBlock
+import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
@@ -37,16 +38,17 @@ class PolicyReplicationScheduleTest {
     @Before
     fun setUp() {
         LocalDeviceId.useInTests("PARENT")
-        // Only relevant to the round-trip test, which writes through
-        // PolicyReplication.writeSchedules and so goes through the real
-        // write-time gate — every other test feeds ReplicatedStateStore.receive
-        // directly, which is unauthorised on purpose (see ReplicatedStateStoreTest).
+        // Only relevant to tests that write through PolicyReplication.write*
+        // and so go through the real write-time gate — the ordering tests feed
+        // ReplicatedStateStore.receive directly, which is unauthorised on
+        // purpose (see ReplicatedStateStoreTest).
         RoleStore(context).choose(DeviceRole.PARENT)
     }
 
     @After
     fun tearDown() {
         store().forgetAll()
+        ScheduleStore(context).schedules = emptyList()
         LocalDeviceId.useInTests(null)
     }
 
@@ -180,6 +182,40 @@ class PolicyReplicationScheduleTest {
 
         replication().writeSchedules(emptyList(), childId)
         assertTrue(replication().readSchedules(childId).isEmpty())
+    }
+
+    // ---------- the bridge to ScheduleStore ----------
+
+    @Test
+    fun `pushSchedulesFromLocal replicates whatever ScheduleStore holds`() {
+        val schedule = StoredSchedule(
+            id = "S1",
+            name = "Homework",
+            days = setOf(1, 3, 5),
+            startMinuteOfDay = 540,
+            endMinuteOfDay = 600,
+        )
+        ScheduleStore(context).schedules = listOf(schedule)
+
+        replication().pushSchedulesFromLocal(childId)
+
+        assertEquals(listOf(schedule), replication().readSchedules(childId))
+    }
+
+    @Test
+    fun `pullSchedulesIntoLocal writes the replica's schedules onto ScheduleStore`() {
+        val schedule = StoredSchedule(
+            id = "S1",
+            name = "Dinner",
+            days = setOf(1, 2, 3, 4, 5, 6, 7),
+            startMinuteOfDay = 1080,
+            endMinuteOfDay = 1140,
+        )
+        replication().writeSchedules(listOf(schedule), childId)
+
+        replication().pullSchedulesIntoLocal(childId)
+
+        assertEquals(listOf(schedule), ScheduleStore(context).schedules)
     }
 
     private fun seededRandom() = kotlin.random.Random(42)

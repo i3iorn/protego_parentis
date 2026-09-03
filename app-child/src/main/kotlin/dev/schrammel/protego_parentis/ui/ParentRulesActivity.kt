@@ -17,13 +17,16 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.InstallPolicy
+import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.PolicyMirrorStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.StoredCategory
+import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.toLocalTime
 import dev.schrammel.protego_parentis.rules.toMinuteOfDay
 import dev.schrammel.protego_parentis.sync.AppInventoryEntry
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
+import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -61,6 +64,19 @@ class ParentRulesActivity : ParentRoleActivity() {
     private var edited: PolicySnapshot? = null
 
     /**
+     * The schedules edit in progress.
+     *
+     * Not nullable like [edited]: schedules live outside [PolicySnapshot] (see
+     * [dev.schrammel.protego_parentis.sync.PolicyReplication.readSchedules]),
+     * and an empty list from a family with genuinely no schedules is not
+     * distinguishable from one that has not replicated yet either way — so
+     * this is refilled on exactly the same "nothing typed yet this visit"
+     * signal as [edited], rather than carrying a second null sentinel for the
+     * same question.
+     */
+    private var editedSchedules: List<StoredSchedule> = emptyList()
+
+    /**
      * Survives [render], which rebuilds the whole column after any policy edit.
      * Losing what a parent typed because they ticked a box is not acceptable.
      */
@@ -71,6 +87,7 @@ class ParentRulesActivity : ParentRoleActivity() {
         mirror = PolicyMirrorStore(this)
         inventory = AppInventoryStore(this)
         edited = mirror.snapshot
+        editedSchedules = PolicyReplication(this).readSchedules()
 
         column = contentColumn()
         showColumn(column)
@@ -79,7 +96,10 @@ class ParentRulesActivity : ParentRoleActivity() {
     }
 
     override fun onParentPhoneResumed() {
-        if (edited == null) edited = mirror.snapshot
+        if (edited == null) {
+            edited = mirror.snapshot
+            editedSchedules = PolicyReplication(this).readSchedules()
+        }
         render()
     }
 
@@ -98,7 +118,10 @@ class ParentRulesActivity : ParentRoleActivity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 // Only replaces the buffer if nothing has been typed yet this visit
                 // — a slow poll landing mid-edit must not blow away unsent changes.
-                if (edited == null) edited = mirror.snapshot
+                if (edited == null) {
+                    edited = mirror.snapshot
+                    editedSchedules = PolicyReplication(this@ParentRulesActivity).readSchedules()
+                }
                 render()
             }
         }
@@ -150,6 +173,18 @@ class ParentRulesActivity : ParentRoleActivity() {
             actionButton().apply {
                 setText(R.string.parent_rules_categories_add)
                 setOnClickListener { addCategory() }
+            },
+        )
+
+        column.addView(sectionHeader(getString(R.string.parent_rules_schedules_header)))
+        column.addView(captionText(getString(R.string.schedules_hint)))
+        if (editedSchedules.isNotEmpty()) {
+            column.addView(group(editedSchedules.sortedBy { it.startMinuteOfDay }.map(::scheduleCard)))
+        }
+        column.addView(
+            actionButton().apply {
+                setText(R.string.parent_rules_schedules_add)
+                setOnClickListener { addSchedule() }
             },
         )
 
@@ -366,6 +401,156 @@ class ParentRulesActivity : ParentRoleActivity() {
         snapshot.copy(categories = snapshot.categories.map { if (it.id == changed.id) changed else it })
     }
 
+    // ---------- schedules ----------
+
+    private fun scheduleCard(schedule: StoredSchedule): LinearLayout = card {
+        addView(
+            LinearLayout(this@ParentRulesActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(
+                    TextView(this@ParentRulesActivity).apply {
+                        text = schedule.name.ifBlank { getString(R.string.schedules_unnamed) }
+                        styleAs(R.style.TextAppearance_Dementor_ListItem)
+                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                    },
+                )
+                addView(
+                    Button(context).apply {
+                        setText(R.string.parent_rules_schedules_rename)
+                        setOnClickListener {
+                            promptForText(
+                                title = R.string.schedules_name_header,
+                                hint = R.string.schedules_name_hint,
+                                prefill = schedule.name,
+                            ) { name -> updateSchedule(schedule.copy(name = name)) }
+                        }
+                    },
+                )
+            },
+        )
+
+        val days = schedule.days.mapNotNull { day -> DayOfWeek.entries.firstOrNull { it.value == day } }.toSet()
+        addView(DayPicker.build(this@ParentRulesActivity, days) { chosen ->
+            updateSchedule(schedule.copy(days = chosen.map(DayOfWeek::getValue).toSet()))
+        })
+
+        addView(
+            LinearLayout(this@ParentRulesActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(
+                    Button(context).apply {
+                        text = getString(R.string.schedules_from, formatTime(schedule.start))
+                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                        setOnClickListener {
+                            pickTime(schedule.start) { picked ->
+                                updateSchedule(schedule.copy(startMinuteOfDay = picked.toMinuteOfDay()))
+                            }
+                        }
+                    },
+                )
+                addView(
+                    Button(context).apply {
+                        text = getString(R.string.schedules_to, formatTime(schedule.end))
+                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                        setOnClickListener {
+                            pickTime(schedule.end) { picked ->
+                                updateSchedule(schedule.copy(endMinuteOfDay = picked.toMinuteOfDay()))
+                            }
+                        }
+                    },
+                )
+            },
+        )
+
+        val including = schedule.mode == ScheduleBlock.Mode.INCLUSIVE
+        addView(
+            CheckBox(this@ParentRulesActivity).apply {
+                setText(R.string.schedules_mode_inclusive)
+                isChecked = including
+                setOnCheckedChangeListener { _, checked ->
+                    // The chosen apps are kept either way — only what the
+                    // schedule does with them changes, and clearing them would
+                    // punish a parent for reading the label and correcting
+                    // themselves.
+                    updateSchedule(
+                        schedule.copy(
+                            mode = if (checked) ScheduleBlock.Mode.INCLUSIVE else ScheduleBlock.Mode.EXCLUSIVE,
+                        ),
+                    )
+                }
+            },
+        )
+        addView(
+            Button(this@ParentRulesActivity).apply {
+                text = getString(
+                    if (including) R.string.parent_rules_schedules_apps_paused else R.string.parent_rules_schedules_apps_stay_usable,
+                    schedule.packages.size,
+                )
+                setOnClickListener {
+                    pickApps(
+                        schedule.packages,
+                        title = getString(
+                            if (including) R.string.schedules_apps_paused_header else R.string.schedules_allowed_header,
+                        ),
+                    ) { chosen -> updateSchedule(schedule.copy(packages = chosen)) }
+                }
+            },
+        )
+
+        addView(
+            LinearLayout(this@ParentRulesActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                    topMargin = dimen(R.dimen.space_xs)
+                }
+                addView(
+                    CheckBox(context).apply {
+                        setText(R.string.schedules_enabled)
+                        isChecked = schedule.enabled
+                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                        setOnCheckedChangeListener { _, checked -> updateSchedule(schedule.copy(enabled = checked)) }
+                    },
+                )
+                addView(
+                    Button(context).apply {
+                        setText(R.string.schedules_delete)
+                        setOnClickListener {
+                            editedSchedules = editedSchedules.filterNot { it.id == schedule.id }
+                            render()
+                        }
+                    },
+                )
+            },
+        )
+    }
+
+    private fun addSchedule() {
+        promptForText(
+            title = R.string.schedules_name_header,
+            hint = R.string.schedules_name_hint,
+        ) { name ->
+            val schedule = StoredSchedule(
+                id = UUID.randomUUID().toString(),
+                name = name,
+                // Arrives off, with a window a parent would have typed anyway —
+                // the same reasoning SchedulesActivity's starters use, so a
+                // schedule created here does not start applying before anyone
+                // has looked at it.
+                days = WEEKDAYS,
+                startMinuteOfDay = DEFAULT_START.toMinuteOfDay(),
+                endMinuteOfDay = DEFAULT_END.toMinuteOfDay(),
+                enabled = false,
+            )
+            editedSchedules = editedSchedules + schedule
+            render()
+        }
+    }
+
+    private fun updateSchedule(changed: StoredSchedule) {
+        editedSchedules = editedSchedules.map { if (it.id == changed.id) changed else it }
+        render()
+    }
+
     // ---------- apps ----------
 
     private fun renderAppRows(
@@ -478,9 +663,13 @@ class ParentRulesActivity : ParentRoleActivity() {
 
     /**
      * A checklist of every app this phone knows about, for choosing a
-     * category's membership.
+     * category's or a schedule's membership.
      */
-    private fun pickApps(current: Set<String>, onChosen: (Set<String>) -> Unit) {
+    private fun pickApps(
+        current: Set<String>,
+        title: String = getString(R.string.category_apps_header),
+        onChosen: (Set<String>) -> Unit,
+    ) {
         val apps = inventory.apps
         if (apps.isEmpty()) {
             toast(R.string.parent_rules_apps_none)
@@ -523,7 +712,7 @@ class ParentRulesActivity : ParentRoleActivity() {
         }
 
         AlertDialog.Builder(this)
-            .setTitle(R.string.category_apps_header)
+            .setTitle(title)
             .setView(ScrollView(this).apply { addView(list) })
             .setPositiveButton(android.R.string.ok) { _, _ -> onChosen(chosen.toSet()) }
             .setNegativeButton(android.R.string.cancel, null)
@@ -552,11 +741,18 @@ class ParentRulesActivity : ParentRoleActivity() {
             return
         }
         sync.applyPolicyEdit(snapshot)
+        sync.applyScheduleEdit(editedSchedules)
         Audit.record(context = this, actor = AuditActor.PARENT, action = AuditAction.RULES_REPLACED)
         toast(R.string.parent_rules_sent)
     }
 
     companion object {
+        /** Monday to Friday, in ISO day numbers — a new schedule's starting days. */
+        private val WEEKDAYS = setOf(1, 2, 3, 4, 5)
+
+        private val DEFAULT_START: LocalTime = LocalTime.of(8, 0)
+        private val DEFAULT_END: LocalTime = LocalTime.of(15, 0)
+
         fun intent(context: Context) = Intent(context, ParentRulesActivity::class.java)
     }
 }

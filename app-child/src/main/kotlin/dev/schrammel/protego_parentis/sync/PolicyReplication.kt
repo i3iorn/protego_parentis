@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
+import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.applySnapshot
@@ -198,11 +199,12 @@ class PolicyReplication(context: Context) {
     /**
      * Records [schedules] as [childId]'s replicated named windows.
      *
-     * Not yet reachable from [write] or [read]: [PolicySnapshot] does not carry
-     * schedules, because building one still means reading two separate local
-     * stores ([LocalPolicyStore] and [dev.schrammel.protego_parentis.rules.ScheduleStore])
-     * as one, which is its own piece of work. This is the wire format and the
-     * merge behaviour, ready for that to call into.
+     * Deliberately not folded into [write]/[read]: [PolicySnapshot] does not
+     * carry schedules, and giving it a `schedules` field would mean every
+     * caller that builds or applies one — including the whole-policy
+     * `POLICY_SNAPSHOT`/`POLICY_UPDATED` backward-compatibility path — takes on
+     * a field it may not need. [pushSchedulesFromLocal]/[pullSchedulesIntoLocal]
+     * are the actual bridge to [dev.schrammel.protego_parentis.rules.ScheduleStore].
      */
     fun writeSchedules(
         schedules: List<StoredSchedule>,
@@ -248,6 +250,35 @@ class PolicyReplication(context: Context) {
                 enabled = fields[FIELD_SCHEDULE_ENABLED]?.toBooleanStrictOrNull() ?: true,
             ).takeIf { it.isComplete }
         }
+    }
+
+    /**
+     * Records this phone's own [dev.schrammel.protego_parentis.rules.ScheduleStore]
+     * as replicated writes, the schedule equivalent of [pushFromLocalPolicy].
+     *
+     * Called on the managed phone on every poll, same as the rest of policy.
+     * No version gate: unlike [pushFromLocalPolicy], [ScheduleStore] carries no
+     * counter of its own to check first, and [writeSchedules] already costs
+     * nothing when nothing changed — [ReplicatedStateStore.writeAll] diffs
+     * against what is already held before queuing anything.
+     */
+    fun pushSchedulesFromLocal(childId: DeviceId? = defaultChildId()): List<StateOp> =
+        writeSchedules(ScheduleStore(appContext).schedules, childId)
+
+    /**
+     * Writes this replica's schedules back onto [dev.schrammel.protego_parentis.rules.ScheduleStore],
+     * the schedule equivalent of [pullIntoLocalPolicy].
+     *
+     * Only ever meaningful on the managed phone — a parent's phone has no
+     * local [ScheduleStore] anything enforces. Called only alongside a
+     * POLICY change this replica just received, the same trigger
+     * [pullIntoLocalPolicy] uses, and with the same characteristic: a schedule
+     * whose fields are still arriving is read as gone or unfinished until the
+     * rest catches up, exactly as a policy field briefly reads as its default
+     * during the same window.
+     */
+    fun pullSchedulesIntoLocal(childId: DeviceId? = defaultChildId()) {
+        ScheduleStore(appContext).schedules = readSchedules(childId)
     }
 
     /**

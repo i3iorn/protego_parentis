@@ -710,6 +710,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private fun keepReplicaCurrent() {
         if (roles.roleOrChild == DeviceRole.CHILD) {
             PolicyReplication(appContext).pushFromLocalPolicy()
+            PolicyReplication(appContext).pushSchedulesFromLocal()
         } else {
             // Only a parent may write the roster, and every parent holds the
             // same one — so each publishes what it trusts and they converge,
@@ -883,6 +884,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
 
         if (ReplicationRules.POLICY in sections && roles.roleOrChild == DeviceRole.CHILD) {
             PolicyReplication(appContext).pullIntoLocalPolicy()
+            PolicyReplication(appContext).pullSchedulesIntoLocal()
             EnforcementService.start(appContext)
         }
         // Additive only, and never for the managed phone: see the doc comment

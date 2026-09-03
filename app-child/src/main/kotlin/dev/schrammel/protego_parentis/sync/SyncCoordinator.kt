@@ -7,6 +7,7 @@ import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.context.PlaceTransition
 import dev.schrammel.protego_parentis.context.Position
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
+import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.security.DeviceRole
 
 /** Which sync identity a device's local role corresponds to. */
@@ -154,6 +155,12 @@ class SyncCoordinator(context: Context) {
      */
     fun applyPolicyEdit(snapshot: PolicySnapshot) {
         PolicyReplication(context).write(snapshot)
+        publisher.publishPendingOps()
+    }
+
+    /** As [applyPolicyEdit], for a schedule edit made on this phone. */
+    fun applyScheduleEdit(schedules: List<StoredSchedule>) {
+        PolicyReplication(context).writeSchedules(schedules)
         publisher.publishPendingOps()
     }
 
