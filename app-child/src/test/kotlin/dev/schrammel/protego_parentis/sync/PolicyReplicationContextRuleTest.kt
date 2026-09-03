@@ -65,6 +65,7 @@ class PolicyReplicationContextRuleTest {
         val fromA = listOf(
             op("R1", "name", "No games at dinner", lamport = 1, origin = "AAAA"),
             op("R1", "condition", """{"kind":"place","value":"kitchen"}""", lamport = 1, origin = "AAAA"),
+            op("R1", "effect", """{"kind":"block"}""", lamport = 1, origin = "AAAA"),
             op("R1", "target", """{"kind":"everything"}""", lamport = 1, origin = "AAAA"),
         )
         val fromB = listOf(op("R1", "enabled", "false", lamport = 2, origin = "BBBB"))
