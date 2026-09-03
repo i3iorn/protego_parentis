@@ -310,6 +310,11 @@
     <string name="rules_row_device">Security and control</string>
     <string name="rules_row_device_detail">PIN, lockdown, and handing the phone back</string>
 
+    <!-- #43: which managed phone's rules to edit, shown only once a family has
+         more than one - see RuleTargets' own doc comment. -->
+    <string name="rules_picker_title">Whose rules?</string>
+    <string name="rules_picker_hint">This family has more than one managed phone. Choose which one to edit.</string>
+
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>
     <string name="rules_daily_limit_header">Daily limit</string>

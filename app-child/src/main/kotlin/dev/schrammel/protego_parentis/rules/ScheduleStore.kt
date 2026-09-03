@@ -95,10 +95,12 @@ data class StoredSchedule(
  * The risk that motivated keeping it separate originally — a family deleting
  * bedtime by accident while tidying up a homework block — is handled by every
  * screen that lists these windows filtering [BEDTIME_ID] out and giving it its
- * own dedicated card instead (see [dev.schrammel.protego_parentis.ui.SchedulesActivity],
- * [dev.schrammel.protego_parentis.ui.ParentRulesActivity]): bedtime is never
- * offered through the generic add/delete flow at all, so there is no accident
- * to have.
+ * own dedicated card instead (see [dev.schrammel.protego_parentis.ui.SchedulesActivity]):
+ * bedtime is never offered through the generic add/delete flow at all, so
+ * there is no accident to have. #43 deleted `ParentRulesActivity`, the
+ * dedicated card's other home — a parent's phone has no bedtime card of its
+ * own yet, since `LimitsActivity` (where the managed phone's card lives) is
+ * one of the screens #43 left local-only, not yet reachable remotely.
  */
 class ScheduleStore(context: Context) {
 

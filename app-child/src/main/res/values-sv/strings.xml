@@ -313,6 +313,9 @@
     <string name="rules_row_device">Säkerhet och kontroll</string>
     <string name="rules_row_device_detail">PIN-kod, nedlåsning och att lämna tillbaka telefonen</string>
 
+    <string name="rules_picker_title">Vems regler?</string>
+    <string name="rules_picker_hint">Den här familjen har mer än en hanterad telefon. Välj vilken som ska redigeras.</string>
+
     <!-- Regler. -->
     <string name="rules_title">Ändra regler</string>
     <string name="rules_daily_limit_header">Daglig gräns</string>
