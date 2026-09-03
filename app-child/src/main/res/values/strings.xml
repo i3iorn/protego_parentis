@@ -150,6 +150,7 @@
     <string name="places_bad_coordinates">Latitude must be between -90 and 90, and longitude between -180 and 180.</string>
     <string name="places_bad_radius">Radius must be at least %1$d m.</string>
     <string name="places_no_map_app">No map app is installed to check this on.</string>
+    <string name="places_radius_increased">Radius increased to the minimum, to protect location privacy.</string>
     <string name="home_context_active">Active now: %1$s</string>
 
     <!-- Privacy and diagnostics. -->

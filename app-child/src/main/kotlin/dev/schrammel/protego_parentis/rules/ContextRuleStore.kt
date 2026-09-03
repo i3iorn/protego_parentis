@@ -60,6 +60,19 @@ class ContextRuleStore(context: Context) {
         get() = decodePlaces(prefs.getString(KEY_PLACES, null))
         set(value) = prefs.edit { putString(KEY_PLACES, encodePlaces(value)) }
 
+    /**
+     * Places [places] is currently reading with a larger radius than what was
+     * actually saved for them (#56) — [decodePlaces] clamps a stored radius
+     * below [Place.MINIMUM_RADIUS_METRES] up rather than rejecting it, since
+     * that floor has only ever gone up and a family's already-saved place is
+     * not the thing to punish for it. Live, not a one-off migration flag: this
+     * reflects what is on disk right now, so if the floor changes again this
+     * says so again, and a place a family has since resized itself no longer
+     * appears here.
+     */
+    val clampedPlaceIds: Set<PlaceId>
+        get() = clampedPlaceIds(prefs.getString(KEY_PLACES, null))
+
     fun upsertPlace(place: Place) = synchronized(prefs) {
         places = places.filterNot { it.id == place.id } + place
     }
@@ -146,10 +159,29 @@ class ContextRuleStore(context: Context) {
                     name = json.optString(KEY_NAME),
                     latitude = json.optDouble(KEY_LAT),
                     longitude = json.optDouble(KEY_LON),
-                    radiusMetres = json.optInt(KEY_RADIUS, Place.MINIMUM_RADIUS_METRES),
+                    // Clamped up, never rejected: a radius saved under an
+                    // earlier, smaller MINIMUM_RADIUS_METRES must still
+                    // decode, or raising the floor would silently drop every
+                    // place that predates it — see clampedPlaceIds.
+                    radiusMetres = maxOf(
+                        json.optInt(KEY_RADIUS, Place.MINIMUM_RADIUS_METRES),
+                        Place.MINIMUM_RADIUS_METRES,
+                    ),
                 )
             }.getOrNull()
         }
+    }
+
+    private fun clampedPlaceIds(raw: String?): Set<PlaceId> {
+        val array = runCatching { JSONArray(raw ?: return emptySet()) }.getOrNull()
+            ?: return emptySet()
+
+        return (0 until array.length()).mapNotNull { index ->
+            val json = array.optJSONObject(index) ?: return@mapNotNull null
+            val id = json.optString(KEY_ID).takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val storedRadius = json.optInt(KEY_RADIUS, Place.MINIMUM_RADIUS_METRES)
+            PlaceId(id).takeIf { storedRadius < Place.MINIMUM_RADIUS_METRES }
+        }.toSet()
     }
 
     private companion object {
