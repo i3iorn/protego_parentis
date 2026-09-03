@@ -2,8 +2,12 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.ScheduleBlock
+import dev.schrammel.protego_parentis.rules.ContextRuleCodec
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.ScheduleStore
@@ -330,6 +334,104 @@ class PolicyReplication(context: Context) {
             .forEach { gone -> put("$root/$gone/$FIELD_SCHEDULE_DELETED", now.epochSecond.toString()) }
     }
 
+    /**
+     * Records [rules] as [childId]'s replicated contextual rules — the
+     * condition/effect/target shape's equivalent of [writeSchedules].
+     *
+     * Not yet reachable from a screen: this milestone is wiring only, per the
+     * same "one PR per record type" split #40/#41 used for schedules — a
+     * condition can nest `AllOf`/`AnyOf`/`Not` arbitrarily, and a parent-phone
+     * builder for that is its own, more careful piece of work. This is the
+     * wire format and the merge behaviour, ready for that to call into.
+     */
+    fun writeContextRules(
+        rules: List<ContextRule>,
+        childId: DeviceId? = defaultChildId(),
+        now: Instant = Instant.now(),
+    ): List<StateOp> {
+        val id = childId ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
+        val role = RoleStore(appContext).roleOrChild.toSyncRole()
+        return state.writeAll(flattenContextRules(rules, id, now), origin, role)
+    }
+
+    /**
+     * [childId]'s replicated contextual rules, excluding any this replica has
+     * been told is gone — see [FIELD_RULE_DELETED] on [flattenContextRules],
+     * the same deleted-marker approach [readSchedules] uses and for the same
+     * reason: a delete and a concurrent edit to the same rule write different
+     * paths, so which one a replica saw last never decides whether the rule
+     * is still there.
+     *
+     * A rule whose `condition`, `effect` or `target` has not replicated yet,
+     * or does not parse — an unrecognised kind from a newer build, say — is
+     * excluded the same way [ContextRuleStore.decodeRules] already drops one
+     * it cannot make sense of; nothing here is new risk beyond what local
+     * storage already tolerates.
+     */
+    fun readContextRules(childId: DeviceId? = defaultChildId()): List<ContextRule> {
+        val id = childId ?: return emptyList()
+        val root = "$POLICY/${id.value}/$PATH_CONTEXT_RULES"
+        return state.idsUnder(root).mapNotNull { ruleId ->
+            val ruleRoot = "$root/$ruleId"
+            val fields = state.children(ruleRoot)
+            if (FIELD_RULE_DELETED in fields) return@mapNotNull null
+
+            ContextRule(
+                id = ruleId,
+                name = fields[FIELD_RULE_NAME] ?: return@mapNotNull null,
+                enabled = fields[FIELD_RULE_ENABLED]?.toBooleanStrictOrNull() ?: true,
+                condition = ContextRuleCodec.decodeConditionFromString(fields[FIELD_RULE_CONDITION])
+                    ?: Condition.Always,
+                effect = ContextRuleCodec.decodeEffectFromString(fields[FIELD_RULE_EFFECT])
+                    ?: return@mapNotNull null,
+                target = ContextRuleCodec.decodeTargetFromString(fields[FIELD_RULE_TARGET])
+                    ?: return@mapNotNull null,
+            )
+        }
+    }
+
+    /**
+     * Records this phone's own [ContextRuleStore] rules as replicated writes
+     * — [pushSchedulesFromLocal]'s equivalent. Places are deliberately not
+     * included: they carry coordinates, and whether/how those replicate at
+     * all is a separate decision for the places milestone, not something to
+     * fold in here because the store happens to hold both.
+     */
+    fun pushContextRulesFromLocal(childId: DeviceId? = defaultChildId()): List<StateOp> =
+        writeContextRules(ContextRuleStore(appContext).rules, childId)
+
+    /** [pullSchedulesIntoLocal]'s equivalent, for contextual rules. */
+    fun pullContextRulesIntoLocal(childId: DeviceId? = defaultChildId()) {
+        ContextRuleStore(appContext).rules = readContextRules(childId)
+    }
+
+    /**
+     * Every contextual rule as a path, plus a [FIELD_RULE_DELETED] marker —
+     * see [flattenSchedules] for why a marker rather than nulling every field.
+     */
+    private fun flattenContextRules(
+        rules: List<ContextRule>,
+        childId: DeviceId,
+        now: Instant,
+    ): Map<String, String?> = buildMap {
+        val root = "$POLICY/${childId.value}/$PATH_CONTEXT_RULES"
+        rules.forEach { rule ->
+            val ruleRoot = "$root/${rule.id}"
+            put("$ruleRoot/$FIELD_RULE_NAME", rule.name)
+            put("$ruleRoot/$FIELD_RULE_ENABLED", rule.enabled.toString())
+            put("$ruleRoot/$FIELD_RULE_CONDITION", ContextRuleCodec.encodeConditionToString(rule.condition))
+            put("$ruleRoot/$FIELD_RULE_EFFECT", ContextRuleCodec.encodeEffectToString(rule.effect))
+            put("$ruleRoot/$FIELD_RULE_TARGET", ContextRuleCodec.encodeTargetToString(rule.target))
+        }
+
+        val live = rules.map { it.id }.toSet()
+        state.idsUnder(root)
+            .filterNot { it in live }
+            .filterNot { FIELD_RULE_DELETED in state.children("$root/$it") }
+            .forEach { gone -> put("$root/$gone/$FIELD_RULE_DELETED", now.epochSecond.toString()) }
+    }
+
     private fun members(root: String): Set<String> = state.children(root).keys
 
     /**
@@ -428,5 +530,15 @@ class PolicyReplication(context: Context) {
          * unresolved.
          */
         const val FIELD_SCHEDULE_DELETED = "deleted"
+
+        const val PATH_CONTEXT_RULES = "contextRules"
+        const val FIELD_RULE_NAME = "name"
+        const val FIELD_RULE_ENABLED = "enabled"
+        const val FIELD_RULE_CONDITION = "condition"
+        const val FIELD_RULE_EFFECT = "effect"
+        const val FIELD_RULE_TARGET = "target"
+
+        /** As [FIELD_SCHEDULE_DELETED], for a contextual rule. */
+        const val FIELD_RULE_DELETED = "deleted"
     }
 }

@@ -82,24 +82,30 @@ class RulesInventoryTest {
     )
 
     private val contextRules = mapOf(
+        "KEY_RULES=rules" to PARENT,
+        "KEY_ID=id" to PARENT,
+        "KEY_NAME=name" to PARENT,
+        "KEY_ENABLED=enabled" to PARENT,
+        "KEY_CONDITION=condition" to PARENT,
+        "KEY_EFFECT=effect" to PARENT,
+        "KEY_TARGET=target" to PARENT,
+        // Places are the exception: still local-only, see below.
         "KEY_ANNOUNCE_ARRIVALS=announce_arrivals" to PENDING,
-        "KEY_RULES=rules" to PENDING,
         "KEY_PLACES=places" to PENDING,
-        "KEY_ID=id" to PENDING,
-        "KEY_NAME=name" to PENDING,
-        "KEY_ENABLED=enabled" to PENDING,
-        "KEY_CONDITION=condition" to PENDING,
-        "KEY_EFFECT=effect" to PENDING,
-        "KEY_TARGET=target" to PENDING,
-        "KEY_KIND=kind" to PENDING,
-        "KEY_VALUE=value" to PENDING,
-        "KEY_PARTS=parts" to PENDING,
-        "KEY_MINUTES=minutes" to PENDING,
         // A place a family deliberately marked. Replicating these means
         // coordinates leaving the phone — see #41 before it does.
         "KEY_LAT=lat" to PENDING,
         "KEY_LON=lon" to PENDING,
         "KEY_RADIUS=radius" to PENDING,
+    )
+
+    // The condition/effect/target codec shared with PolicyReplication, split
+    // out of ContextRuleStore — see ContextRuleCodec's own doc comment.
+    private val contextRuleCodec = mapOf(
+        "KEY_KIND=kind" to PARENT,
+        "KEY_VALUE=value" to PARENT,
+        "KEY_PARTS=parts" to PARENT,
+        "KEY_MINUTES=minutes" to PARENT,
     )
 
     private val webFilter = mapOf(
@@ -143,6 +149,7 @@ class RulesInventoryTest {
         Triple("LocalPolicyStore", LocalPolicyStore::class.java, localPolicy),
         Triple("ScheduleStore", ScheduleStore::class.java, schedules),
         Triple("ContextRuleStore", ContextRuleStore::class.java, contextRules),
+        Triple("ContextRuleCodec", ContextRuleCodec::class.java, contextRuleCodec),
         Triple("WebFilterStore", WebFilterStore::class.java, webFilter),
         Triple("AutoApprovalStore", AutoApprovalStore::class.java, autoApproval),
         Triple("GoalStore", GoalStore::class.java, goals),
@@ -225,10 +232,11 @@ class RulesInventoryTest {
          *
          * Was 78 at the start of #37 (9 schedules + 16 contextual rules and
          * places + 9 web filter + 7 auto-approval + 4 goals + 17 features + 16
-         * notifications). #41/M3 made the 9 schedule fields reachable, leaving
-         * 16 contextual rules and places + 9 web filter + 7 auto-approval + 4
-         * goals + 17 features + 16 notifications.
+         * notifications). #41/M3 made the 9 schedule fields reachable (69 left),
+         * then the 11 contextual-rule condition/effect/target fields (58 left):
+         * 5 places fields (still local-only, coordinates) + 9 web filter + 7
+         * auto-approval + 4 goals + 17 features + 16 notifications.
          */
-        const val PENDING_AT_M0 = 69
+        const val PENDING_AT_M0 = 58
     }
 }
