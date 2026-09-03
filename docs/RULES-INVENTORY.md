@@ -19,10 +19,11 @@ each was added without the question being asked.
 | **Local only** | Deliberately never remote. The reason is recorded next to the entry. |
 | **Not a rule** | Persisted, but not a rule — bookkeeping, or state the app keeps about itself. |
 
-**58 settings are Pending.** That number is asserted by the test, so it can only
+**54 settings are Pending.** That number is asserted by the test, so it can only
 change on purpose. It started at 78; [#41](https://github.com/i3iorn/dementor_watch/issues/41)
 made the 9 schedule fields Parent, then the 11 contextual-rule condition/effect/
-target fields, below.
+target fields, then the 2 places-list fields — everything about a place except
+its coordinates, which move to Local only instead, below.
 
 ## LocalPolicyStore — `local_policy`
 
@@ -70,11 +71,12 @@ own phone.
 in the model when schedules gained a mode and deliberately not renamed on disk,
 because that would empty the exception list of every schedule already saved.
 
-## ContextRuleStore — `context_rules` · 7 Parent, 5 Pending
+## ContextRuleStore — `context_rules` · 9 Parent, 1 Pending, 2 Local only
 
 Contextual rules and the places they refer to, in one store.
 
-`rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`
+`rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`, `places`,
+`radius`
 
 [#41](https://github.com/i3iorn/dementor_watch/issues/41) closed the rule half
 of this store the way [#40](https://github.com/i3iorn/dementor_watch/issues/40)
@@ -88,12 +90,25 @@ splitting that tree into paths was judged not worth the complexity for how
 rarely two parents edit the exact same rule's logic at once. This milestone is
 wiring only: no parent-phone condition-builder UI yet.
 
-Pending: `announce_arrivals`, `places`, `lat`, `lon`, `radius`
+The places half closed the same way, via `writePlaceRefs`/`readPlaceRefs`/
+`pushPlaceRefsFromLocal`/`pullPlaceRefsIntoLocal` and a new model type,
+`PlaceRef(id, name, radiusMetres)` — deliberately not `Place` itself, since a
+`Place` carries a coordinate and a `PlaceRef` structurally cannot. A parent can
+now rename, resize or delete a place and re-point rules at it from any phone.
+Creating a place, or moving one, still only happens on whichever device holds
+its coordinate (ordinarily the managed phone): `pullPlaceRefsIntoLocal` merges
+a remote rename/resize/delete onto a place this device already has coordinates
+for, and leaves alone any place id it doesn't — there is nothing to
+materialise a brand-new place *with* on a device that never received a
+position for it.
 
-`lat`, `lon` and `radius` are coordinates a family deliberately marked.
-Replicating them means positions leaving the phone, which is a privacy question
-and not only a sync one — #41's places slice has to answer it against the
-README's privacy section before it ships.
+Pending: `announce_arrivals`
+
+Local only: `lat`, `lon` — deliberately, not merely not yet. Replicating a
+coordinate would break an explicit invariant the README states twice
+("coordinates never leave the device"; "no location"), which #41's places
+slice was scoped around rather than around changing. See `PlaceRef`'s own doc
+comment.
 
 ## ContextRuleCodec — `kind`/`value`/`parts`/`minutes` · 4 Parent
 

@@ -89,14 +89,15 @@ class RulesInventoryTest {
         "KEY_CONDITION=condition" to PARENT,
         "KEY_EFFECT=effect" to PARENT,
         "KEY_TARGET=target" to PARENT,
-        // Places are the exception: still local-only, see below.
         "KEY_ANNOUNCE_ARRIVALS=announce_arrivals" to PENDING,
-        "KEY_PLACES=places" to PENDING,
-        // A place a family deliberately marked. Replicating these means
-        // coordinates leaving the phone — see #41 before it does.
-        "KEY_LAT=lat" to PENDING,
-        "KEY_LON=lon" to PENDING,
-        "KEY_RADIUS=radius" to PENDING,
+        // A parent can rename, resize or remove a place from any phone, so
+        // the list and its radius are Parent — but not where it is.
+        "KEY_PLACES=places" to PARENT,
+        "KEY_RADIUS=radius" to PARENT,
+        // Deliberately never remote, not merely not-yet: see PlaceRef and
+        // the README's "coordinates never leave the device" privacy claim.
+        "KEY_LAT=lat" to LOCAL_ONLY,
+        "KEY_LON=lon" to LOCAL_ONLY,
     )
 
     // The condition/effect/target codec shared with PolicyReplication, split
@@ -233,10 +234,13 @@ class RulesInventoryTest {
          * Was 78 at the start of #37 (9 schedules + 16 contextual rules and
          * places + 9 web filter + 7 auto-approval + 4 goals + 17 features + 16
          * notifications). #41/M3 made the 9 schedule fields reachable (69 left),
-         * then the 11 contextual-rule condition/effect/target fields (58 left):
-         * 5 places fields (still local-only, coordinates) + 9 web filter + 7
-         * auto-approval + 4 goals + 17 features + 16 notifications.
+         * then the 11 contextual-rule condition/effect/target fields (58
+         * left), then the places list itself — id/name/radius, everything
+         * except a coordinate, which stays Local only rather than Pending
+         * since replicating it is not a goal (54 left): 1 places field
+         * (`announce_arrivals`) + 9 web filter + 7 auto-approval + 4 goals +
+         * 17 features + 16 notifications.
          */
-        const val PENDING_AT_M0 = 58
+        const val PENDING_AT_M0 = 54
     }
 }

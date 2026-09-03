@@ -5,6 +5,8 @@ import androidx.core.content.edit
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.InstallPolicy
+import dev.schrammel.protego_parentis.model.PlaceId
+import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.ContextRuleCodec
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
@@ -393,10 +395,11 @@ class PolicyReplication(context: Context) {
 
     /**
      * Records this phone's own [ContextRuleStore] rules as replicated writes
-     * — [pushSchedulesFromLocal]'s equivalent. Places are deliberately not
-     * included: they carry coordinates, and whether/how those replicate at
-     * all is a separate decision for the places milestone, not something to
-     * fold in here because the store happens to hold both.
+     * — [pushSchedulesFromLocal]'s equivalent. Places are pushed separately,
+     * by [pushPlaceRefsFromLocal] — not folded in here because the store
+     * happens to hold both, and because what a place replicates as
+     * ([PlaceRef]) is deliberately not the same shape as what it is
+     * ([dev.schrammel.protego_parentis.model.Place]).
      */
     fun pushContextRulesFromLocal(childId: DeviceId? = defaultChildId()): List<StateOp> =
         writeContextRules(ContextRuleStore(appContext).rules, childId)
@@ -430,6 +433,110 @@ class PolicyReplication(context: Context) {
             .filterNot { it in live }
             .filterNot { FIELD_RULE_DELETED in state.children("$root/$it") }
             .forEach { gone -> put("$root/$gone/$FIELD_RULE_DELETED", now.epochSecond.toString()) }
+    }
+
+    /**
+     * Records [refs] as [childId]'s replicated place list — id/name/radius
+     * only, never a coordinate. See [PlaceRef] for why: only
+     * [dev.schrammel.protego_parentis.model.Place] itself, kept local to
+     * whichever device holds it, has one.
+     */
+    fun writePlaceRefs(
+        refs: List<PlaceRef>,
+        childId: DeviceId? = defaultChildId(),
+        now: Instant = Instant.now(),
+    ): List<StateOp> {
+        val id = childId ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
+        val role = RoleStore(appContext).roleOrChild.toSyncRole()
+        return state.writeAll(flattenPlaceRefs(refs, id, now), origin, role)
+    }
+
+    /**
+     * [childId]'s replicated places, excluding any this replica has been
+     * told is gone — see [FIELD_PLACE_DELETED] on [flattenPlaceRefs], the
+     * same deleted-marker approach [readSchedules] uses.
+     */
+    fun readPlaceRefs(childId: DeviceId? = defaultChildId()): List<PlaceRef> {
+        val id = childId ?: return emptyList()
+        val root = "$POLICY/${id.value}/$PATH_PLACES"
+        return state.idsUnder(root).mapNotNull { placeId ->
+            val fields = state.children("$root/$placeId")
+            if (FIELD_PLACE_DELETED in fields) return@mapNotNull null
+
+            PlaceRef(
+                id = PlaceId(placeId),
+                name = fields[FIELD_PLACE_NAME] ?: return@mapNotNull null,
+                radiusMetres = fields[FIELD_PLACE_RADIUS]?.toIntOrNull() ?: return@mapNotNull null,
+            )
+        }
+    }
+
+    /**
+     * Records this phone's own [ContextRuleStore] places as replicated
+     * writes, stripped to what [PlaceRef] carries — [pushContextRulesFromLocal]'s
+     * equivalent, for places.
+     */
+    fun pushPlaceRefsFromLocal(childId: DeviceId? = defaultChildId()): List<StateOp> =
+        writePlaceRefs(
+            ContextRuleStore(appContext).places.map { PlaceRef(it.id, it.name, it.radiusMetres) },
+            childId,
+        )
+
+    /**
+     * Folds this replica's places back onto [ContextRuleStore], the places
+     * equivalent of [pullContextRulesIntoLocal] — with one structural
+     * difference: a place this device holds no local coordinate for is left
+     * alone rather than materialised, because there is nothing to
+     * materialise it *with*. Only a rename, a resize, or a delete of a place
+     * this device already knows ever applies here; creating one, or moving
+     * it, still has to happen on whichever device holds its coordinate.
+     */
+    fun pullPlaceRefsIntoLocal(childId: DeviceId? = defaultChildId()) {
+        val id = childId ?: return
+        val root = "$POLICY/${id.value}/$PATH_PLACES"
+        val store = ContextRuleStore(appContext)
+        val localById = store.places.associateBy { it.id }
+
+        state.idsUnder(root).forEach { placeId ->
+            val place = localById[PlaceId(placeId)] ?: return@forEach
+            val fields = state.children("$root/$placeId")
+
+            if (FIELD_PLACE_DELETED in fields) {
+                store.deletePlace(place.id)
+                return@forEach
+            }
+
+            val name = fields[FIELD_PLACE_NAME] ?: return@forEach
+            val radius = fields[FIELD_PLACE_RADIUS]?.toIntOrNull() ?: return@forEach
+            if (name != place.name || radius != place.radiusMetres) {
+                store.upsertPlace(place.copy(name = name, radiusMetres = radius))
+            }
+        }
+    }
+
+    /**
+     * Every place as a path — id/name/radius only — plus a
+     * [FIELD_PLACE_DELETED] marker, the same shape [flattenSchedules] uses
+     * and for the same reason.
+     */
+    private fun flattenPlaceRefs(
+        refs: List<PlaceRef>,
+        childId: DeviceId,
+        now: Instant,
+    ): Map<String, String?> = buildMap {
+        val root = "$POLICY/${childId.value}/$PATH_PLACES"
+        refs.forEach { ref ->
+            val placeRoot = "$root/${ref.id.value}"
+            put("$placeRoot/$FIELD_PLACE_NAME", ref.name)
+            put("$placeRoot/$FIELD_PLACE_RADIUS", ref.radiusMetres.toString())
+        }
+
+        val live = refs.map { it.id.value }.toSet()
+        state.idsUnder(root)
+            .filterNot { it in live }
+            .filterNot { FIELD_PLACE_DELETED in state.children("$root/$it") }
+            .forEach { gone -> put("$root/$gone/$FIELD_PLACE_DELETED", now.epochSecond.toString()) }
     }
 
     private fun members(root: String): Set<String> = state.children(root).keys
@@ -540,5 +647,12 @@ class PolicyReplication(context: Context) {
 
         /** As [FIELD_SCHEDULE_DELETED], for a contextual rule. */
         const val FIELD_RULE_DELETED = "deleted"
+
+        const val PATH_PLACES = "places"
+        const val FIELD_PLACE_NAME = "name"
+        const val FIELD_PLACE_RADIUS = "radius"
+
+        /** As [FIELD_SCHEDULE_DELETED], for a place. */
+        const val FIELD_PLACE_DELETED = "deleted"
     }
 }
