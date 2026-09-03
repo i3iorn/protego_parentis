@@ -10,6 +10,7 @@ import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.ContextRuleCodec
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
+import dev.schrammel.protego_parentis.rules.DnsProfile
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.ScheduleStore
@@ -195,6 +196,19 @@ class PolicyReplication(context: Context) {
             networkBlockedPackages = members("$root/$PATH_NETWORK_BLOCKED"),
             installPolicy = value(PATH_INSTALL_POLICY) ?: InstallPolicy.NOTIFY.name,
             installWindowUntil = value(PATH_INSTALL_WINDOW)?.toLongOrNull(),
+            webFilterProfile = value(PATH_WEB_PROFILE) ?: DnsProfile.OFF.name,
+            webFilterCustomHost = value(PATH_WEB_CUSTOM_HOST).orEmpty(),
+            webFilterSafeSearch = value(PATH_WEB_SAFE_SEARCH)?.toBooleanStrictOrNull() ?: false,
+            webFilterYoutube = value(PATH_WEB_YOUTUBE)?.toBooleanStrictOrNull() ?: false,
+            webFilterIncognito = value(PATH_WEB_INCOGNITO)?.toBooleanStrictOrNull() ?: false,
+            webFilterBlockedUrls = members("$root/$PATH_WEB_BLOCKED_URLS"),
+            webFilterAllowedUrls = members("$root/$PATH_WEB_ALLOWED_URLS"),
+            webFilterSuspendBrowsers = value(PATH_WEB_SUSPEND_BROWSERS)?.toBooleanStrictOrNull() ?: false,
+            webFilterCountVisits = value(PATH_WEB_COUNT_VISITS)?.toBooleanStrictOrNull() ?: false,
+            goalEnabled = value(PATH_GOAL_ENABLED)?.toBooleanStrictOrNull() ?: false,
+            goalMaxMinutes = number(PATH_GOAL_MAX_MINUTES, 0),
+            goalPrize = value(PATH_GOAL_PRIZE).orEmpty(),
+            disabledFeatures = members("$root/$PATH_DISABLED_FEATURES"),
         )
     }
 
@@ -580,6 +594,22 @@ class PolicyReplication(context: Context) {
 
         put("$root/$PATH_INSTALL_POLICY", snapshot.installPolicy)
         put("$root/$PATH_INSTALL_WINDOW", snapshot.installWindowUntil?.toString())
+
+        put("$root/$PATH_WEB_PROFILE", snapshot.webFilterProfile)
+        put("$root/$PATH_WEB_CUSTOM_HOST", snapshot.webFilterCustomHost)
+        put("$root/$PATH_WEB_SAFE_SEARCH", snapshot.webFilterSafeSearch.toString())
+        put("$root/$PATH_WEB_YOUTUBE", snapshot.webFilterYoutube.toString())
+        put("$root/$PATH_WEB_INCOGNITO", snapshot.webFilterIncognito.toString())
+        putMembers("$root/$PATH_WEB_BLOCKED_URLS", snapshot.webFilterBlockedUrls)
+        putMembers("$root/$PATH_WEB_ALLOWED_URLS", snapshot.webFilterAllowedUrls)
+        put("$root/$PATH_WEB_SUSPEND_BROWSERS", snapshot.webFilterSuspendBrowsers.toString())
+        put("$root/$PATH_WEB_COUNT_VISITS", snapshot.webFilterCountVisits.toString())
+
+        put("$root/$PATH_GOAL_ENABLED", snapshot.goalEnabled.toString())
+        put("$root/$PATH_GOAL_MAX_MINUTES", snapshot.goalMaxMinutes.toString())
+        put("$root/$PATH_GOAL_PRIZE", snapshot.goalPrize)
+
+        putMembers("$root/$PATH_DISABLED_FEATURES", snapshot.disabledFeatures)
     }
 
     private fun MutableMap<String, String?>.putMembers(root: String, members: Set<String>) =
@@ -611,6 +641,22 @@ class PolicyReplication(context: Context) {
         const val PATH_NETWORK_BLOCKED = "networkBlocked"
         const val PATH_INSTALL_POLICY = "installPolicy"
         const val PATH_INSTALL_WINDOW = "installWindowUntil"
+
+        const val PATH_WEB_PROFILE = "webFilter/profile"
+        const val PATH_WEB_CUSTOM_HOST = "webFilter/customHost"
+        const val PATH_WEB_SAFE_SEARCH = "webFilter/safeSearch"
+        const val PATH_WEB_YOUTUBE = "webFilter/youtube"
+        const val PATH_WEB_INCOGNITO = "webFilter/incognito"
+        const val PATH_WEB_BLOCKED_URLS = "webFilter/blockedUrls"
+        const val PATH_WEB_ALLOWED_URLS = "webFilter/allowedUrls"
+        const val PATH_WEB_SUSPEND_BROWSERS = "webFilter/suspendBrowsers"
+        const val PATH_WEB_COUNT_VISITS = "webFilter/countVisits"
+
+        const val PATH_GOAL_ENABLED = "goal/enabled"
+        const val PATH_GOAL_MAX_MINUTES = "goal/maxMinutes"
+        const val PATH_GOAL_PRIZE = "goal/prize"
+
+        const val PATH_DISABLED_FEATURES = "disabledFeatures"
 
         const val PATH_SCHEDULES = "schedules"
         const val FIELD_SCHEDULE_NAME = "name"

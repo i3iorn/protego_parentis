@@ -6,9 +6,11 @@ import androidx.core.content.edit
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AppRule
+import dev.schrammel.protego_parentis.model.BrowserPolicy
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.ChildId
+import dev.schrammel.protego_parentis.model.DailyGoal
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PackageName
@@ -18,6 +20,7 @@ import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONObject
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.time.Duration.Companion.minutes
@@ -75,6 +78,8 @@ class LocalPolicyStore(context: Context) {
     private val contextRuleStore = ContextRuleStore(appContext)
     private val scheduleStore = ScheduleStore(appContext)
     private val webFilterStore = WebFilterStore(appContext)
+    private val goalStore = GoalStore(appContext)
+    private val featureFlags = FeatureFlags(appContext)
 
     // ---------- the assembled policy ----------
 
@@ -182,6 +187,56 @@ class LocalPolicyStore(context: Context) {
             // own comment calls out: a window may be starting right now.
             EnforcementService.start(appContext)
         }
+
+    // ---------- web filter (#42) ----------
+
+    /** Delegates to [WebFilterStore], so a remote edit and the child's own filter screen agree. */
+    var webFilterProfile: DnsProfile
+        get() = webFilterStore.profile
+        set(value) { webFilterStore.profile = value }
+
+    var webFilterCustomHost: String
+        get() = webFilterStore.customHost
+        set(value) { webFilterStore.customHost = value }
+
+    var browserPolicy: BrowserPolicy
+        get() = webFilterStore.browserPolicy
+        set(value) { webFilterStore.browserPolicy = value }
+
+    var webFilterCountVisits: Boolean
+        get() = webFilterStore.countVisits
+        set(value) { webFilterStore.countVisits = value }
+
+    // ---------- daily goal (#42) ----------
+
+    /**
+     * Delegates to [GoalStore]. [DailyGoal.effectiveFrom] on the value returned
+     * is today's date if this device has never saved one, but is never itself
+     * settable through this property — [GoalStore.save] derives it from
+     * whether [DailyGoal.enabled] or [DailyGoal.maxUsage] actually changed, the
+     * same restart-detection every existing caller already goes through, and a
+     * remote edit gets no special path around that.
+     */
+    var goal: DailyGoal
+        get() = goalStore.load(LocalDate.now())
+        set(value) = goalStore.save(
+            enabled = value.enabled,
+            maxMinutes = value.maxUsage.inWholeMinutes.toInt(),
+            prize = value.prize,
+            today = LocalDate.now(),
+        )
+
+    // ---------- features (#42) ----------
+
+    /**
+     * The optional [Feature]s this phone currently has switched off. Delegates
+     * to [FeatureFlags]; the three non-optional entries never appear here; they
+     * were never able to be turned off locally either.
+     */
+    var disabledFeatures: Set<Feature>
+        get() = Feature.entries.filter { it.optional && !featureFlags.isEnabled(it) }.toSet()
+        set(value) = Feature.entries.filter { it.optional }
+            .forEach { feature -> featureFlags.setEnabled(feature, feature !in value) }
 
     // ---------- categories ----------
 

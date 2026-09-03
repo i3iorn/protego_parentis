@@ -24,6 +24,19 @@ class PolicySnapshotTest {
         networkBlockedPackages = setOf("com.example.offline"),
         installPolicy = "GATED",
         installWindowUntil = 1_700_000_000_000L,
+        webFilterProfile = "ADULT",
+        webFilterCustomHost = "",
+        webFilterSafeSearch = true,
+        webFilterYoutube = true,
+        webFilterIncognito = false,
+        webFilterBlockedUrls = setOf("example.com"),
+        webFilterAllowedUrls = setOf("homework.example.com"),
+        webFilterSuspendBrowsers = false,
+        webFilterCountVisits = true,
+        goalEnabled = true,
+        goalMaxMinutes = 90,
+        goalPrize = "Extra bonus time",
+        disabledFeatures = setOf("WEB_ACTIVITY"),
     )
 
     @Test

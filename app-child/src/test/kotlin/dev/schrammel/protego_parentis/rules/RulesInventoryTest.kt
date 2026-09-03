@@ -110,16 +110,19 @@ class RulesInventoryTest {
         "KEY_MINUTES=minutes" to PARENT,
     )
 
+    // #42 closed this store: all nine fields ride PolicySnapshot now, the same
+    // flat-scalar/membership-set channel dailyLimitMinutes and the packages
+    // sets already use.
     private val webFilter = mapOf(
-        "KEY_PROFILE=profile" to PENDING,
-        "KEY_CUSTOM_HOST=custom_host" to PENDING,
-        "KEY_SAFE_SEARCH=safe_search" to PENDING,
-        "KEY_YOUTUBE=youtube" to PENDING,
-        "KEY_INCOGNITO=incognito" to PENDING,
-        "KEY_BLOCKED=blocked" to PENDING,
-        "KEY_ALLOWED=allowed" to PENDING,
-        "KEY_SUSPEND_BROWSERS=suspend_browsers" to PENDING,
-        "KEY_COUNT_VISITS=count_visits" to PENDING,
+        "KEY_PROFILE=profile" to PARENT,
+        "KEY_CUSTOM_HOST=custom_host" to PARENT,
+        "KEY_SAFE_SEARCH=safe_search" to PARENT,
+        "KEY_YOUTUBE=youtube" to PARENT,
+        "KEY_INCOGNITO=incognito" to PARENT,
+        "KEY_BLOCKED=blocked" to PARENT,
+        "KEY_ALLOWED=allowed" to PARENT,
+        "KEY_SUSPEND_BROWSERS=suspend_browsers" to PARENT,
+        "KEY_COUNT_VISITS=count_visits" to PARENT,
     )
 
     private val autoApproval = mapOf(
@@ -135,10 +138,15 @@ class RulesInventoryTest {
     )
 
     private val goals = mapOf(
-        "KEY_ENABLED=enabled" to PENDING,
-        "KEY_MAX_MINUTES=max_minutes" to PENDING,
-        "KEY_PRIZE=prize" to PENDING,
-        "KEY_EFFECTIVE_FROM=effective_from" to PENDING,
+        // #42: enabled/max_minutes/prize now ride PolicySnapshot.
+        "KEY_ENABLED=enabled" to PARENT,
+        "KEY_MAX_MINUTES=max_minutes" to PARENT,
+        "KEY_PRIZE=prize" to PARENT,
+        // Reclassified alongside #42, not left as PENDING backlog: this is
+        // never a choice a parent makes, it's GoalStore.save's own
+        // restart-detection recording when progress last reset — the same
+        // kind of bookkeeping KEY_VERSION already is, not a rule.
+        "KEY_EFFECTIVE_FROM=effective_from" to NOT_A_RULE,
         // Everything below is what has happened, not what may happen.
         "KEY_CELEBRATED=celebrated_days" to NOT_A_RULE,
         "KEY_PENDING_DAY=pending_day" to NOT_A_RULE,
@@ -159,11 +167,25 @@ class RulesInventoryTest {
 
     // ---------- stores whose settings are enum entries ----------
 
+    /**
+     * #42 closed the optional ones — a parent can now switch any of the 14
+     * off from their own phone, via [LocalPolicyStore.disabledFeatures].
+     * The 3 non-optional entries were never PENDING in truth: `setEnabled`
+     * always refused them, on every phone, so there was never a rule there
+     * to reach — reclassified to NOT_A_RULE rather than left as backlog.
+     */
     private val features: Map<String, RuleReach> =
-        Feature.entries.associate { it.name to PENDING }
+        Feature.entries.associate { it.name to if (it.optional) PARENT else NOT_A_RULE }
 
+    /**
+     * Decided alongside #42: stays local-only. What a phone tells the person
+     * holding it is not something the other side of the family should be
+     * able to change from a distance — see `docs/RULES-INVENTORY.md`. As
+     * with [features], the 6 non-optional kinds were never really PENDING:
+     * `setEnabled` always refused them.
+     */
     private val notifications: Map<String, RuleReach> =
-        NotificationKind.entries.associate { it.name to PENDING }
+        NotificationKind.entries.associate { it.name to if (it.optional) LOCAL_ONLY else NOT_A_RULE }
 
     // ---------- the checks ----------
 
@@ -197,8 +219,8 @@ class RulesInventoryTest {
     @Test
     fun `the rules a parent cannot reach are the ones #37 is closing`() {
         val pending = keyedStores.sumOf { (_, _, fields) -> fields.count { it.value == PENDING } } +
-            features.size +
-            notifications.size
+            features.count { it.value == PENDING } +
+            notifications.count { it.value == PENDING }
 
         assertEquals(
             "If you have just made a rule reachable from a parent's phone, " +
@@ -243,8 +265,14 @@ class RulesInventoryTest {
          * 17 features + 16 notifications. #12 then folded bedtime's four
          * dedicated LocalPolicyStore fields into a StoredSchedule (`kind`
          * joining the schedules map) — both already Parent, so this number
-         * doesn't move for it.
+         * didn't move for it. #42 made web filter, the goal's three real
+         * fields, and the 14 optional Features reachable (8 left): 1 places
+         * field (`announce_arrivals`, unrelated to #42) + 7 auto-approval —
+         * the one #42 slice still outstanding, a list of records rather
+         * than flat scalars, its own milestone slice. Notifications and the
+         * 3 non-optional Features were reclassified rather than closed:
+         * never really Pending — see the two maps' own comments.
          */
-        const val PENDING_AT_M0 = 54
+        const val PENDING_AT_M0 = 8
     }
 }

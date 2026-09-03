@@ -1,6 +1,10 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.model.BrowserPolicy
+import dev.schrammel.protego_parentis.model.DailyGoal
+import dev.schrammel.protego_parentis.rules.DnsProfile
+import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -11,6 +15,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import java.time.LocalDate
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * What the managed phone publishes about its own rules, and when it decides not
@@ -167,5 +173,40 @@ class PolicyReplicationTest {
 
         assertTrue("gave up after one failure", push().isNotEmpty())
         assertEquals("90", ReplicatedStateStore(context).value(dailyLimitPath))
+    }
+
+    // ---------- #42: web filter, goal, features ride this same channel ----------
+
+    @Test
+    fun `web filter, goal and feature settings round-trip through push and read`() {
+        rules().webFilterProfile = DnsProfile.ADULT
+        rules().webFilterCustomHost = "example.com"
+        rules().browserPolicy = BrowserPolicy(
+            forceSafeSearch = true,
+            blockedUrls = listOf("bad.example.com"),
+            allowedUrls = listOf("homework.example.com"),
+        )
+        rules().webFilterCountVisits = true
+        rules().goal = DailyGoal(
+            enabled = true,
+            maxUsage = 90.minutes,
+            prize = "Extra bonus time",
+            effectiveFrom = LocalDate.now(),
+        )
+        rules().disabledFeatures = setOf(Feature.WEB_ACTIVITY, Feature.CHAT)
+
+        push()
+        val read = PolicyReplication(context).read(thisChildId)
+
+        assertEquals("ADULT", read?.webFilterProfile)
+        assertEquals("example.com", read?.webFilterCustomHost)
+        assertEquals(true, read?.webFilterSafeSearch)
+        assertEquals(setOf("bad.example.com"), read?.webFilterBlockedUrls)
+        assertEquals(setOf("homework.example.com"), read?.webFilterAllowedUrls)
+        assertEquals(true, read?.webFilterCountVisits)
+        assertEquals(true, read?.goalEnabled)
+        assertEquals(90, read?.goalMaxMinutes)
+        assertEquals("Extra bonus time", read?.goalPrize)
+        assertEquals(setOf("WEB_ACTIVITY", "CHAT"), read?.disabledFeatures)
     }
 }
