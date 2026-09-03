@@ -57,6 +57,7 @@ class SchedulesActivity : ParentGatedActivity() {
     override fun onGatedContentVisible() {
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
+        if (!requireStillInFamily(target)) return
         render()
     }
 
@@ -249,7 +250,10 @@ class ScheduleEditActivity : ParentGatedActivity() {
         showColumn(column)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        if (!requireStillInFamily(target)) return
+        render()
+    }
 
     override fun onGatedContentHidden() {
         column.removeAllViews()

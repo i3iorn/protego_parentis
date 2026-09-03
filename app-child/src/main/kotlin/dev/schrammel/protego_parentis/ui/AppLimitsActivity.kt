@@ -62,6 +62,7 @@ class AppLimitsActivity : ParentGatedActivity() {
     override fun onGatedContentVisible() {
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
+        if (!requireStillInFamily(target)) return
 
         Background.load(this, {
             // Both the app list and the stored limits come off disk (or, for a
