@@ -212,4 +212,78 @@ class ReplicationRulesTest {
                 assertFalse(path, ReplicationRules.mayWrite(null, path))
             }
     }
+
+    // ---------- consensus: a parent-only conversation ----------
+
+    /** The managed phone has no vote in the family's own structure. */
+    @Test
+    fun `the managed phone may not write consensus at all`() {
+        listOf(
+            "consensus/1/kind",
+            "consensus/1/target",
+            "consensus/1/approvals/AAAA",
+            "consensus/1/cancelled",
+        ).forEach { path ->
+            assertFalse(path, ReplicationRules.mayWrite(SyncRole.CHILD, path))
+        }
+    }
+
+    /** Any parent may raise a proposal and its fixed fields. */
+    @Test
+    fun `any parent may write a proposal's fixed fields`() {
+        listOf("consensus/1/kind", "consensus/1/target", "consensus/1/proposedBy", "consensus/1/proposedAt")
+            .forEach { path ->
+                assertTrue(path, ReplicationRules.mayWrite(SyncRole.PARENT, path))
+            }
+    }
+
+    /**
+     * Approval is self-attestation: a parent may only ever claim its own
+     * approval, never write it into another parent's register.
+     */
+    @Test
+    fun `a parent may approve for itself but not on another parent's behalf`() {
+        val own = op("consensus/1/approvals/AAAA", "1")
+        val onBehalfOfSomeoneElse = op("consensus/1/approvals/BBBB", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, own, DeviceId("AAAA")))
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, onBehalfOfSomeoneElse, DeviceId("AAAA")))
+    }
+
+    /** With no verified writer id at all, nothing is self-attested. */
+    @Test
+    fun `an approval with no verified writer id is refused`() {
+        val approval = op("consensus/1/approvals/AAAA", "1")
+
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, approval, writerId = null))
+    }
+
+    /**
+     * A tombstone is the one write to an approval register that is not
+     * self-attested — clearing somebody else's approval when a proposal
+     * commits has to be doable by whichever device notices, not only by the
+     * approver's own device.
+     */
+    @Test
+    fun `any parent may tombstone another parent's approval, but not fabricate one`() {
+        val tombstone = op("consensus/1/approvals/AAAA", value = null)
+        val fabricated = op("consensus/1/approvals/AAAA", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, tombstone, DeviceId("BBBB")))
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, fabricated, DeviceId("BBBB")))
+    }
+
+    /**
+     * The removal timer's cancellation is deliberately not self-attestation —
+     * any current parent, including the one being removed, may stop it. See
+     * ReplicationRules.mayWrite's CONSENSUS branch: the section-level "any
+     * parent" rule already covers this, since `cancelled` is not under
+     * `approvals/`.
+     */
+    @Test
+    fun `cancelling a removal timer is not restricted to any one parent`() {
+        val cancelledByTarget = op("consensus/1/cancelled", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, cancelledByTarget, DeviceId("THE_TARGET")))
+    }
 }

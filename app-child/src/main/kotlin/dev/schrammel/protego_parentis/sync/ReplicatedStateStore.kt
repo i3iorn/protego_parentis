@@ -112,6 +112,7 @@ class ReplicatedStateStore(context: Context) {
             // repair on every exchange. See [ReplicationRules.mayWrite].
             .filterKeys { ReplicationRules.mayWrite(role, it, DeviceId(origin)) }
             .filterKeys { ReplicationRules.mayWriteRequestField(role, it) }
+            .filter { (path, value) -> ReplicationRules.mayWriteConsensusField(path, value, DeviceId(origin)) }
             .filter { (_, value) -> (value?.length ?: 0) <= ReplicationRules.MAX_VALUE_LENGTH }
             .filter { (path, value) -> current[path]?.value != value }
         if (changed.isEmpty()) return emptyList()
