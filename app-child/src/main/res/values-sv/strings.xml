@@ -315,6 +315,8 @@
 
     <string name="rules_picker_title">Vems regler?</string>
     <string name="rules_picker_hint">Den här familjen har mer än en hanterad telefon. Välj vilken som ska redigeras.</string>
+    <string name="rules_target_gone">Den telefonen är inte längre en del av familjen.</string>
+    <string name="rules_editing_whose">Redigerar %1$s\'s regler</string>
 
     <!-- Regler. -->
     <string name="rules_title">Ändra regler</string>

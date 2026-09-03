@@ -314,6 +314,12 @@
          more than one - see RuleTargets' own doc comment. -->
     <string name="rules_picker_title">Whose rules?</string>
     <string name="rules_picker_hint">This family has more than one managed phone. Choose which one to edit.</string>
+    <!-- The child a rules screen was showing was removed from the family
+         (by a different parent phone) while this screen was open. -->
+    <string name="rules_target_gone">That phone is no longer part of this family.</string>
+    <!-- Shown on the rules hub when a parent with more than one managed
+         phone is editing one that is not this device. -->
+    <string name="rules_editing_whose">Editing %1$s\'s rules</string>
 
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>

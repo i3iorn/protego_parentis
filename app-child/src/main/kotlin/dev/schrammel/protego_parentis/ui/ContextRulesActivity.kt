@@ -51,6 +51,7 @@ class ContextRulesActivity : ParentGatedActivity() {
     override fun onGatedContentVisible() {
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
+        if (!requireStillInFamily(target)) return
 
         Background.load(this, {
             val rules = contextRuleRuleStore(this, target).read()

@@ -10,6 +10,7 @@ import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 
 /**
@@ -56,6 +57,7 @@ class RulesActivity : ParentGatedActivity() {
     override fun onGatedContentVisible() {
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
+        if (!requireStillInFamily(target)) return
         render()
     }
 
@@ -66,6 +68,13 @@ class RulesActivity : ParentGatedActivity() {
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.rules_title)))
+        // A parent with two managed phones has to be able to tell at a glance
+        // which one this screen governs (#43's own done-when list) — this is
+        // the one place every path into these screens passes through.
+        if (!target.isOwnDevice) {
+            val name = RosterStore(this).children().firstOrNull { it.id == target.childId }?.name
+            if (name != null) column.addView(captionText(getString(R.string.rules_editing_whose, name)))
+        }
         if (target.isOwnDevice) column.addView(statusCard())
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
