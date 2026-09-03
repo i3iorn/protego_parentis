@@ -41,6 +41,9 @@ object ReplicationRules {
     /** The shared, append-only history. */
     const val AUDIT = "audit"
 
+    /** Proposals for the handful of decisions that need every parent's agreement. */
+    const val CONSENSUS = "consensus"
+
     /**
      * Whether a device of [role], identified as [writerId], may write [path].
      *
@@ -123,6 +126,15 @@ object ReplicationRules {
             // Both sides record, and neither may rewrite: see [isAppendOnly].
             AUDIT -> role != null
 
+            // A proposal and its approvals are a parent-only conversation. The
+            // managed phone has no vote in whether its own family disbands, a
+            // parent leaves, another parent joins, or a second managed phone is
+            // admitted — these are decisions about the family's structure, not
+            // its rules, and the child is not a party to them. Which specific
+            // fields a parent may write is narrower still — see
+            // [mayWriteConsensusField].
+            CONSENSUS -> role == SyncRole.PARENT
+
             // An unknown section from a newer build. Refused rather than
             // allowed: a path this build cannot reason about is a path it
             // cannot police, and storing it would let a future section be
@@ -148,6 +160,32 @@ object ReplicationRules {
 
             else -> true
         }
+    }
+
+    /**
+     * Whether [writerId] may write [value] to a CONSENSUS [path].
+     *
+     * Approval is self-attestation: `consensus/<id>/approvals/<parentId>` may
+     * only be set to a live value by the parent it names — otherwise one parent
+     * approving on every other parent's behalf would make unanimity mean
+     * nothing.
+     *
+     * A tombstone is deliberately exempt. Committing a proposal clears its
+     * whole subtree, including every approval register on it, and that has to
+     * be doable by whichever device notices the threshold was met — not only
+     * by each approving parent's own device, which might never be reachable
+     * again once its approval has already served its purpose. A tombstone can
+     * only retract a claim, never fabricate one, so letting any parent write
+     * one costs nothing the self-attestation rule above exists to prevent: it
+     * cannot be used to forge an approval, only to help retire one that has
+     * already counted.
+     */
+    fun mayWriteConsensusField(path: String, value: String?, writerId: DeviceId?): Boolean {
+        if (path.substringBefore(SEPARATOR) != CONSENSUS) return true
+        if (value == null) return true
+        val segments = path.split(SEPARATOR)
+        if (segments.size < 4 || segments[2] != FIELD_APPROVALS) return true
+        return writerId != null && segments[3] == writerId.value
     }
 
     /**
@@ -183,7 +221,10 @@ object ReplicationRules {
      * outcome depend on arrival order.
      */
     fun accepts(role: SyncRole?, op: StateOp, writerId: DeviceId? = null): Boolean =
-        isWellFormed(op) && mayWrite(role, op.path, writerId) && mayWriteRequestField(role, op.path)
+        isWellFormed(op) &&
+            mayWrite(role, op.path, writerId) &&
+            mayWriteRequestField(role, op.path) &&
+            mayWriteConsensusField(op.path, op.value, writerId)
 
     /**
      * Whether [path] falls under the policy subtree owned by [writerId].
@@ -255,6 +296,12 @@ object ReplicationRules {
         TELEMETRY -> 500
         REQUESTS, CHAT -> 20_000
         AUDIT -> 50_000
+        // A handful of these ever exist at once — the fixed set is four kinds
+        // of decision, each family raises them rarely, and a resolved one is
+        // tombstoned. Sized well above any real family for the same reason as
+        // ROSTER: this bounds a hostile device inventing proposals, not
+        // anything a real one would come close to.
+        CONSENSUS -> 2_000
         else -> 0
     }
 
@@ -288,7 +335,12 @@ object ReplicationRules {
 
     fun modeOf(path: String): ReplicationMode =
         when (path.substringBefore(SEPARATOR)) {
-            POLICY, ROSTER -> ReplicationMode.CONVERGING
+            // An open proposal has to keep being repaired until every replica
+            // agrees on it — a stale approval count is exactly the kind of
+            // disagreement the digest exists to find. Unlike a chat message or
+            // a request, there is no point in its life where it is safe to stop
+            // comparing it just because it has aged.
+            POLICY, ROSTER, CONSENSUS -> ReplicationMode.CONVERGING
             REQUESTS, CHAT, AUDIT -> ReplicationMode.RECENT
             else -> ReplicationMode.VOLATILE
         }
@@ -359,4 +411,7 @@ object ReplicationRules {
     private const val FIELD_DECIDED_BY = "decidedBy"
     private const val FIELD_DECIDED_AT = "decidedAt"
     private const val FIELD_NOTE = "note"
+
+    /** The subpath under a proposal holding one register per approving parent. */
+    const val FIELD_APPROVALS = "approvals"
 }
