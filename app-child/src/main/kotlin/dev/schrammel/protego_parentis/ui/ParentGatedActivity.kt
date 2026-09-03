@@ -37,15 +37,24 @@ abstract class ParentGatedActivity : DementorActivity() {
     private var awaitingPin = false
     private var lockButton: View? = null
 
+    /** Set only by [requestUnlock] — an explicit, screen-triggered ask rather than the automatic one. */
+    private var pendingUnlock: (() -> Unit)? = null
+
     private val unlock = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         awaitingPin = false
+        val explicit = pendingUnlock
+        pendingUnlock = null
         if (result.resultCode == Activity.RESULT_OK) {
             ParentSession.unlock()
             showGatedContent()
-        } else {
-            // Cancelled: there is nothing here for a non-parent to see.
+            explicit?.invoke()
+        } else if (explicit == null) {
+            // Cancelled the automatic prompt: there is nothing here for a
+            // non-parent to see. Cancelling an explicit requestUnlock is not
+            // this branch — the screen was already showing something, read-only,
+            // and stays exactly as it was.
             finish()
         }
     }
@@ -109,6 +118,11 @@ abstract class ParentGatedActivity : DementorActivity() {
 
             awaitingPin -> Unit
 
+            // Shows the screen's content unauthenticated rather than the PIN
+            // prompt — the screen itself is responsible for checking [canEdit]
+            // and offering [requestUnlock] rather than any write affordance.
+            supportsReadOnly() -> onGatedContentVisible()
+
             else -> {
                 hideGatedContent()
                 awaitingPin = true
@@ -126,6 +140,34 @@ abstract class ParentGatedActivity : DementorActivity() {
      * guard something that does not exist yet is a step for its own sake.
      */
     protected open fun requiresPin(): Boolean = true
+
+    /**
+     * Whether this screen may render before the PIN is entered — showing what
+     * it governs but offering no way to change it — rather than the ordinary
+     * all-or-nothing PIN-or-nothing gate.
+     *
+     * `false` by default: every screen that does not override this keeps its
+     * exact current behaviour. #43 (M5) needs this for the rule screens, which
+     * a managed phone must show read-only to whoever has not entered the PIN
+     * rather than hide entirely — see the decision recorded on #43.
+     */
+    protected open fun supportsReadOnly(): Boolean = false
+
+    /** Whether this visit may act on what it shows — the PIN has been entered, or none was ever required. */
+    protected val canEdit: Boolean get() = !requiresPin() || ParentSession.isUnlocked
+
+    /**
+     * Explicit, screen-triggered unlock for a [supportsReadOnly] screen.
+     * Never called from [onResume] — only from a screen's own "Unlock to
+     * edit" affordance. Cancelling leaves the screen exactly as it was: read
+     * only, not finished, since there was already something here for a
+     * non-parent to see.
+     */
+    protected fun requestUnlock(onUnlocked: () -> Unit = {}) {
+        pendingUnlock = onUnlocked
+        awaitingPin = true
+        unlock.launch(PinActivity.intent(this))
+    }
 
     /** Called whenever the parent is confirmed, including after re-authenticating. */
     protected open fun onParentAuthenticated() = Unit

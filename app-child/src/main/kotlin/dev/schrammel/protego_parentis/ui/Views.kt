@@ -225,6 +225,35 @@ internal fun Activity.searchField(
  */
 internal fun Activity.noSearchResults(): TextView = bodyText(getString(R.string.app_search_none))
 
+/**
+ * Disabling a [ViewGroup] does not disable its children — Android never made
+ * that automatic — so a read-only rules screen (#43) that wants a whole
+ * cluster of controls (a day picker, a radio group) inert has to say so
+ * explicitly, one level down.
+ */
+internal fun ViewGroup.setChildrenEnabled(enabled: Boolean) {
+    isEnabled = enabled
+    for (index in 0 until childCount) getChildAt(index).isEnabled = enabled
+}
+
+/**
+ * What a [ParentGatedActivity.supportsReadOnly] screen shows in place of any
+ * write affordance, before the PIN is entered — see the decision recorded on
+ * #43. [onUnlock] is expected to call [ParentGatedActivity.requestUnlock].
+ */
+internal fun Activity.readOnlyBanner(onUnlock: () -> Unit): LinearLayout =
+    LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_md))
+        addView(captionText(getString(R.string.rules_read_only_hint)))
+        addView(
+            actionButton().apply {
+                setText(R.string.rules_unlock_to_edit)
+                setOnClickListener { onUnlock() }
+            },
+        )
+    }
+
 internal fun Activity.bodyText(text: String): TextView = TextView(this).apply {
     this.text = text
     styleAs(R.style.TextAppearance_Dementor_Body)

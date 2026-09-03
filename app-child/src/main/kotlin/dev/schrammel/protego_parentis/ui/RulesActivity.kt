@@ -9,10 +9,11 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
+import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 
 /**
- * The parent's hub.
+ * The hub, on whichever kind of phone edits [target]'s rules (#43).
  *
  * This screen used to hold every setting in the app in one scroll, which had grown
  * past the point where anything could be found. Each group now lives on its own
@@ -26,10 +27,25 @@ import dev.schrammel.protego_parentis.rules.FeatureFlags
  * Built in code rather than from a layout because the groups are now conditional.
  * A fixed layout meant a heading sat there over an empty card when a family had
  * put everything under it away, which reads as a screen that failed to load.
+ *
+ * Which features are switched on comes from [target]'s own replicated
+ * `disabledFeatures`, not this device's local [dev.schrammel.protego_parentis.rules.FeatureFlags]
+ * — a parent's own phone has no features to speak of, and reading its flags
+ * here would answer a question about the wrong device entirely.
+ *
+ * Rows this milestone has not migrated yet (daily limit/bedtime, the web
+ * filter, requests, auto-approval, family devices, and the rest) only appear
+ * when [target] is this device's own — they would otherwise open a screen
+ * that reads and writes the wrong device's state. #43's own done-when list
+ * does not require every settings screen migrated, only the six named ones;
+ * this hub reflects exactly that boundary rather than guessing past it.
  */
 class RulesActivity : ParentGatedActivity() {
 
+    private lateinit var target: RuleTarget
     private lateinit var column: LinearLayout
+
+    override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +53,11 @@ class RulesActivity : ParentGatedActivity() {
         showColumn(column)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+        render()
+    }
 
     override fun onGatedContentHidden() {
         column.removeAllViews()
@@ -46,49 +66,53 @@ class RulesActivity : ParentGatedActivity() {
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.rules_title)))
-        column.addView(statusCard())
+        if (target.isOwnDevice) column.addView(statusCard())
+        if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
-        val on = FeatureFlags(this)
+        val disabled = policyRuleStore(this, target).read()?.disabledFeatures.orEmpty()
+        fun enabled(feature: Feature) = feature.name !in disabled
 
         addSection(
             column,
             getString(R.string.rules_group_limits),
             buildList {
-                // The daily limit is the reason the app exists; it has no switch.
-                add(
-                    row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
-                        startActivity(Intent(this@RulesActivity, LimitsActivity::class.java))
-                    },
-                )
-                if (on.isEnabled(Feature.CATEGORIES)) {
+                if (target.isOwnDevice) {
+                    // The daily limit is the reason the app exists; it has no switch.
+                    add(
+                        row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
+                            startActivity(Intent(this@RulesActivity, LimitsActivity::class.java))
+                        },
+                    )
+                }
+                if (enabled(Feature.CATEGORIES)) {
                     add(
                         row(R.string.rules_row_categories, R.string.rules_row_categories_detail) {
-                            startActivity(Intent(this@RulesActivity, CategoriesActivity::class.java))
+                            startActivity(RuleTargets.putExtra(Intent(this@RulesActivity, CategoriesActivity::class.java), target.childId))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.APP_LIMITS)) {
+                if (enabled(Feature.APP_LIMITS)) {
                     add(
                         row(R.string.rules_row_app_limits, R.string.rules_row_app_limits_detail) {
-                            startActivity(AppLimitsActivity.intent(this@RulesActivity))
+                            startActivity(AppLimitsActivity.intent(this@RulesActivity, target.childId))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.APP_CONTROL)) {
+                if (enabled(Feature.APP_CONTROL)) {
                     add(
                         row(R.string.rules_row_apps, R.string.rules_row_apps_detail) {
-                            startActivity(AppControlActivity.intent(this@RulesActivity))
+                            startActivity(AppControlActivity.intent(this@RulesActivity, target.childId))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.WEB_FILTER)) {
+                if (target.isOwnDevice && enabled(Feature.WEB_FILTER)) {
                     add(
                         row(R.string.rules_row_web, R.string.rules_row_web_detail) {
                             startActivity(WebFilterActivity.intent(this@RulesActivity))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.WEB_ACTIVITY)) {
+                if (target.isOwnDevice && enabled(Feature.WEB_ACTIVITY)) {
                     add(
                         row(
                             R.string.rules_row_web_activity,
@@ -103,21 +127,21 @@ class RulesActivity : ParentGatedActivity() {
             column,
             getString(R.string.rules_group_day),
             buildList {
-                if (on.isEnabled(Feature.SCHEDULES)) {
+                if (enabled(Feature.SCHEDULES)) {
                     add(
                         row(R.string.rules_row_schedules, R.string.rules_row_schedules_detail) {
-                            startActivity(SchedulesActivity.intent(this@RulesActivity))
+                            startActivity(SchedulesActivity.intent(this@RulesActivity, target.childId))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.CONTEXT_RULES)) {
+                if (enabled(Feature.CONTEXT_RULES)) {
                     add(
                         row(R.string.rules_row_context, R.string.rules_row_context_detail) {
-                            startActivity(ContextRulesActivity.intent(this@RulesActivity))
+                            startActivity(ContextRulesActivity.intent(this@RulesActivity, target.childId))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.PLACES)) {
+                if (target.isOwnDevice && enabled(Feature.PLACES)) {
                     add(
                         row(
                             R.string.rules_row_places_alerts,
@@ -125,14 +149,14 @@ class RulesActivity : ParentGatedActivity() {
                         ) { startActivity(PlaceAlertsActivity.intent(this@RulesActivity)) },
                     )
                 }
-                if (on.isEnabled(Feature.GOALS)) {
+                if (target.isOwnDevice && enabled(Feature.GOALS)) {
                     add(
                         row(R.string.rules_row_goal, R.string.rules_row_goal_detail) {
                             startActivity(Intent(this@RulesActivity, GoalActivity::class.java))
                         },
                     )
                 }
-                if (on.isEnabled(Feature.BONUS)) {
+                if (target.isOwnDevice && enabled(Feature.BONUS)) {
                     add(
                         row(R.string.rules_row_bonus, R.string.rules_row_bonus_detail) {
                             startActivity(BonusTimeActivity.intent(this@RulesActivity))
@@ -142,40 +166,43 @@ class RulesActivity : ParentGatedActivity() {
             },
         )
 
-        addSection(
-            column,
-            getString(R.string.rules_group_family),
-            buildList {
-                if (on.isEnabled(Feature.REQUESTS)) {
-                    add(
-                        row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
-                            startActivity(RequestInboxActivity.intent(this@RulesActivity))
-                        },
-                    )
-                    if (on.isEnabled(Feature.AUTO_APPROVE)) {
+        if (target.isOwnDevice) {
+            addSection(
+                column,
+                getString(R.string.rules_group_family),
+                buildList {
+                    if (enabled(Feature.REQUESTS)) {
                         add(
-                            row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
-                                startActivity(AutoApprovalActivity.intent(this@RulesActivity))
+                            row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
+                                startActivity(RequestInboxActivity.intent(this@RulesActivity))
                             },
                         )
+                        if (enabled(Feature.AUTO_APPROVE)) {
+                            add(
+                                row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
+                                    startActivity(AutoApprovalActivity.intent(this@RulesActivity))
+                                },
+                            )
+                        }
                     }
-                }
-                // The one path to Family from this hub. Its own Settings row is
-                // where the sync relay and device control live now, rather than
-                // beside it here — a deployment detail and the family roster no
-                // longer compete for the same list.
-                add(
-                    row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
-                        startActivity(FamilyDevicesActivity.intent(this@RulesActivity))
-                    },
-                )
-            },
-        )
+                    // The one path to Family from this hub. Its own Settings row is
+                    // where the sync relay and device control live now, rather than
+                    // beside it here — a deployment detail and the family roster no
+                    // longer compete for the same list.
+                    add(
+                        row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
+                            startActivity(FamilyDevicesActivity.intent(this@RulesActivity))
+                        },
+                    )
+                },
+            )
+        }
     }
 
     /**
      * The device's state, in the one place a parent looks when wondering why
-     * nothing is being blocked.
+     * nothing is being blocked. Only meaningful for this device's own
+     * enforcement, so it only ever appears when [target] is this device.
      *
      * Starts on the reassuring reading rather than blank. The lookup is off the
      * main thread, so an empty card would flash on every open, and a status line
@@ -209,7 +236,13 @@ class RulesActivity : ParentGatedActivity() {
     override fun onPause() {
         super.onPause()
         // A screen below may have changed the rules; push them through so the
-        // effect is live by the time the parent puts the phone down.
-        if (isFinishing) EnforcementService.start(this)
+        // effect is live by the time the parent puts the phone down — only
+        // meaningful for this device's own enforcement.
+        if (isFinishing && ::target.isInitialized && target.isOwnDevice) EnforcementService.start(this)
+    }
+
+    companion object {
+        fun intent(context: android.content.Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, RulesActivity::class.java), childId)
     }
 }

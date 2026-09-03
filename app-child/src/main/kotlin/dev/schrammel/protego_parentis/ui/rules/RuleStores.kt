@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.ui.rules
 import android.content.Context
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.ContextRule
+import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.PlaceRef
@@ -10,13 +11,17 @@ import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.ScheduleStore
+import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
+import dev.schrammel.protego_parentis.sync.AppInventoryStore
 import dev.schrammel.protego_parentis.sync.DeviceId
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.RuleTarget
+import dev.schrammel.protego_parentis.usage.AppInfo
+import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
  * One interface per rule kind, two implementations: this device's own local
@@ -54,6 +59,19 @@ class RemotePolicyRuleStore(private val context: Context, private val childId: D
 fun policyRuleStore(context: Context, target: RuleTarget): PolicyRuleStore =
     if (target.isOwnDevice) LocalPolicyRuleStore(context) else RemotePolicyRuleStore(context, target.childId)
 
+/** [LocalPolicyStore.categories]'s three helpers, generalised to either device. */
+fun PolicyRuleStore.categories(): List<StoredCategory> = read()?.categories.orEmpty()
+
+fun PolicyRuleStore.upsertCategory(category: StoredCategory) {
+    val snapshot = read() ?: return
+    write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == category.id } + category))
+}
+
+fun PolicyRuleStore.deleteCategory(id: String) {
+    val snapshot = read() ?: return
+    write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == id }))
+}
+
 interface ScheduleRuleStore {
     fun read(): List<StoredSchedule>
     fun write(schedules: List<StoredSchedule>)
@@ -77,6 +95,17 @@ class RemoteScheduleRuleStore(private val context: Context, private val childId:
 fun scheduleRuleStore(context: Context, target: RuleTarget): ScheduleRuleStore =
     if (target.isOwnDevice) LocalScheduleRuleStore(context) else RemoteScheduleRuleStore(context, target.childId)
 
+/** [ScheduleStore]'s find/upsert/delete convenience shape, generalised to either device. */
+fun ScheduleRuleStore.find(id: String): StoredSchedule? = read().firstOrNull { it.id == id }
+
+fun ScheduleRuleStore.upsert(schedule: StoredSchedule) {
+    write(read().filterNot { it.id == schedule.id } + schedule)
+}
+
+fun ScheduleRuleStore.delete(id: String) {
+    write(read().filterNot { it.id == id })
+}
+
 interface ContextRuleRuleStore {
     fun read(): List<ContextRule>
     fun write(rules: List<ContextRule>)
@@ -99,6 +128,17 @@ class RemoteContextRuleRuleStore(private val context: Context, private val child
 
 fun contextRuleRuleStore(context: Context, target: RuleTarget): ContextRuleRuleStore =
     if (target.isOwnDevice) LocalContextRuleRuleStore(context) else RemoteContextRuleRuleStore(context, target.childId)
+
+/** [ContextRuleStore]'s upsert/delete convenience shape, generalised to either device. */
+fun ContextRuleRuleStore.find(id: String): ContextRule? = read().firstOrNull { it.id == id }
+
+fun ContextRuleRuleStore.upsert(rule: ContextRule) {
+    write(read().filterNot { it.id == rule.id } + rule)
+}
+
+fun ContextRuleRuleStore.delete(id: String) {
+    write(read().filterNot { it.id == id })
+}
 
 /**
  * Places, edited as [PlaceRef] — id/name/radius, never a coordinate — on
@@ -147,3 +187,34 @@ class RemotePlaceRuleStore(private val context: Context, private val childId: De
 
 fun placeRuleStore(context: Context, target: RuleTarget): PlaceRuleStore =
     if (target.isOwnDevice) LocalPlaceRuleStore(context) else RemotePlaceRuleStore(context, target.childId)
+
+/**
+ * Which apps a screen has to offer for choosing, either device's.
+ *
+ * The one place these two kinds of phone are structurally, permanently
+ * unequal rather than just differently sourced: [InstalledApps] can load an
+ * icon because it is asking this device's own package manager, and
+ * [AppInventoryStore] never can, because a label and a package name are all
+ * [dev.schrammel.protego_parentis.sync.AppInventoryEntry] was ever built to
+ * carry over the wire. A remote picker draws every row without one rather
+ * than pretending otherwise.
+ */
+interface AppCatalog {
+    fun launchable(): List<AppInfo>
+}
+
+class LocalAppCatalog(private val context: Context) : AppCatalog {
+    override fun launchable(): List<AppInfo> = InstalledApps(context).launchable()
+}
+
+class RemoteAppCatalog(private val context: Context, private val childId: DeviceId) : AppCatalog {
+    override fun launchable(): List<AppInfo> =
+        AppInventoryStore(context).apps(childId).map { AppInfo(PackageName(it.packageName), it.label, icon = null) }
+}
+
+fun appCatalog(context: Context, target: RuleTarget): AppCatalog =
+    if (target.isOwnDevice) LocalAppCatalog(context) else RemoteAppCatalog(context, target.childId)
+
+/** A package's label, or the package name itself if this catalog has never heard of it. */
+fun AppCatalog.labelFor(pkg: PackageName): String =
+    launchable().firstOrNull { it.pkg == pkg }?.label ?: pkg.value
