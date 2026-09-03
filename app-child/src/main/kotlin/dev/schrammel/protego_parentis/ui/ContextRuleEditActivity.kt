@@ -2,11 +2,14 @@ package dev.schrammel.protego_parentis.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Bundle
+import android.text.InputType
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -466,6 +469,7 @@ class PlacesActivity : ParentGatedActivity() {
         )
 
         val places = store.places
+        val clampedIds = store.clampedPlaceIds
         if (places.isEmpty()) {
             container.addView(
                 TextView(this).apply {
@@ -484,6 +488,15 @@ class PlacesActivity : ParentGatedActivity() {
                     setOnClickListener { confirmDelete(place) }
                 },
             )
+            if (place.id in clampedIds) {
+                container.addView(
+                    TextView(this).apply {
+                        setText(R.string.places_radius_increased)
+                        styleAs(R.style.TextAppearance_Dementor_Caption)
+                        setPadding(0, 0, 0, dimen(R.dimen.space_sm))
+                    },
+                )
+            }
         }
 
         container.addView(
@@ -492,6 +505,14 @@ class PlacesActivity : ParentGatedActivity() {
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                     .apply { topMargin = dimen(R.dimen.space_lg) }
                 setOnClickListener { addHere() }
+            },
+        )
+        container.addView(
+            Button(this).apply {
+                setText(R.string.places_add_by_coordinates)
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                    .apply { topMargin = dimen(R.dimen.space_sm) }
+                setOnClickListener { addByCoordinates() }
             },
         )
     }
@@ -534,6 +555,132 @@ class PlacesActivity : ParentGatedActivity() {
                 ),
             )
             render()
+        }
+    }
+
+    /**
+     * Names a place you are not standing in — "school", added from the kitchen
+     * table (#31). Coordinates are typed rather than picked from a map: a map
+     * means a tile-fetching third-party service, which the README's "no
+     * third-party SDKs" promise rules out (see the issue's own discussion for
+     * why). [checkOnMap] hands off to whatever map app is already installed
+     * instead, so a typo is still catchable before saving.
+     */
+    private fun addByCoordinates() {
+        val nameInput = EditText(this).apply {
+            hint = getString(R.string.places_name_hint)
+            setSingleLine()
+        }
+        val latInput = EditText(this).apply {
+            hint = getString(R.string.places_lat_hint)
+            inputType = InputType.TYPE_CLASS_NUMBER or
+                InputType.TYPE_NUMBER_FLAG_DECIMAL or
+                InputType.TYPE_NUMBER_FLAG_SIGNED
+            setSingleLine()
+        }
+        val lonInput = EditText(this).apply {
+            hint = getString(R.string.places_lon_hint)
+            inputType = InputType.TYPE_CLASS_NUMBER or
+                InputType.TYPE_NUMBER_FLAG_DECIMAL or
+                InputType.TYPE_NUMBER_FLAG_SIGNED
+            setSingleLine()
+        }
+        val radiusInput = EditText(this).apply {
+            hint = getString(R.string.places_radius_hint)
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setText(DEFAULT_RADIUS_METRES.toString())
+            setSingleLine()
+        }
+        val checkOnMapButton = Button(this).apply {
+            setText(R.string.places_check_map)
+            setOnClickListener { checkOnMap(latInput, lonInput) }
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dimen(R.dimen.screen_padding)
+            setPadding(pad, pad, pad, 0)
+            addView(nameInput)
+            addView(latInput)
+            addView(lonInput)
+            addView(radiusInput)
+            addView(checkOnMapButton)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.places_add_by_coordinates)
+            .setView(content)
+            .setPositiveButton(R.string.places_add_by_coordinates, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        // A plain setPositiveButton closure dismisses on any input, valid or
+        // not. Wiring the click after the dialog is showing is what lets an
+        // invalid field Toast and leave the dialog open instead.
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                addByCoordinatesConfirmed(nameInput, latInput, lonInput, radiusInput, dialog)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun addByCoordinatesConfirmed(
+        nameInput: EditText,
+        latInput: EditText,
+        lonInput: EditText,
+        radiusInput: EditText,
+        dialog: AlertDialog,
+    ) {
+        val name = nameInput.text.toString().trim()
+        val latitude = latInput.text.toString().toDoubleOrNull()
+        val longitude = lonInput.text.toString().toDoubleOrNull()
+        val radiusMetres = radiusInput.text.toString().toIntOrNull()
+
+        if (name.isEmpty()) {
+            Toast.makeText(this, R.string.places_name_required, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (latitude == null || latitude !in -90.0..90.0 || longitude == null || longitude !in -180.0..180.0) {
+            Toast.makeText(this, R.string.places_bad_coordinates, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (radiusMetres == null || radiusMetres < Place.MINIMUM_RADIUS_METRES) {
+            Toast.makeText(
+                this,
+                getString(R.string.places_bad_radius, Place.MINIMUM_RADIUS_METRES),
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+
+        store.upsertPlace(
+            Place(
+                id = PlaceId(UUID.randomUUID().toString()),
+                name = name,
+                latitude = latitude,
+                longitude = longitude,
+                radiusMetres = radiusMetres,
+            ),
+        )
+        render()
+        dialog.dismiss()
+    }
+
+    /** Hands off to whatever map app is installed, so a typo is catchable before saving. */
+    private fun checkOnMap(latInput: EditText, lonInput: EditText) {
+        val latitude = latInput.text.toString().toDoubleOrNull()
+        val longitude = lonInput.text.toString().toDoubleOrNull()
+        if (latitude == null || latitude !in -90.0..90.0 || longitude == null || longitude !in -180.0..180.0) {
+            Toast.makeText(this, R.string.places_bad_coordinates, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val uri = Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude")
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.places_no_map_app, Toast.LENGTH_LONG).show()
         }
     }
 

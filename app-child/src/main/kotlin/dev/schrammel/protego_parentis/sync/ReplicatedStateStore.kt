@@ -90,11 +90,11 @@ class ReplicatedStateStore(context: Context) {
      * be set to — otherwise every screen that re-renders would republish its
      * whole section, which is exactly the traffic this design exists to remove.
      */
-    fun write(path: String, value: String?, origin: String): StateOp? =
-        writeAll(mapOf(path to value), origin).singleOrNull()
+    fun write(path: String, value: String?, origin: String, role: SyncRole): StateOp? =
+        writeAll(mapOf(path to value), origin, role).singleOrNull()
 
     /** As [write], for several paths at once, sharing one clock tick and one commit. */
-    fun writeAll(values: Map<String, String?>, origin: String): List<StateOp> = synchronized(LOCK) {
+    fun writeAll(values: Map<String, String?>, origin: String, role: SyncRole): List<StateOp> = synchronized(LOCK) {
         val current = read()
         val changed = values
             // Held to exactly the rule a receiver applies, and that symmetry is
@@ -104,6 +104,15 @@ class ReplicatedStateStore(context: Context) {
             // amount of repair could reconcile them. An over-long app label is
             // enough to cause it, so it is checked here rather than trusted.
             .filterKeys { ReplicationRules.isWellFormedPath(it) }
+            // The same authorisation a peer's write is held to, applied to this
+            // device's own writes. Without this a write this device is not
+            // allowed to make never fails loudly — it is accepted here, queued,
+            // published, and then refused by every other replica forever, so
+            // the two never agree and the digest asks for the same doomed
+            // repair on every exchange. See [ReplicationRules.mayWrite].
+            .filterKeys { ReplicationRules.mayWrite(role, it, DeviceId(origin)) }
+            .filterKeys { ReplicationRules.mayWriteRequestField(role, it) }
+            .filter { (path, value) -> ReplicationRules.mayWriteConsensusField(path, value, DeviceId(origin)) }
             .filter { (_, value) -> (value?.length ?: 0) <= ReplicationRules.MAX_VALUE_LENGTH }
             .filter { (path, value) -> current[path]?.value != value }
         if (changed.isEmpty()) return emptyList()

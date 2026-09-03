@@ -41,16 +41,30 @@ object ReplicationRules {
     /** The shared, append-only history. */
     const val AUDIT = "audit"
 
+    /** Proposals for the handful of decisions that need every parent's agreement. */
+    const val CONSENSUS = "consensus"
+
     /**
-     * Whether a device of [role] may write [path].
+     * Whether a device of [role], identified as [writerId], may write [path].
      *
      * Read as a sentence: the managed phone owns what it observes and what it
      * asks for; parents own what is imposed on it; both may talk.
+     *
+     * [writerId] is the identity the *roster* established for the sender — the
+     * device whose signature verified against a known public key — never
+     * [StateOp.origin]. `origin` is a plain field on the wire, set by whoever
+     * encoded the op, and nothing here or in [StateMerge] ever checks it against
+     * who actually signed the message it arrived in. Using it for authorisation
+     * would let a compromised sender simply write a different id into that
+     * field and claim to be someone else. It exists only to break ties between
+     * two writes that land on the same path at the same logical time.
      */
-    fun mayWrite(role: SyncRole?, path: String): Boolean {
+    fun mayWrite(role: SyncRole?, path: String, writerId: DeviceId? = null): Boolean {
         val section = path.substringBefore(SEPARATOR)
         return when (section) {
-            // Both, and this one is worth the paragraph.
+            // A parent may write any child's rules. The managed phone may only
+            // write its own — worth the paragraph, because it used to be
+            // simpler than this and the simpler version was right once.
             //
             // The tempting rule is "only a parent may write the rules", and it
             // was the rule here first. It does not survive contact with the
@@ -62,18 +76,31 @@ object ReplicationRules {
             // could never agree, so every digest exchange found the same
             // difference and asked for the same repair, forever.
             //
-            // So the boundary for the rules is the PIN, not the device. An edit
-            // made at the managed phone has already been authorised by somebody
-            // who knows the PIN, which is the same reasoning that lets that
-            // phone enrol the founding parent (see [Enrolment]). What this gives
-            // up is real and worth stating plainly: a managed phone whose app
-            // has been modified can publish a policy its parents will believe.
-            // Such a phone could already ignore that policy outright, so what is
-            // lost is the parents' *view* being trustworthy, not enforcement —
-            // and the shared history still records which device wrote what.
+            // So the boundary for the rules is the PIN, not the device — within
+            // the managed phone's *own* rules. That reasoning never argued for
+            // one managed phone being able to write a second one's rules, and
+            // with more than one child device in a family that is exactly what
+            // an unscoped rule would allow. So a child may write only the
+            // subtree at `policy/<its own id>/…`; a parent, having no subtree
+            // of its own to be confined to, may write any child's.
+            //
+            // An edit made at the managed phone has already been authorised by
+            // somebody who knows the PIN, which is the same reasoning that lets
+            // that phone enrol the founding parent (see [Enrolment]). What this
+            // gives up is real and worth stating plainly: a managed phone whose
+            // app has been modified can publish a policy its parents will
+            // believe, for its own subtree. Such a phone could already ignore
+            // that policy outright, so what is lost is the parents' *view* being
+            // trustworthy for that one child, not enforcement, and not any other
+            // child's rules — and the shared history still records which device
+            // wrote what.
             //
             // Trust itself is not on this footing. See ROSTER below.
-            POLICY -> role != null
+            POLICY -> when (role) {
+                SyncRole.PARENT -> true
+                SyncRole.CHILD -> writerId != null && ownsPolicySubtree(path, writerId)
+                null -> false
+            }
 
             // Enrolment stays a parent's decision, exactly as it was before
             // replication existed, and unlike POLICY above it does not soften.
@@ -98,6 +125,15 @@ object ReplicationRules {
 
             // Both sides record, and neither may rewrite: see [isAppendOnly].
             AUDIT -> role != null
+
+            // A proposal and its approvals are a parent-only conversation. The
+            // managed phone has no vote in whether its own family disbands, a
+            // parent leaves, another parent joins, or a second managed phone is
+            // admitted — these are decisions about the family's structure, not
+            // its rules, and the child is not a party to them. Which specific
+            // fields a parent may write is narrower still — see
+            // [mayWriteConsensusField].
+            CONSENSUS -> role == SyncRole.PARENT
 
             // An unknown section from a newer build. Refused rather than
             // allowed: a path this build cannot reason about is a path it
@@ -127,6 +163,32 @@ object ReplicationRules {
     }
 
     /**
+     * Whether [writerId] may write [value] to a CONSENSUS [path].
+     *
+     * Approval is self-attestation: `consensus/<id>/approvals/<parentId>` may
+     * only be set to a live value by the parent it names — otherwise one parent
+     * approving on every other parent's behalf would make unanimity mean
+     * nothing.
+     *
+     * A tombstone is deliberately exempt. Committing a proposal clears its
+     * whole subtree, including every approval register on it, and that has to
+     * be doable by whichever device notices the threshold was met — not only
+     * by each approving parent's own device, which might never be reachable
+     * again once its approval has already served its purpose. A tombstone can
+     * only retract a claim, never fabricate one, so letting any parent write
+     * one costs nothing the self-attestation rule above exists to prevent: it
+     * cannot be used to forge an approval, only to help retire one that has
+     * already counted.
+     */
+    fun mayWriteConsensusField(path: String, value: String?, writerId: DeviceId?): Boolean {
+        if (path.substringBefore(SEPARATOR) != CONSENSUS) return true
+        if (value == null) return true
+        val segments = path.split(SEPARATOR)
+        if (segments.size < 4 || segments[2] != FIELD_APPROVALS) return true
+        return writerId != null && segments[3] == writerId.value
+    }
+
+    /**
      * Paths where the earliest write stands and later ones cannot revise it.
      *
      * The shared history is the one thing in this app meant to be impossible to
@@ -150,15 +212,29 @@ object ReplicationRules {
     fun isAppendOnly(path: String): Boolean = path.substringBefore(SEPARATOR) == AUDIT
 
     /**
-     * Whether a device of [role] may write this op at all.
+     * Whether a device of [role], identified as [writerId], may write this op
+     * at all.
      *
      * Authorisation only. What happens when two authorised writes contend for
      * one path is [StateMerge]'s business, and deliberately not decided here —
      * anything that depends on what this replica already holds would make the
      * outcome depend on arrival order.
      */
-    fun accepts(role: SyncRole?, op: StateOp): Boolean =
-        isWellFormed(op) && mayWrite(role, op.path) && mayWriteRequestField(role, op.path)
+    fun accepts(role: SyncRole?, op: StateOp, writerId: DeviceId? = null): Boolean =
+        isWellFormed(op) &&
+            mayWrite(role, op.path, writerId) &&
+            mayWriteRequestField(role, op.path) &&
+            mayWriteConsensusField(op.path, op.value, writerId)
+
+    /**
+     * Whether [path] falls under the policy subtree owned by [writerId].
+     *
+     * The child id is the path's second segment — `policy/<childId>/…` — so a
+     * managed phone may write its own rules but not another child's, even
+     * though both live in the same [POLICY] section.
+     */
+    private fun ownsPolicySubtree(path: String, writerId: DeviceId): Boolean =
+        path.split(SEPARATOR).getOrNull(1) == writerId.value
 
     // ---------- what a path and a value may look like ----------
 
@@ -220,6 +296,12 @@ object ReplicationRules {
         TELEMETRY -> 500
         REQUESTS, CHAT -> 20_000
         AUDIT -> 50_000
+        // A handful of these ever exist at once — the fixed set is four kinds
+        // of decision, each family raises them rarely, and a resolved one is
+        // tombstoned. Sized well above any real family for the same reason as
+        // ROSTER: this bounds a hostile device inventing proposals, not
+        // anything a real one would come close to.
+        CONSENSUS -> 2_000
         else -> 0
     }
 
@@ -253,7 +335,12 @@ object ReplicationRules {
 
     fun modeOf(path: String): ReplicationMode =
         when (path.substringBefore(SEPARATOR)) {
-            POLICY, ROSTER -> ReplicationMode.CONVERGING
+            // An open proposal has to keep being repaired until every replica
+            // agrees on it — a stale approval count is exactly the kind of
+            // disagreement the digest exists to find. Unlike a chat message or
+            // a request, there is no point in its life where it is safe to stop
+            // comparing it just because it has aged.
+            POLICY, ROSTER, CONSENSUS -> ReplicationMode.CONVERGING
             REQUESTS, CHAT, AUDIT -> ReplicationMode.RECENT
             else -> ReplicationMode.VOLATILE
         }
@@ -324,4 +411,7 @@ object ReplicationRules {
     private const val FIELD_DECIDED_BY = "decidedBy"
     private const val FIELD_DECIDED_AT = "decidedAt"
     private const val FIELD_NOTE = "note"
+
+    /** The subpath under a proposal holding one register per approving parent. */
+    const val FIELD_APPROVALS = "approvals"
 }

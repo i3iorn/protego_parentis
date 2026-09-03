@@ -272,16 +272,17 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         // No cast: every other branch of the `when` above returns, so this is
         // only reached for an accepted sender and the compiler knows it.
         val senderRole = admittance.device.role
+        val senderId = admittance.device.id
 
         return when (roles.roleOrChild) {
-            DeviceRole.CHILD -> applyAsChild(message, senderRole)
-            DeviceRole.PARENT -> applyAsParent(message, senderRole)
+            DeviceRole.CHILD -> applyAsChild(message, senderRole, senderId)
+            DeviceRole.PARENT -> applyAsParent(message, senderRole, senderId)
         }
     }
 
     private fun syncRole(): SyncRole = roles.roleOrChild.toSyncRole()
 
-    private fun applyAsChild(message: SyncMessage, senderRole: SyncRole?): Boolean = when (message.type) {
+    private fun applyAsChild(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean = when (message.type) {
         SyncMessageType.REQUEST_DECIDED -> applyDecision(message)
         SyncMessageType.BONUS_GRANTED -> applyBonus(message)
         SyncMessageType.APP_DECIDED -> applyAppDecision(message)
@@ -295,7 +296,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.POLICY_REQUESTED -> { publisher.publishPolicySnapshot(); true }
         SyncMessageType.POLICY_UPDATED -> applyPolicyUpdate(message)
         SyncMessageType.APP_INVENTORY_REQUESTED -> { publisher.publishAppInventory(); true }
-        SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole)
+        SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
         // A child phone is the only source of these; hearing one back means a
@@ -318,7 +319,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         -> false
     }
 
-    private fun applyAsParent(message: SyncMessage, senderRole: SyncRole?): Boolean = when (message.type) {
+    private fun applyAsParent(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean = when (message.type) {
         SyncMessageType.REQUEST_RAISED -> rememberRequest(message)
         // Another parent answered first. Recording that here is what stops two
         // parents answering the same request twice.
@@ -339,7 +340,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.CHAT_MESSAGE -> rememberChat(message)
         SyncMessageType.POLICY_SNAPSHOT -> rememberPolicySnapshot(message)
         SyncMessageType.APP_INVENTORY -> rememberAppInventory(message)
-        SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole)
+        SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
         // Sent by a parent, including possibly this one. Nothing to do with it.
@@ -709,11 +710,20 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private fun keepReplicaCurrent() {
         if (roles.roleOrChild == DeviceRole.CHILD) {
             PolicyReplication(appContext).pushFromLocalPolicy()
+            PolicyReplication(appContext).pushSchedulesFromLocal()
+            PolicyReplication(appContext).pushContextRulesFromLocal()
+            PolicyReplication(appContext).pushPlaceRefsFromLocal()
+            PolicyReplication(appContext).pushAutoApprovalsFromLocal()
         } else {
             // Only a parent may write the roster, and every parent holds the
             // same one — so each publishes what it trusts and they converge,
             // rather than a vouch having to be timed to land after an approval.
             RosterReplication(appContext).push()
+            // Every parent's device runs this independently and lands on the
+            // same outcome — see ConsensusReplication.commitIfReady. Only a
+            // parent has anything to check: the managed phone is not a party
+            // to any of the four decisions.
+            commitReadyConsensusProposals()
         }
         publisher.publishPendingOps()
 
@@ -724,6 +734,26 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             state.prune(now.epochSecond)
             publisher.publishDigest()
             config.recordDigestAt(now)
+        }
+    }
+
+    /**
+     * Commits every consensus proposal this replica can see has reached its
+     * threshold — unanimous approval, or an uncancelled timer.
+     *
+     * Every parent's device does this independently, and that is by design:
+     * see [ConsensusReplication.commitIfReady] for why more than one device
+     * acting on the same proposal is harmless.
+     *
+     * Stops the moment a disband commits: it wipes this phone's own family
+     * membership, so nothing left in the list is still this replica's to act
+     * on.
+     */
+    private fun commitReadyConsensusProposals() {
+        val consensus = ConsensusReplication(appContext)
+        for (proposal in consensus.proposals()) {
+            val committed = consensus.commitIfReady(proposal, publisher)
+            if (committed && proposal.kind == ConsensusKind.DISBAND_FAMILY) return
         }
     }
 
@@ -741,12 +771,12 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
      * it will see its value disagree at the next digest, and be unable to do
      * anything about it, which is the intended outcome.
      */
-    private fun applyStateOps(message: SyncMessage, senderRole: SyncRole?): Boolean {
+    private fun applyStateOps(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean {
         val incoming = StateCodec.decodeOps(message.field(FIELD_OPS))
         if (incoming.isEmpty()) return false
 
         val (authorised, unauthorised) = incoming.partition {
-            ReplicationRules.accepts(senderRole, it)
+            ReplicationRules.accepts(senderRole, it, senderId)
         }
         val (allowed, overCapacity) = withinCapacity(authorised)
         val refused = unauthorised + overCapacity
@@ -857,6 +887,10 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
 
         if (ReplicationRules.POLICY in sections && roles.roleOrChild == DeviceRole.CHILD) {
             PolicyReplication(appContext).pullIntoLocalPolicy()
+            PolicyReplication(appContext).pullSchedulesIntoLocal()
+            PolicyReplication(appContext).pullContextRulesIntoLocal()
+            PolicyReplication(appContext).pullPlaceRefsIntoLocal()
+            PolicyReplication(appContext).pullAutoApprovalsIntoLocal()
             EnforcementService.start(appContext)
         }
         // Additive only, and never for the managed phone: see the doc comment

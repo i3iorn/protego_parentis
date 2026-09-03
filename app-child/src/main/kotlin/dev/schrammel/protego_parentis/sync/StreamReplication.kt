@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.security.RoleStore
 import java.time.Instant
 import java.util.UUID
 
@@ -35,6 +36,9 @@ class StreamReplication(context: Context) {
     private fun origin(): String? =
         LocalDeviceId.current()
 
+    /** This device's role, for the write-time gate every write is now held to. */
+    private fun role(): SyncRole = RoleStore(appContext).roleOrChild.toSyncRole()
+
     /**
      * Adds one entry to [section], returning its id.
      *
@@ -51,7 +55,7 @@ class StreamReplication(context: Context) {
         )
         val root = "$section${ReplicationRules.SEPARATOR}$id"
         val withAuthor = fields + (FIELD_BY to origin)
-        state.writeAll(withAuthor.mapKeys { "$root${ReplicationRules.SEPARATOR}${it.key}" }, origin)
+        state.writeAll(withAuthor.mapKeys { "$root${ReplicationRules.SEPARATOR}${it.key}" }, origin, role())
         return id
     }
 
@@ -62,6 +66,7 @@ class StreamReplication(context: Context) {
         return state.writeAll(
             fields.mapKeys { "$root${ReplicationRules.SEPARATOR}${it.key}" },
             origin,
+            role(),
         ).isNotEmpty()
     }
 

@@ -1,10 +1,13 @@
 package dev.schrammel.protego_parentis.rules
 
+import dev.schrammel.protego_parentis.model.BrowserPolicy
+import dev.schrammel.protego_parentis.model.DailyGoal
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Every rule a parent's phone may set remotely, in one round trip.
@@ -20,14 +23,28 @@ import java.time.Instant
  * Tamper protection is deliberately absent. Flipping it remotely without anyone
  * standing at the phone is the one rule change this app treats as too dangerous
  * to make from a distance — see its own doc comment in [LocalPolicyStore].
+ *
+ * Bedtime is deliberately absent too, as of #12: it travels as an ordinary
+ * [StoredSchedule] through [dev.schrammel.protego_parentis.sync.PolicyReplication.writeSchedules]/
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.readSchedules] now,
+ * the same channel every other schedule already used, rather than as four
+ * fields duplicated here. See [LocalPolicyStore.bedtime].
+ *
+ * Web filtering, the daily goal, and which optional [Feature]s are switched
+ * off joined as of #42 — all flat scalars or small sets, the same shape as
+ * [dailyLimitMinutes] and the packages sets below, so they ride this same
+ * channel rather than getting one of their own the way schedules needed.
+ * `AutoApprovalStore` is deliberately absent, for the same reason bedtime is:
+ * a list of records, the schedules/contextual-rules shape rather than this
+ * one, so it travels through
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.writeAutoApprovals]/
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.readAutoApprovals]
+ * instead. `NotificationPreferences` was decided to stay local-only — see
+ * `docs/RULES-INVENTORY.md`.
  */
 data class PolicySnapshot(
     val version: Long,
     val dailyLimitMinutes: Int,
-    val bedtimeEnabled: Boolean,
-    val bedtimeStartMinute: Int,
-    val bedtimeEndMinute: Int,
-    val bedtimeDays: Set<Int>,
     val categories: List<StoredCategory>,
     val appLimits: Map<String, Int>,
     val exemptPackages: Set<String>,
@@ -36,14 +53,23 @@ data class PolicySnapshot(
     val networkBlockedPackages: Set<String>,
     val installPolicy: String,
     val installWindowUntil: Long?,
+    val webFilterProfile: String,
+    val webFilterCustomHost: String,
+    val webFilterSafeSearch: Boolean,
+    val webFilterYoutube: Boolean,
+    val webFilterIncognito: Boolean,
+    val webFilterBlockedUrls: Set<String>,
+    val webFilterAllowedUrls: Set<String>,
+    val webFilterSuspendBrowsers: Boolean,
+    val webFilterCountVisits: Boolean,
+    val goalEnabled: Boolean,
+    val goalMaxMinutes: Int,
+    val goalPrize: String,
+    val disabledFeatures: Set<String>,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put(KEY_VERSION, version)
         put(KEY_DAILY_LIMIT, dailyLimitMinutes)
-        put(KEY_BEDTIME_ENABLED, bedtimeEnabled)
-        put(KEY_BEDTIME_START, bedtimeStartMinute)
-        put(KEY_BEDTIME_END, bedtimeEndMinute)
-        put(KEY_BEDTIME_DAYS, JSONArray(bedtimeDays.toList()))
         put(KEY_CATEGORIES, JSONArray(categories.map(StoredCategory::toJson)))
         put(KEY_APP_LIMITS, JSONObject(appLimits))
         put(KEY_EXEMPT, JSONArray(exemptPackages.toList()))
@@ -52,6 +78,19 @@ data class PolicySnapshot(
         put(KEY_NETWORK_BLOCKED, JSONArray(networkBlockedPackages.toList()))
         put(KEY_INSTALL_POLICY, installPolicy)
         installWindowUntil?.let { put(KEY_INSTALL_WINDOW, it) }
+        put(KEY_WEB_PROFILE, webFilterProfile)
+        put(KEY_WEB_CUSTOM_HOST, webFilterCustomHost)
+        put(KEY_WEB_SAFE_SEARCH, webFilterSafeSearch)
+        put(KEY_WEB_YOUTUBE, webFilterYoutube)
+        put(KEY_WEB_INCOGNITO, webFilterIncognito)
+        put(KEY_WEB_BLOCKED_URLS, JSONArray(webFilterBlockedUrls.toList()))
+        put(KEY_WEB_ALLOWED_URLS, JSONArray(webFilterAllowedUrls.toList()))
+        put(KEY_WEB_SUSPEND_BROWSERS, webFilterSuspendBrowsers)
+        put(KEY_WEB_COUNT_VISITS, webFilterCountVisits)
+        put(KEY_GOAL_ENABLED, goalEnabled)
+        put(KEY_GOAL_MAX_MINUTES, goalMaxMinutes)
+        put(KEY_GOAL_PRIZE, goalPrize)
+        put(KEY_DISABLED_FEATURES, JSONArray(disabledFeatures.toList()))
     }
 
     fun encode(): String = toJson().toString()
@@ -59,10 +98,6 @@ data class PolicySnapshot(
     companion object {
         private const val KEY_VERSION = "version"
         private const val KEY_DAILY_LIMIT = "dailyLimitMinutes"
-        private const val KEY_BEDTIME_ENABLED = "bedtimeEnabled"
-        private const val KEY_BEDTIME_START = "bedtimeStart"
-        private const val KEY_BEDTIME_END = "bedtimeEnd"
-        private const val KEY_BEDTIME_DAYS = "bedtimeDays"
         private const val KEY_CATEGORIES = "categories"
         private const val KEY_APP_LIMITS = "appLimits"
         private const val KEY_EXEMPT = "exemptPackages"
@@ -71,6 +106,19 @@ data class PolicySnapshot(
         private const val KEY_NETWORK_BLOCKED = "networkBlockedPackages"
         private const val KEY_INSTALL_POLICY = "installPolicy"
         private const val KEY_INSTALL_WINDOW = "installWindowUntil"
+        private const val KEY_WEB_PROFILE = "webFilterProfile"
+        private const val KEY_WEB_CUSTOM_HOST = "webFilterCustomHost"
+        private const val KEY_WEB_SAFE_SEARCH = "webFilterSafeSearch"
+        private const val KEY_WEB_YOUTUBE = "webFilterYoutube"
+        private const val KEY_WEB_INCOGNITO = "webFilterIncognito"
+        private const val KEY_WEB_BLOCKED_URLS = "webFilterBlockedUrls"
+        private const val KEY_WEB_ALLOWED_URLS = "webFilterAllowedUrls"
+        private const val KEY_WEB_SUSPEND_BROWSERS = "webFilterSuspendBrowsers"
+        private const val KEY_WEB_COUNT_VISITS = "webFilterCountVisits"
+        private const val KEY_GOAL_ENABLED = "goalEnabled"
+        private const val KEY_GOAL_MAX_MINUTES = "goalMaxMinutes"
+        private const val KEY_GOAL_PRIZE = "goalPrize"
+        private const val KEY_DISABLED_FEATURES = "disabledFeatures"
 
         fun fromJson(json: JSONObject): PolicySnapshot? {
             fun strings(key: String): Set<String> =
@@ -86,17 +134,9 @@ data class PolicySnapshot(
                 (0 until array.length()).mapNotNull { array.optJSONObject(it)?.let(StoredCategory::fromJson) }
             }.orEmpty()
 
-            val bedtimeDays = json.optJSONArray(KEY_BEDTIME_DAYS)?.let { array ->
-                (0 until array.length()).map { array.optInt(it) }
-            }.orEmpty().toSet()
-
             return PolicySnapshot(
                 version = json.optLong(KEY_VERSION, 0L),
                 dailyLimitMinutes = json.optInt(KEY_DAILY_LIMIT, 0),
-                bedtimeEnabled = json.optBoolean(KEY_BEDTIME_ENABLED, false),
-                bedtimeStartMinute = json.optInt(KEY_BEDTIME_START, 0),
-                bedtimeEndMinute = json.optInt(KEY_BEDTIME_END, 0),
-                bedtimeDays = bedtimeDays,
                 categories = categories,
                 appLimits = appLimits,
                 exemptPackages = strings(KEY_EXEMPT),
@@ -105,6 +145,19 @@ data class PolicySnapshot(
                 networkBlockedPackages = strings(KEY_NETWORK_BLOCKED),
                 installPolicy = json.optString(KEY_INSTALL_POLICY).ifBlank { InstallPolicy.NOTIFY.name },
                 installWindowUntil = json.optLong(KEY_INSTALL_WINDOW, 0L).takeIf { it > 0L },
+                webFilterProfile = json.optString(KEY_WEB_PROFILE).ifBlank { DnsProfile.OFF.name },
+                webFilterCustomHost = json.optString(KEY_WEB_CUSTOM_HOST),
+                webFilterSafeSearch = json.optBoolean(KEY_WEB_SAFE_SEARCH, false),
+                webFilterYoutube = json.optBoolean(KEY_WEB_YOUTUBE, false),
+                webFilterIncognito = json.optBoolean(KEY_WEB_INCOGNITO, false),
+                webFilterBlockedUrls = strings(KEY_WEB_BLOCKED_URLS),
+                webFilterAllowedUrls = strings(KEY_WEB_ALLOWED_URLS),
+                webFilterSuspendBrowsers = json.optBoolean(KEY_WEB_SUSPEND_BROWSERS, false),
+                webFilterCountVisits = json.optBoolean(KEY_WEB_COUNT_VISITS, false),
+                goalEnabled = json.optBoolean(KEY_GOAL_ENABLED, false),
+                goalMaxMinutes = json.optInt(KEY_GOAL_MAX_MINUTES, 0),
+                goalPrize = json.optString(KEY_GOAL_PRIZE),
+                disabledFeatures = strings(KEY_DISABLED_FEATURES),
             )
         }
 
@@ -118,14 +171,11 @@ data class PolicySnapshot(
 
 /** Reads the current rules off this phone, in the shape a message can carry. */
 fun LocalPolicyStore.snapshot(): PolicySnapshot {
-    val setting = bedtime
+    val filter = browserPolicy
+    val currentGoal = goal
     return PolicySnapshot(
         version = load().version,
         dailyLimitMinutes = dailyLimitMinutes,
-        bedtimeEnabled = setting.enabled,
-        bedtimeStartMinute = setting.start.toMinuteOfDay(),
-        bedtimeEndMinute = setting.end.toMinuteOfDay(),
-        bedtimeDays = setting.days.map(DayOfWeek::getValue).toSet(),
         categories = categories,
         appLimits = appLimits,
         exemptPackages = exemptPackages,
@@ -134,25 +184,33 @@ fun LocalPolicyStore.snapshot(): PolicySnapshot {
         networkBlockedPackages = networkBlockedPackages,
         installPolicy = installPolicy.name,
         installWindowUntil = installWindowUntil?.toEpochMilli(),
+        webFilterProfile = webFilterProfile.name,
+        webFilterCustomHost = webFilterCustomHost,
+        webFilterSafeSearch = filter.forceSafeSearch,
+        webFilterYoutube = filter.restrictYouTube,
+        webFilterIncognito = filter.blockIncognito,
+        webFilterBlockedUrls = filter.blockedUrls.toSet(),
+        webFilterAllowedUrls = filter.allowedUrls.toSet(),
+        webFilterSuspendBrowsers = filter.suspendUnmanagedBrowsers,
+        webFilterCountVisits = webFilterCountVisits,
+        goalEnabled = currentGoal.enabled,
+        goalMaxMinutes = currentGoal.maxUsage.inWholeMinutes.toInt(),
+        goalPrize = currentGoal.prize,
+        disabledFeatures = disabledFeatures.map { it.name }.toSet(),
     )
 }
 
-/** Writes every field of [snapshot] onto this phone's own rules. */
+/**
+ * Writes every field of [snapshot] onto this phone's own rules.
+ *
+ * Bedtime is not among them any more — it arrives (and is applied) through
+ * [dev.schrammel.protego_parentis.sync.PolicyReplication.pullSchedulesIntoLocal],
+ * which [dev.schrammel.protego_parentis.sync.SyncReceiver] already calls
+ * alongside this on every policy change, the same way every other schedule
+ * already did before bedtime joined them.
+ */
 fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) {
     dailyLimitMinutes = snapshot.dailyLimitMinutes
-    bedtime = BedtimeSetting(
-        enabled = snapshot.bedtimeEnabled,
-        start = snapshot.bedtimeStartMinute.toLocalTime(),
-        end = snapshot.bedtimeEndMinute.toLocalTime(),
-        // No days is a real answer — a bedtime with no nights is off, which is
-        // how the switch expresses "not this week" without losing the times.
-        // Substituting every night here meant clearing them all was silently
-        // undone: the replica said none, this wrote seven, and the next push
-        // sent seven back to the phone that had just cleared them.
-        days = snapshot.bedtimeDays
-            .mapNotNull { value -> DayOfWeek.entries.firstOrNull { it.value == value } }
-            .toSet(),
-    )
     categories = snapshot.categories
     appLimits = snapshot.appLimits
     exemptPackages = snapshot.exemptPackages
@@ -162,4 +220,25 @@ fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) {
     installPolicy = runCatching { InstallPolicy.valueOf(snapshot.installPolicy) }
         .getOrDefault(InstallPolicy.NOTIFY)
     installWindowUntil = snapshot.installWindowUntil?.let(Instant::ofEpochMilli)
+    webFilterProfile = DnsProfile.parse(snapshot.webFilterProfile)
+    webFilterCustomHost = snapshot.webFilterCustomHost
+    browserPolicy = BrowserPolicy(
+        forceSafeSearch = snapshot.webFilterSafeSearch,
+        restrictYouTube = snapshot.webFilterYoutube,
+        blockIncognito = snapshot.webFilterIncognito,
+        blockedUrls = snapshot.webFilterBlockedUrls.toList(),
+        allowedUrls = snapshot.webFilterAllowedUrls.toList(),
+        suspendUnmanagedBrowsers = snapshot.webFilterSuspendBrowsers,
+    )
+    webFilterCountVisits = snapshot.webFilterCountVisits
+    goal = DailyGoal(
+        enabled = snapshot.goalEnabled,
+        maxUsage = snapshot.goalMaxMinutes.minutes,
+        prize = snapshot.goalPrize,
+        // Ignored by GoalStore.save's own restart-detection — see LocalPolicyStore.goal.
+        effectiveFrom = LocalDate.now(),
+    )
+    disabledFeatures = snapshot.disabledFeatures
+        .mapNotNull { name -> Feature.entries.firstOrNull { it.name == name } }
+        .toSet()
 }

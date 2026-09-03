@@ -39,6 +39,15 @@ data class StoredSchedule(
      */
     val mode: ScheduleBlock.Mode = ScheduleBlock.Mode.EXCLUSIVE,
     val enabled: Boolean = true,
+    /**
+     * [ScheduleBlock.Kind.BEDTIME] for the one fixed-id entry [ScheduleStore]
+     * treats specially — see its own doc comment — [ScheduleBlock.Kind.CUSTOM]
+     * for everything a family names themselves. Absent from every schedule
+     * saved before this field existed, and defaulted here rather than
+     * migrated, the same way [mode] already is: every schedule that predates
+     * this was somebody's custom window, never bedtime.
+     */
+    val kind: ScheduleBlock.Kind = ScheduleBlock.Kind.CUSTOM,
 ) {
     val start: LocalTime get() = startMinuteOfDay.toLocalTime()
     val end: LocalTime get() = endMinuteOfDay.toLocalTime()
@@ -66,7 +75,7 @@ data class StoredSchedule(
             end = end,
             packages = packages.map(::PackageName).toSet(),
             mode = mode,
-            kind = ScheduleBlock.Kind.CUSTOM,
+            kind = kind,
         )
     }
 
@@ -75,10 +84,21 @@ data class StoredSchedule(
 /**
  * The family's named schedule windows.
  *
- * Bedtime is deliberately not one of these. It has its own switch on the limits
- * screen, its own defaults and its own wind-down warning, and folding it in here
- * would mean a family could delete bedtime by accident while tidying up their
- * homework block.
+ * Bedtime lives here too, as the one entry at [BEDTIME_ID] with
+ * [ScheduleBlock.Kind.BEDTIME] — [dev.schrammel.protego_parentis.model.Policy]
+ * already treated a replicated schedule and the synthesised bedtime block as
+ * the same kind of object once assembled (#12), and this makes that true of
+ * storage too, closing the gap #41 opened it for: only a replicated schedule
+ * could be set from a parent's own phone, so bedtime — the most-used remote
+ * control in the product — could not.
+ *
+ * The risk that motivated keeping it separate originally — a family deleting
+ * bedtime by accident while tidying up a homework block — is handled by every
+ * screen that lists these windows filtering [BEDTIME_ID] out and giving it its
+ * own dedicated card instead (see [dev.schrammel.protego_parentis.ui.SchedulesActivity],
+ * [dev.schrammel.protego_parentis.ui.ParentRulesActivity]): bedtime is never
+ * offered through the generic add/delete flow at all, so there is no accident
+ * to have.
  */
 class ScheduleStore(context: Context) {
 
@@ -115,6 +135,7 @@ class ScheduleStore(context: Context) {
                     put(KEY_PACKAGES, JSONArray(schedule.packages.sorted()))
                     put(KEY_MODE, schedule.mode.name)
                     put(KEY_ENABLED, schedule.enabled)
+                    put(KEY_KIND, schedule.kind.name)
                 }
             },
         ).toString()
@@ -142,6 +163,12 @@ class ScheduleStore(context: Context) {
                 .firstOrNull { it.name == json.optString(KEY_MODE) }
                 ?: ScheduleBlock.Mode.EXCLUSIVE,
             enabled = json.optBoolean(KEY_ENABLED, true),
+            // Anything unrecognised, including absent, reads as custom — every
+            // schedule saved before this field existed was somebody's own
+            // window, never bedtime.
+            kind = ScheduleBlock.Kind.entries
+                .firstOrNull { it.name == json.optString(KEY_KIND) }
+                ?: ScheduleBlock.Kind.CUSTOM,
         )
     }
 
@@ -153,22 +180,26 @@ class ScheduleStore(context: Context) {
             (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
         }.orEmpty().toSet()
 
-    private companion object {
-        const val FILE_NAME = "schedules"
-        const val KEY_SCHEDULES = "schedules"
+    companion object {
+        /** The one schedule id [ScheduleStore] and its screens treat specially. */
+        const val BEDTIME_ID = "bedtime"
 
-        const val KEY_ID = "id"
-        const val KEY_NAME = "name"
-        const val KEY_DAYS = "days"
-        const val KEY_START = "start"
-        const val KEY_END = "end"
+        private const val FILE_NAME = "schedules"
+        private const val KEY_SCHEDULES = "schedules"
+
+        private const val KEY_ID = "id"
+        private const val KEY_NAME = "name"
+        private const val KEY_DAYS = "days"
+        private const val KEY_START = "start"
+        private const val KEY_END = "end"
         /**
          * Still "allowed", not "packages". The key names what was written by
          * every version that shipped before modes existed, and renaming it would
          * silently empty the exception list of every schedule already on a phone.
          */
-        const val KEY_PACKAGES = "allowed"
-        const val KEY_MODE = "mode"
-        const val KEY_ENABLED = "enabled"
+        private const val KEY_PACKAGES = "allowed"
+        private const val KEY_MODE = "mode"
+        private const val KEY_ENABLED = "enabled"
+        private const val KEY_KIND = "kind"
     }
 }

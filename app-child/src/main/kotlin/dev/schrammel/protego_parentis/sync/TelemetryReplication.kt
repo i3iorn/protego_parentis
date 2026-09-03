@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.security.RoleStore
 import java.time.Instant
 
 /**
@@ -87,7 +88,7 @@ class TelemetryReplication(context: Context) {
                 }
             }
         }
-        return state.writeAll(values, origin)
+        return state.writeAll(values, origin, RoleStore(appContext).roleOrChild.toSyncRole())
     }
 
     /**
@@ -111,6 +112,7 @@ class TelemetryReplication(context: Context) {
                 path(LOCATE_AT) to at.epochSecond.toString(),
             ),
             origin,
+            RoleStore(appContext).roleOrChild.toSyncRole(),
         )
     }
 

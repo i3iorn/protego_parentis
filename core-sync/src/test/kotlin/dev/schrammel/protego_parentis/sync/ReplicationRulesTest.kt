@@ -18,28 +18,52 @@ class ReplicationRulesTest {
     private fun op(path: String, value: String? = "x", lamport: Long = 1L) =
         StateOp(path, value, lamport, "AAAA")
 
+    private val childA = DeviceId("CHILD_A")
+    private val childB = DeviceId("CHILD_B")
+
     // ---------- the rule the product rests on ----------
 
     /**
-     * Both devices write the rules, and that is deliberate.
+     * A parent may write any child's rules; the managed phone may write only
+     * its own subtree — `policy/<its own id>/…`.
      *
      * The rules live on the managed phone and can be edited standing at it,
      * behind the parent PIN. Refusing its writes meant a parent's phone never
      * learned them at all and the two replicas could never agree — so the
-     * boundary for the rules is the PIN rather than the device. See
-     * [ReplicationRules.mayWrite] for what that gives up.
+     * boundary for one child's own rules is the PIN rather than the device.
+     * See [ReplicationRules.mayWrite] for what that gives up, and why the
+     * scope is nonetheless narrowed to the child's own subtree now that a
+     * family can have more than one managed phone.
      */
     @Test
-    fun `either phone may write the rules`() {
+    fun `either phone may write a child's rules, within that child's subtree`() {
         listOf(
-            "policy/dailyLimitMinutes",
-            "policy/bedtime/enabled",
-            "policy/categories/games/limitMinutes",
-            "policy/appLimits/com.example.a",
+            "policy/${childA.value}/dailyLimitMinutes",
+            "policy/${childA.value}/bedtime/enabled",
+            "policy/${childA.value}/categories/games/limitMinutes",
+            "policy/${childA.value}/appLimits/com.example.a",
         ).forEach { path ->
-            assertTrue(path, ReplicationRules.mayWrite(SyncRole.CHILD, path))
+            assertTrue(path, ReplicationRules.mayWrite(SyncRole.CHILD, path, childA))
             assertTrue(path, ReplicationRules.mayWrite(SyncRole.PARENT, path))
         }
+    }
+
+    /**
+     * The scoping that per-child address space exists for: a second managed
+     * phone in the family may not touch the first one's rules, even though
+     * both write the same [ReplicationRules.POLICY] section.
+     */
+    @Test
+    fun `a child may not write another child's policy subtree`() {
+        val path = "policy/${childA.value}/dailyLimitMinutes"
+        assertFalse(ReplicationRules.mayWrite(SyncRole.CHILD, path, childB))
+        assertTrue(ReplicationRules.mayWrite(SyncRole.PARENT, path, childB))
+    }
+
+    /** No verified writer id at all is refused, not silently granted. */
+    @Test
+    fun `a child with no established writer id may not write policy`() {
+        assertFalse(ReplicationRules.mayWrite(SyncRole.CHILD, "policy/${childA.value}/dailyLimitMinutes"))
     }
 
     /**
@@ -122,12 +146,15 @@ class ReplicationRulesTest {
     @Test
     fun `ordinary paths may be rewritten freely`() {
         assertTrue(
-            ReplicationRules.accepts(SyncRole.PARENT, op("policy/dailyLimitMinutes", "90", 2L)),
+            ReplicationRules.accepts(SyncRole.PARENT, op("policy/${childA.value}/dailyLimitMinutes", "90", 2L)),
         )
     }
 
     /**
-     * The whole boundary in one place, as a table.
+     * The whole boundary in one place, as a table — every section except
+     * [ReplicationRules.POLICY], which is no longer a plain "these roles may
+     * write this section" rule now that it is scoped per child. See the
+     * dedicated policy tests above for that one.
      *
      * Worth pinning explicitly because of how the failure shows up when it is
      * wrong. Each adapter writes its own section locally, and a local write is
@@ -145,9 +172,6 @@ class ReplicationRulesTest {
     @Test
     fun `each section says exactly who may write it`() {
         val expected = mapOf(
-            // Written by the managed phone on every rules change, and by a
-            // parent from the Rules screen. Both must be able to.
-            ReplicationRules.POLICY to setOf(SyncRole.CHILD, SyncRole.PARENT),
             // Written only by parents, and pulled into trust by everyone.
             ReplicationRules.ROSTER to setOf(SyncRole.PARENT),
             // Written only by the phone that can actually observe itself.
@@ -187,5 +211,79 @@ class ReplicationRulesTest {
             .forEach { path ->
                 assertFalse(path, ReplicationRules.mayWrite(null, path))
             }
+    }
+
+    // ---------- consensus: a parent-only conversation ----------
+
+    /** The managed phone has no vote in the family's own structure. */
+    @Test
+    fun `the managed phone may not write consensus at all`() {
+        listOf(
+            "consensus/1/kind",
+            "consensus/1/target",
+            "consensus/1/approvals/AAAA",
+            "consensus/1/cancelled",
+        ).forEach { path ->
+            assertFalse(path, ReplicationRules.mayWrite(SyncRole.CHILD, path))
+        }
+    }
+
+    /** Any parent may raise a proposal and its fixed fields. */
+    @Test
+    fun `any parent may write a proposal's fixed fields`() {
+        listOf("consensus/1/kind", "consensus/1/target", "consensus/1/proposedBy", "consensus/1/proposedAt")
+            .forEach { path ->
+                assertTrue(path, ReplicationRules.mayWrite(SyncRole.PARENT, path))
+            }
+    }
+
+    /**
+     * Approval is self-attestation: a parent may only ever claim its own
+     * approval, never write it into another parent's register.
+     */
+    @Test
+    fun `a parent may approve for itself but not on another parent's behalf`() {
+        val own = op("consensus/1/approvals/AAAA", "1")
+        val onBehalfOfSomeoneElse = op("consensus/1/approvals/BBBB", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, own, DeviceId("AAAA")))
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, onBehalfOfSomeoneElse, DeviceId("AAAA")))
+    }
+
+    /** With no verified writer id at all, nothing is self-attested. */
+    @Test
+    fun `an approval with no verified writer id is refused`() {
+        val approval = op("consensus/1/approvals/AAAA", "1")
+
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, approval, writerId = null))
+    }
+
+    /**
+     * A tombstone is the one write to an approval register that is not
+     * self-attested — clearing somebody else's approval when a proposal
+     * commits has to be doable by whichever device notices, not only by the
+     * approver's own device.
+     */
+    @Test
+    fun `any parent may tombstone another parent's approval, but not fabricate one`() {
+        val tombstone = op("consensus/1/approvals/AAAA", value = null)
+        val fabricated = op("consensus/1/approvals/AAAA", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, tombstone, DeviceId("BBBB")))
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, fabricated, DeviceId("BBBB")))
+    }
+
+    /**
+     * The removal timer's cancellation is deliberately not self-attestation —
+     * any current parent, including the one being removed, may stop it. See
+     * ReplicationRules.mayWrite's CONSENSUS branch: the section-level "any
+     * parent" rule already covers this, since `cancelled` is not under
+     * `approvals/`.
+     */
+    @Test
+    fun `cancelling a removal timer is not restricted to any one parent`() {
+        val cancelledByTarget = op("consensus/1/cancelled", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, cancelledByTarget, DeviceId("THE_TARGET")))
     }
 }

@@ -141,6 +141,16 @@
     <string name="places_no_fix">No location available yet. Open a maps app for a moment, then try again.</string>
     <string name="places_delete">Delete</string>
     <string name="places_delete_warning">Any rule that uses this place is deleted too, so nothing is left pointing at a place that no longer exists.</string>
+    <string name="places_add_by_coordinates">Add by coordinates</string>
+    <string name="places_lat_hint">Latitude, for example 51.5074</string>
+    <string name="places_lon_hint">Longitude, for example -0.1278</string>
+    <string name="places_radius_hint">Radius in metres</string>
+    <string name="places_check_map">Check on map</string>
+    <string name="places_name_required">Give this place a name.</string>
+    <string name="places_bad_coordinates">Latitude must be between -90 and 90, and longitude between -180 and 180.</string>
+    <string name="places_bad_radius">Radius must be at least %1$d m.</string>
+    <string name="places_no_map_app">No map app is installed to check this on.</string>
+    <string name="places_radius_increased">Radius increased to the minimum, to protect location privacy.</string>
     <string name="home_context_active">Active now: %1$s</string>
 
     <!-- Privacy and diagnostics. -->
@@ -447,6 +457,11 @@
     <string name="parent_rules_install_gated">Blocked until I open a window</string>
     <string name="parent_rules_categories_add">Add a category</string>
     <string name="parent_rules_category_summary">%1$s · %2$d apps</string>
+    <string name="parent_rules_schedules_header">Schedules</string>
+    <string name="parent_rules_schedules_add">Add a schedule</string>
+    <string name="parent_rules_schedules_rename">Rename</string>
+    <string name="parent_rules_schedules_apps_paused">%1$d apps paused</string>
+    <string name="parent_rules_schedules_apps_stay_usable">%1$d apps stay usable</string>
     <string name="parent_rules_apps_header">Apps</string>
     <string name="parent_rules_apps_none">Waiting for the app list from the other phone…</string>
     <string name="parent_rules_app_limit">Limit: %1$s</string>

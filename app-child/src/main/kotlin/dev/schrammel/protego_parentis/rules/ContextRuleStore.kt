@@ -2,26 +2,21 @@ package dev.schrammel.protego_parentis.rules
 
 import android.content.Context
 import androidx.core.content.edit
-import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
-import dev.schrammel.protego_parentis.model.DeviceTag
-import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
-import dev.schrammel.protego_parentis.model.RuleEffect
-import dev.schrammel.protego_parentis.model.RuleTarget
-import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.time.Duration.Companion.minutes
 
 /**
  * Stores contextual rules and the places they refer to.
  *
  * Places hold coordinates and so are the most sensitive thing this app keeps.
  * They stay in app-private storage, are excluded from backup along with
- * everything else, and are never included in a sync message or the diagnostic log.
+ * everything else, and a coordinate is never included in a sync message or the
+ * diagnostic log — see [dev.schrammel.protego_parentis.model.PlaceRef] for the
+ * name and radius that, unlike a coordinate, do replicate.
  *
  * Parsing is defensive throughout: a rule that cannot be read is dropped rather
  * than crashing the enforcement service, which runs on the child's phone and has
@@ -65,6 +60,19 @@ class ContextRuleStore(context: Context) {
         get() = decodePlaces(prefs.getString(KEY_PLACES, null))
         set(value) = prefs.edit { putString(KEY_PLACES, encodePlaces(value)) }
 
+    /**
+     * Places [places] is currently reading with a larger radius than what was
+     * actually saved for them (#56) — [decodePlaces] clamps a stored radius
+     * below [Place.MINIMUM_RADIUS_METRES] up rather than rejecting it, since
+     * that floor has only ever gone up and a family's already-saved place is
+     * not the thing to punish for it. Live, not a one-off migration flag: this
+     * reflects what is on disk right now, so if the floor changes again this
+     * says so again, and a place a family has since resized itself no longer
+     * appears here.
+     */
+    val clampedPlaceIds: Set<PlaceId>
+        get() = clampedPlaceIds(prefs.getString(KEY_PLACES, null))
+
     fun upsertPlace(place: Place) = synchronized(prefs) {
         places = places.filterNot { it.id == place.id } + place
     }
@@ -97,9 +105,9 @@ class ContextRuleStore(context: Context) {
                     put(KEY_ID, rule.id)
                     put(KEY_NAME, rule.name)
                     put(KEY_ENABLED, rule.enabled)
-                    put(KEY_CONDITION, encodeCondition(rule.condition))
-                    put(KEY_EFFECT, encodeEffect(rule.effect))
-                    put(KEY_TARGET, encodeTarget(rule.target))
+                    put(KEY_CONDITION, ContextRuleCodec.encodeCondition(rule.condition))
+                    put(KEY_EFFECT, ContextRuleCodec.encodeEffect(rule.effect))
+                    put(KEY_TARGET, ContextRuleCodec.encodeTarget(rule.target))
                 }
             },
         ).toString()
@@ -116,135 +124,13 @@ class ContextRuleStore(context: Context) {
                     name = json.optString(KEY_NAME),
                     enabled = json.optBoolean(KEY_ENABLED, true),
                     condition = json.optJSONObject(KEY_CONDITION)
-                        ?.let(::decodeCondition) ?: Condition.Always,
-                    effect = json.optJSONObject(KEY_EFFECT)?.let(::decodeEffect)
+                        ?.let(ContextRuleCodec::decodeCondition) ?: Condition.Always,
+                    effect = json.optJSONObject(KEY_EFFECT)?.let(ContextRuleCodec::decodeEffect)
                         ?: return@mapNotNull null,
-                    target = json.optJSONObject(KEY_TARGET)?.let(::decodeTarget)
+                    target = json.optJSONObject(KEY_TARGET)?.let(ContextRuleCodec::decodeTarget)
                         ?: return@mapNotNull null,
                 )
             }.getOrNull()
-        }
-    }
-
-    private fun encodeCondition(condition: Condition): JSONObject = JSONObject().apply {
-        when (condition) {
-            is Condition.Always -> put(KEY_KIND, ALWAYS)
-            is Condition.OnWifi -> {
-                put(KEY_KIND, WIFI)
-                put(KEY_VALUE, condition.ssid)
-            }
-
-            is Condition.NearDevice -> {
-                put(KEY_KIND, NEAR)
-                put(KEY_VALUE, condition.tag.value)
-            }
-
-            is Condition.AtPlace -> {
-                put(KEY_KIND, PLACE)
-                put(KEY_VALUE, condition.place.value)
-            }
-
-            is Condition.BatteryBelow -> {
-                put(KEY_KIND, BATTERY)
-                put(KEY_VALUE, condition.percent)
-            }
-
-            is Condition.AllOf -> {
-                put(KEY_KIND, ALL_OF)
-                put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
-            }
-
-            is Condition.AnyOf -> {
-                put(KEY_KIND, ANY_OF)
-                put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
-            }
-
-            is Condition.Not -> {
-                put(KEY_KIND, NOT)
-                put(KEY_PARTS, JSONArray(listOf(encodeCondition(condition.condition))))
-            }
-        }
-    }
-
-    private fun decodeCondition(json: JSONObject, depth: Int = 0): Condition? {
-        // The same bound the engine applies, enforced here so a corrupt file
-        // cannot blow the stack before evaluation even starts.
-        if (depth > MAX_DEPTH) return null
-
-        val value = json.optString(KEY_VALUE)
-        fun parts(): List<Condition> {
-            val array = json.optJSONArray(KEY_PARTS) ?: return emptyList()
-            return (0 until array.length()).mapNotNull { index ->
-                array.optJSONObject(index)?.let { decodeCondition(it, depth + 1) }
-            }
-        }
-
-        return when (json.optString(KEY_KIND)) {
-            ALWAYS -> Condition.Always
-            WIFI -> value.takeIf(String::isNotBlank)?.let(Condition::OnWifi)
-            NEAR -> value.takeIf(String::isNotBlank)?.let { Condition.NearDevice(DeviceTag(it)) }
-            PLACE -> value.takeIf(String::isNotBlank)?.let { Condition.AtPlace(PlaceId(it)) }
-            BATTERY -> json.optInt(KEY_VALUE, 0)
-                .takeIf { it in 1..100 }
-                ?.let(Condition::BatteryBelow)
-            ALL_OF -> Condition.AllOf(parts())
-            ANY_OF -> Condition.AnyOf(parts())
-            NOT -> parts().firstOrNull()?.let(Condition::Not)
-            else -> null
-        }
-    }
-
-    private fun encodeEffect(effect: RuleEffect): JSONObject = JSONObject().apply {
-        when (effect) {
-            is RuleEffect.Block -> put(KEY_KIND, BLOCK)
-            is RuleEffect.Allow -> put(KEY_KIND, ALLOW)
-            is RuleEffect.SetDeviceBudget -> {
-                put(KEY_KIND, BUDGET)
-                // Clamped: an infinite duration is Long.MAX_VALUE minutes, which
-                // narrows to a negative Int on the way back in and would be
-                // rejected by WeeklyBudget, silently losing the rule.
-                put(KEY_MINUTES, effect.budget.default.inWholeMinutes.coerceIn(0L, MAX_MINUTES))
-            }
-        }
-    }
-
-    private fun decodeEffect(json: JSONObject): RuleEffect? = when (json.optString(KEY_KIND)) {
-        BLOCK -> RuleEffect.Block
-        ALLOW -> RuleEffect.Allow
-        BUDGET -> RuleEffect.SetDeviceBudget(
-            WeeklyBudget.flat(json.optLong(KEY_MINUTES, 0L).coerceIn(0L, MAX_MINUTES).toInt().minutes),
-        )
-
-        else -> null
-    }
-
-    private fun encodeTarget(target: RuleTarget): JSONObject = JSONObject().apply {
-        when (target) {
-            is RuleTarget.Everything -> put(KEY_KIND, EVERYTHING)
-            is RuleTarget.Apps -> {
-                put(KEY_KIND, APPS)
-                put(KEY_PARTS, JSONArray(target.packages.map { it.value }))
-            }
-
-            is RuleTarget.Categories -> {
-                put(KEY_KIND, CATEGORIES)
-                put(KEY_PARTS, JSONArray(target.categories.map { it.value }))
-            }
-        }
-    }
-
-    private fun decodeTarget(json: JSONObject): RuleTarget? {
-        fun values(): List<String> {
-            val array = json.optJSONArray(KEY_PARTS) ?: return emptyList()
-            return (0 until array.length())
-                .mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
-        }
-
-        return when (json.optString(KEY_KIND)) {
-            EVERYTHING -> RuleTarget.Everything
-            APPS -> RuleTarget.Apps(values().map(::PackageName).toSet())
-            CATEGORIES -> RuleTarget.Categories(values().map(::CategoryId).toSet())
-            else -> null
         }
     }
 
@@ -273,19 +159,34 @@ class ContextRuleStore(context: Context) {
                     name = json.optString(KEY_NAME),
                     latitude = json.optDouble(KEY_LAT),
                     longitude = json.optDouble(KEY_LON),
-                    radiusMetres = json.optInt(KEY_RADIUS, Place.MINIMUM_RADIUS_METRES),
+                    // Clamped up, never rejected: a radius saved under an
+                    // earlier, smaller MINIMUM_RADIUS_METRES must still
+                    // decode, or raising the floor would silently drop every
+                    // place that predates it — see clampedPlaceIds.
+                    radiusMetres = maxOf(
+                        json.optInt(KEY_RADIUS, Place.MINIMUM_RADIUS_METRES),
+                        Place.MINIMUM_RADIUS_METRES,
+                    ),
                 )
             }.getOrNull()
         }
     }
 
+    private fun clampedPlaceIds(raw: String?): Set<PlaceId> {
+        val array = runCatching { JSONArray(raw ?: return emptySet()) }.getOrNull()
+            ?: return emptySet()
+
+        return (0 until array.length()).mapNotNull { index ->
+            val json = array.optJSONObject(index) ?: return@mapNotNull null
+            val id = json.optString(KEY_ID).takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val storedRadius = json.optInt(KEY_RADIUS, Place.MINIMUM_RADIUS_METRES)
+            PlaceId(id).takeIf { storedRadius < Place.MINIMUM_RADIUS_METRES }
+        }.toSet()
+    }
+
     private companion object {
         const val KEY_ANNOUNCE_ARRIVALS = "announce_arrivals"
         const val FILE_NAME = "context_rules"
-        const val MAX_DEPTH = 12
-
-        /** A day. Anything larger is not a daily limit. */
-        const val MAX_MINUTES = 24L * 60L
 
         const val KEY_RULES = "rules"
         const val KEY_PLACES = "places"
@@ -295,29 +196,8 @@ class ContextRuleStore(context: Context) {
         const val KEY_CONDITION = "condition"
         const val KEY_EFFECT = "effect"
         const val KEY_TARGET = "target"
-        const val KEY_KIND = "kind"
-        const val KEY_VALUE = "value"
-        const val KEY_PARTS = "parts"
-        const val KEY_MINUTES = "minutes"
         const val KEY_LAT = "lat"
         const val KEY_LON = "lon"
         const val KEY_RADIUS = "radius"
-
-        const val ALWAYS = "always"
-        const val WIFI = "wifi"
-        const val NEAR = "near"
-        const val PLACE = "place"
-        const val BATTERY = "battery"
-        const val ALL_OF = "allOf"
-        const val ANY_OF = "anyOf"
-        const val NOT = "not"
-
-        const val BLOCK = "block"
-        const val ALLOW = "allow"
-        const val BUDGET = "budget"
-
-        const val EVERYTHING = "everything"
-        const val APPS = "apps"
-        const val CATEGORIES = "categories"
     }
 }
