@@ -3,12 +3,15 @@ package dev.schrammel.protego_parentis.sync
 import android.content.Context
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.model.InstallPolicy
+import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.StoredCategory
+import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.security.RoleStore
+import java.time.Instant
 
 /**
  * The rules, as paths.
@@ -192,6 +195,110 @@ class PolicyReplication(context: Context) {
         )
     }
 
+    /**
+     * Records [schedules] as [childId]'s replicated named windows.
+     *
+     * Not yet reachable from [write] or [read]: [PolicySnapshot] does not carry
+     * schedules, because building one still means reading two separate local
+     * stores ([LocalPolicyStore] and [dev.schrammel.protego_parentis.rules.ScheduleStore])
+     * as one, which is its own piece of work. This is the wire format and the
+     * merge behaviour, ready for that to call into.
+     */
+    fun writeSchedules(
+        schedules: List<StoredSchedule>,
+        childId: DeviceId? = defaultChildId(),
+        now: Instant = Instant.now(),
+    ): List<StateOp> {
+        val id = childId ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
+        val role = RoleStore(appContext).roleOrChild.toSyncRole()
+        return state.writeAll(flattenSchedules(schedules, id, now), origin, role)
+    }
+
+    /**
+     * [childId]'s replicated schedules — every one this replica holds that is
+     * both still live and complete enough for [dev.schrammel.protego_parentis.enforcement]
+     * to act on.
+     *
+     * A schedule this replica has been told is gone (see [FIELD_SCHEDULE_DELETED]
+     * on [flattenSchedules]) is excluded outright, regardless of what its other
+     * fields say — a stale `name` or `start` a concurrent edit left behind is
+     * simply never looked at once that flag is present. A schedule that is not
+     * (yet) gone but has not fully arrived — a `name` with no `days` yet, say —
+     * is excluded by [StoredSchedule.isComplete] the same way an editor refuses
+     * to save it: the one completeness check now does both jobs.
+     */
+    fun readSchedules(childId: DeviceId? = defaultChildId()): List<StoredSchedule> {
+        val id = childId ?: return emptyList()
+        val root = "$POLICY/${id.value}/$PATH_SCHEDULES"
+        return state.idsUnder(root).mapNotNull { scheduleId ->
+            val scheduleRoot = "$root/$scheduleId"
+            val fields = state.children(scheduleRoot)
+            if (FIELD_SCHEDULE_DELETED in fields) return@mapNotNull null
+
+            StoredSchedule(
+                id = scheduleId,
+                name = fields[FIELD_SCHEDULE_NAME] ?: return@mapNotNull null,
+                days = members("$scheduleRoot/$FIELD_SCHEDULE_DAYS").mapNotNull(String::toIntOrNull).toSet(),
+                startMinuteOfDay = fields[FIELD_SCHEDULE_START]?.toIntOrNull() ?: return@mapNotNull null,
+                endMinuteOfDay = fields[FIELD_SCHEDULE_END]?.toIntOrNull() ?: return@mapNotNull null,
+                packages = members("$scheduleRoot/$FIELD_SCHEDULE_PACKAGES"),
+                mode = ScheduleBlock.Mode.entries.firstOrNull { it.name == fields[FIELD_SCHEDULE_MODE] }
+                    ?: ScheduleBlock.Mode.EXCLUSIVE,
+                enabled = fields[FIELD_SCHEDULE_ENABLED]?.toBooleanStrictOrNull() ?: true,
+            ).takeIf { it.isComplete }
+        }
+    }
+
+    /**
+     * Every schedule as a path, plus a [FIELD_SCHEDULE_DELETED] marker for one
+     * that used to be live and no longer is.
+     *
+     * This is the one place policy replication departs from how [flatten]
+     * deletes a category: a gone category has every one of its paths written to
+     * a tombstone, and that is exactly the shape a genuine race can break. A
+     * delete and a concurrent rename land on the *same* schedule from two
+     * different devices; each writes a different path (`deleted` versus `name`),
+     * so [StateMerge] never compares them against each other at all — there is
+     * no shared Lamport stamp for "delete" to win or lose against "rename", and
+     * the two fields simply resolve independently. If the delete instead nulled
+     * `name` itself, whichever write happened to carry the higher stamp would
+     * decide the outcome, and a replica that saw the rename's stamp win would go
+     * on showing a schedule that every other replica had already dropped.
+     *
+     * Writing a single `deleted` marker sidesteps that: [readSchedules] excludes
+     * a schedule the instant that marker is present, with nothing left to race.
+     * A rename arriving after the marker changes a field nobody reads any more.
+     *
+     * Deliberately not reapplied once a schedule already carries the marker —
+     * [now] would otherwise creep forward on every push, and the timestamp is
+     * meant to answer "how long has this actually been gone", for a pruning
+     * horizon this milestone leaves undecided (see #40).
+     */
+    private fun flattenSchedules(
+        schedules: List<StoredSchedule>,
+        childId: DeviceId,
+        now: Instant,
+    ): Map<String, String?> = buildMap {
+        val root = "$POLICY/${childId.value}/$PATH_SCHEDULES"
+        schedules.forEach { schedule ->
+            val scheduleRoot = "$root/${schedule.id}"
+            put("$scheduleRoot/$FIELD_SCHEDULE_NAME", schedule.name)
+            put("$scheduleRoot/$FIELD_SCHEDULE_START", schedule.startMinuteOfDay.toString())
+            put("$scheduleRoot/$FIELD_SCHEDULE_END", schedule.endMinuteOfDay.toString())
+            put("$scheduleRoot/$FIELD_SCHEDULE_MODE", schedule.mode.name)
+            put("$scheduleRoot/$FIELD_SCHEDULE_ENABLED", schedule.enabled.toString())
+            putMembers("$scheduleRoot/$FIELD_SCHEDULE_DAYS", schedule.days.map(Int::toString).toSet())
+            putMembers("$scheduleRoot/$FIELD_SCHEDULE_PACKAGES", schedule.packages)
+        }
+
+        val live = schedules.map { it.id }.toSet()
+        state.idsUnder(root)
+            .filterNot { it in live }
+            .filterNot { FIELD_SCHEDULE_DELETED in state.children("$root/$it") }
+            .forEach { gone -> put("$root/$gone/$FIELD_SCHEDULE_DELETED", now.epochSecond.toString()) }
+    }
+
     private fun members(root: String): Set<String> = state.children(root).keys
 
     /**
@@ -273,5 +380,22 @@ class PolicyReplication(context: Context) {
         const val PATH_NETWORK_BLOCKED = "networkBlocked"
         const val PATH_INSTALL_POLICY = "installPolicy"
         const val PATH_INSTALL_WINDOW = "installWindowUntil"
+
+        const val PATH_SCHEDULES = "schedules"
+        const val FIELD_SCHEDULE_NAME = "name"
+        const val FIELD_SCHEDULE_START = "start"
+        const val FIELD_SCHEDULE_END = "end"
+        const val FIELD_SCHEDULE_MODE = "mode"
+        const val FIELD_SCHEDULE_ENABLED = "enabled"
+        const val FIELD_SCHEDULE_DAYS = "days"
+        const val FIELD_SCHEDULE_PACKAGES = "packages"
+
+        /**
+         * A schedule id under this marker is gone, whatever its other fields say.
+         * The value is the second it was marked, not a bare flag — see
+         * [flattenSchedules] for why, and #40 for the pruning horizon this leaves
+         * unresolved.
+         */
+        const val FIELD_SCHEDULE_DELETED = "deleted"
     }
 }
