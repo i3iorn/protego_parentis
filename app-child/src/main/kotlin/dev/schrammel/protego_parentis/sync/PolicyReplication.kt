@@ -2,12 +2,15 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.model.AutoApproval
+import dev.schrammel.protego_parentis.model.AutoApprovalWindow
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.ScheduleBlock
+import dev.schrammel.protego_parentis.rules.AutoApprovalStore
 import dev.schrammel.protego_parentis.rules.ContextRuleCodec
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.DnsProfile
@@ -20,6 +23,7 @@ import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.security.RoleStore
 import java.time.Instant
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * The rules, as paths.
@@ -552,6 +556,96 @@ class PolicyReplication(context: Context) {
             .forEach { gone -> put("$root/$gone/$FIELD_PLACE_DELETED", now.epochSecond.toString()) }
     }
 
+    /**
+     * Records [rules] as [childId]'s replicated auto-approval rules — the
+     * schedules/contextual-rules shape's equivalent for RQ-1's standing
+     * answers.
+     *
+     * [AutoApproval.target] does not round-trip: [AutoApprovalStore] itself
+     * has never persisted it either — no editor screen sets it — so there is
+     * nothing here to replicate yet. A rule read back always has `target =
+     * null`, exactly as one read from local storage already does.
+     */
+    fun writeAutoApprovals(
+        rules: List<AutoApproval>,
+        childId: DeviceId? = defaultChildId(),
+        now: Instant = Instant.now(),
+    ): List<StateOp> {
+        val id = childId ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
+        val role = RoleStore(appContext).roleOrChild.toSyncRole()
+        return state.writeAll(flattenAutoApprovals(rules, id, now), origin, role)
+    }
+
+    /**
+     * [childId]'s replicated auto-approval rules, excluding any this replica
+     * has been told is gone — see [FIELD_AUTO_DELETED] on
+     * [flattenAutoApprovals], the same deleted-marker approach [readSchedules]
+     * uses.
+     */
+    fun readAutoApprovals(childId: DeviceId? = defaultChildId()): List<AutoApproval> {
+        val id = childId ?: return emptyList()
+        val root = "$POLICY/${id.value}/$PATH_AUTO_APPROVAL"
+        return state.idsUnder(root).mapNotNull { ruleId ->
+            val fields = state.children("$root/$ruleId")
+            if (FIELD_AUTO_DELETED in fields) return@mapNotNull null
+
+            val name = fields[FIELD_AUTO_NAME] ?: return@mapNotNull null
+            val minutes = fields[FIELD_AUTO_MAX_MINUTES]?.toIntOrNull() ?: return@mapNotNull null
+            val count = fields[FIELD_AUTO_MAX_PER_WINDOW]?.toIntOrNull() ?: return@mapNotNull null
+            runCatching {
+                AutoApproval(
+                    id = ruleId,
+                    name = name,
+                    enabled = fields[FIELD_AUTO_ENABLED]?.toBooleanStrictOrNull() ?: true,
+                    maxAmount = minutes.minutes,
+                    maxPerWindow = count,
+                    window = AutoApprovalWindow.entries.firstOrNull { it.name == fields[FIELD_AUTO_WINDOW] }
+                        ?: AutoApprovalWindow.WEEK,
+                )
+            }.getOrNull()
+        }
+    }
+
+    /**
+     * Records this phone's own [AutoApprovalStore] rules as replicated
+     * writes — [pushContextRulesFromLocal]'s equivalent.
+     */
+    fun pushAutoApprovalsFromLocal(childId: DeviceId? = defaultChildId()): List<StateOp> =
+        writeAutoApprovals(AutoApprovalStore(appContext).rules, childId)
+
+    /** [pullContextRulesIntoLocal]'s equivalent, for auto-approval rules. */
+    fun pullAutoApprovalsIntoLocal(childId: DeviceId? = defaultChildId()) {
+        AutoApprovalStore(appContext).rules = readAutoApprovals(childId)
+    }
+
+    /**
+     * Every auto-approval rule as a path, plus a [FIELD_AUTO_DELETED] marker
+     * — see [flattenSchedules] for why a marker rather than nulling every
+     * field.
+     */
+    private fun flattenAutoApprovals(
+        rules: List<AutoApproval>,
+        childId: DeviceId,
+        now: Instant,
+    ): Map<String, String?> = buildMap {
+        val root = "$POLICY/${childId.value}/$PATH_AUTO_APPROVAL"
+        rules.forEach { rule ->
+            val ruleRoot = "$root/${rule.id}"
+            put("$ruleRoot/$FIELD_AUTO_NAME", rule.name)
+            put("$ruleRoot/$FIELD_AUTO_ENABLED", rule.enabled.toString())
+            put("$ruleRoot/$FIELD_AUTO_MAX_MINUTES", rule.maxAmount.inWholeMinutes.toString())
+            put("$ruleRoot/$FIELD_AUTO_MAX_PER_WINDOW", rule.maxPerWindow.toString())
+            put("$ruleRoot/$FIELD_AUTO_WINDOW", rule.window.name)
+        }
+
+        val live = rules.map { it.id }.toSet()
+        state.idsUnder(root)
+            .filterNot { it in live }
+            .filterNot { FIELD_AUTO_DELETED in state.children("$root/$it") }
+            .forEach { gone -> put("$root/$gone/$FIELD_AUTO_DELETED", now.epochSecond.toString()) }
+    }
+
     private fun members(root: String): Set<String> = state.children(root).keys
 
     /**
@@ -692,5 +786,15 @@ class PolicyReplication(context: Context) {
 
         /** As [FIELD_SCHEDULE_DELETED], for a place. */
         const val FIELD_PLACE_DELETED = "deleted"
+
+        const val PATH_AUTO_APPROVAL = "autoApproval"
+        const val FIELD_AUTO_NAME = "name"
+        const val FIELD_AUTO_ENABLED = "enabled"
+        const val FIELD_AUTO_MAX_MINUTES = "maxMinutes"
+        const val FIELD_AUTO_MAX_PER_WINDOW = "maxPerWindow"
+        const val FIELD_AUTO_WINDOW = "window"
+
+        /** As [FIELD_SCHEDULE_DELETED], for an auto-approval rule. */
+        const val FIELD_AUTO_DELETED = "deleted"
     }
 }
