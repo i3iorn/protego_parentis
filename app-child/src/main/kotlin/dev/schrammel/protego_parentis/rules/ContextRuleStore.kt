@@ -14,7 +14,9 @@ import org.json.JSONObject
  *
  * Places hold coordinates and so are the most sensitive thing this app keeps.
  * They stay in app-private storage, are excluded from backup along with
- * everything else, and are never included in a sync message or the diagnostic log.
+ * everything else, and a coordinate is never included in a sync message or the
+ * diagnostic log — see [dev.schrammel.protego_parentis.model.PlaceRef] for the
+ * name and radius that, unlike a coordinate, do replicate.
  *
  * Parsing is defensive throughout: a rule that cannot be read is dropped rather
  * than crashing the enforcement service, which runs on the child's phone and has

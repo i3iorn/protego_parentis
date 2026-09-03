@@ -16,8 +16,9 @@ value class DeviceTag(val value: String) {
  * A place the family has named, stored only on this device.
  *
  * Coordinates live here and nowhere else. They are never put into a rule, never
- * written to the diagnostic log, and never transmitted — see [DeviceContext] for
- * why that is structural rather than a promise.
+ * written to the diagnostic log, and never leave this device — see
+ * [DeviceContext] for why that is structural rather than a promise, and
+ * [PlaceRef] for the part of a place that *does* replicate.
  */
 data class Place(
     val id: PlaceId,
@@ -45,6 +46,30 @@ data class Place(
          * every few seconds, and rules would flicker with it.
          */
         const val MINIMUM_RADIUS_METRES = 75
+    }
+}
+
+/**
+ * A place's name and radius, without where it is.
+ *
+ * What [dev.schrammel.protego_parentis.sync.PolicyReplication] puts on the
+ * wire for a [Place]: enough for a parent's own phone to see the places a
+ * rule can reference, and to rename, resize or remove one, without that
+ * phone ever receiving a coordinate. Creating a place, or moving it, still
+ * only happens on whichever device holds its [Place.latitude]/
+ * [Place.longitude] — ordinarily the managed phone, since that is where a
+ * saved position is turned into "inside" or "outside" for the rules engine.
+ */
+data class PlaceRef(
+    val id: PlaceId,
+    val name: String,
+    val radiusMetres: Int,
+) {
+    init {
+        require(name.isNotBlank()) { "a place needs a name to show in a rule" }
+        require(radiusMetres >= Place.MINIMUM_RADIUS_METRES) {
+            "a radius under ${Place.MINIMUM_RADIUS_METRES} m flaps constantly on consumer GPS"
+        }
     }
 }
 
