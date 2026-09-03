@@ -41,7 +41,8 @@ fun installedInventory(context: Context): List<AppInventoryEntry> =
     InstalledApps(context).launchable().map { AppInventoryEntry(it.pkg.value, it.label) }
 
 /**
- * A parent phone's cached copy of the child's app list.
+ * A parent phone's cached copy of a child's app list, one per managed phone
+ * (#43 — a family can hold more than one).
  *
  * Read-only from this phone's point of view — nothing here installs, removes or
  * renames anything, it only remembers the last answer to "what's on that phone"
@@ -53,20 +54,21 @@ class AppInventoryStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    var apps: List<AppInventoryEntry>
-        get() = AppInventoryCodec.decode(prefs.getString(KEY_APPS, null))
-        set(value) = prefs.edit {
-            putString(KEY_APPS, AppInventoryCodec.encode(value))
-            putLong(KEY_RECEIVED_AT, Instant.now().toEpochMilli())
-        }
+    fun apps(childId: DeviceId): List<AppInventoryEntry> =
+        AppInventoryCodec.decode(prefs.getString(KEY_APPS_PREFIX + childId.value, null))
 
-    /** Null until this phone has ever heard back. */
-    val receivedAt: Instant?
-        get() = prefs.getLong(KEY_RECEIVED_AT, 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
+    fun setApps(childId: DeviceId, apps: List<AppInventoryEntry>) = prefs.edit {
+        putString(KEY_APPS_PREFIX + childId.value, AppInventoryCodec.encode(apps))
+        putLong(KEY_RECEIVED_AT_PREFIX + childId.value, Instant.now().toEpochMilli())
+    }
+
+    /** Null until this phone has ever heard back from [childId]. */
+    fun receivedAt(childId: DeviceId): Instant? =
+        prefs.getLong(KEY_RECEIVED_AT_PREFIX + childId.value, 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
 
     private companion object {
         const val FILE_NAME = "app_inventory"
-        const val KEY_APPS = "apps"
-        const val KEY_RECEIVED_AT = "receivedAt"
+        const val KEY_APPS_PREFIX = "apps/"
+        const val KEY_RECEIVED_AT_PREFIX = "receivedAt/"
     }
 }
