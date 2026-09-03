@@ -148,6 +148,15 @@
     <string name="places_no_fix">Ingen plats tillgänglig än. Öppna en kartapp en stund och försök igen.</string>
     <string name="places_delete">Ta bort</string>
     <string name="places_delete_warning">Alla regler som använder platsen tas också bort, så inget blir kvar som pekar på en plats som inte finns.</string>
+    <string name="places_add_by_coordinates">Lägg till med koordinater</string>
+    <string name="places_lat_hint">Latitud, till exempel 51,5074</string>
+    <string name="places_lon_hint">Longitud, till exempel -0,1278</string>
+    <string name="places_radius_hint">Radie i meter</string>
+    <string name="places_check_map">Kontrollera på karta</string>
+    <string name="places_name_required">Ge platsen ett namn.</string>
+    <string name="places_bad_coordinates">Latitud måste vara mellan -90 och 90, och longitud mellan -180 och 180.</string>
+    <string name="places_bad_radius">Radien måste vara minst %1$d m.</string>
+    <string name="places_no_map_app">Ingen kartapp är installerad att kontrollera detta i.</string>
     <string name="home_context_active">Gäller nu: %1$s</string>
 
     <!-- Integritet och logg. -->
