@@ -146,8 +146,6 @@ class HomeActivity : DementorActivity() {
             HomeDestination.INBOX,
             HomeDestination.LOCK_NOW,
             HomeDestination.LOCATE,
-            HomeDestination.LIMIT,
-            HomeDestination.BONUS,
             HomeDestination.THE_OTHER_PHONE,
             -> error("$destination does not appear on the managed phone's home screen")
         }

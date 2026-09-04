@@ -282,7 +282,7 @@
     <string name="limits_title">Limits</string>
     <string name="rules_group_limits">How much</string>
     <string name="rules_group_day">How the day works</string>
-    <string name="rules_group_family">Family</string>
+    <string name="rules_group_requests">Requests</string>
     <string name="rules_group_device">This device</string>
     <string name="rules_row_limits">Daily limit and bedtime</string>
     <string name="rules_row_limits_detail">The allowance, quiet hours, and apps that ignore both</string>
@@ -317,6 +317,7 @@
     <!-- Shown on the rules hub when a parent with more than one managed
          phone is editing one that is not this device. -->
     <string name="rules_editing_whose">Editing %1$s\'s rules</string>
+    <string name="rules_remote_omissions">Some rules can only be changed on the phone itself</string>
 
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>
@@ -434,10 +435,6 @@
     <string name="parent_checked_at">Last checked at %1$s</string>
     <string name="parent_row_inbox">Requests</string>
     <string name="parent_row_inbox_detail">Answer asks for more time</string>
-    <string name="parent_row_bonus">Send extra time</string>
-    <string name="parent_row_bonus_detail">Add minutes without being asked</string>
-    <string name="parent_row_limit">Change daily limit</string>
-    <string name="parent_row_limit_detail">Set a new allowance from here, without the phone</string>
     <string name="parent_row_rules">Rules</string>
     <string name="parent_row_rules_detail">Every rule this family can set, from here</string>
     <string name="parent_row_audit">History</string>
