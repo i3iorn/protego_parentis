@@ -82,6 +82,15 @@ class PolicyReplication(context: Context) {
      * as it did before this class knew about scoping at all. Choosing *which*
      * child on a multi-child family's screens is a UI question for later work,
      * not something this class can answer on its own.
+     *
+     * Re-checked for #45, now that a second managed phone can actually be
+     * enrolled rather than only represented: still safe. Every real caller of
+     * this class already runs on the managed phone about its own rules, and
+     * [RosterStore.child] on that phone can never resolve to a *different*
+     * child — [RosterReplication.pullIntoRoster] refuses any roster entry
+     * claiming a CHILD role regardless of which role the receiving device
+     * itself holds, the same as [Enrolment.shouldAccept] refuses a vouch for
+     * one. A managed phone's own roster holds at most itself among children.
      */
     private fun defaultChildId(): DeviceId? = roster.child()?.id
 
