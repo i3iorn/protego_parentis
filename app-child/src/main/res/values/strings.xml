@@ -1038,6 +1038,11 @@
     <string name="privacy_chat_body">Anything typed in Messages goes to the other phones in the family, encrypted like everything else. Both ends keep the last few hundred messages until somebody clears them. Only text and emoji can be sent — there is no way to send a picture, a file or a link that opens anything.</string>
 
     <string name="chat_no_family">This phone is not connected to a family yet, so there is nobody to write to.</string>
+    <string name="chat_status_never">%1$s · hasn\'t connected yet</string>
+    <string name="chat_status_online">%1$s · online</string>
+    <string name="chat_status_minutes_ago">%1$s · %2$d min ago</string>
+    <string name="chat_status_hours_ago">%1$s · %2$d h ago</string>
+    <string name="chat_status_days_ago">%1$s · %2$d d ago</string>
 
     <string name="home_cannot_open">That app cannot be opened from here.</string>
 

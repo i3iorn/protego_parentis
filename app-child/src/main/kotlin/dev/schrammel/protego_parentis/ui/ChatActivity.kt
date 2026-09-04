@@ -3,6 +3,8 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.InputFilter
 import android.text.InputType
 import android.view.Gravity
@@ -14,10 +16,16 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.enforcement.RequestNotifier
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.sync.ChatMessage
 import dev.schrammel.protego_parentis.sync.ChatStore
+import dev.schrammel.protego_parentis.sync.KnownDevice
+import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -43,6 +51,14 @@ import java.time.format.DateTimeFormatter
  * Not PIN-gated on either side. A parent needing a code to say "dinner is ready"
  * is friction with nothing behind it, and a child who cannot answer without one
  * has not been given a chat.
+ *
+ * While this screen is open it polls on its own short timer (#70) rather than
+ * relying on the background cadence everything else in this app uses — a
+ * parent's own `ParentPollWorker` runs on a 15-minute floor, and the managed
+ * phone's tick can be minutes apart too, both far too slow for a conversation
+ * somebody is actively looking at. That short timer only ever runs while this
+ * Activity is the one on screen; it is not a new always-on channel, just this
+ * screen refusing to wait for the next unrelated tick while somebody is here.
  */
 class ChatActivity : DementorActivity() {
 
@@ -52,17 +68,27 @@ class ChatActivity : DementorActivity() {
 
     private lateinit var sync: SyncCoordinator
     private lateinit var store: ChatStore
+    private lateinit var roster: RosterStore
     private lateinit var conversation: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var input: EditText
     private lateinit var composer: View
+    private lateinit var status: TextView
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
+    private val pollHandler = Handler(Looper.getMainLooper())
+    private val pollTick = object : Runnable {
+        override fun run() {
+            sync.pollNow { runOnUiThread { render() } }
+            pollHandler.postDelayed(this, LIVE_POLL_INTERVAL_MILLIS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sync = SyncCoordinator(this)
         store = ChatStore(this)
+        roster = RosterStore(this)
 
         conversation = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -76,6 +102,8 @@ class ChatActivity : DementorActivity() {
             addView(conversation, LinearLayout.LayoutParams(MATCH, WRAP))
         }
 
+        status = statusLine()
+
         // The whole screen rather than a scrolling column: the composer has to stay
         // put at the bottom while the conversation moves behind it, which is the
         // one layout in this app that a single scroll view cannot give.
@@ -85,6 +113,7 @@ class ChatActivity : DementorActivity() {
                 layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
                 composer = composer()
                 addView(header())
+                addView(status)
                 addView(scroll)
                 addView(composer)
             },
@@ -93,9 +122,23 @@ class ChatActivity : DementorActivity() {
 
     override fun onResume() {
         super.onResume()
+        // This phone is looking at the conversation now — a chat notification
+        // for something already visible here would be telling somebody twice.
+        // See RequestNotifier.notifyChat.
+        isVisible = true
+        RequestNotifier(this).clearChatNotification()
         render()
-        // Opening the conversation is when somebody expects to be up to date.
+        // Opening the conversation is when somebody expects to be up to date,
+        // and then the short timer keeps it that way for as long as the screen
+        // stays open — see the class doc for why this screen alone does this.
         sync.pollNow { runOnUiThread { render() } }
+        pollHandler.postDelayed(pollTick, LIVE_POLL_INTERVAL_MILLIS)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isVisible = false
+        pollHandler.removeCallbacks(pollTick)
     }
 
     private fun header(): View = LinearLayout(this).apply {
@@ -116,6 +159,41 @@ class ChatActivity : DementorActivity() {
                 setOnClickListener { confirmClear() }
             },
         )
+    }
+
+    /**
+     * When everyone else in the family was last heard from (#70).
+     *
+     * Reads [RosterStore.observed]'s existing `lastHeardAt`, updated on any
+     * accepted message from a device, not something new this screen has to
+     * maintain itself. Not a read receipt and not a promise the other person
+     * saw *this* conversation — only that their phone has talked to the
+     * family at all recently, the same fact `ParentPollWorker`'s "gone quiet"
+     * alert is already built on.
+     */
+    private fun statusLine(): TextView = captionText("").apply {
+        val pad = dimen(R.dimen.screen_padding)
+        setPadding(pad, 0, pad, dimen(R.dimen.space_xs))
+    }
+
+    private fun renderStatus() {
+        val selfId = LocalDeviceId.current()
+        val others = roster.devices.filter { it.id.value != selfId }
+        status.visibility = if (others.isEmpty()) View.GONE else View.VISIBLE
+        status.text = others
+            .sortedBy { it.name.lowercase() }
+            .joinToString(STATUS_SEPARATOR) { statusFor(it) }
+    }
+
+    private fun statusFor(device: KnownDevice): String {
+        val heard = device.lastHeardAt ?: return getString(R.string.chat_status_never, device.name)
+        val since = Duration.between(heard, Instant.now())
+        return when {
+            since <= ONLINE_WITHIN -> getString(R.string.chat_status_online, device.name)
+            since.toDays() >= 1 -> getString(R.string.chat_status_days_ago, device.name, since.toDays())
+            since.toHours() >= 1 -> getString(R.string.chat_status_hours_ago, device.name, since.toHours())
+            else -> getString(R.string.chat_status_minutes_ago, device.name, since.toMinutes().coerceAtLeast(1))
+        }
     }
 
     private fun composer(): View = LinearLayout(this).apply {
@@ -201,6 +279,7 @@ class ChatActivity : DementorActivity() {
         // nothing to type into either.
         val connected = sync.settings().isUsable
         composer.visibility = if (connected) View.VISIBLE else View.GONE
+        if (connected) renderStatus() else status.visibility = View.GONE
         if (!connected) conversation.addView(captionText(getString(R.string.chat_no_family)))
 
         if (messages.isEmpty()) {
@@ -278,6 +357,32 @@ class ChatActivity : DementorActivity() {
 
         /** The box grows to this and then scrolls, rather than eating the screen. */
         private const val COMPOSER_MAX_LINES = 5
+
+        /**
+         * How often this screen polls on its own while it is the one open (#70).
+         *
+         * Well under the child device's own enforcement-tick floor (15s) and far
+         * under a parent's 15-minute `ParentPollWorker` window — deliberately so,
+         * since this only ever runs while somebody is looking at the screen, not
+         * as a background habit the rest of the app would then also pay for.
+         */
+        private const val LIVE_POLL_INTERVAL_MILLIS = 8_000L
+
+        /** Below this, a device reads as "online" rather than "last seen…". */
+        private val ONLINE_WITHIN: Duration = Duration.ofMinutes(2)
+
+        private const val STATUS_SEPARATOR = "  ·  "
+
+        /**
+         * Whether this screen is the one currently on top.
+         *
+         * Read by [RequestNotifier.notifyChat] so a message arriving while
+         * somebody is already watching it land in the transcript below does not
+         * also buzz the phone about the same thing a second time.
+         */
+        @Volatile
+        var isVisible: Boolean = false
+            private set
 
         fun intent(context: Context) = Intent(context, ChatActivity::class.java)
     }
