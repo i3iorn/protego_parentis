@@ -21,7 +21,6 @@ import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Reason
-import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
@@ -114,73 +113,44 @@ class HomeActivity : DementorActivity() {
     /**
      * Where this screen leads.
      *
-     * The first group is what a child actually opens this app to do, including
-     * rules — even though rules are also one tap further inside "More". Burying
-     * the *only* way to them behind a general catch-all made everything rules
-     * leads to (limits, schedules, categories, per-app control) three or four
-     * taps deep for no reason anyone would choose on purpose; a second, more
-     * direct row here costs nothing for someone who was headed into More anyway.
+     * Grouped the same way [ParentHomeActivity] is now (#78): whatever this
+     * phone was opened to do, unlabelled; then Rules; Family; Openness;
+     * Settings. What lands inside each group is [homeSections]' business, not
+     * this method's — this only maps each [HomeDestination] to the screen it
+     * opens.
      */
     private fun buildNavigation() {
         val navigation = findViewById<LinearLayout>(R.id.navigation)
         navigation.removeAllViews()
 
-        val on = FeatureFlags(this)
+        homeSections(DeviceRole.CHILD, FeatureFlags(this)).forEach { section ->
+            addSection(
+                navigation,
+                section.label?.let(::getString),
+                section.rows.map { entry -> row(entry.title, entry.detail) { open(entry.destination) } },
+            )
+        }
+    }
 
-        // Unlabelled: the screen title has already said this is your phone, and a
-        // heading over the first group would only be naming the obvious.
-        addSection(
-            navigation,
-            null,
-            buildList {
-                if (on.isEnabled(Feature.REQUESTS)) {
-                    add(
-                        row(R.string.home_open_requests, R.string.home_open_requests_detail) {
-                            startActivity(RequestsActivity.intent(this@HomeActivity))
-                        },
-                    )
-                }
-                if (on.isEnabled(Feature.CHAT)) {
-                    add(
-                        row(R.string.chat_title, R.string.chat_row_detail) {
-                            startActivity(ChatActivity.intent(this@HomeActivity))
-                        },
-                    )
-                }
-                add(
-                    row(R.string.home_open_week, R.string.home_open_week_detail) {
-                        startActivity(WeekActivity.intent(this@HomeActivity))
-                    },
-                )
-                if (on.isEnabled(Feature.WEB_ACTIVITY)) {
-                    add(
-                        row(
-                            R.string.rules_row_web_activity,
-                            R.string.rules_row_web_activity_detail,
-                        ) { startActivity(WebActivityActivity.intent(this@HomeActivity)) },
-                    )
-                }
-                // Also reachable via More → Change rules. Rules sat three taps
-                // deep behind that one row and everything it leads to went down
-                // with it — this is the direct way in, not a replacement for that
-                // one, since somebody already in More has no reason to back out.
-                add(
-                    row(R.string.home_edit_rules, R.string.home_edit_rules_detail) {
-                        startActivity(Intent(this@HomeActivity, RulesActivity::class.java))
-                    },
-                )
-                // History, privacy and settings all moved one tap away behind
-                // this one row — kept in the same card as everything above
-                // rather than its own, which used to sit close enough beneath
-                // it to look like a seam in one broken card instead of two
-                // deliberate ones.
-                add(
-                    row(R.string.home_open_more, R.string.home_open_more_detail) {
-                        startActivity(HomeMoreActivity.intent(this@HomeActivity))
-                    },
-                )
-            },
-        )
+    private fun open(destination: HomeDestination) {
+        when (destination) {
+            HomeDestination.REQUESTS -> startActivity(RequestsActivity.intent(this))
+            HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
+            HomeDestination.WEEK -> startActivity(WeekActivity.intent(this))
+            HomeDestination.WEB_ACTIVITY -> startActivity(WebActivityActivity.intent(this))
+            HomeDestination.RULES -> startActivity(Intent(this, RulesActivity::class.java))
+            HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
+            HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
+            HomeDestination.PRIVACY -> startActivity(PrivacyActivity.intent(this))
+            HomeDestination.SETTINGS -> startActivity(SettingsActivity.intent(this))
+            HomeDestination.INBOX,
+            HomeDestination.LOCK_NOW,
+            HomeDestination.LOCATE,
+            HomeDestination.LIMIT,
+            HomeDestination.BONUS,
+            HomeDestination.THE_OTHER_PHONE,
+            -> error("$destination does not appear on the managed phone's home screen")
+        }
     }
 
     /**

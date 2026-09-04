@@ -172,9 +172,6 @@
     <string name="privacy_log_body">A short record of what the app did — that it checked your time, that it started, that something failed. It holds no app names, no reasons you wrote and no times you were using anything. You can read all of it.</string>
     <string name="privacy_view_log">Read the log</string>
     <string name="home_open_privacy">What leaves this phone</string>
-    <string name="home_more_title">More</string>
-    <string name="home_open_more">More</string>
-    <string name="home_open_more_detail">History, what leaves this phone, and settings</string>
 
     <string name="diagnostics_title">App log</string>
     <string name="diagnostics_header">Dementor Watch log. Contains only what the app did: event names, counts and times. No app names, no messages, no reasons, no passwords.</string>
@@ -1011,7 +1008,8 @@
     <string name="settings_row_detail">Notifications, permissions, language, and this phone\'s PIN</string>
     <string name="settings_group_family">This family</string>
     <string name="settings_row_role_detail">Hand this phone over to be the one with the limits</string>
-    <string name="parent_group_family">Your family</string>
+    <string name="home_group_family">Family</string>
+    <string name="home_group_rules">Rules</string>
     <string name="join_relay_header">How messages travel</string>
     <string name="features_each_phone">Set on each phone separately. This one only changes what you see here.</string>
 

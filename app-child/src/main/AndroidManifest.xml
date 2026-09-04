@@ -167,17 +167,16 @@
 
         <!--
           The shared history. Deliberately not gated: a record only the parent can
-          read is not a shared record.
+          read is not a shared record. Reachable from both home screens now
+          (#78) — HomeActivity here is the same imprecise placeholder already
+          used for every other screen both roles reach (PermissionsActivity,
+          ChatActivity, NotificationSettingsActivity below); #78's own part 4
+          is where every one of these gets a real answer, together.
         -->
-        <activity
-            android:name=".ui.HomeMoreActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.HomeActivity" />
-
         <activity
             android:name=".ui.AuditActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeMoreActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.LimitsActivity"
@@ -278,7 +277,7 @@
         <activity
             android:name=".ui.PrivacyActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeMoreActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.DiagnosticsActivity"
