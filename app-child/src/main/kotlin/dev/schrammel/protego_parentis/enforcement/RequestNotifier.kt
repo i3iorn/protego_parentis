@@ -12,11 +12,15 @@ import dev.schrammel.protego_parentis.ui.FamilyDevicesActivity
 import dev.schrammel.protego_parentis.ui.ChatActivity
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestState
+import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.IncomingRequest
 import dev.schrammel.protego_parentis.sync.NewApp
 import dev.schrammel.protego_parentis.ui.AppControlActivity
 import dev.schrammel.protego_parentis.ui.AuditActivity
+import dev.schrammel.protego_parentis.ui.HomeActivity
 import dev.schrammel.protego_parentis.ui.ParentDeviceActivity
+import dev.schrammel.protego_parentis.ui.ParentHomeActivity
 import dev.schrammel.protego_parentis.ui.ParentInboxActivity
 import dev.schrammel.protego_parentis.ui.RequestInboxActivity
 import dev.schrammel.protego_parentis.ui.RequestsActivity
@@ -440,9 +444,7 @@ class RequestNotifier(context: Context) {
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
         return runCatching {
-            TaskStackBuilder.create(appContext)
-                .addNextIntentWithParentStack(destination)
-                .getPendingIntent(id, flags)
+            stackFor(destination).getPendingIntent(id, flags)
         }.getOrNull() ?: PendingIntent.getActivity(
             appContext,
             id,
@@ -451,7 +453,35 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * [destination]'s ancestors, chosen for whichever phone is about to open it.
+     *
+     * `parentActivityName` can only name one class, but a chat message or a
+     * family-roster change can land on either kind of phone (#78) — there is no
+     * single manifest entry that is correct for both. These two are built by
+     * hand, rooted at whichever home this device actually has; every other
+     * destination still comes from the manifest, unchanged.
+     */
+    private fun stackFor(destination: Intent): TaskStackBuilder {
+        val className = destination.component?.className
+        val ambiguous = className != null && ROLE_AMBIGUOUS_DESTINATIONS.contains(className)
+        if (!ambiguous) return TaskStackBuilder.create(appContext).addNextIntentWithParentStack(destination)
+
+        val home = if (RoleStore(appContext).roleOrChild == DeviceRole.PARENT) {
+            ParentHomeActivity.intent(appContext)
+        } else {
+            Intent(appContext, HomeActivity::class.java)
+        }
+        return TaskStackBuilder.create(appContext).addNextIntent(home).addNextIntent(destination)
+    }
+
     private companion object {
+        /** Notification destinations with no single correct manifest parent — see [stackFor]. */
+        val ROLE_AMBIGUOUS_DESTINATIONS = setOf(
+            ChatActivity::class.java.name,
+            FamilyDevicesActivity::class.java.name,
+        )
+
         const val CHANNEL_INCOMING = "requests_incoming"
         const val CHANNEL_DECISION = "requests_decision"
 
