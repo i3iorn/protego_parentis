@@ -28,13 +28,13 @@ internal enum class SettingsDestination {
 }
 
 internal data class SettingsRow(
-    @StringRes val title: Int,
-    @StringRes val detail: Int,
+    @param:StringRes val title: Int,
+    @param:StringRes val detail: Int,
     val destination: SettingsDestination,
 )
 
 internal data class SettingsSection(
-    @StringRes val label: Int?,
+    @param:StringRes val label: Int?,
     val rows: List<SettingsRow>,
 )
 
