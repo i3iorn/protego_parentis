@@ -177,9 +177,6 @@
     <string name="privacy_log_body">En kort anteckning om vad appen gjorde — att den kollade din tid, att den startade, att något gick fel. Den innehåller inga appnamn, inga anledningar du skrivit och inga tider då du använde något. Du får läsa hela.</string>
     <string name="privacy_view_log">Läs loggen</string>
     <string name="home_open_privacy">Vad som lämnar telefonen</string>
-    <string name="home_more_title">Mer</string>
-    <string name="home_open_more">Mer</string>
-    <string name="home_open_more_detail">Historik, vad som lämnar telefonen, och inställningar</string>
 
     <string name="diagnostics_title">Applogg</string>
     <string name="diagnostics_header">Dementor Watch-logg. Innehåller bara vad appen gjorde: händelsenamn, antal och tider. Inga appnamn, inga meddelanden, inga anledningar, inga lösenord.</string>
@@ -1008,7 +1005,8 @@
     <string name="settings_row_detail">Aviseringar, behörigheter, språk och telefonens PIN-kod</string>
     <string name="settings_group_family">Den här familjen</string>
     <string name="settings_row_role_detail">Lämna över den här telefonen så att den blir den med gränserna</string>
-    <string name="parent_group_family">Din familj</string>
+    <string name="home_group_family">Familj</string>
+    <string name="home_group_rules">Regler</string>
     <string name="join_relay_header">Hur meddelanden färdas</string>
     <string name="features_each_phone">Ställs in separat på varje telefon. Den här ändrar bara vad du ser här.</string>
 
