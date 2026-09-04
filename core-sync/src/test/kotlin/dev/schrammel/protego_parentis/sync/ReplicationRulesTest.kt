@@ -274,6 +274,31 @@ class ReplicationRulesTest {
     }
 
     /**
+     * The `enrolled` register works the same way as `approvals`, and for a
+     * parallel reason: a parent claiming another parent's device had already
+     * enrolled a second managed phone locally would let that proposal's
+     * cleanup fire before every parent's own roster actually held the child.
+     */
+    @Test
+    fun `a parent may mark itself enrolled but not another parent`() {
+        val own = op("consensus/1/enrolled/AAAA", "1")
+        val onBehalfOfSomeoneElse = op("consensus/1/enrolled/BBBB", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, own, DeviceId("AAAA")))
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, onBehalfOfSomeoneElse, DeviceId("AAAA")))
+    }
+
+    /** Same tombstone exemption as `approvals`, for the same reason. */
+    @Test
+    fun `any parent may tombstone another parent's enrolled register, but not fabricate one`() {
+        val tombstone = op("consensus/1/enrolled/AAAA", value = null)
+        val fabricated = op("consensus/1/enrolled/AAAA", "1")
+
+        assertTrue(ReplicationRules.accepts(SyncRole.PARENT, tombstone, DeviceId("BBBB")))
+        assertFalse(ReplicationRules.accepts(SyncRole.PARENT, fabricated, DeviceId("BBBB")))
+    }
+
+    /**
      * The removal timer's cancellation is deliberately not self-attestation —
      * any current parent, including the one being removed, may stop it. See
      * ReplicationRules.mayWrite's CONSENSUS branch: the section-level "any
