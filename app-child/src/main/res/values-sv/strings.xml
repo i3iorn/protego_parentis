@@ -444,8 +444,6 @@
     <string name="parent_row_audit_detail">Allt som ändrats, och vem som ändrade det</string>
     <string name="parent_row_sync">Familjeanslutning</string>
     <string name="parent_row_sync_detail">Ämnet och lösenfrasen som familjen delar</string>
-    <string name="parent_row_settings">Den här telefonen</string>
-    <string name="parent_row_settings_detail">Synk, aviseringar, behörigheter och PIN-koden för den här telefonen</string>
 
     <string name="parent_bonus_title">Skicka extratid</string>
     <string name="parent_bonus_body">Extra minuter för i dag, utöver den dagliga gränsen. De försvinner klockan 04 och ändrar inte reglerna.</string>
@@ -487,7 +485,6 @@
     <string name="parent_rules_app_network_blocked">Inget nätverk</string>
     <string name="parent_rules_app_exempt">Aldrig begränsad</string>
 
-    <string name="parent_settings_title">Den här telefonen</string>
     <string name="parent_settings_pin_header">PIN-kod</string>
     <string name="parent_settings_pin_body">PIN-koden skyddar inställningarna på den telefon där den är satt.</string>
     <string name="parent_settings_role_header">Vad den här telefonen är</string>
@@ -1007,8 +1004,11 @@
 
     <string name="home_group_openness">Vad du kan se om det här</string>
     <string name="home_group_settings">Inställningar</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_row_detail">Aviseringar, behörigheter, språk och telefonens PIN-kod</string>
+    <string name="settings_group_family">Den här familjen</string>
+    <string name="settings_row_role_detail">Lämna över den här telefonen så att den blir den med gränserna</string>
     <string name="parent_group_family">Din familj</string>
-    <string name="parent_group_settings">Inställningar</string>
     <string name="join_relay_header">Hur meddelanden färdas</string>
     <string name="features_each_phone">Ställs in separat på varje telefon. Den här ändrar bara vad du ser här.</string>
 
