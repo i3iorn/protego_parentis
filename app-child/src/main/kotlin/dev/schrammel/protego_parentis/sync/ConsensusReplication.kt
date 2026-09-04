@@ -150,10 +150,9 @@ class ConsensusReplication(context: Context) {
      * tombstone write loses the merge changes nothing; the effect it guarded
      * already happened everywhere that mattered.
      *
-     * [ConsensusKind.ENROL_CHILD] is bookkeeping only for now: unanimous
-     * approval is tracked, but nothing acts on it, because the mechanism that
-     * would actually admit a second managed device does not exist yet. See
-     * the class doc on [ConsensusKind.ENROL_CHILD].
+     * [ConsensusKind.ENROL_CHILD] does not fit that story and is handled
+     * separately, below — it is the one kind where "the effect it guarded"
+     * is not global. See its own branch.
      */
     fun commitIfReady(proposal: ConsensusProposal, publisher: SyncPublisher, now: Instant = Instant.now()): Boolean {
         val ready = if (proposal.kind == ConsensusKind.REMOVE_PARENT) isDue(proposal, now) else isApproved(proposal)
@@ -177,8 +176,58 @@ class ConsensusReplication(context: Context) {
                 publisher.publishVouch(approved)
             }
 
-            ConsensusKind.ENROL_CHILD -> return false
+            ConsensusKind.ENROL_CHILD -> return commitEnrolChildIfReady(proposal)
         }
+        return tombstone(proposal.id)
+    }
+
+    /**
+     * [ConsensusKind.ENROL_CHILD]'s own commit, kept apart from the others
+     * above because unanimous *approval* is not the same fact as unanimous
+     * *enrolment*, and only the second one is safe to tombstone on.
+     *
+     * There is no broadcast that could tell one parent's device what another
+     * parent's device did locally — unlike [ConsensusKind.VOUCH_PARENT],
+     * which reaches every device via [SyncPublisher.publishVouch] regardless
+     * of local state, a second managed phone can never be vouched in (see
+     * [Enrolment.shouldAccept]). So every parent has to independently run
+     * [RosterStore.approve] for itself, using its own local [RosterStore.pending]
+     * — populated the same way any pending device's is, from the candidate's
+     * own `DEVICE_ANNOUNCE` — and record having done so in
+     * `enrolled/<thisParent>`, self-attested the same way `approvals` is (see
+     * [ReplicationRules.mayWriteConsensusField]).
+     *
+     * If this device has neither the target already known nor pending yet,
+     * there is nothing to do on this pass — but that must never look like
+     * "done": the proposal is left exactly as it is, so a slower parent still
+     * gets a later pass once its own pending list has caught up. Tombstoning
+     * here happens only once every *current* parent's `enrolled` register is
+     * set — the same "current, not proposal-time" parent set [isApproved]
+     * already uses, for the same reason a family that gained a parent
+     * mid-proposal must not read as already unanimous on a shorter, stale
+     * list.
+     *
+     * Checking [RosterStore.devices] first, not only [RosterStore.pending],
+     * matters: once this device has enrolled the target on an earlier pass,
+     * [RosterStore.approve] has already moved it out of `pending` — this
+     * device's own enrolment is still real and still needs recording, it is
+     * just no longer visible the same way a first pass would see it.
+     */
+    private fun commitEnrolChildIfReady(proposal: ConsensusProposal): Boolean {
+        val origin = LocalDeviceId.current() ?: return false
+        val alreadyKnown = roster.devices.any { it.id == proposal.target }
+        if (!alreadyKnown) {
+            val pending = roster.pending.firstOrNull { it.id == proposal.target } ?: return false
+            roster.approve(pending.id, pending.name)
+        }
+        state.writeAll(
+            mapOf("${path(proposal.id)}/$FIELD_ENROLLED/$origin" to APPROVED),
+            origin,
+            role(),
+        )
+        val enrolled = state.children("${path(proposal.id)}/$FIELD_ENROLLED").keys.map(::DeviceId).toSet()
+        val currentParents = roster.parents().map { it.id }.toSet()
+        if (currentParents.isEmpty() || !enrolled.containsAll(currentParents)) return false
         return tombstone(proposal.id)
     }
 
@@ -208,6 +257,7 @@ class ConsensusReplication(context: Context) {
         const val FIELD_EXECUTES_AT = "executesAt"
         const val FIELD_CANCELLED = "cancelled"
         val FIELD_APPROVALS = ReplicationRules.FIELD_APPROVALS
+        val FIELD_ENROLLED = ReplicationRules.FIELD_ENROLLED
     }
 }
 
@@ -241,15 +291,23 @@ enum class ConsensusKind(val wireName: String) {
     /**
      * Admits a second managed device into the family.
      *
-     * Bookkeeping only for now: a proposal can be raised and approved, and
-     * [ConsensusReplication.isApproved] answers correctly, but
-     * [ConsensusReplication.commitIfReady] does not act on it. The mechanism
-     * that would actually enrol a second child device does not exist yet —
-     * [Enrolment.shouldAccept] refuses every non-parent vouch on purpose,
-     * because letting a parent add a child device *remotely* would let one
-     * compromised parent phone introduce a device that receives every rule
-     * and every position. Building that mechanism, on top of the physical-
-     * possession requirement it would still need, is its own piece of work.
+     * Held/unanimous, on top of the physical-possession requirement
+     * [Enrolment.shouldAccept] still enforces, not instead of it: that
+     * function refuses every non-parent vouch unconditionally, and nothing
+     * about this proposal kind ever routes around it — a second managed
+     * phone is never vouched in. What it *does* replace is a single parent
+     * unilaterally deciding to trust one, which is what [Enrolment.mayApprove]
+     * and [RosterStore.approve] alone would otherwise allow for any pending
+     * device regardless of its claimed role.
+     *
+     * A parent proposes this only once the candidate is in its own local
+     * [RosterStore.pending] — i.e. it has physically compared the fingerprint
+     * on this phone. Committing needs every current parent to independently
+     * do the same on their own device, since there is no broadcast that could
+     * carry the result the way [SyncPublisher.publishVouch] does for
+     * [VOUCH_PARENT] — see [ConsensusReplication.commitIfReady]'s own
+     * `ENROL_CHILD` handling for exactly how that unanimity is tracked
+     * separately from unanimous *approval*.
      */
     ENROL_CHILD("enrol_child"),
     ;
