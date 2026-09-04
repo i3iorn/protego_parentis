@@ -1035,6 +1035,11 @@
     <string name="privacy_chat_body">Det du skriver i Meddelanden går till de andra telefonerna i familjen, krypterat som allt annat. Båda ändarna behåller de senaste par hundra meddelandena tills någon rensar dem. Bara text och emoji kan skickas — det finns inget sätt att skicka en bild, en fil eller en länk som öppnar något.</string>
 
     <string name="chat_no_family">Telefonen är inte ansluten till någon familj än, så det finns ingen att skriva till.</string>
+    <string name="chat_status_never">%1$s · har inte anslutit än</string>
+    <string name="chat_status_online">%1$s · online</string>
+    <string name="chat_status_minutes_ago">%1$s · %2$d min sedan</string>
+    <string name="chat_status_hours_ago">%1$s · %2$d h sedan</string>
+    <string name="chat_status_days_ago">%1$s · %2$d d sedan</string>
 
     <string name="home_cannot_open">Den appen går inte att öppna härifrån.</string>
 

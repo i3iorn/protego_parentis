@@ -172,8 +172,13 @@ class RequestNotifier(context: Context) {
      * through the sanitiser before reaching here — a notification is drawn by the
      * system, outside this app's own screens, so anything that could misrepresent
      * itself there is out of reach once it is posted.
+     *
+     * Skipped while [ChatActivity.isVisible] — a message arriving while somebody
+     * is already watching the conversation update live (#70) does not need a
+     * banner telling them the same thing a second time.
      */
     fun notifyChat(sender: String, text: String) {
+        if (ChatActivity.isVisible) return
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_CHAT,
@@ -182,6 +187,18 @@ class RequestNotifier(context: Context) {
             body = text,
             destination = Intent(appContext, ChatActivity::class.java),
         )
+    }
+
+    /**
+     * Dismisses a chat notification left over from before this screen opened.
+     *
+     * Covers the case where a message arrived and was notified while the app
+     * was elsewhere, and the conversation is only opened later — auto-cancel
+     * already handles a tap on the notification itself, this handles reaching
+     * the same screen any other way.
+     */
+    fun clearChatNotification() {
+        notifications.cancel(NOTIFICATION_CHAT)
     }
 
     /**
