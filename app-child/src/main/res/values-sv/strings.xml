@@ -684,6 +684,8 @@
     <string name="devices_role_parent">en förälders telefon</string>
     <string name="devices_approve">Godkänn</string>
     <string name="devices_approve_body">Godkänn bara om fingeravtrycket %1$s visas på den telefonen. Den blir betrodd som %2$s.</string>
+    <string name="devices_enrol_child_body">Godkänn bara om fingeravtrycket %1$s visas på den telefonen. En andra hanterad telefon blir inte betrodd på en enda förälders ord: varje förälder måste göra detsamma på sin egen telefon innan den släpps in.</string>
+    <string name="devices_awaiting_family">Godkänd här. Väntar på att resten av familjen ska göra detsamma.</string>
     <string name="devices_reject">Inte min</string>
     <string name="devices_row_detail">%1$s · %2$s</string>
     <string name="devices_name_hint">Mammas telefon, pappas telefon…</string>
