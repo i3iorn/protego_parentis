@@ -34,12 +34,14 @@ import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
  * — a parent's own phone has no features to speak of, and reading its flags
  * here would answer a question about the wrong device entirely.
  *
- * Rows this milestone has not migrated yet (daily limit/bedtime, the web
- * filter, requests, auto-approval, family devices, and the rest) only appear
- * when [target] is this device's own — they would otherwise open a screen
- * that reads and writes the wrong device's state. #43's own done-when list
- * does not require every settings screen migrated, only the six named ones;
- * this hub reflects exactly that boundary rather than guessing past it.
+ * The daily limit and bonus time route to a local screen ([LimitsActivity],
+ * [BonusTimeActivity]) when [target] is this device's own, and to the
+ * parent-side send-a-message screen ([ParentLimitActivity], [ParentBonusActivity])
+ * otherwise — the same local/remote split #43 already established for every
+ * other rule store (#78). Rows that genuinely cannot work remotely — the web
+ * filter, web activity, place alerts, the goal, and requests — still only
+ * appear when [target] is this device's own; [render] adds a caption saying
+ * so rather than omitting them silently.
  */
 class RulesActivity : ParentGatedActivity() {
 
@@ -74,6 +76,7 @@ class RulesActivity : ParentGatedActivity() {
         if (!target.isOwnDevice) {
             val name = RosterStore(this).children().firstOrNull { it.id == target.childId }?.name
             if (name != null) column.addView(captionText(getString(R.string.rules_editing_whose, name)))
+            column.addView(captionText(getString(R.string.rules_remote_omissions)))
         }
         if (target.isOwnDevice) column.addView(statusCard())
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
@@ -85,14 +88,18 @@ class RulesActivity : ParentGatedActivity() {
             column,
             getString(R.string.rules_group_limits),
             buildList {
-                if (target.isOwnDevice) {
-                    // The daily limit is the reason the app exists; it has no switch.
-                    add(
-                        row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
+                // The daily limit is the reason the app exists; it has no switch,
+                // and no offline case either — a parent editing it remotely reaches
+                // the same send-a-message screen the old top-level "Limit" row did.
+                add(
+                    row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
+                        if (target.isOwnDevice) {
                             startActivity(Intent(this@RulesActivity, LimitsActivity::class.java))
-                        },
-                    )
-                }
+                        } else {
+                            startActivity(ParentLimitActivity.intent(this@RulesActivity))
+                        }
+                    },
+                )
                 if (enabled(Feature.CATEGORIES)) {
                     add(
                         row(R.string.rules_row_categories, R.string.rules_row_categories_detail) {
@@ -165,44 +172,41 @@ class RulesActivity : ParentGatedActivity() {
                         },
                     )
                 }
-                if (target.isOwnDevice && enabled(Feature.BONUS)) {
+                if (enabled(Feature.BONUS)) {
                     add(
                         row(R.string.rules_row_bonus, R.string.rules_row_bonus_detail) {
-                            startActivity(BonusTimeActivity.intent(this@RulesActivity))
+                            if (target.isOwnDevice) {
+                                startActivity(BonusTimeActivity.intent(this@RulesActivity))
+                            } else {
+                                startActivity(ParentBonusActivity.intent(this@RulesActivity))
+                            }
                         },
                     )
                 }
             },
         )
 
-        if (target.isOwnDevice) {
+        // Answering requests only makes sense standing at the phone the request
+        // came from. Family devices used to sit in this section too, but that made
+        // "Family" mean two different things app-wide (#78) — it is reachable
+        // top-level now, alongside every other family-wide screen.
+        if (target.isOwnDevice && enabled(Feature.REQUESTS)) {
             addSection(
                 column,
-                getString(R.string.rules_group_family),
+                getString(R.string.rules_group_requests),
                 buildList {
-                    if (enabled(Feature.REQUESTS)) {
-                        add(
-                            row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
-                                startActivity(RequestInboxActivity.intent(this@RulesActivity))
-                            },
-                        )
-                        if (enabled(Feature.AUTO_APPROVE)) {
-                            add(
-                                row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
-                                    startActivity(AutoApprovalActivity.intent(this@RulesActivity))
-                                },
-                            )
-                        }
-                    }
-                    // The one path to Family from this hub. Its own Settings row is
-                    // where the sync relay and device control live now, rather than
-                    // beside it here — a deployment detail and the family roster no
-                    // longer compete for the same list.
                     add(
-                        row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
-                            startActivity(FamilyDevicesActivity.intent(this@RulesActivity))
+                        row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
+                            startActivity(RequestInboxActivity.intent(this@RulesActivity))
                         },
                     )
+                    if (enabled(Feature.AUTO_APPROVE)) {
+                        add(
+                            row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
+                                startActivity(AutoApprovalActivity.intent(this@RulesActivity))
+                            },
+                        )
+                    }
                 },
             )
         }

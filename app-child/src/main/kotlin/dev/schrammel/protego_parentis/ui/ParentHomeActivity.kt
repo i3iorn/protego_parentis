@@ -132,8 +132,6 @@ class ParentHomeActivity : ParentRoleActivity() {
     private fun open(destination: HomeDestination) {
         when (destination) {
             HomeDestination.INBOX -> startActivity(ParentInboxActivity.intent(this))
-            HomeDestination.BONUS -> startActivity(ParentBonusActivity.intent(this))
-            HomeDestination.LIMIT -> startActivity(ParentLimitActivity.intent(this))
             HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
             HomeDestination.LOCK_NOW -> confirmLock()
             HomeDestination.LOCATE -> locate()

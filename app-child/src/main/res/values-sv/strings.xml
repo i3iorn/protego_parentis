@@ -287,7 +287,7 @@
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>
     <string name="rules_group_day">Hur dagen fungerar</string>
-    <string name="rules_group_family">Familj</string>
+    <string name="rules_group_requests">Förfrågningar</string>
     <string name="rules_group_device">Den här telefonen</string>
     <string name="rules_row_limits">Daglig gräns och läggdags</string>
     <string name="rules_row_limits_detail">Tiden, lugna timmar och appar som struntar i båda</string>
@@ -314,6 +314,7 @@
     <string name="rules_picker_hint">Den här familjen har mer än en hanterad telefon. Välj vilken som ska redigeras.</string>
     <string name="rules_target_gone">Den telefonen är inte längre en del av familjen.</string>
     <string name="rules_editing_whose">Redigerar %1$s\'s regler</string>
+    <string name="rules_remote_omissions">Vissa regler kan bara ändras på telefonen själv</string>
 
     <!-- Regler. -->
     <string name="rules_title">Ändra regler</string>
@@ -431,10 +432,6 @@
     <string name="parent_checked_at">Senast kontrollerad %1$s</string>
     <string name="parent_row_inbox">Förfrågningar</string>
     <string name="parent_row_inbox_detail">Svara på önskemål om mer tid</string>
-    <string name="parent_row_bonus">Skicka extratid</string>
-    <string name="parent_row_bonus_detail">Lägg till minuter utan att bli tillfrågad</string>
-    <string name="parent_row_limit">Ändra daglig gräns</string>
-    <string name="parent_row_limit_detail">Ange en ny gräns härifrån, utan telefonen</string>
     <string name="parent_row_rules">Regler</string>
     <string name="parent_row_rules_detail">Alla regler familjen kan ställa in, härifrån</string>
     <string name="parent_row_audit">Historik</string>

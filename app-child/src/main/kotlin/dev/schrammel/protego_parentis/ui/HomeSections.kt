@@ -36,13 +36,6 @@ internal enum class HomeDestination {
     LOCK_NOW,
     LOCATE,
 
-    // Kept here, not yet moved into Rules — see #78's plan, part 3. Removing
-    // these two rows without Rules being able to do their job first would
-    // leave the daily limit and bonus time unreachable from a parent's phone
-    // for however long lands in between.
-    LIMIT,
-    BONUS,
-
     // Shared by both roles.
     CHAT,
     RULES,
@@ -128,10 +121,6 @@ internal fun homeSections(role: DeviceRole, flags: FeatureFlags): List<HomeSecti
                 if (flags.isEnabled(Feature.REQUESTS)) {
                     add(HomeRow(R.string.parent_row_inbox, R.string.parent_row_inbox_detail, HomeDestination.INBOX))
                 }
-                if (flags.isEnabled(Feature.BONUS)) {
-                    add(HomeRow(R.string.parent_row_bonus, R.string.parent_row_bonus_detail, HomeDestination.BONUS))
-                }
-                add(HomeRow(R.string.parent_row_limit, R.string.parent_row_limit_detail, HomeDestination.LIMIT))
                 if (flags.isEnabled(Feature.CHAT)) {
                     add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
                 }
