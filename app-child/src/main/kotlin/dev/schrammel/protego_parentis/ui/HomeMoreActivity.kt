@@ -9,6 +9,12 @@ import dev.schrammel.protego_parentis.R
 /**
  * Everything the My Time dashboard used to show directly: history, privacy, and
  * settings, one tap away instead of filling the first screen.
+ *
+ * The settings group that used to sit here is now one row leading to
+ * [SettingsActivity], which serves both kinds of phone (#78). Listing
+ * notifications, permissions and language here while a parent's phone kept its
+ * own longer list somewhere else meant the same settings had two homes that
+ * had drifted apart.
  */
 class HomeMoreActivity : DementorActivity() {
 
@@ -18,6 +24,10 @@ class HomeMoreActivity : DementorActivity() {
         super.onCreate(savedInstanceState)
         column = contentColumn()
         showColumn(column)
+    }
+
+    override fun onResume() {
+        super.onResume()
         render()
     }
 
@@ -42,16 +52,9 @@ class HomeMoreActivity : DementorActivity() {
             column,
             getString(R.string.home_group_settings),
             listOf(
-                row(R.string.notify_title, R.string.notify_row_detail) {
-                    startActivity(NotificationSettingsActivity.intent(this))
+                row(R.string.settings_title, R.string.settings_row_detail) {
+                    startActivity(SettingsActivity.intent(this))
                 },
-                row(R.string.perms_title, R.string.perms_row_detail) {
-                    startActivity(PermissionsActivity.intent(this))
-                },
-                navigationRow(
-                    getString(R.string.home_language, LanguagePicker.currentLabel(this)),
-                    getString(R.string.home_language_detail),
-                ) { LanguagePicker.show(this) },
                 row(R.string.home_edit_rules, R.string.home_edit_rules_detail) {
                     startActivity(Intent(this, RulesActivity::class.java))
                 },

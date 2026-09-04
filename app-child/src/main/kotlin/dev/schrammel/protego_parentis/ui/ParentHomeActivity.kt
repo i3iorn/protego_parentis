@@ -36,7 +36,7 @@ import java.time.format.DateTimeFormatter
  * Not PIN-gated, unlike the rules screens on the child's device. This is the
  * parent's own phone, already behind its own lock screen, and a second PIN in
  * front of "approve 15 minutes" is friction with nothing on the other side of it.
- * Switching the phone back to child mode *is* gated — see [ParentSettingsActivity].
+ * Switching the phone back to child mode *is* gated — see [RoleSwitchActivity].
  */
 class ParentHomeActivity : ParentRoleActivity() {
 
@@ -183,9 +183,20 @@ class ParentHomeActivity : ParentRoleActivity() {
             ),
         )
 
-        // Settings used to have its own row here too, next to Family. It now
-        // lives one tap inside Family instead — reachable only by way of the
-        // family it configures, rather than as a second front door.
+        // Back on the dashboard, and named the same thing it is named on the
+        // managed phone (#78). Hiding it one tap inside Family — "reachable only
+        // by way of the family it configures, rather than as a second front
+        // door" — read well and meant nobody found it, which is most of what the
+        // navigation feedback was about.
+        addSection(
+            column,
+            getString(R.string.home_group_settings),
+            listOf(
+                row(R.string.settings_title, R.string.settings_row_detail) {
+                    startActivity(SettingsActivity.intent(this))
+                },
+            ),
+        )
     }
 
     /**

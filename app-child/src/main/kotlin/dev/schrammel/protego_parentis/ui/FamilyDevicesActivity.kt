@@ -158,19 +158,10 @@ class FamilyDevicesActivity : ParentGatedActivity() {
             ),
         )
 
-        // The only OTHER door into Settings — notifications, permissions and
-        // this phone's PIN are things you reach because of the family you are
-        // looking at, not a parallel front door that happens to lead here too.
-        addSection(
-            column,
-            getString(R.string.parent_group_settings),
-            listOf(
-                navigationRow(
-                    getString(R.string.parent_row_settings),
-                    getString(R.string.parent_row_settings_detail),
-                ) { startActivity(ParentSettingsActivity.intent(this)) },
-            ),
-        )
+        // Settings used to hang off this screen, on the reasoning that they are
+        // things you reach because of the family you are looking at. They have
+        // their own row on the dashboard now (#78) — this was the only way in,
+        // and a setting nobody can find is not protected by being tidy.
     }
 
     private fun thisPhone(): LinearLayout = card {
