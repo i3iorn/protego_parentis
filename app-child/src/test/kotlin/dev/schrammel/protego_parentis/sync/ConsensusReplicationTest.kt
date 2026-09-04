@@ -158,21 +158,74 @@ class ConsensusReplicationTest {
         assertNull(consensus().proposal(id))
     }
 
-    // ---------- enrol_child: bookkeeping only ----------
+    // ---------- enrol_child: unanimous approval, then unanimous enrolment ----------
 
     @Test
-    fun `an enrol-child proposal can reach unanimity but is not acted on`() {
+    fun `an enrol-child proposal is not tombstoned until every current parent has enrolled it, not merely approved it`() {
         val p1 = seedParent("P1")
+        val p2 = seedParent("P2")
+        val candidate = seedPending("NEWCHILD", role = SyncRole.CHILD)
         LocalDeviceId.useInTests(p1.value)
-        val id = consensus().propose(ConsensusKind.ENROL_CHILD, target = DeviceId("NEWCHILD"))!!
+        val id = consensus().propose(ConsensusKind.ENROL_CHILD, target = candidate)!!
+        consensus().approve(id)
+        LocalDeviceId.useInTests(p2.value)
         consensus().approve(id)
         val proposal = consensus().proposal(id)!!
-
         assertTrue(consensus().isApproved(proposal))
+
+        // P1 runs its own commit pass first. Unanimous approval is already
+        // true, but only P1 has enrolled the child locally so far.
+        LocalDeviceId.useInTests(p1.value)
+        val committedByP1 = consensus().commitIfReady(proposal, SyncPublisher(context))
+
+        assertFalse(committedByP1)
+        assertNotNull(consensus().proposal(id))
+        assertTrue(roster().devices.any { it.id == candidate && it.role == SyncRole.CHILD })
+
+        // P2's own pass still has to run before the proposal is done — this
+        // is the fix for the trap the plan on #45 calls out: nothing may
+        // tombstone the proposal on P1's say-so alone, because there is no
+        // vouch that could carry the result to a parent who has not yet
+        // independently confirmed it.
+        LocalDeviceId.useInTests(p2.value)
+        val committedByP2 = consensus().commitIfReady(proposal, SyncPublisher(context))
+
+        assertTrue(committedByP2)
+        assertNull(consensus().proposal(id))
+    }
+
+    @Test
+    fun `a parent with no local pending entry for the candidate is skipped, not tombstoned, and catches up later`() {
+        val p1 = seedParent("P1")
+        val p2 = seedParent("P2")
+        LocalDeviceId.useInTests(p1.value)
+        // The candidate's own DEVICE_ANNOUNCE has not reached this replica
+        // yet — nothing pending, nothing known — simulating a parent who has
+        // not seen it announce at commit time.
+        val id = consensus().propose(ConsensusKind.ENROL_CHILD, target = DeviceId("NEWCHILD"))!!
+        consensus().approve(id)
+        LocalDeviceId.useInTests(p2.value)
+        consensus().approve(id)
+        val proposal = consensus().proposal(id)!!
+        assertTrue(consensus().isApproved(proposal))
+
         val committed = consensus().commitIfReady(proposal, SyncPublisher(context))
 
         assertFalse(committed)
-        // Still there, unresolved — nothing tombstoned an approval nobody acted on.
+        // Still there, unresolved — a device that cannot yet act on this
+        // proposal must never be the reason it disappears for everyone else.
+        assertNotNull(consensus().proposal(id))
+        assertTrue(roster().devices.none { it.id == DeviceId("NEWCHILD") })
+
+        // The announce arrives; the same device gets another chance on its
+        // next pass, with no new approval needed.
+        seedPending("NEWCHILD", role = SyncRole.CHILD)
+        val committedAfterAnnounce = consensus().commitIfReady(consensus().proposal(id)!!, SyncPublisher(context))
+
+        assertTrue(roster().devices.any { it.id == DeviceId("NEWCHILD") && it.role == SyncRole.CHILD })
+        // p2 has not enrolled it independently in this test, so unanimous
+        // enrolment still is not reached and the proposal survives.
+        assertFalse(committedAfterAnnounce)
         assertNotNull(consensus().proposal(id))
     }
 
