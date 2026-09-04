@@ -463,7 +463,8 @@ class RequestNotifier(context: Context) {
      * destination still comes from the manifest, unchanged.
      */
     private fun stackFor(destination: Intent): TaskStackBuilder {
-        val ambiguous = destination.component?.className in ROLE_AMBIGUOUS_DESTINATIONS
+        val className = destination.component?.className
+        val ambiguous = className != null && ROLE_AMBIGUOUS_DESTINATIONS.contains(className)
         if (!ambiguous) return TaskStackBuilder.create(appContext).addNextIntentWithParentStack(destination)
 
         val home = if (RoleStore(appContext).roleOrChild == DeviceRole.PARENT) {
