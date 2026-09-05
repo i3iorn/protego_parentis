@@ -851,6 +851,8 @@
     <string name="located_notification_body">They were sent this phone\'s position. It is in the shared history.</string>
     <string name="rules_row_places_alerts">Arrivals and departures</string>
     <string name="rules_row_places_alerts_detail">A message when the phone reaches or leaves a saved place</string>
+    <string name="rules_row_places">Places</string>
+    <string name="rules_row_places_detail">Rename, resize, or remove a saved place</string>
     <string name="places_alerts_enable">Send arrivals and departures</string>
     <string name="places_alerts_hint">Sends the name of the place, never a position. Positions are only ever sent when a parent asks, or in an emergency.</string>
 
