@@ -108,6 +108,9 @@ class RulesInventoryTest {
         "KEY_VALUE=value" to PARENT,
         "KEY_PARTS=parts" to PARENT,
         "KEY_MINUTES=minutes" to PARENT,
+        // #90: a Mixed target's categories, alongside KEY_PARTS' packages —
+        // exactly as remote-reachable as the rest of a rule's target already is.
+        "KEY_PARTS_CATEGORIES=partsCategories" to PARENT,
     )
 
     // #42 closed this store: all nine fields ride PolicySnapshot now, the same

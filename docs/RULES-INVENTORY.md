@@ -128,16 +128,19 @@ coordinate would break an explicit invariant the README states twice
 slice was scoped around rather than around changing. See `PlaceRef`'s own doc
 comment.
 
-## ContextRuleCodec — `kind`/`value`/`parts`/`minutes` · 4 Parent
+## ContextRuleCodec — `kind`/`value`/`parts`/`minutes`/`partsCategories` · 5 Parent
 
 Not a `SharedPreferences`-backed store — the JSON codec `ContextRuleStore` and
 `PolicyReplication` share for a rule's `condition`/`effect`/`target`, extracted
-so both use exactly the same wire shape. `kind`/`value`/`parts`/`minutes` are
-its field names *within* that JSON, not preference keys, but the inventory
-test reaches them the same way (by reflection over `KEY_*` constants) so a new
-condition or effect kind is still forced through classification. Deliberately
-open-ended: a future `Xor` condition, say, is a new `KIND` constant and a new
-branch in the codec, never a change to this shape.
+so both use exactly the same wire shape. `kind`/`value`/`parts`/`minutes`/
+`partsCategories` are its field names *within* that JSON, not preference keys,
+but the inventory test reaches them the same way (by reflection over `KEY_*`
+constants) so a new condition or effect kind is still forced through
+classification. Deliberately open-ended: a future `Xor` condition, say, is a
+new `KIND` constant and a new branch in the codec, never a change to this
+shape. `partsCategories` (#90) is a `Mixed` target's categories, alongside
+`parts`' packages — exactly as remote-reachable as the rest of a target
+already is.
 
 ## WebFilterStore — `web_filter` · 9 Parent
 

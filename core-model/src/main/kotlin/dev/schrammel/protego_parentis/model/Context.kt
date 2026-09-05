@@ -171,6 +171,16 @@ sealed interface RuleTarget {
     data object Everything : RuleTarget
     data class Apps(val packages: Set<PackageName>) : RuleTarget
     data class Categories(val categories: Set<CategoryId>) : RuleTarget
+
+    /**
+     * Both at once (#90) — a category plus a couple of apps that don't belong
+     * to it, in one rule, rather than needing two rules that happen to share
+     * a condition and effect. [Apps] and [Categories] stay as the plain single
+     * kind each already was; this is only reached once a rule genuinely mixes
+     * the two, so a rule that only ever picked one kind still round-trips
+     * through the simpler variant unchanged.
+     */
+    data class Mixed(val packages: Set<PackageName>, val categories: Set<CategoryId>) : RuleTarget
 }
 
 /**
