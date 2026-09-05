@@ -14,8 +14,8 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
-import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.FeatureFlags
+import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.sync.DailySummary
 import dev.schrammel.protego_parentis.sync.DailySummaryStore
 import dev.schrammel.protego_parentis.sync.InboxStore
@@ -36,7 +36,7 @@ import java.time.format.DateTimeFormatter
  * Not PIN-gated, unlike the rules screens on the child's device. This is the
  * parent's own phone, already behind its own lock screen, and a second PIN in
  * front of "approve 15 minutes" is friction with nothing on the other side of it.
- * Switching the phone back to child mode *is* gated — see [ParentSettingsActivity].
+ * Switching the phone back to child mode *is* gated — see [RoleSwitchActivity].
  */
 class ParentHomeActivity : ParentRoleActivity() {
 
@@ -115,77 +115,37 @@ class ParentHomeActivity : ParentRoleActivity() {
         column.addView(sectionHeader(getString(R.string.parent_today_header)))
         column.addView(todayCard())
 
-        val on = FeatureFlags(this)
+        // Grouped the same way [HomeActivity] is now (#78): whatever this phone
+        // was opened to do, unlabelled; then Rules; Family; Openness; Settings.
+        // "Settings" being back on the dashboard rather than one tap inside
+        // Family is the same fix as the managed phone's — reachable "only by
+        // way of the family it configures" read well and meant nobody found it.
+        homeSections(DeviceRole.PARENT, FeatureFlags(this)).forEach { section ->
+            addSection(
+                column,
+                section.label?.let(::getString),
+                section.rows.map { entry -> row(entry.title, entry.detail) { open(entry.destination) } },
+            )
+        }
+    }
 
-        // Three groups rather than one list of eleven. The first is what a parent
-        // opens the app to do, and it is deliberately unlabelled — the screen
-        // title has already said whose phone this is. What follows is arranged by
-        // how often anyone touches it, so the rarely-used settles at the bottom
-        // instead of sitting between the two things anybody wanted.
-        addSection(
-            column,
-            null,
-            buildList {
-                if (on.isEnabled(Feature.REQUESTS)) {
-                    add(
-                        row(R.string.parent_row_inbox, R.string.parent_row_inbox_detail) {
-                            startActivity(ParentInboxActivity.intent(this@ParentHomeActivity))
-                        },
-                    )
-                }
-                if (on.isEnabled(Feature.BONUS)) {
-                    add(
-                        row(R.string.parent_row_bonus, R.string.parent_row_bonus_detail) {
-                            startActivity(ParentBonusActivity.intent(this@ParentHomeActivity))
-                        },
-                    )
-                }
-                add(
-                    row(R.string.parent_row_limit, R.string.parent_row_limit_detail) {
-                        startActivity(ParentLimitActivity.intent(this@ParentHomeActivity))
-                    },
-                )
-                add(
-                    row(R.string.parent_row_rules, R.string.parent_row_rules_detail) {
-                        RulesEntry.launch(this@ParentHomeActivity)
-                    },
-                )
-                if (on.isEnabled(Feature.CHAT)) {
-                    add(
-                        row(R.string.chat_title, R.string.chat_row_detail) {
-                            startActivity(ChatActivity.intent(this@ParentHomeActivity))
-                        },
-                    )
-                }
-                add(row(R.string.parent_row_lock, R.string.parent_row_lock_detail) { confirmLock() })
-                // Gated: locating is answered by the other phone, so a row left
-                // here after the feature was put away would ask a question that
-                // now goes unanswered, which reads as the app being broken.
-                if (on.isEnabled(Feature.LOCATION)) {
-                    add(row(R.string.parent_row_locate, R.string.parent_row_locate_detail) { locate() })
-                }
-            },
-        )
-
-        addSection(
-            column,
-            getString(R.string.parent_group_family),
-            listOf(
-                row(R.string.parent_row_device, R.string.parent_row_device_detail) {
-                    startActivity(ParentDeviceActivity.intent(this))
-                },
-                row(R.string.rules_row_devices, R.string.rules_row_devices_detail) {
-                    startActivity(FamilyDevicesActivity.intent(this))
-                },
-                row(R.string.parent_row_audit, R.string.parent_row_audit_detail) {
-                    startActivity(AuditActivity.intent(this))
-                },
-            ),
-        )
-
-        // Settings used to have its own row here too, next to Family. It now
-        // lives one tap inside Family instead — reachable only by way of the
-        // family it configures, rather than as a second front door.
+    private fun open(destination: HomeDestination) {
+        when (destination) {
+            HomeDestination.INBOX -> startActivity(ParentInboxActivity.intent(this))
+            HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
+            HomeDestination.LOCK_NOW -> confirmLock()
+            HomeDestination.LOCATE -> locate()
+            HomeDestination.RULES -> RulesEntry.launch(this)
+            HomeDestination.THE_OTHER_PHONE -> startActivity(ParentDeviceActivity.intent(this))
+            HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
+            HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
+            HomeDestination.SETTINGS -> startActivity(SettingsActivity.intent(this))
+            HomeDestination.REQUESTS,
+            HomeDestination.WEEK,
+            HomeDestination.WEB_ACTIVITY,
+            HomeDestination.PRIVACY,
+            -> error("$destination does not appear on a parent's home screen")
+        }
     }
 
     /**

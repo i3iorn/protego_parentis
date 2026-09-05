@@ -165,26 +165,30 @@ object ReplicationRules {
     /**
      * Whether [writerId] may write [value] to a CONSENSUS [path].
      *
-     * Approval is self-attestation: `consensus/<id>/approvals/<parentId>` may
-     * only be set to a live value by the parent it names — otherwise one parent
-     * approving on every other parent's behalf would make unanimity mean
-     * nothing.
+     * Both self-attested registers work the same way: `consensus/<id>/approvals/<parentId>`
+     * and `consensus/<id>/enrolled/<parentId>` may only be set to a live value
+     * by the parent each names. For approvals, otherwise one parent approving
+     * on every other parent's behalf would make unanimity mean nothing. For
+     * enrolled, otherwise one parent could claim another parent's device had
+     * finished enrolling a second managed phone when it had not, firing that
+     * proposal's cleanup before every parent's own roster actually held it —
+     * see `ConsensusReplication.commitIfReady` in app-child.
      *
-     * A tombstone is deliberately exempt. Committing a proposal clears its
-     * whole subtree, including every approval register on it, and that has to
-     * be doable by whichever device notices the threshold was met — not only
-     * by each approving parent's own device, which might never be reachable
-     * again once its approval has already served its purpose. A tombstone can
-     * only retract a claim, never fabricate one, so letting any parent write
-     * one costs nothing the self-attestation rule above exists to prevent: it
-     * cannot be used to forge an approval, only to help retire one that has
-     * already counted.
+     * A tombstone is deliberately exempt from both. Committing a proposal
+     * clears its whole subtree, including every register on it, and that has
+     * to be doable by whichever device notices the threshold was met — not
+     * only by each attesting parent's own device, which might never be
+     * reachable again once its attestation has already served its purpose. A
+     * tombstone can only retract a claim, never fabricate one, so letting any
+     * parent write one costs nothing the self-attestation rule above exists
+     * to prevent: it cannot be used to forge an attestation, only to help
+     * retire one that has already counted.
      */
     fun mayWriteConsensusField(path: String, value: String?, writerId: DeviceId?): Boolean {
         if (path.substringBefore(SEPARATOR) != CONSENSUS) return true
         if (value == null) return true
         val segments = path.split(SEPARATOR)
-        if (segments.size < 4 || segments[2] != FIELD_APPROVALS) return true
+        if (segments.size < 4 || segments[2] !in SELF_ATTESTED_FIELDS) return true
         return writerId != null && segments[3] == writerId.value
     }
 
@@ -414,4 +418,20 @@ object ReplicationRules {
 
     /** The subpath under a proposal holding one register per approving parent. */
     const val FIELD_APPROVALS = "approvals"
+
+    /**
+     * The subpath under an [ConsensusKind.ENROL_CHILD] proposal holding one
+     * register per parent that has completed its own local enrolment of the
+     * target — see `ConsensusReplication.commitIfReady` in app-child.
+     *
+     * A different fact from [FIELD_APPROVALS]: approving means "I agree to
+     * this," enrolled means "I have done it." Enrolling a second managed
+     * device has no broadcast that could tell a parent's device what another
+     * parent's device did locally, so this register is how each device tells
+     * the rest of the family it finished its own part.
+     */
+    const val FIELD_ENROLLED = "enrolled"
+
+    /** Consensus subpaths only a device may write about itself. */
+    private val SELF_ATTESTED_FIELDS = setOf(FIELD_APPROVALS, FIELD_ENROLLED)
 }

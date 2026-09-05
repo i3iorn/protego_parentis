@@ -177,9 +177,6 @@
     <string name="privacy_log_body">En kort anteckning om vad appen gjorde — att den kollade din tid, att den startade, att något gick fel. Den innehåller inga appnamn, inga anledningar du skrivit och inga tider då du använde något. Du får läsa hela.</string>
     <string name="privacy_view_log">Läs loggen</string>
     <string name="home_open_privacy">Vad som lämnar telefonen</string>
-    <string name="home_more_title">Mer</string>
-    <string name="home_open_more">Mer</string>
-    <string name="home_open_more_detail">Historik, vad som lämnar telefonen, och inställningar</string>
 
     <string name="diagnostics_title">Applogg</string>
     <string name="diagnostics_header">Dementor Watch-logg. Innehåller bara vad appen gjorde: händelsenamn, antal och tider. Inga appnamn, inga meddelanden, inga anledningar, inga lösenord.</string>
@@ -290,7 +287,7 @@
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>
     <string name="rules_group_day">Hur dagen fungerar</string>
-    <string name="rules_group_family">Familj</string>
+    <string name="rules_group_requests">Förfrågningar</string>
     <string name="rules_group_device">Den här telefonen</string>
     <string name="rules_row_limits">Daglig gräns och läggdags</string>
     <string name="rules_row_limits_detail">Tiden, lugna timmar och appar som struntar i båda</string>
@@ -317,6 +314,7 @@
     <string name="rules_picker_hint">Den här familjen har mer än en hanterad telefon. Välj vilken som ska redigeras.</string>
     <string name="rules_target_gone">Den telefonen är inte längre en del av familjen.</string>
     <string name="rules_editing_whose">Redigerar %1$s\'s regler</string>
+    <string name="rules_remote_omissions">Vissa regler kan bara ändras på telefonen själv</string>
 
     <!-- Regler. -->
     <string name="rules_title">Ändra regler</string>
@@ -434,18 +432,12 @@
     <string name="parent_checked_at">Senast kontrollerad %1$s</string>
     <string name="parent_row_inbox">Förfrågningar</string>
     <string name="parent_row_inbox_detail">Svara på önskemål om mer tid</string>
-    <string name="parent_row_bonus">Skicka extratid</string>
-    <string name="parent_row_bonus_detail">Lägg till minuter utan att bli tillfrågad</string>
-    <string name="parent_row_limit">Ändra daglig gräns</string>
-    <string name="parent_row_limit_detail">Ange en ny gräns härifrån, utan telefonen</string>
     <string name="parent_row_rules">Regler</string>
     <string name="parent_row_rules_detail">Alla regler familjen kan ställa in, härifrån</string>
     <string name="parent_row_audit">Historik</string>
     <string name="parent_row_audit_detail">Allt som ändrats, och vem som ändrade det</string>
     <string name="parent_row_sync">Familjeanslutning</string>
     <string name="parent_row_sync_detail">Ämnet och lösenfrasen som familjen delar</string>
-    <string name="parent_row_settings">Den här telefonen</string>
-    <string name="parent_row_settings_detail">Synk, aviseringar, behörigheter och PIN-koden för den här telefonen</string>
 
     <string name="parent_bonus_title">Skicka extratid</string>
     <string name="parent_bonus_body">Extra minuter för i dag, utöver den dagliga gränsen. De försvinner klockan 04 och ändrar inte reglerna.</string>
@@ -487,7 +479,6 @@
     <string name="parent_rules_app_network_blocked">Inget nätverk</string>
     <string name="parent_rules_app_exempt">Aldrig begränsad</string>
 
-    <string name="parent_settings_title">Den här telefonen</string>
     <string name="parent_settings_pin_header">PIN-kod</string>
     <string name="parent_settings_pin_body">PIN-koden skyddar inställningarna på den telefon där den är satt.</string>
     <string name="parent_settings_role_header">Vad den här telefonen är</string>
@@ -684,6 +675,8 @@
     <string name="devices_role_parent">en förälders telefon</string>
     <string name="devices_approve">Godkänn</string>
     <string name="devices_approve_body">Godkänn bara om fingeravtrycket %1$s visas på den telefonen. Den blir betrodd som %2$s.</string>
+    <string name="devices_enrol_child_body">Godkänn bara om fingeravtrycket %1$s visas på den telefonen. En andra hanterad telefon blir inte betrodd på en enda förälders ord: varje förälder måste göra detsamma på sin egen telefon innan den släpps in.</string>
+    <string name="devices_awaiting_family">Godkänd här. Väntar på att resten av familjen ska göra detsamma.</string>
     <string name="devices_reject">Inte min</string>
     <string name="devices_row_detail">%1$s · %2$s</string>
     <string name="devices_name_hint">Mammas telefon, pappas telefon…</string>
@@ -1005,8 +998,12 @@
 
     <string name="home_group_openness">Vad du kan se om det här</string>
     <string name="home_group_settings">Inställningar</string>
-    <string name="parent_group_family">Din familj</string>
-    <string name="parent_group_settings">Inställningar</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_row_detail">Aviseringar, behörigheter, språk och telefonens PIN-kod</string>
+    <string name="settings_group_family">Den här familjen</string>
+    <string name="settings_row_role_detail">Lämna över den här telefonen så att den blir den med gränserna</string>
+    <string name="home_group_family">Familj</string>
+    <string name="home_group_rules">Regler</string>
     <string name="join_relay_header">Hur meddelanden färdas</string>
     <string name="features_each_phone">Ställs in separat på varje telefon. Den här ändrar bara vad du ser här.</string>
 
@@ -1033,6 +1030,11 @@
     <string name="privacy_chat_body">Det du skriver i Meddelanden går till de andra telefonerna i familjen, krypterat som allt annat. Båda ändarna behåller de senaste par hundra meddelandena tills någon rensar dem. Bara text och emoji kan skickas — det finns inget sätt att skicka en bild, en fil eller en länk som öppnar något.</string>
 
     <string name="chat_no_family">Telefonen är inte ansluten till någon familj än, så det finns ingen att skriva till.</string>
+    <string name="chat_status_never">%1$s · har inte anslutit än</string>
+    <string name="chat_status_online">%1$s · online</string>
+    <string name="chat_status_minutes_ago">%1$s · %2$d min sedan</string>
+    <string name="chat_status_hours_ago">%1$s · %2$d h sedan</string>
+    <string name="chat_status_days_ago">%1$s · %2$d d sedan</string>
 
     <string name="home_cannot_open">Den appen går inte att öppna härifrån.</string>
 

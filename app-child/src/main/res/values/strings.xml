@@ -172,9 +172,6 @@
     <string name="privacy_log_body">A short record of what the app did — that it checked your time, that it started, that something failed. It holds no app names, no reasons you wrote and no times you were using anything. You can read all of it.</string>
     <string name="privacy_view_log">Read the log</string>
     <string name="home_open_privacy">What leaves this phone</string>
-    <string name="home_more_title">More</string>
-    <string name="home_open_more">More</string>
-    <string name="home_open_more_detail">History, what leaves this phone, and settings</string>
 
     <string name="diagnostics_title">App log</string>
     <string name="diagnostics_header">Dementor Watch log. Contains only what the app did: event names, counts and times. No app names, no messages, no reasons, no passwords.</string>
@@ -285,7 +282,7 @@
     <string name="limits_title">Limits</string>
     <string name="rules_group_limits">How much</string>
     <string name="rules_group_day">How the day works</string>
-    <string name="rules_group_family">Family</string>
+    <string name="rules_group_requests">Requests</string>
     <string name="rules_group_device">This device</string>
     <string name="rules_row_limits">Daily limit and bedtime</string>
     <string name="rules_row_limits_detail">The allowance, quiet hours, and apps that ignore both</string>
@@ -320,6 +317,7 @@
     <!-- Shown on the rules hub when a parent with more than one managed
          phone is editing one that is not this device. -->
     <string name="rules_editing_whose">Editing %1$s\'s rules</string>
+    <string name="rules_remote_omissions">Some rules can only be changed on the phone itself</string>
 
     <!-- Rules editor. -->
     <string name="rules_title">Change rules</string>
@@ -437,18 +435,12 @@
     <string name="parent_checked_at">Last checked at %1$s</string>
     <string name="parent_row_inbox">Requests</string>
     <string name="parent_row_inbox_detail">Answer asks for more time</string>
-    <string name="parent_row_bonus">Send extra time</string>
-    <string name="parent_row_bonus_detail">Add minutes without being asked</string>
-    <string name="parent_row_limit">Change daily limit</string>
-    <string name="parent_row_limit_detail">Set a new allowance from here, without the phone</string>
     <string name="parent_row_rules">Rules</string>
     <string name="parent_row_rules_detail">Every rule this family can set, from here</string>
     <string name="parent_row_audit">History</string>
     <string name="parent_row_audit_detail">Everything that has changed, and who changed it</string>
     <string name="parent_row_sync">Family connection</string>
     <string name="parent_row_sync_detail">The topic and passphrase this family shares</string>
-    <string name="parent_row_settings">This phone</string>
-    <string name="parent_row_settings_detail">Sync, notifications, permissions, and this phone\'s PIN</string>
 
     <string name="parent_bonus_title">Send extra time</string>
     <string name="parent_bonus_body">Extra minutes for today, on top of the daily limit. It expires at 4am and does not change the rules.</string>
@@ -490,7 +482,6 @@
     <string name="parent_rules_app_network_blocked">No network</string>
     <string name="parent_rules_app_exempt">Never limited</string>
 
-    <string name="parent_settings_title">This phone</string>
     <string name="parent_settings_pin_header">PIN</string>
     <string name="parent_settings_pin_body">The PIN protects the settings on whichever phone it is set on.</string>
     <string name="parent_settings_role_header">What this phone is</string>
@@ -687,6 +678,8 @@
     <string name="devices_role_parent">a parent\'s phone</string>
     <string name="devices_approve">Approve</string>
     <string name="devices_approve_body">Approve only if the fingerprint %1$s is showing on that phone. It will be trusted as %2$s.</string>
+    <string name="devices_enrol_child_body">Approve only if the fingerprint %1$s is showing on that phone. A second managed phone is not trusted on one parent\'s say-so: every parent needs to do the same on their own phone before it is admitted.</string>
+    <string name="devices_awaiting_family">Approved here. Waiting for the rest of the family to do the same.</string>
     <string name="devices_reject">Not mine</string>
     <string name="devices_row_detail">%1$s · %2$s</string>
     <string name="devices_name_hint">Mum\'s phone, Dad\'s phone…</string>
@@ -1008,8 +1001,12 @@
 
     <string name="home_group_openness">What you can see about this</string>
     <string name="home_group_settings">Settings</string>
-    <string name="parent_group_family">Your family</string>
-    <string name="parent_group_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_row_detail">Notifications, permissions, language, and this phone\'s PIN</string>
+    <string name="settings_group_family">This family</string>
+    <string name="settings_row_role_detail">Hand this phone over to be the one with the limits</string>
+    <string name="home_group_family">Family</string>
+    <string name="home_group_rules">Rules</string>
     <string name="join_relay_header">How messages travel</string>
     <string name="features_each_phone">Set on each phone separately. This one only changes what you see here.</string>
 
@@ -1036,6 +1033,11 @@
     <string name="privacy_chat_body">Anything typed in Messages goes to the other phones in the family, encrypted like everything else. Both ends keep the last few hundred messages until somebody clears them. Only text and emoji can be sent — there is no way to send a picture, a file or a link that opens anything.</string>
 
     <string name="chat_no_family">This phone is not connected to a family yet, so there is nobody to write to.</string>
+    <string name="chat_status_never">%1$s · hasn\'t connected yet</string>
+    <string name="chat_status_online">%1$s · online</string>
+    <string name="chat_status_minutes_ago">%1$s · %2$d min ago</string>
+    <string name="chat_status_hours_ago">%1$s · %2$d h ago</string>
+    <string name="chat_status_days_ago">%1$s · %2$d d ago</string>
 
     <string name="home_cannot_open">That app cannot be opened from here.</string>
 

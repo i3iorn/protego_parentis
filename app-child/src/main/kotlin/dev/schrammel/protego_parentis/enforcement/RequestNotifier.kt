@@ -12,11 +12,15 @@ import dev.schrammel.protego_parentis.ui.FamilyDevicesActivity
 import dev.schrammel.protego_parentis.ui.ChatActivity
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestState
+import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.IncomingRequest
 import dev.schrammel.protego_parentis.sync.NewApp
 import dev.schrammel.protego_parentis.ui.AppControlActivity
 import dev.schrammel.protego_parentis.ui.AuditActivity
+import dev.schrammel.protego_parentis.ui.HomeActivity
 import dev.schrammel.protego_parentis.ui.ParentDeviceActivity
+import dev.schrammel.protego_parentis.ui.ParentHomeActivity
 import dev.schrammel.protego_parentis.ui.ParentInboxActivity
 import dev.schrammel.protego_parentis.ui.RequestInboxActivity
 import dev.schrammel.protego_parentis.ui.RequestsActivity
@@ -172,8 +176,13 @@ class RequestNotifier(context: Context) {
      * through the sanitiser before reaching here — a notification is drawn by the
      * system, outside this app's own screens, so anything that could misrepresent
      * itself there is out of reach once it is posted.
+     *
+     * Skipped while [ChatActivity.isVisible] — a message arriving while somebody
+     * is already watching the conversation update live (#70) does not need a
+     * banner telling them the same thing a second time.
      */
     fun notifyChat(sender: String, text: String) {
+        if (ChatActivity.isVisible) return
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_CHAT,
@@ -182,6 +191,18 @@ class RequestNotifier(context: Context) {
             body = text,
             destination = Intent(appContext, ChatActivity::class.java),
         )
+    }
+
+    /**
+     * Dismisses a chat notification left over from before this screen opened.
+     *
+     * Covers the case where a message arrived and was notified while the app
+     * was elsewhere, and the conversation is only opened later — auto-cancel
+     * already handles a tap on the notification itself, this handles reaching
+     * the same screen any other way.
+     */
+    fun clearChatNotification() {
+        notifications.cancel(NOTIFICATION_CHAT)
     }
 
     /**
@@ -423,9 +444,7 @@ class RequestNotifier(context: Context) {
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
         return runCatching {
-            TaskStackBuilder.create(appContext)
-                .addNextIntentWithParentStack(destination)
-                .getPendingIntent(id, flags)
+            stackFor(destination).getPendingIntent(id, flags)
         }.getOrNull() ?: PendingIntent.getActivity(
             appContext,
             id,
@@ -434,7 +453,35 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * [destination]'s ancestors, chosen for whichever phone is about to open it.
+     *
+     * `parentActivityName` can only name one class, but a chat message or a
+     * family-roster change can land on either kind of phone (#78) — there is no
+     * single manifest entry that is correct for both. These two are built by
+     * hand, rooted at whichever home this device actually has; every other
+     * destination still comes from the manifest, unchanged.
+     */
+    private fun stackFor(destination: Intent): TaskStackBuilder {
+        val className = destination.component?.className
+        val ambiguous = className != null && ROLE_AMBIGUOUS_DESTINATIONS.contains(className)
+        if (!ambiguous) return TaskStackBuilder.create(appContext).addNextIntentWithParentStack(destination)
+
+        val home = if (RoleStore(appContext).roleOrChild == DeviceRole.PARENT) {
+            ParentHomeActivity.intent(appContext)
+        } else {
+            Intent(appContext, HomeActivity::class.java)
+        }
+        return TaskStackBuilder.create(appContext).addNextIntent(home).addNextIntent(destination)
+    }
+
     private companion object {
+        /** Notification destinations with no single correct manifest parent — see [stackFor]. */
+        val ROLE_AMBIGUOUS_DESTINATIONS = setOf(
+            ChatActivity::class.java.name,
+            FamilyDevicesActivity::class.java.name,
+        )
+
         const val CHANNEL_INCOMING = "requests_incoming"
         const val CHANNEL_DECISION = "requests_decision"
 

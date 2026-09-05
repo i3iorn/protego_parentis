@@ -134,39 +134,55 @@
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
 
+        <!--
+          Reached through Rules now, not the dashboard directly (#78 part 3) —
+          Rules is what makes the daily limit and bonus time reachable at all
+          on a parent's phone, local or remote.
+        -->
         <activity
             android:name=".ui.ParentBonusActivity"
             android:exported="false"
-            android:parentActivityName=".ui.ParentHomeActivity" />
+            android:parentActivityName=".ui.RulesActivity" />
 
         <activity
             android:name=".ui.ParentLimitActivity"
             android:exported="false"
-            android:parentActivityName=".ui.ParentHomeActivity" />
+            android:parentActivityName=".ui.RulesActivity" />
 
         <activity
             android:name=".ui.RulesetPickerActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
 
-        <activity
-            android:name=".ui.ParentSettingsActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.FamilyDevicesActivity" />
-
         <!--
-          The shared history. Deliberately not gated: a record only the parent can
-          read is not a shared record.
+          Settings, for both kinds of phone (#78 part 1) — reachable top-level
+          from either role's own home, same as Family devices and Chat below.
+          It is never a notification destination itself, so unlike those two
+          this one has no dynamic stack to get right; the declared parent is
+          only the fallback for a launch with no real back stack behind it.
         -->
         <activity
-            android:name=".ui.HomeMoreActivity"
+            android:name=".ui.SettingsActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeActivity" />
+            android:parentActivityName=".ui.ParentHomeActivity" />
 
+        <activity
+            android:name=".ui.RoleSwitchActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.SettingsActivity" />
+
+        <!--
+          The shared history. Deliberately not gated: a record only the parent
+          can read is not a shared record. Reachable top-level from both home
+          screens (#78 part 2), but unlike Family devices and Chat its own two
+          notifications (a lock, a locate) only ever fire on the child's own
+          phone — never the parent's — so HomeActivity is always the right
+          root here, and this one needed no dynamic stack in part 4.
+        -->
         <activity
             android:name=".ui.AuditActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeMoreActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.LimitsActivity"
@@ -183,10 +199,15 @@
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />
 
+        <!--
+          Behind Settings now, not Rules — moved there with the rest of "this
+          phone's role" when Settings became one screen (#78 part 1). This entry
+          was left pointing at the old parent until now.
+        -->
         <activity
             android:name=".ui.DeviceControlActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.SettingsActivity" />
 
         <activity
             android:name=".ui.SchedulesActivity"
@@ -267,17 +288,24 @@
         <activity
             android:name=".ui.PrivacyActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeMoreActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.DiagnosticsActivity"
             android:exported="false"
             android:parentActivityName=".ui.PrivacyActivity" />
 
+        <!--
+          Reachable top-level from either role's own home now (#78 part 2),
+          not through Rules. There is no one manifest entry correct for both —
+          RequestNotifier builds this screen's notification back stack by hand
+          for that reason. This declaration is only the fallback for a launch
+          with no real back stack behind it already (a deep link, a shortcut).
+        -->
         <activity
             android:name=".ui.FamilyDevicesActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <!--
           Pairing over the local network. Both are ordinary screens: they hold no
@@ -304,31 +332,42 @@
             android:exported="false"
             android:parentActivityName=".ui.JoinFamilyActivity" />
 
+        <!--
+          Reachable top-level from either role's own home (#78 part 2), same as
+          Family devices above — RequestNotifier builds its notification back
+          stack by hand for the same reason; this is only the fallback.
+        -->
         <activity
             android:name=".ui.ChatActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Behind Settings now, not Rules — see DeviceControlActivity above. -->
         <activity
             android:name=".ui.FeatureSettingsActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.SettingsActivity" />
 
+        <!-- Behind Settings now, not More — More was deleted in #78 part 2. -->
         <activity
             android:name=".ui.NotificationSettingsActivity"
             android:exported="false"
-            android:parentActivityName=".ui.HomeActivity" />
+            android:parentActivityName=".ui.SettingsActivity" />
 
         <activity
             android:name=".ui.SyncBackendActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.JoinFamilyActivity" />
 
+        <!--
+          Reached from Family devices' "Sync & relay" row, not Rules — that row
+          moved when Settings absorbed Rules' old Family group (#78 parts 1-3).
+        -->
         <activity
             android:name=".ui.JoinFamilyActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.FamilyDevicesActivity" />
 
         <activity
             android:name=".ui.CelebrationActivity"
