@@ -125,6 +125,11 @@
     <string name="context_enabled">Regeln är på</string>
     <string name="context_when_header">När</string>
     <string name="context_invert">Gäller när detta INTE stämmer</string>
+    <string name="context_add_condition">+ Lägg till ett villkor till</string>
+    <string name="context_remove_condition">Ta bort</string>
+    <string name="context_combine_header">Matcha</string>
+    <string name="context_combine_all">Alla dessa</string>
+    <string name="context_combine_any">Någon av dessa</string>
     <string name="context_do_header">Gör detta</string>
     <string name="context_to_header">Med</string>
     <string name="context_choose_wifi">På ett Wi-Fi-nätverk</string>
