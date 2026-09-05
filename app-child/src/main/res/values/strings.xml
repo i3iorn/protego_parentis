@@ -565,6 +565,8 @@
     <string name="schedules_days_header">Days</string>
     <string name="schedules_window_header">Window</string>
     <string name="schedules_window_hint">An end earlier than the start runs past midnight into the next day.</string>
+    <string name="schedules_every_other_week">Every other week</string>
+    <string name="schedules_every_other_week_hint">Active this week, skipped next week, and so on.</string>
     <string name="schedules_from">From %1$s</string>
     <string name="schedules_to">Until %1$s</string>
     <string name="schedules_allowed_header">Apps that stay usable</string>

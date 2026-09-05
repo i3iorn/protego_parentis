@@ -8,6 +8,7 @@ import dev.schrammel.protego_parentis.model.ScheduleId
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 
 /**
@@ -48,9 +49,12 @@ data class StoredSchedule(
      * this was somebody's custom window, never bedtime.
      */
     val kind: ScheduleBlock.Kind = ScheduleBlock.Kind.CUSTOM,
+    /** See [ScheduleBlock.parityAnchor] — absent here means every week, same as there. */
+    val parityAnchorEpochDay: Long? = null,
 ) {
     val start: LocalTime get() = startMinuteOfDay.toLocalTime()
     val end: LocalTime get() = endMinuteOfDay.toLocalTime()
+    val parityAnchor: LocalDate? get() = parityAnchorEpochDay?.let(LocalDate::ofEpochDay)
 
     /** Whether the engine would accept this. The editor refuses to save otherwise. */
     val isComplete: Boolean
@@ -76,6 +80,7 @@ data class StoredSchedule(
             packages = packages.map(::PackageName).toSet(),
             mode = mode,
             kind = kind,
+            parityAnchor = parityAnchor,
         )
     }
 
@@ -138,6 +143,7 @@ class ScheduleStore(context: Context) {
                     put(KEY_MODE, schedule.mode.name)
                     put(KEY_ENABLED, schedule.enabled)
                     put(KEY_KIND, schedule.kind.name)
+                    schedule.parityAnchorEpochDay?.let { put(KEY_PARITY_ANCHOR, it) }
                 }
             },
         ).toString()
@@ -171,6 +177,7 @@ class ScheduleStore(context: Context) {
             kind = ScheduleBlock.Kind.entries
                 .firstOrNull { it.name == json.optString(KEY_KIND) }
                 ?: ScheduleBlock.Kind.CUSTOM,
+            parityAnchorEpochDay = json.takeIf { it.has(KEY_PARITY_ANCHOR) }?.optLong(KEY_PARITY_ANCHOR),
         )
     }
 
@@ -203,5 +210,6 @@ class ScheduleStore(context: Context) {
         private const val KEY_MODE = "mode"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_KIND = "kind"
+        private const val KEY_PARITY_ANCHOR = "parityAnchorEpochDay"
     }
 }

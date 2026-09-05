@@ -1,7 +1,9 @@
 package dev.schrammel.protego_parentis.model
 
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 /**
  * A recurring window during which some apps are paused.
@@ -33,6 +35,15 @@ data class ScheduleBlock(
     val packages: Set<PackageName> = emptySet(),
     val mode: Mode = Mode.EXCLUSIVE,
     val kind: Kind = Kind.CUSTOM,
+    /**
+     * Null means every week — what every schedule meant before this field
+     * existed, so nothing needs migrating. Set, it names the first date this
+     * window is active; every second 7-day step from there is active too, and
+     * the weeks in between are skipped (#83 — "every other week on Fridays").
+     * Counted in exact 7-day steps from this date, not calendar weeks, so a
+     * schedule needs no notion of which day a week is deemed to start on.
+     */
+    val parityAnchor: LocalDate? = null,
 ) {
     init {
         require(name.isNotBlank()) { "schedule must have a name to show on the block screen" }
@@ -42,6 +53,18 @@ data class ScheduleBlock(
 
     /** True when this window runs past midnight into the next calendar day. */
     val crossesMidnight: Boolean get() = !end.isAfter(start)
+
+    /**
+     * Whether a window starting on [date] falls in an active week under
+     * [parityAnchor] — always true when there is no anchor. Parity is exact
+     * 7-day steps from the anchor, so it holds however far before or after it
+     * [date] falls, and whichever day of the week the anchor itself is on.
+     */
+    fun appliesToWeekOf(date: LocalDate): Boolean {
+        val anchor = parityAnchor ?: return true
+        val weeksBetween = Math.floorDiv(ChronoUnit.DAYS.between(anchor, date), 7L)
+        return weeksBetween % 2 == 0L
+    }
 
     /**
      * Whether this window pauses [pkg], while it is running.
