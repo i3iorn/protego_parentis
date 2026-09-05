@@ -101,6 +101,40 @@ class RuleDestinationsTest {
         )
     }
 
+    /**
+     * #86: the arrival-announcement toggle only means anything on the device
+     * doing the arriving, so it stays own-device-only — but the saved places
+     * themselves are the same list Contextual rules already edits remotely,
+     * so a remote target gets its own direct door to them instead.
+     */
+    @Test
+    fun `on the managed phone itself, places opens arrival announcements`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        LocalDeviceId.useInTests("THISPHONE")
+        val activity = rulesActivity()
+
+        click(activity, R.string.rules_row_places_alerts)
+
+        assertEquals(
+            PlaceAlertsActivity::class.java.name,
+            shadowOf(activity).nextStartedActivity?.component?.className,
+        )
+    }
+
+    @Test
+    fun `editing a child's rules remotely, places opens place management directly`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        enrolChild("CHILD1")
+        val activity = rulesActivity()
+
+        click(activity, R.string.rules_row_places)
+
+        assertEquals(
+            PlacesActivity::class.java.name,
+            shadowOf(activity).nextStartedActivity?.component?.className,
+        )
+    }
+
     /** Clicks the row titled by [titleRes], the same way a tap on the screen would. */
     private fun click(activity: RulesActivity, titleRes: Int) {
         val title = activity.getString(titleRes)

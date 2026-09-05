@@ -848,6 +848,8 @@
     <string name="located_notification_body">De fick telefonens position. Det står i den delade historiken.</string>
     <string name="rules_row_places_alerts">Ankomster och avfärder</string>
     <string name="rules_row_places_alerts_detail">Ett meddelande när telefonen når eller lämnar en sparad plats</string>
+    <string name="rules_row_places">Platser</string>
+    <string name="rules_row_places_detail">Byt namn på, ändra storlek på, eller ta bort en sparad plats</string>
     <string name="places_alerts_enable">Skicka ankomster och avfärder</string>
     <string name="places_alerts_hint">Skickar platsens namn, aldrig en position. Positioner skickas bara när en förälder frågar, eller vid nödläge.</string>
 
