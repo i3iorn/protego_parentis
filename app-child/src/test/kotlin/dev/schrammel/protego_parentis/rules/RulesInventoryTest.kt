@@ -80,6 +80,9 @@ class RulesInventoryTest {
         // Bedtime is the one fixed-id entry here now (#12) — see
         // ScheduleStore's own doc comment.
         "KEY_KIND=kind" to PARENT,
+        // #83: every-other-week. Replicates the same way every other field
+        // here already does.
+        "KEY_PARITY_ANCHOR=parityAnchorEpochDay" to PARENT,
     )
 
     private val contextRules = mapOf(

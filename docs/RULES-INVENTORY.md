@@ -59,7 +59,7 @@ Bedtime used to be four fields here (`bedtime_enabled`/`bedtime_start_minute_of_
 `bedtime_end_minute_of_day`/`bedtime_days`). [#12](https://github.com/i3iorn/dementor_watch/issues/12)
 removed them — bedtime is a `StoredSchedule` now, see `ScheduleStore` below.
 
-## ScheduleStore — `schedules` · 10 Parent
+## ScheduleStore — `schedules` · 11 Parent
 
 `KEY_SCHEDULES` holds the list; the rest are the fields of one schedule inside
 it. Was the gap behind #12 (below); [#41](https://github.com/i3iorn/dementor_watch/issues/41)
@@ -71,7 +71,8 @@ whole-record tombstone (see [#40](https://github.com/i3iorn/dementor_watch/issue
 and `ParentRulesActivity` gained a Schedules section to edit it from a parent's
 own phone.
 
-`schedules`, `id`, `name`, `days`, `start`, `end`, `allowed`, `mode`, `enabled`, `kind`
+`schedules`, `id`, `name`, `days`, `start`, `end`, `allowed`, `mode`, `enabled`, `kind`,
+`parityAnchorEpochDay`
 
 `allowed` is the on-disk name of what the model calls `packages`; it was renamed
 in the model when schedules gained a mode and deliberately not renamed on disk,
@@ -88,6 +89,11 @@ phone rather than appearing in the generic schedules list, so a family tidying
 up a homework block can't delete it by accident — the risk that kept it
 separate in the first place, now handled by every screen that lists these
 windows filtering `bedtime` out instead.
+
+`parityAnchorEpochDay` is new as of #83: absent means every week, exactly what
+every schedule already meant, so nothing needed migrating. Set, it names the
+first active date, and the window skips every other 7-day step from there —
+"every other week on Fridays."
 
 ## ContextRuleStore — `context_rules` · 9 Parent, 1 Pending, 2 Local only
 
