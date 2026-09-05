@@ -38,10 +38,15 @@ import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
  * [BonusTimeActivity]) when [target] is this device's own, and to the
  * parent-side send-a-message screen ([ParentLimitActivity], [ParentBonusActivity])
  * otherwise — the same local/remote split #43 already established for every
- * other rule store (#78). Rows that genuinely cannot work remotely — the web
- * filter, web activity, place alerts, the goal, and requests — still only
- * appear when [target] is this device's own; [render] adds a caption saying
- * so rather than omitting them silently.
+ * other rule store (#78). Places gets the same split for the same reason
+ * (#86): the arrival-announcement toggle only means anything read on the
+ * device doing the arriving, but the saved places themselves are exactly the
+ * list Contextual rules already edits remotely, so a remote target gets a
+ * direct door to [PlacesActivity] rather than losing them along with the
+ * toggle. Rows that genuinely cannot work remotely at all — the web filter,
+ * web activity, the goal, and requests — still only appear when [target] is
+ * this device's own; [render] adds a caption saying so rather than omitting
+ * them silently.
  */
 class RulesActivity : ParentGatedActivity() {
 
@@ -157,13 +162,27 @@ class RulesActivity : ParentGatedActivity() {
                         },
                     )
                 }
-                if (target.isOwnDevice && enabled(Feature.PLACES)) {
-                    add(
-                        row(
-                            R.string.rules_row_places_alerts,
-                            R.string.rules_row_places_alerts_detail,
-                        ) { startActivity(PlaceAlertsActivity.intent(this@RulesActivity)) },
-                    )
+                if (enabled(Feature.PLACES)) {
+                    if (target.isOwnDevice) {
+                        // Arrival announcements are inherently this phone's own —
+                        // they describe what *this* device tells a parent about
+                        // itself, which is meaningless read from someone else's.
+                        // The saved places it manages are the same list Contextual
+                        // rules uses, so a remote target gets a direct door to
+                        // those below rather than losing them entirely (#86).
+                        add(
+                            row(
+                                R.string.rules_row_places_alerts,
+                                R.string.rules_row_places_alerts_detail,
+                            ) { startActivity(PlaceAlertsActivity.intent(this@RulesActivity)) },
+                        )
+                    } else {
+                        add(
+                            row(R.string.rules_row_places, R.string.rules_row_places_detail) {
+                                startActivity(PlacesActivity.intent(this@RulesActivity, target.childId))
+                            },
+                        )
+                    }
                 }
                 if (target.isOwnDevice && enabled(Feature.GOALS)) {
                     add(

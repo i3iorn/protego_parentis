@@ -18,6 +18,7 @@ object ScheduleResolver {
     /** The concrete start/end pair for a window starting on [date], or null if it does not run that day. */
     private fun windowStartingOn(block: ScheduleBlock, date: LocalDate, now: ZonedDateTime): Window? {
         if (date.dayOfWeek !in block.days) return null
+        if (!block.appliesToWeekOf(date)) return null
         val start = ZonedDateTime.of(date, block.start, now.zone)
         val endDate = if (block.crossesMidnight) date.plusDays(1) else date
         val end = ZonedDateTime.of(endDate, block.end, now.zone)

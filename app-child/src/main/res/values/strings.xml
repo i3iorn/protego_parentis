@@ -111,6 +111,7 @@
     <string name="context_effect_budget">limit the phone to %1$s</string>
     <string name="context_target_everything">everything</string>
     <string name="context_target_categories">some categories</string>
+    <string name="context_target_mixed">%1$s and %2$s</string>
 
     <string name="context_edit_title">Rule</string>
     <string name="context_name_hint">Name, for example No games at school</string>
@@ -118,6 +119,11 @@
     <string name="context_enabled">Rule is on</string>
     <string name="context_when_header">When</string>
     <string name="context_invert">Apply when this is NOT true</string>
+    <string name="context_add_condition">+ Add another condition</string>
+    <string name="context_remove_condition">Remove</string>
+    <string name="context_combine_header">Match</string>
+    <string name="context_combine_all">All of these</string>
+    <string name="context_combine_any">Any of these</string>
     <string name="context_do_header">Do this</string>
     <string name="context_to_header">To</string>
     <string name="context_choose_wifi">On a Wi-Fi network</string>
@@ -559,6 +565,8 @@
     <string name="schedules_days_header">Days</string>
     <string name="schedules_window_header">Window</string>
     <string name="schedules_window_hint">An end earlier than the start runs past midnight into the next day.</string>
+    <string name="schedules_every_other_week">Every other week</string>
+    <string name="schedules_every_other_week_hint">Active this week, skipped next week, and so on.</string>
     <string name="schedules_from">From %1$s</string>
     <string name="schedules_to">Until %1$s</string>
     <string name="schedules_allowed_header">Apps that stay usable</string>
@@ -851,6 +859,8 @@
     <string name="located_notification_body">They were sent this phone\'s position. It is in the shared history.</string>
     <string name="rules_row_places_alerts">Arrivals and departures</string>
     <string name="rules_row_places_alerts_detail">A message when the phone reaches or leaves a saved place</string>
+    <string name="rules_row_places">Places</string>
+    <string name="rules_row_places_detail">Rename, resize, or remove a saved place</string>
     <string name="places_alerts_enable">Send arrivals and departures</string>
     <string name="places_alerts_hint">Sends the name of the place, never a position. Positions are only ever sent when a parent asks, or in an emergency.</string>
 

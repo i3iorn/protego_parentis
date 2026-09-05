@@ -131,6 +131,9 @@ object ContextRules {
         is RuleTarget.Categories -> target.categories.flatMapTo(mutableSetOf()) { id: CategoryId ->
             hierarchy.packagesIn(id)
         }
+        is RuleTarget.Mixed -> target.packages + target.categories.flatMapTo(mutableSetOf()) { id: CategoryId ->
+            hierarchy.packagesIn(id)
+        }
     }
 
     /** The smaller of two budgets, comparing the most permissive day of each. */

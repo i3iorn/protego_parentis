@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.LocalTime
 
 class ScheduleResolverTest {
@@ -116,5 +117,47 @@ class ScheduleResolverTest {
     @Test
     fun `no blocks means no edge`() {
         assertNull(ScheduleResolver.nextEdgeAfter(emptyList(), zdt("2026-08-21", "10:00")))
+    }
+
+    // ---------- week parity (#83) ----------
+
+    @Test
+    fun `a fortnightly block is active on its anchor week`() {
+        val block = schoolHours("2026-08-21").copy(parityAnchor = LocalDate.parse("2026-08-21"))
+
+        assertTrue(ScheduleResolver.isActive(block, zdt("2026-08-21", "10:00")))
+    }
+
+    @Test
+    fun `a fortnightly block skips the week right after its anchor`() {
+        val block = schoolHours("2026-08-21").copy(parityAnchor = LocalDate.parse("2026-08-21"))
+
+        assertFalse(ScheduleResolver.isActive(block, zdt("2026-08-28", "10:00")))
+    }
+
+    @Test
+    fun `a fortnightly block resumes two weeks after its anchor`() {
+        val block = schoolHours("2026-08-21").copy(parityAnchor = LocalDate.parse("2026-08-21"))
+
+        assertTrue(ScheduleResolver.isActive(block, zdt("2026-09-04", "10:00")))
+    }
+
+    @Test
+    fun `a fortnightly block also skips the week right before its anchor`() {
+        // Parity holds looking backward too — an anchor is just one point on an
+        // alternating pattern, not where the pattern is deemed to begin.
+        val block = schoolHours("2026-08-21").copy(parityAnchor = LocalDate.parse("2026-08-21"))
+
+        assertFalse(ScheduleResolver.isActive(block, zdt("2026-08-14", "10:00")))
+    }
+
+    @Test
+    fun `a fortnightly block still has its next edge two weeks out, not one`() {
+        val block = schoolHours("2026-08-21").copy(parityAnchor = LocalDate.parse("2026-08-21"))
+
+        assertEquals(
+            at("2026-09-04", "08:00"),
+            ScheduleResolver.nextEdgeAfter(listOf(block), zdt("2026-08-21", "16:00")),
+        )
     }
 }

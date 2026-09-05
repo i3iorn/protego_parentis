@@ -205,6 +205,21 @@ class ContextRulesTest {
     }
 
     @Test
+    fun `a mixed target covers its loose apps and its category together`() {
+        val hierarchy = CategoryHierarchy.resolve(
+            listOf(Category(games, "Games", WeeklyBudget.UNLIMITED, setOf(GAME))),
+        )
+        val rules = listOf(
+            rule(Condition.Always, target = RuleTarget.Mixed(packages = setOf(HOMEWORK), categories = setOf(games))),
+        )
+
+        assertEquals(
+            setOf(GAME, HOMEWORK),
+            evaluate(rules, DeviceContext.UNKNOWN, hierarchy).blocked.keys,
+        )
+    }
+
+    @Test
     fun `an allow beats a block`() {
         // "Homework apps are fine at school" must survive "block everything at
         // school", or the rules become a puzzle rather than a tool.

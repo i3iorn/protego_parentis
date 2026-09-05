@@ -68,10 +68,12 @@ object Defaults {
     val BEDTIME_END: LocalTime = LocalTime.of(7, 0)
 
     /**
-     * How far ahead schedule resolution looks for the next start or end. Eight
-     * days guarantees a full week is covered even for a once-weekly block.
+     * How far ahead schedule resolution looks for the next start or end.
+     * Fifteen days guarantees a full cycle is covered even for a fortnightly
+     * block (#83) — its own skipped week plus the week its next occurrence
+     * starts in, with a day of slack either side.
      */
-    const val SCHEDULE_HORIZON_DAYS = 8L
+    const val SCHEDULE_HORIZON_DAYS = 15L
 
     /**
      * How long daily totals are kept: thirteen months, so a full year plus the

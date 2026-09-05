@@ -279,6 +279,7 @@ class PolicyReplication(context: Context) {
                 enabled = fields[FIELD_SCHEDULE_ENABLED]?.toBooleanStrictOrNull() ?: true,
                 kind = ScheduleBlock.Kind.entries.firstOrNull { it.name == fields[FIELD_SCHEDULE_KIND] }
                     ?: ScheduleBlock.Kind.CUSTOM,
+                parityAnchorEpochDay = fields[FIELD_SCHEDULE_PARITY_ANCHOR]?.toLongOrNull(),
             ).takeIf { it.isComplete }
         }
     }
@@ -351,6 +352,7 @@ class PolicyReplication(context: Context) {
             put("$scheduleRoot/$FIELD_SCHEDULE_MODE", schedule.mode.name)
             put("$scheduleRoot/$FIELD_SCHEDULE_ENABLED", schedule.enabled.toString())
             put("$scheduleRoot/$FIELD_SCHEDULE_KIND", schedule.kind.name)
+            put("$scheduleRoot/$FIELD_SCHEDULE_PARITY_ANCHOR", schedule.parityAnchorEpochDay?.toString())
             putMembers("$scheduleRoot/$FIELD_SCHEDULE_DAYS", schedule.days.map(Int::toString).toSet())
             putMembers("$scheduleRoot/$FIELD_SCHEDULE_PACKAGES", schedule.packages)
         }
@@ -770,6 +772,9 @@ class PolicyReplication(context: Context) {
         const val FIELD_SCHEDULE_DAYS = "days"
         const val FIELD_SCHEDULE_PACKAGES = "packages"
         const val FIELD_SCHEDULE_KIND = "kind"
+
+        /** See [ScheduleBlock.parityAnchor]. Absent means every week, same as there. */
+        const val FIELD_SCHEDULE_PARITY_ANCHOR = "parityAnchorEpochDay"
 
         /**
          * A schedule id under this marker is gone, whatever its other fields say.

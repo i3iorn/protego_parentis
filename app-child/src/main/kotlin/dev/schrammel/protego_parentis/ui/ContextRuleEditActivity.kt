@@ -64,6 +64,17 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private var enabled: Boolean = true
     private var negate: Boolean = false
     private var condition: Condition = Condition.Always
+
+    /**
+     * Extra conditions beyond [condition] (#87) — empty for the common case of
+     * a rule with just one. Combined with [condition] via [combineAll] only at
+     * save time ([combinedCondition]); [Condition.AllOf]/[Condition.AnyOf]
+     * themselves never appear as [condition] while this screen is open.
+     */
+    private var extraConditions: MutableList<Condition> = mutableListOf()
+
+    /** Whether [condition] plus [extraConditions] must all hold, or any one of them. */
+    private var combineAll: Boolean = true
     private var effect: RuleEffect = RuleEffect.Block
     private var ruleTarget: RuleTarget = RuleTarget.Everything
 
@@ -72,7 +83,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     ) { result ->
         val picked = AppPickerActivity.resultFrom(result.data)
         if (picked.isNotEmpty()) {
-            ruleTarget = RuleTarget.Apps(picked.map(::PackageName).toSet())
+            ruleTarget = mergedTarget(picked.map(::PackageName).toSet(), ruleTarget.targetCategories())
         }
         render()
     }
@@ -92,9 +103,28 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         effect = existing?.effect ?: RuleEffect.Block
         ruleTarget = existing?.target ?: RuleTarget.Everything
         // A negated condition is stored wrapped; unwrap so the toggle reflects it.
+        // A combined one (#87) is stored as one AllOf/AnyOf; unwrap that too, into
+        // the first part plus whatever else it was combining, so editing a rule
+        // built from more than one condition round-trips through the same rows
+        // that built it, rather than showing one condition and silently losing
+        // the rest.
         val stored = existing?.condition ?: Condition.Always
         negate = stored is Condition.Not
-        condition = if (stored is Condition.Not) stored.condition else stored
+        when (val unwrapped = if (stored is Condition.Not) stored.condition else stored) {
+            is Condition.AllOf -> {
+                combineAll = true
+                condition = unwrapped.conditions.firstOrNull() ?: Condition.Always
+                extraConditions = unwrapped.conditions.drop(1).toMutableList()
+            }
+
+            is Condition.AnyOf -> {
+                combineAll = false
+                condition = unwrapped.conditions.firstOrNull() ?: Condition.Always
+                extraConditions = unwrapped.conditions.drop(1).toMutableList()
+            }
+
+            else -> condition = unwrapped
+        }
 
         container = contentColumn()
         showColumn(container)
@@ -131,7 +161,11 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
         // ---- when ----
         container.addView(heading(getString(R.string.context_when_header), R.style.TextAppearance_Dementor_Section))
-        container.addView(choice(describeCondition()) { chooseCondition() })
+        container.addView(
+            choice(describeCondition(condition)) {
+                chooseCondition(condition) { picked -> condition = picked; render() }
+            },
+        )
         container.addView(
             CheckBox(this).apply {
                 setText(R.string.context_invert)
@@ -141,6 +175,47 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                     negate = checked
                     render()
                 }
+            },
+        )
+
+        // #87: a second condition and beyond, combined with the first by
+        // either needing every one of them or just one — AllOf/AnyOf, exposed.
+        if (extraConditions.isNotEmpty()) {
+            container.addView(
+                choice(getString(if (combineAll) R.string.context_combine_all else R.string.context_combine_any)) {
+                    menu(
+                        R.string.context_combine_header,
+                        listOf(
+                            getString(R.string.context_combine_all) to { combineAll = true; render() },
+                            getString(R.string.context_combine_any) to { combineAll = false; render() },
+                        ),
+                    )
+                },
+            )
+            extraConditions.forEachIndexed { index, extra ->
+                container.addView(
+                    LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        addView(
+                            choice(describeCondition(extra)) {
+                                chooseCondition(extra) { picked -> extraConditions[index] = picked; render() }
+                            }.apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) },
+                        )
+                        addView(
+                            Button(this@ContextRuleEditActivity).apply {
+                                setText(R.string.context_remove_condition)
+                                isEnabled = canEdit
+                                setOnClickListener { extraConditions.removeAt(index); render() }
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        container.addView(
+            choice(getString(R.string.context_add_condition)) {
+                chooseCondition(null) { picked -> extraConditions.add(picked); render() }
             },
         )
 
@@ -187,38 +262,36 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     // ---------- choosing ----------
 
-    private fun chooseCondition() {
+    /**
+     * Picks one condition, prefilling from [current] when replacing an
+     * existing one — used both for the primary "when" row and, since #87, for
+     * adding or editing an extra one. [current] is null when adding a new one,
+     * since there is nothing yet to prefill from.
+     */
+    private fun chooseCondition(current: Condition?, onPicked: (Condition) -> Unit) {
         if (!canEdit) return
         val places = places()
         val options = buildList {
-            add(getString(R.string.context_when_always) to { condition = Condition.Always; render() })
-            add(getString(R.string.context_choose_wifi) to { askForWifi() })
+            add(getString(R.string.context_when_always) to { onPicked(Condition.Always) })
+            add(getString(R.string.context_choose_wifi) to { askForWifi(current, onPicked) })
             places.forEach { place ->
-                add(
-                    getString(R.string.context_when_place, place.name) to {
-                        condition = Condition.AtPlace(place.id)
-                        render()
-                    },
-                )
+                add(getString(R.string.context_when_place, place.name) to { onPicked(Condition.AtPlace(place.id)) })
             }
-            add(getString(R.string.context_choose_device) to { chooseDevice() })
-            add(getString(R.string.context_choose_battery) to { askForBattery() })
+            add(getString(R.string.context_choose_device) to { chooseDevice(onPicked) })
+            add(getString(R.string.context_choose_battery) to { askForBattery(current, onPicked) })
         }
         menu(R.string.context_when_header, options)
     }
 
     /** A percentage rather than free text — there is no wrong value to type. */
-    private fun askForBattery() {
-        val existing = (condition as? Condition.BatteryBelow)?.percent ?: DEFAULT_BATTERY_PERCENT
+    private fun askForBattery(current: Condition?, onPicked: (Condition) -> Unit) {
+        val existing = (current as? Condition.BatteryBelow)?.percent ?: DEFAULT_BATTERY_PERCENT
         sliderDialog(
             title = R.string.context_choose_battery,
             max = MAX_BATTERY_PERCENT - 1,
             initialProgress = existing - 1,
             format = { getString(R.string.context_when_battery, it + 1) },
-        ) { progress ->
-            condition = Condition.BatteryBelow(progress + 1)
-            render()
-        }
+        ) { progress -> onPicked(Condition.BatteryBelow(progress + 1)) }
     }
 
     /**
@@ -226,31 +299,26 @@ class ContextRuleEditActivity : ParentGatedActivity() {
      * the one being written a rule about, but allows typing another.
      */
     @SuppressLint("MissingPermission")
-    private fun askForWifi() {
+    private fun askForWifi(current: Condition?, onPicked: (Condition) -> Unit) {
         requestLocationIfNeeded()
-        val current = dev.schrammel.protego_parentis.context.ContextProvider(this)
+        val currentSsid = dev.schrammel.protego_parentis.context.ContextProvider(this)
             .current(emptyList()).wifiSsid
+        val prefill = (current as? Condition.OnWifi)?.ssid ?: currentSsid.orEmpty()
 
         promptForText(
             R.string.context_choose_wifi,
             R.string.context_wifi_hint,
-            prefill = current.orEmpty(),
-        ) { ssid ->
-            condition = Condition.OnWifi(ssid)
-            render()
-        }
+            prefill = prefill,
+        ) { ssid -> onPicked(Condition.OnWifi(ssid)) }
     }
 
-    private fun chooseDevice() {
+    private fun chooseDevice(onPicked: (Condition) -> Unit) {
         requestBluetoothIfNeeded()
         promptForText(
             R.string.context_choose_device,
             R.string.context_device_hint,
             message = getString(R.string.context_device_explainer),
-        ) { tag ->
-            condition = Condition.NearDevice(DeviceTag(tag))
-            render()
-        }
+        ) { tag -> onPicked(Condition.NearDevice(DeviceTag(tag))) }
     }
 
     private fun chooseEffect() {
@@ -294,7 +362,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                         AppPickerActivity.intent(
                             this,
                             getString(R.string.context_choose_apps),
-                            (ruleTarget as? RuleTarget.Apps)?.packages?.map { it.value }.orEmpty(),
+                            ruleTarget.targetApps().map { it.value },
                             target.childId,
                         ),
                     )
@@ -309,7 +377,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             toast(getString(R.string.rules_no_categories))
             return
         }
-        val selected = (ruleTarget as? RuleTarget.Categories)?.categories?.map { it.value }.orEmpty()
+        val selected = ruleTarget.targetCategories().map { it.value }
         val checked = categories.map { it.id in selected }.toBooleanArray()
         val chosen = selected.toMutableSet()
 
@@ -323,7 +391,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 if (isChecked) chosen += id else chosen -= id
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                ruleTarget = RuleTarget.Categories(chosen.map(::CategoryId).toSet())
+                ruleTarget = mergedTarget(ruleTarget.targetApps(), chosen.map(::CategoryId).toSet())
                 render()
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -340,7 +408,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 id = ruleId,
                 name = name.trim(),
                 enabled = enabled,
-                condition = if (negate) Condition.Not(condition) else condition,
+                condition = combinedCondition(),
                 effect = effect,
                 target = ruleTarget,
             ),
@@ -383,22 +451,39 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     // ---------- descriptions ----------
 
-    private fun describeCondition(): String {
-        val base = when (val current = condition) {
-            is Condition.Always -> getString(R.string.context_when_always)
-            is Condition.OnWifi -> getString(R.string.context_when_wifi, current.ssid)
-            is Condition.NearDevice -> getString(R.string.context_when_near, current.tag.value)
-            is Condition.AtPlace -> getString(
-                R.string.context_when_place,
-                places().firstOrNull { it.id == current.place }?.name
-                    ?: getString(R.string.context_place_unknown),
-            )
+    /**
+     * One condition, as a phrase — never negated here even when [negate] is
+     * set, since #87 lets [negate] apply to a whole group of these rather than
+     * to just the first one; the "Invert" checkbox is the one place that's said.
+     */
+    private fun describeCondition(current: Condition): String = when (current) {
+        is Condition.Always -> getString(R.string.context_when_always)
+        is Condition.OnWifi -> getString(R.string.context_when_wifi, current.ssid)
+        is Condition.NearDevice -> getString(R.string.context_when_near, current.tag.value)
+        is Condition.AtPlace -> getString(
+            R.string.context_when_place,
+            places().firstOrNull { it.id == current.place }?.name
+                ?: getString(R.string.context_place_unknown),
+        )
 
-            is Condition.BatteryBelow -> getString(R.string.context_when_battery, current.percent)
+        is Condition.BatteryBelow -> getString(R.string.context_when_battery, current.percent)
 
-            else -> getString(R.string.context_when_always)
+        else -> getString(R.string.context_when_always)
+    }
+
+    /**
+     * [condition] plus [extraConditions], combined the way [combineAll] and
+     * [negate] say they should be — the single [Condition] this rule actually
+     * saves and evaluates against.
+     */
+    private fun combinedCondition(): Condition {
+        val parts = listOf(condition) + extraConditions
+        val combined: Condition = when {
+            parts.size == 1 -> parts.single()
+            combineAll -> Condition.AllOf(parts)
+            else -> Condition.AnyOf(parts)
         }
-        return if (negate) getString(R.string.context_when_not, base) else base
+        return if (negate) Condition.Not(combined) else combined
     }
 
     private fun describeEffect(): String = when (val current = effect) {
@@ -410,16 +495,45 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     private fun describeTarget(): String = when (val current = ruleTarget) {
         is RuleTarget.Everything -> getString(R.string.context_target_everything)
-        is RuleTarget.Apps -> resources.getQuantityString(
-            R.plurals.rules_category_apps,
-            current.packages.size,
-            current.packages.size,
-        )
+        is RuleTarget.Apps -> describeApps(current.packages)
+        is RuleTarget.Categories -> describeCategories(current.categories)
+        is RuleTarget.Mixed ->
+            getString(R.string.context_target_mixed, describeApps(current.packages), describeCategories(current.categories))
+    }
 
-        is RuleTarget.Categories -> current.categories
-            .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
-            .joinToString(", ")
-            .ifBlank { getString(R.string.context_target_categories) }
+    private fun describeApps(packages: Set<PackageName>): String =
+        resources.getQuantityString(R.plurals.rules_category_apps, packages.size, packages.size)
+
+    private fun describeCategories(categories: Set<CategoryId>): String = categories
+        .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
+        .joinToString(", ")
+        .ifBlank { getString(R.string.context_target_categories) }
+
+    /** [RuleTarget]'s apps, whichever variant is carrying them — see [mergedTarget]. */
+    private fun RuleTarget.targetApps(): Set<PackageName> = when (this) {
+        is RuleTarget.Apps -> packages
+        is RuleTarget.Mixed -> packages
+        else -> emptySet()
+    }
+
+    /** [RuleTarget]'s categories, whichever variant is carrying them — see [mergedTarget]. */
+    private fun RuleTarget.targetCategories(): Set<CategoryId> = when (this) {
+        is RuleTarget.Categories -> categories
+        is RuleTarget.Mixed -> categories
+        else -> emptySet()
+    }
+
+    /**
+     * The simplest [RuleTarget] that carries [apps] and [categories] (#90) —
+     * [RuleTarget.Mixed] only when a rule genuinely has both, so choosing just
+     * one kind still round-trips through the plain [RuleTarget.Apps] or
+     * [RuleTarget.Categories] it always did.
+     */
+    private fun mergedTarget(apps: Set<PackageName>, categories: Set<CategoryId>): RuleTarget = when {
+        apps.isEmpty() && categories.isEmpty() -> RuleTarget.Everything
+        categories.isEmpty() -> RuleTarget.Apps(apps)
+        apps.isEmpty() -> RuleTarget.Categories(categories)
+        else -> RuleTarget.Mixed(apps, categories)
     }
 
     // ---------- view helpers ----------

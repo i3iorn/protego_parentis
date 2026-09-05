@@ -80,6 +80,9 @@ class RulesInventoryTest {
         // Bedtime is the one fixed-id entry here now (#12) — see
         // ScheduleStore's own doc comment.
         "KEY_KIND=kind" to PARENT,
+        // #83: every-other-week. Replicates the same way every other field
+        // here already does.
+        "KEY_PARITY_ANCHOR=parityAnchorEpochDay" to PARENT,
     )
 
     private val contextRules = mapOf(
@@ -108,6 +111,9 @@ class RulesInventoryTest {
         "KEY_VALUE=value" to PARENT,
         "KEY_PARTS=parts" to PARENT,
         "KEY_MINUTES=minutes" to PARENT,
+        // #90: a Mixed target's categories, alongside KEY_PARTS' packages —
+        // exactly as remote-reachable as the rest of a rule's target already is.
+        "KEY_PARTS_CATEGORIES=partsCategories" to PARENT,
     )
 
     // #42 closed this store: all nine fields ride PolicySnapshot now, the same
