@@ -9,8 +9,10 @@ import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.context.ContextCapabilities
 import dev.schrammel.protego_parentis.context.ContextProvider
+import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
+import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
@@ -171,19 +173,21 @@ class ContextRulesActivity : ParentGatedActivity() {
         }
         val who = when (val ruleTarget = rule.target) {
             is RuleTarget.Everything -> getString(R.string.context_target_everything)
-            is RuleTarget.Apps -> resources.getQuantityString(
-                R.plurals.rules_category_apps,
-                ruleTarget.packages.size,
-                ruleTarget.packages.size,
-            )
-
-            is RuleTarget.Categories -> ruleTarget.categories
-                .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
-                .joinToString(", ")
-                .ifBlank { getString(R.string.context_target_categories) }
+            is RuleTarget.Apps -> describeApps(ruleTarget.packages)
+            is RuleTarget.Categories -> describeCategories(ruleTarget.categories)
+            is RuleTarget.Mixed ->
+                getString(R.string.context_target_mixed, describeApps(ruleTarget.packages), describeCategories(ruleTarget.categories))
         }
         return getString(R.string.context_rule_summary, describeCondition(rule.condition, places), what, who)
     }
+
+    private fun describeApps(packages: Set<PackageName>): String =
+        resources.getQuantityString(R.plurals.rules_category_apps, packages.size, packages.size)
+
+    private fun describeCategories(categories: Set<CategoryId>): String = categories
+        .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
+        .joinToString(", ")
+        .ifBlank { getString(R.string.context_target_categories) }
 
     private fun describeCondition(condition: Condition, places: List<PlaceRef>): String = when (condition) {
         is Condition.Always -> getString(R.string.context_when_always)

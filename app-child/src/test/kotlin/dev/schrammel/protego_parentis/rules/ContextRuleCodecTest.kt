@@ -108,6 +108,10 @@ class ContextRuleCodecTest {
             RuleTarget.Everything,
             RuleTarget.Apps(setOf(PackageName("com.example.app"))),
             RuleTarget.Categories(setOf(CategoryId("games"))),
+            RuleTarget.Mixed(
+                packages = setOf(PackageName("com.example.app")),
+                categories = setOf(CategoryId("games")),
+            ),
         )
 
         targets.forEach { target ->

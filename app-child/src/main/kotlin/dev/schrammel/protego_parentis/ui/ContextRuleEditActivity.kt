@@ -72,7 +72,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     ) { result ->
         val picked = AppPickerActivity.resultFrom(result.data)
         if (picked.isNotEmpty()) {
-            ruleTarget = RuleTarget.Apps(picked.map(::PackageName).toSet())
+            ruleTarget = mergedTarget(picked.map(::PackageName).toSet(), ruleTarget.targetCategories())
         }
         render()
     }
@@ -294,7 +294,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                         AppPickerActivity.intent(
                             this,
                             getString(R.string.context_choose_apps),
-                            (ruleTarget as? RuleTarget.Apps)?.packages?.map { it.value }.orEmpty(),
+                            ruleTarget.targetApps().map { it.value },
                             target.childId,
                         ),
                     )
@@ -309,7 +309,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             toast(getString(R.string.rules_no_categories))
             return
         }
-        val selected = (ruleTarget as? RuleTarget.Categories)?.categories?.map { it.value }.orEmpty()
+        val selected = ruleTarget.targetCategories().map { it.value }
         val checked = categories.map { it.id in selected }.toBooleanArray()
         val chosen = selected.toMutableSet()
 
@@ -323,7 +323,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 if (isChecked) chosen += id else chosen -= id
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                ruleTarget = RuleTarget.Categories(chosen.map(::CategoryId).toSet())
+                ruleTarget = mergedTarget(ruleTarget.targetApps(), chosen.map(::CategoryId).toSet())
                 render()
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -410,16 +410,45 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     private fun describeTarget(): String = when (val current = ruleTarget) {
         is RuleTarget.Everything -> getString(R.string.context_target_everything)
-        is RuleTarget.Apps -> resources.getQuantityString(
-            R.plurals.rules_category_apps,
-            current.packages.size,
-            current.packages.size,
-        )
+        is RuleTarget.Apps -> describeApps(current.packages)
+        is RuleTarget.Categories -> describeCategories(current.categories)
+        is RuleTarget.Mixed ->
+            getString(R.string.context_target_mixed, describeApps(current.packages), describeCategories(current.categories))
+    }
 
-        is RuleTarget.Categories -> current.categories
-            .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
-            .joinToString(", ")
-            .ifBlank { getString(R.string.context_target_categories) }
+    private fun describeApps(packages: Set<PackageName>): String =
+        resources.getQuantityString(R.plurals.rules_category_apps, packages.size, packages.size)
+
+    private fun describeCategories(categories: Set<CategoryId>): String = categories
+        .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
+        .joinToString(", ")
+        .ifBlank { getString(R.string.context_target_categories) }
+
+    /** [RuleTarget]'s apps, whichever variant is carrying them — see [mergedTarget]. */
+    private fun RuleTarget.targetApps(): Set<PackageName> = when (this) {
+        is RuleTarget.Apps -> packages
+        is RuleTarget.Mixed -> packages
+        else -> emptySet()
+    }
+
+    /** [RuleTarget]'s categories, whichever variant is carrying them — see [mergedTarget]. */
+    private fun RuleTarget.targetCategories(): Set<CategoryId> = when (this) {
+        is RuleTarget.Categories -> categories
+        is RuleTarget.Mixed -> categories
+        else -> emptySet()
+    }
+
+    /**
+     * The simplest [RuleTarget] that carries [apps] and [categories] (#90) —
+     * [RuleTarget.Mixed] only when a rule genuinely has both, so choosing just
+     * one kind still round-trips through the plain [RuleTarget.Apps] or
+     * [RuleTarget.Categories] it always did.
+     */
+    private fun mergedTarget(apps: Set<PackageName>, categories: Set<CategoryId>): RuleTarget = when {
+        apps.isEmpty() && categories.isEmpty() -> RuleTarget.Everything
+        categories.isEmpty() -> RuleTarget.Apps(apps)
+        apps.isEmpty() -> RuleTarget.Categories(categories)
+        else -> RuleTarget.Mixed(apps, categories)
     }
 
     // ---------- view helpers ----------

@@ -154,20 +154,32 @@ internal object ContextRuleCodec {
                 put(KEY_KIND, CATEGORIES)
                 put(KEY_PARTS, JSONArray(target.categories.map { it.value }))
             }
+
+            is RuleTarget.Mixed -> {
+                put(KEY_KIND, MIXED)
+                put(KEY_PARTS, JSONArray(target.packages.map { it.value }))
+                put(KEY_PARTS_CATEGORIES, JSONArray(target.categories.map { it.value }))
+            }
         }
     }
 
     fun decodeTarget(json: JSONObject): RuleTarget? {
-        fun values(): List<String> {
-            val array = json.optJSONArray(KEY_PARTS) ?: return emptyList()
+        fun valuesAt(key: String): List<String> {
+            val array = json.optJSONArray(key) ?: return emptyList()
             return (0 until array.length())
                 .mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
         }
+        fun values() = valuesAt(KEY_PARTS)
 
         return when (json.optString(KEY_KIND)) {
             EVERYTHING -> RuleTarget.Everything
             APPS -> RuleTarget.Apps(values().map(::PackageName).toSet())
             CATEGORIES -> RuleTarget.Categories(values().map(::CategoryId).toSet())
+            MIXED -> RuleTarget.Mixed(
+                packages = values().map(::PackageName).toSet(),
+                categories = valuesAt(KEY_PARTS_CATEGORIES).map(::CategoryId).toSet(),
+            )
+
             else -> null
         }
     }
@@ -192,6 +204,7 @@ internal object ContextRuleCodec {
     private const val KEY_KIND = "kind"
     private const val KEY_VALUE = "value"
     private const val KEY_PARTS = "parts"
+    private const val KEY_PARTS_CATEGORIES = "partsCategories"
     private const val KEY_MINUTES = "minutes"
 
     private const val ALWAYS = "always"
@@ -210,4 +223,5 @@ internal object ContextRuleCodec {
     private const val EVERYTHING = "everything"
     private const val APPS = "apps"
     private const val CATEGORIES = "categories"
+    private const val MIXED = "mixed"
 }
