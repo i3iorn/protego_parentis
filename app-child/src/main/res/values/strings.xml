@@ -119,6 +119,11 @@
     <string name="context_enabled">Rule is on</string>
     <string name="context_when_header">When</string>
     <string name="context_invert">Apply when this is NOT true</string>
+    <string name="context_add_condition">+ Add another condition</string>
+    <string name="context_remove_condition">Remove</string>
+    <string name="context_combine_header">Match</string>
+    <string name="context_combine_all">All of these</string>
+    <string name="context_combine_any">Any of these</string>
     <string name="context_do_header">Do this</string>
     <string name="context_to_header">To</string>
     <string name="context_choose_wifi">On a Wi-Fi network</string>
