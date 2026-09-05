@@ -556,6 +556,8 @@
     <string name="schedules_days_header">Dagar</string>
     <string name="schedules_window_header">Period</string>
     <string name="schedules_window_hint">Ett slut som är tidigare än starten löper över midnatt till nästa dag.</string>
+    <string name="schedules_every_other_week">Varannan vecka</string>
+    <string name="schedules_every_other_week_hint">Aktiv denna vecka, vilar nästa vecka, och så vidare.</string>
     <string name="schedules_from">Från %1$s</string>
     <string name="schedules_to">Till %1$s</string>
     <string name="schedules_allowed_header">Appar som fortsätter fungera</string>

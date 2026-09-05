@@ -29,6 +29,7 @@ import dev.schrammel.protego_parentis.ui.rules.labelFor
 import dev.schrammel.protego_parentis.ui.rules.scheduleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
@@ -211,6 +212,17 @@ class ScheduleEditActivity : ParentGatedActivity() {
     private var mode: ScheduleBlock.Mode = ScheduleBlock.Mode.EXCLUSIVE
     private var enabled: Boolean = true
 
+    /** #83: whether this window skips every second week. See [parityAnchorEpochDay]. */
+    private var everyOtherWeek: Boolean = false
+
+    /**
+     * The first active week, once [everyOtherWeek] is on — today, the moment
+     * it is switched on, unless an existing schedule already had one. Not
+     * exposed as its own field to edit: which specific week a schedule started
+     * in matters far less than that it alternates at all.
+     */
+    private var parityAnchorEpochDay: Long? = null
+
     private val pickAllowed = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -239,6 +251,8 @@ class ScheduleEditActivity : ParentGatedActivity() {
             allowed = ex.packages.toMutableSet()
             mode = ex.mode
             enabled = ex.enabled
+            parityAnchorEpochDay = ex.parityAnchorEpochDay
+            everyOtherWeek = ex.parityAnchorEpochDay != null
         }
 
         nameInput = EditText(this).apply {
@@ -312,6 +326,27 @@ class ScheduleEditActivity : ParentGatedActivity() {
             },
         )
         column.addView(captionText(getString(R.string.schedules_window_hint)))
+
+        // #83: alternating weeks. Anchored the moment this is switched on
+        // rather than asking which week to start from — a schedule this is
+        // useful for is being set up this week, not some week in the past.
+        column.addView(
+            CheckBox(this).apply {
+                setText(R.string.schedules_every_other_week)
+                isChecked = everyOtherWeek
+                isEnabled = canEdit
+                setOnCheckedChangeListener { _, checked ->
+                    everyOtherWeek = checked
+                    if (checked && parityAnchorEpochDay == null) {
+                        parityAnchorEpochDay = LocalDate.now().toEpochDay()
+                    }
+                    render()
+                }
+            },
+        )
+        if (everyOtherWeek) {
+            column.addView(captionText(getString(R.string.schedules_every_other_week_hint)))
+        }
 
         // The mode comes before the list, because it decides what the list means.
         // Choosing apps first and the reading afterwards is how somebody ends up
@@ -457,6 +492,7 @@ class ScheduleEditActivity : ParentGatedActivity() {
             packages = allowed.toSet(),
             mode = mode,
             enabled = enabled,
+            parityAnchorEpochDay = if (everyOtherWeek) parityAnchorEpochDay else null,
         )
 
         val problem = when {

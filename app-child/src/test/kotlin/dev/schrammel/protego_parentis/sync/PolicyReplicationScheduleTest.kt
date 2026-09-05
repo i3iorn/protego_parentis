@@ -184,6 +184,41 @@ class PolicyReplicationScheduleTest {
         assertTrue(replication().readSchedules(childId).isEmpty())
     }
 
+    /** #83: a fortnightly schedule's anchor replicates like any other field. */
+    @Test
+    fun `a fortnightly schedule round-trips its parity anchor`() {
+        val schedule = StoredSchedule(
+            id = "S1",
+            name = "Football",
+            days = setOf(5),
+            startMinuteOfDay = 900,
+            endMinuteOfDay = 1020,
+            parityAnchorEpochDay = 19222L,
+        )
+
+        replication().writeSchedules(listOf(schedule), childId)
+
+        assertEquals(schedule, replication().readSchedules(childId).single())
+    }
+
+    /** Clearing it back to every-week has to actually clear, not just stop being sent. */
+    @Test
+    fun `un-setting a parity anchor clears it on the next write`() {
+        val fortnightly = StoredSchedule(
+            id = "S1",
+            name = "Football",
+            days = setOf(5),
+            startMinuteOfDay = 900,
+            endMinuteOfDay = 1020,
+            parityAnchorEpochDay = 19222L,
+        )
+        replication().writeSchedules(listOf(fortnightly), childId)
+
+        replication().writeSchedules(listOf(fortnightly.copy(parityAnchorEpochDay = null)), childId)
+
+        assertEquals(null, replication().readSchedules(childId).single().parityAnchorEpochDay)
+    }
+
     /** #12: bedtime replicates through this channel now, kind included. */
     @Test
     fun `a bedtime-kind schedule round-trips its kind`() {
@@ -231,6 +266,23 @@ class PolicyReplicationScheduleTest {
         replication().writeSchedules(listOf(schedule), childId)
 
         replication().pullSchedulesIntoLocal(childId)
+
+        assertEquals(listOf(schedule), ScheduleStore(context).schedules)
+    }
+
+    /** [ScheduleStore]'s own JSON persistence, not just the replication path. */
+    @Test
+    fun `ScheduleStore itself round-trips a parity anchor`() {
+        val schedule = StoredSchedule(
+            id = "S1",
+            name = "Football",
+            days = setOf(5),
+            startMinuteOfDay = 900,
+            endMinuteOfDay = 1020,
+            parityAnchorEpochDay = 19222L,
+        )
+
+        ScheduleStore(context).schedules = listOf(schedule)
 
         assertEquals(listOf(schedule), ScheduleStore(context).schedules)
     }
