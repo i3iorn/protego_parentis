@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.model.AutoApproval
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.PlaceRef
@@ -189,6 +190,17 @@ class SyncCoordinator(context: Context) {
     fun applyPlaceRefEdit(refs: List<PlaceRef>, childId: DeviceId? = null) {
         val replication = PolicyReplication(context)
         if (childId != null) replication.writePlaceRefs(refs, childId) else replication.writePlaceRefs(refs)
+        publisher.publishPendingOps()
+    }
+
+    /** As [applyPolicyEdit], for a standing auto-approval edit (#89 — no editor used this before). */
+    fun applyAutoApprovalEdit(rules: List<AutoApproval>, childId: DeviceId? = null) {
+        val replication = PolicyReplication(context)
+        if (childId != null) {
+            replication.writeAutoApprovals(rules, childId)
+        } else {
+            replication.writeAutoApprovals(rules)
+        }
         publisher.publishPendingOps()
     }
 

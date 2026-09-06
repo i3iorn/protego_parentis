@@ -2,11 +2,13 @@ package dev.schrammel.protego_parentis.ui.rules
 
 import android.content.Context
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
+import dev.schrammel.protego_parentis.model.AutoApproval
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.PlaceRef
+import dev.schrammel.protego_parentis.rules.AutoApprovalStore
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
@@ -137,6 +139,48 @@ fun ContextRuleRuleStore.upsert(rule: ContextRule) {
 }
 
 fun ContextRuleRuleStore.delete(id: String) {
+    write(read().filterNot { it.id == id })
+}
+
+/**
+ * The family's standing answers to requests (RQ-1), either device's (#89).
+ *
+ * Answering a request in the moment still only ever happens standing at the
+ * phone the request came from — that stays own-device-only. Deciding *when*
+ * a standing yes should apply is a rule like any other, though, and #89 was
+ * exactly the gap where every other rule kind had already grown this
+ * abstraction and auto-approval had not.
+ */
+interface AutoApprovalRuleStore {
+    fun read(): List<AutoApproval>
+    fun write(rules: List<AutoApproval>)
+}
+
+class LocalAutoApprovalRuleStore(private val context: Context) : AutoApprovalRuleStore {
+    private val store = AutoApprovalStore(context)
+    override fun read(): List<AutoApproval> = store.rules
+    override fun write(rules: List<AutoApproval>) {
+        store.rules = rules
+    }
+}
+
+class RemoteAutoApprovalRuleStore(private val context: Context, private val childId: DeviceId) : AutoApprovalRuleStore {
+    override fun read(): List<AutoApproval> = PolicyReplication(context).readAutoApprovals(childId)
+    override fun write(rules: List<AutoApproval>) =
+        SyncCoordinator(context).applyAutoApprovalEdit(rules, childId)
+}
+
+fun autoApprovalRuleStore(context: Context, target: RuleTarget): AutoApprovalRuleStore =
+    if (target.isOwnDevice) LocalAutoApprovalRuleStore(context) else RemoteAutoApprovalRuleStore(context, target.childId)
+
+/** [AutoApprovalStore]'s find/upsert/delete convenience shape, generalised to either device. */
+fun AutoApprovalRuleStore.find(id: String): AutoApproval? = read().firstOrNull { it.id == id }
+
+fun AutoApprovalRuleStore.upsert(rule: AutoApproval) {
+    write(read().filterNot { it.id == rule.id } + rule)
+}
+
+fun AutoApprovalRuleStore.delete(id: String) {
     write(read().filterNot { it.id == id })
 }
 
