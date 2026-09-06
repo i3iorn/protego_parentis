@@ -575,13 +575,13 @@ class EnforcementService : Service() {
         private const val MIN_INTERVAL_MILLIS = 15_000L
 
         /** Never sleep longer than this, so drift and missed events self-correct. */
-        private const val MAX_INTERVAL_MILLIS = 5 * 60_000L
+        private const val MAX_INTERVAL_MILLIS = 1 * 60_000L
 
         /** Backs off briefly after a failure rather than hammering a broken call. */
-        private const val RETRY_INTERVAL_MILLIS = 60_000L
+        private const val RETRY_INTERVAL_MILLIS = 30_000L
 
         /** How often an unresolved emergency repeats itself to the parents. */
-        private const val SOS_REPEAT_MILLIS = 60_000L
+        private const val SOS_REPEAT_MILLIS = 30_000L
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, EnforcementService::class.java))

@@ -1,7 +1,46 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
+}
+
+/**
+ * Reads keystore.properties the way a person writes it, not the way Java would.
+ *
+ * Deliberately not `java.util.Properties`. That format treats a backslash as an
+ * escape character, so the perfectly reasonable Windows path
+ *
+ *     storeFile=C:\Users\me\vault\upload.jks
+ *
+ * loads as `C:Usersmevaultupload.jks` — every separator silently swallowed. It
+ * does not strip surrounding quotes either, so wrapping the path in them, which is
+ * the natural thing to do when it might contain a space, puts the quote characters
+ * inside the filename. Both mistakes produce the same thing: a mangled relative
+ * path, and a "keystore not found" naming a file nobody typed. That cost a release
+ * build once already; it should not be able to cost another.
+ *
+ * So: split each line on the first `=`, trim, drop one layer of matching quotes,
+ * and take the rest verbatim. Passwords with `=` or `\` in them survive too, which
+ * `Properties` would also have quietly rewritten.
+ */
+fun readSigningProperties(): Map<String, String> {
+    val file = rootProject.file("keystore.properties")
+    if (!file.exists()) return emptyMap()
+
+    return file.readLines()
+        .map(String::trim)
+        .filterNot { it.isEmpty() || it.startsWith("#") || it.startsWith("!") }
+        .mapNotNull { line ->
+            val separator = line.indexOf('=').takeIf { it > 0 } ?: return@mapNotNull null
+            val key = line.substring(0, separator).trim()
+            val value = line.substring(separator + 1).trim().removeSurroundingQuotes()
+            key to value
+        }
+        .toMap()
+}
+
+fun String.removeSurroundingQuotes(): String = when {
+    length >= 2 && startsWith('"') && endsWith('"') -> substring(1, length - 1)
+    length >= 2 && startsWith('\'') && endsWith('\'') -> substring(1, length - 1)
+    else -> this
 }
 
 /**
@@ -13,12 +52,17 @@ plugins {
  * one means anybody can ship an update that Play and every installed device will
  * accept as ours. See docs/RELEASING.md for how to create it.
  */
-val signingProperties = Properties().apply {
-    val file = rootProject.file("keystore.properties")
-    if (file.exists()) file.inputStream().use(::load)
-}
+val signingProperties = readSigningProperties()
 
-val canSignRelease = signingProperties.getProperty("storeFile") != null
+val keystorePath = signingProperties["storeFile"]?.takeIf { it.isNotBlank() }
+
+/**
+ * Resolved against the repository root, so a relative path in the file works and
+ * an absolute one is left alone.
+ */
+val keystoreFile = keystorePath?.let(rootProject::file)
+
+val canSignRelease = keystoreFile != null
 
 android {
     namespace = "dev.schrammel.protego_parentis"
@@ -38,10 +82,10 @@ android {
     signingConfigs {
         if (canSignRelease) {
             create("release") {
-                storeFile = rootProject.file(signingProperties.getProperty("storeFile"))
-                storePassword = signingProperties.getProperty("storePassword")
-                keyAlias = signingProperties.getProperty("keyAlias")
-                keyPassword = signingProperties.getProperty("keyPassword")
+                storeFile = keystoreFile
+                storePassword = signingProperties["storePassword"]
+                keyAlias = signingProperties["keyAlias"]
+                keyPassword = signingProperties["keyPassword"]
 
                 // V1 off. minSdk is 33, so every device that can install this
                 // verifies with v2 or better, and a v1 signature is only a second
@@ -161,9 +205,19 @@ val releaseRequested = gradle.startParameter.taskNames.any {
     it.substringAfterLast(':') in setOf("bundleRelease", "assembleRelease")
 }
 
-if (releaseRequested && !canSignRelease) {
-    throw GradleException(
+if (releaseRequested) {
+    check(canSignRelease) {
         "No keystore.properties at the repository root, so this build cannot be " +
-            "signed and Play will not accept it. See docs/RELEASING.md.",
-    )
+            "signed and Play will not accept it. See docs/RELEASING.md."
+    }
+    // Checked here rather than left to the signing task, which reports the path
+    // it was given without saying where that path came from — and when the path
+    // has been mangled, the filename in that message is one nobody ever typed.
+    check(keystoreFile?.exists() == true) {
+        "keystore.properties points at a keystore that is not there:\n" +
+            "  configured: $keystorePath\n" +
+            "  resolved:   ${keystoreFile?.absolutePath}\n" +
+            "Write the path with forward slashes and no quotes, for example\n" +
+            "  storeFile=C:/Users/you/vault/upload.jks"
+    }
 }
