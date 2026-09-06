@@ -6,6 +6,60 @@ import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
 /**
+ * When a recurring window runs, with nothing about what it does.
+ *
+ * Split out of [ScheduleBlock] for #101, where a contextual rule needed to say
+ * "between these hours on these days" too. The alternative was a second copy of
+ * the cross-midnight and alternating-week arithmetic, and this codebase has
+ * already learned that lesson once — see [ScheduleBlock.appliesTo]'s note on
+ * having a single place that answers a question, so there is no second
+ * implementation to disagree with the first.
+ *
+ * [days] is the set of weekdays on which the window *starts*. A window whose
+ * [end] is not after its [start] runs past midnight into the following day —
+ * the normal case for bedtime, so it is modelled directly rather than
+ * requiring two windows to be authored.
+ */
+data class RecurringWindow(
+    val days: Set<DayOfWeek>,
+    val start: LocalTime,
+    val end: LocalTime,
+    /**
+     * Null means every week — what every schedule meant before this field
+     * existed, so nothing needs migrating. Set, it names the first date this
+     * window is active; every second 7-day step from there is active too, and
+     * the weeks in between are skipped (#83 — "every other week on Fridays").
+     * Counted in exact 7-day steps from this date, not calendar weeks, so a
+     * window needs no notion of which day a week is deemed to start on.
+     */
+    val parityAnchor: LocalDate? = null,
+) {
+    init {
+        require(days.isNotEmpty()) { "a window has no active days" }
+        require(start != end) { "a window would cover the entire day; use 00:00-23:59 if that is intended" }
+    }
+
+    /** True when this window runs past midnight into the next calendar day. */
+    val crossesMidnight: Boolean get() = !end.isAfter(start)
+
+    /**
+     * Whether a window starting on [date] falls in an active week under
+     * [parityAnchor] — always true when there is no anchor. Parity is exact
+     * 7-day steps from the anchor, so it holds however far before or after it
+     * [date] falls, and whichever day of the week the anchor itself is on.
+     */
+    fun appliesToWeekOf(date: LocalDate): Boolean {
+        val anchor = parityAnchor ?: return true
+        val weeksBetween = Math.floorDiv(ChronoUnit.DAYS.between(anchor, date), 7L)
+        return weeksBetween % 2 == 0L
+    }
+
+    /** Whether this window *starts* on [date] at all, ignoring the time of day. */
+    fun startsOn(date: LocalDate): Boolean =
+        date.dayOfWeek in days && appliesToWeekOf(date)
+}
+
+/**
  * A recurring window during which some apps are paused.
  *
  * Which apps is decided by [mode] reading [packages], and the two readings are
@@ -51,8 +105,25 @@ data class ScheduleBlock(
         require(start != end) { "schedule '$name' would cover the entire day; use 00:00-23:59 if that is intended" }
     }
 
+    /**
+     * When this block runs, without what it does to apps.
+     *
+     * The one definition of this block's timing: [crossesMidnight] and
+     * [appliesToWeekOf] below both read it rather than recomputing, and
+     * `ScheduleResolver` resolves it into concrete windows. #101 gave
+     * contextual rules the same type.
+     *
+     * Held rather than computed per access: the resolver reads it once per
+     * candidate day when working out the next alarm edge, and that runs inside
+     * the enforcement service. Declared after [init] so this block's own
+     * clearer, name-carrying messages are what a caller sees for a window that
+     * was never valid.
+     */
+    val window: RecurringWindow =
+        RecurringWindow(days = days, start = start, end = end, parityAnchor = parityAnchor)
+
     /** True when this window runs past midnight into the next calendar day. */
-    val crossesMidnight: Boolean get() = !end.isAfter(start)
+    val crossesMidnight: Boolean get() = window.crossesMidnight
 
     /**
      * Whether a window starting on [date] falls in an active week under
@@ -60,11 +131,7 @@ data class ScheduleBlock(
      * 7-day steps from the anchor, so it holds however far before or after it
      * [date] falls, and whichever day of the week the anchor itself is on.
      */
-    fun appliesToWeekOf(date: LocalDate): Boolean {
-        val anchor = parityAnchor ?: return true
-        val weeksBetween = Math.floorDiv(ChronoUnit.DAYS.between(anchor, date), 7L)
-        return weeksBetween % 2 == 0L
-    }
+    fun appliesToWeekOf(date: LocalDate): Boolean = window.appliesToWeekOf(date)
 
     /**
      * Whether this window pauses [pkg], while it is running.

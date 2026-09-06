@@ -5,11 +5,15 @@ import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceId
+import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -73,6 +77,19 @@ internal object ContextRuleCodec {
                 put(KEY_VALUE, condition.percent)
             }
 
+            // #101. Days as ISO numbers and times as minutes-of-day: both are
+            // locale-independent and stable across a device's clock format,
+            // unlike anything rendered. The parity anchor is an epoch day for
+            // the same reason, and is simply absent on a window that runs
+            // every week.
+            is Condition.DuringWindow -> {
+                put(KEY_KIND, WINDOW)
+                put(KEY_DAYS, JSONArray(condition.window.days.map { it.value }))
+                put(KEY_START, condition.window.start.toSecondOfDay() / SECONDS_PER_MINUTE)
+                put(KEY_END, condition.window.end.toSecondOfDay() / SECONDS_PER_MINUTE)
+                condition.window.parityAnchor?.let { put(KEY_PARITY_ANCHOR, it.toEpochDay()) }
+            }
+
             is Condition.AllOf -> {
                 put(KEY_KIND, ALL_OF)
                 put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
@@ -111,12 +128,43 @@ internal object ContextRuleCodec {
             BATTERY -> json.optInt(KEY_VALUE, 0)
                 .takeIf { it in 1..100 }
                 ?.let(Condition::BatteryBelow)
+            WINDOW -> decodeWindow(json)?.let(Condition::DuringWindow)
             ALL_OF -> Condition.AllOf(parts())
             ANY_OF -> Condition.AnyOf(parts())
             NOT -> parts().firstOrNull()?.let(Condition::Not)
             else -> null
         }
     }
+
+    /**
+     * A [RecurringWindow] from stored fields, or null if they cannot make one.
+     *
+     * [RecurringWindow] refuses a window with no days or with equal start and
+     * end, and a rule whose condition will not read is dropped rather than
+     * thrown — the same defensive posture the rest of this codec takes, since
+     * this is loaded on the phone that has to keep working.
+     */
+    private fun decodeWindow(json: JSONObject): RecurringWindow? {
+        val daysArray = json.optJSONArray(KEY_DAYS) ?: return null
+        val days = (0 until daysArray.length())
+            .mapNotNull { index -> DayOfWeek.entries.firstOrNull { it.value == daysArray.optInt(index, 0) } }
+            .toSet()
+
+        val start = minuteOfDay(json, KEY_START) ?: return null
+        val end = minuteOfDay(json, KEY_END) ?: return null
+        val anchor = if (json.has(KEY_PARITY_ANCHOR)) {
+            runCatching { LocalDate.ofEpochDay(json.getLong(KEY_PARITY_ANCHOR)) }.getOrNull() ?: return null
+        } else {
+            null
+        }
+
+        return runCatching { RecurringWindow(days, start, end, anchor) }.getOrNull()
+    }
+
+    private fun minuteOfDay(json: JSONObject, key: String): LocalTime? =
+        json.optInt(key, -1)
+            .takeIf { it in 0 until MINUTES_PER_DAY }
+            ?.let { LocalTime.ofSecondOfDay(it.toLong() * SECONDS_PER_MINUTE) }
 
     fun encodeEffect(effect: RuleEffect): JSONObject = JSONObject().apply {
         when (effect) {
@@ -206,12 +254,20 @@ internal object ContextRuleCodec {
     private const val KEY_PARTS = "parts"
     private const val KEY_PARTS_CATEGORIES = "partsCategories"
     private const val KEY_MINUTES = "minutes"
+    private const val KEY_DAYS = "days"
+    private const val KEY_START = "startMinute"
+    private const val KEY_END = "endMinute"
+    private const val KEY_PARITY_ANCHOR = "parityAnchorEpochDay"
+
+    private const val MINUTES_PER_DAY = 24 * 60
+    private const val SECONDS_PER_MINUTE = 60
 
     private const val ALWAYS = "always"
     private const val WIFI = "wifi"
     private const val NEAR = "near"
     private const val PLACE = "place"
     private const val BATTERY = "battery"
+    private const val WINDOW = "window"
     private const val ALL_OF = "allOf"
     private const val ANY_OF = "anyOf"
     private const val NOT = "not"

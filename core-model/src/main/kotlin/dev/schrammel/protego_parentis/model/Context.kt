@@ -143,6 +143,23 @@ sealed interface Condition {
         }
     }
 
+    /**
+     * Inside a recurring time window (#101).
+     *
+     * The condition a schedule becomes once schedules are rules rather than
+     * their own system — see #72. It carries the same [RecurringWindow] a
+     * [ScheduleBlock] does, evaluated by the same resolver, so a rule written
+     * this way and a schedule written the old way cannot drift apart on
+     * midnight-crossing or alternating weeks.
+     *
+     * Unlike every other condition here, this one cannot be answered from
+     * [DeviceContext] alone — it needs to know when "now" is. That is why
+     * `ContextRules.holds` takes the moment explicitly rather than reading a
+     * clock: the evaluator stays pure, and a caller cannot forget to supply
+     * one without failing to compile.
+     */
+    data class DuringWindow(val window: RecurringWindow) : Condition
+
     data class AllOf(val conditions: List<Condition>) : Condition
 
     data class AnyOf(val conditions: List<Condition>) : Condition

@@ -110,6 +110,8 @@
     <string name="context_when_place">vid %1$s</string>
     <string name="context_when_battery">batteriet på eller under %1$d%%</string>
     <string name="context_when_not">inte %1$s</string>
+    <string name="context_when_window">under %1$s %2$s</string>
+    <string name="context_when_window_alternating">under %1$s %2$s, varannan vecka</string>
     <string name="context_join_and"> och </string>
     <string name="context_join_or"> eller </string>
     <string name="context_place_unknown">en borttagen plats</string>

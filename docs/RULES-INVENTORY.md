@@ -134,7 +134,7 @@ coordinate would break an explicit invariant the README states twice
 slice was scoped around rather than around changing. See `PlaceRef`'s own doc
 comment.
 
-## ContextRuleCodec — `kind`/`value`/`parts`/`minutes`/`partsCategories` · 5 Parent
+## ContextRuleCodec — `kind`/`value`/`parts`/`minutes`/`partsCategories`/`days`/`startMinute`/`endMinute`/`parityAnchorEpochDay` · 9 Parent
 
 Not a `SharedPreferences`-backed store — the JSON codec `ContextRuleStore` and
 `PolicyReplication` share for a rule's `condition`/`effect`/`target`, extracted
@@ -147,6 +147,15 @@ new `KIND` constant and a new branch in the codec, never a change to this
 shape. `partsCategories` (#90) is a `Mixed` target's categories, alongside
 `parts`' packages — exactly as remote-reachable as the rest of a target
 already is.
+
+`days`, `startMinute`, `endMinute` and `parityAnchorEpochDay` (#101) are a
+`DuringWindow` condition's timing — the first step of #72, where a schedule
+becomes a rule rather than its own system. They are Parent for the same reason
+the equivalent fields on `ScheduleStore` already are: this is the same setting
+expressed as a condition, and classifying it any other way would mean a
+window being remotely reachable or not depending on which of two ways a
+parent happened to write it. Stored as ISO day numbers, minutes-of-day and an
+epoch day so nothing depends on a locale or a device's clock format.
 
 ## WebFilterStore — `web_filter` · 9 Parent
 

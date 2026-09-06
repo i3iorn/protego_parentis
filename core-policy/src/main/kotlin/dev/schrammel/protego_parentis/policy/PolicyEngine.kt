@@ -69,6 +69,7 @@ object PolicyEngine {
             context = context,
             hierarchy = hierarchyForRules,
             installedPackages = installedPackages,
+            now = nowZdt,
         )
         val effectiveDeviceBudget = contextOutcome.deviceBudget ?: policy.deviceBudget
 

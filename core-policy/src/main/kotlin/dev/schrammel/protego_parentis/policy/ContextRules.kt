@@ -8,6 +8,7 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
+import java.time.ZonedDateTime
 
 /** What the active contextual rules add up to. */
 data class ContextOutcome(
@@ -52,8 +53,20 @@ object ContextRules {
         context: DeviceContext,
         hierarchy: ResolvedHierarchy,
         installedPackages: Set<PackageName>,
+        /**
+         * The moment to evaluate at (#101).
+         *
+         * Required rather than defaulted, and passed rather than read from a
+         * clock: [Condition.DuringWindow] is the one condition [DeviceContext]
+         * cannot answer, and a default would let a caller silently evaluate
+         * every time-window rule as inactive. A restriction that disappears
+         * because somebody forgot an argument is exactly the failure this
+         * module's fail-closed conventions exist to prevent, so it is a
+         * compile error instead.
+         */
+        now: ZonedDateTime,
     ): ContextOutcome {
-        val active = rules.filter { it.enabled && holds(it.condition, context) }
+        val active = rules.filter { it.enabled && holds(it.condition, context, now) }
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val allowed = mutableSetOf<PackageName>()
@@ -91,7 +104,7 @@ object ContextRules {
      * practical effect is that a half-built rule with no conditions chosen yet does
      * not silently start blocking things.
      */
-    fun holds(condition: Condition, context: DeviceContext, depth: Int = 0): Boolean {
+    fun holds(condition: Condition, context: DeviceContext, now: ZonedDateTime, depth: Int = 0): Boolean {
         if (depth > MAX_DEPTH) return false
 
         return when (condition) {
@@ -110,13 +123,18 @@ object ContextRules {
             is Condition.BatteryBelow ->
                 context.batteryPercent?.let { it <= condition.percent } ?: false
 
+            // Resolved by the same arithmetic a schedule is (#101), so a rule
+            // written this way and a schedule written the old way cannot
+            // disagree about midnight or an alternating week.
+            is Condition.DuringWindow -> ScheduleResolver.isActive(condition.window, now)
+
             is Condition.AllOf ->
-                condition.conditions.all { holds(it, context, depth + 1) }
+                condition.conditions.all { holds(it, context, now, depth + 1) }
 
             is Condition.AnyOf ->
-                condition.conditions.any { holds(it, context, depth + 1) }
+                condition.conditions.any { holds(it, context, now, depth + 1) }
 
-            is Condition.Not -> !holds(condition.condition, context, depth + 1)
+            is Condition.Not -> !holds(condition.condition, context, now, depth + 1)
         }
     }
 

@@ -201,6 +201,26 @@ class ContextRulesActivity : ParentGatedActivity() {
 
         is Condition.BatteryBelow -> getString(R.string.context_when_battery, condition.percent)
 
+        // #101. Phrased from the same day and time vocabulary a schedule uses,
+        // because to a parent this *is* a schedule — one written as a rule.
+        // A rule carrying this can arrive by replication from a phone that
+        // already speaks #72's language before this screen offers to create
+        // one, and a condition it could not describe would read as a rule that
+        // applies for no stated reason.
+        is Condition.DuringWindow -> getString(
+            if (condition.window.parityAnchor == null) {
+                R.string.context_when_window
+            } else {
+                R.string.context_when_window_alternating
+            },
+            DayPicker.describe(this, condition.window.days),
+            getString(
+                R.string.schedules_window,
+                formatTime(condition.window.start),
+                formatTime(condition.window.end),
+            ),
+        )
+
         is Condition.Not -> getString(
             R.string.context_when_not,
             describeCondition(condition.condition, places),
