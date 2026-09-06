@@ -8,8 +8,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 
-/** A log after an entry was added, and the anchor the chain now starts from. */
-data class Appended(val log: String, val anchor: String)
+/**
+ * A log after an entry was added, the anchor the chain now starts from, and
+ * the entry itself with its chain fields filled in — so a caller that needs
+ * to carry this entry's [AuditEntry.previousHash]/[AuditEntry.hash] onward
+ * (#84 — replicating a chained entry, not just its content) does not have to
+ * recompute what [append] already worked out.
+ */
+data class Appended(val log: String, val anchor: String, val entry: AuditEntry)
 
 /**
  * How the shared history is written to disk.
@@ -42,18 +48,20 @@ object AuditLogFormat {
     fun append(raw: String?, anchor: String, entry: AuditEntry): Appended {
         val existing = decodeAll(raw)
         val previousHash = existing.lastOrNull()?.hash ?: anchor
+        val hash = AuditChain.link(entry, previousHash)
 
         val linked = entry.copy(
             previousHash = previousHash,
-            hash = AuditChain.link(entry, previousHash),
+            hash = hash,
+            sig = AuditSignature.sign(hash),
         )
 
         val combined = existing + linked
-        if (combined.size <= MAX_ENTRIES) return Appended(encode(combined), anchor)
+        if (combined.size <= MAX_ENTRIES) return Appended(encode(combined), anchor, linked)
 
         val dropped = combined.size - MAX_ENTRIES
         val kept = combined.drop(dropped)
-        return Appended(encode(kept), combined[dropped - 1].hash)
+        return Appended(encode(kept), combined[dropped - 1].hash, linked)
     }
 
     /** Every entry, oldest first. */
@@ -78,6 +86,7 @@ object AuditLogFormat {
         entry.after?.let { put(KEY_AFTER, it) }
         put(KEY_PREVIOUS_HASH, entry.previousHash)
         put(KEY_HASH, entry.hash)
+        entry.sig?.let { put(KEY_SIG, it) }
     }
 
     private fun fromJson(json: JSONObject): AuditEntry? {
@@ -104,6 +113,7 @@ object AuditLogFormat {
             after = json.optString(KEY_AFTER).takeIf(String::isNotBlank),
             previousHash = json.optString(KEY_PREVIOUS_HASH).ifBlank { AuditChain.GENESIS },
             hash = json.optString(KEY_HASH),
+            sig = json.optString(KEY_SIG).takeIf(String::isNotBlank),
         )
     }
 
@@ -116,4 +126,5 @@ object AuditLogFormat {
     private const val KEY_AFTER = "after"
     private const val KEY_PREVIOUS_HASH = "prev"
     private const val KEY_HASH = "hash"
+    private const val KEY_SIG = "sig"
 }

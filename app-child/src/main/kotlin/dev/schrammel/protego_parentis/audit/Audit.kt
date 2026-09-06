@@ -9,6 +9,7 @@ import dev.schrammel.protego_parentis.model.AuditEntry
 import dev.schrammel.protego_parentis.sync.AuditReplication
 import dev.schrammel.protego_parentis.model.ChainCheck
 import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.sync.ReplicatedAuditEntry
 import java.time.Instant
 import java.time.LocalTime
 import java.util.UUID
@@ -66,7 +67,7 @@ object Audit {
             before = before,
             after = after,
         )
-        synchronized(lock) {
+        val linked = synchronized(lock) {
             val prefs = prefs(context)
             val appended = AuditLogFormat.append(
                 raw = prefs.getString(KEY_LOG, null),
@@ -84,6 +85,7 @@ object Audit {
                 // catch on its own.
                 putLong(KEY_TOTAL, prefs.getLong(KEY_TOTAL, 0L) + 1L)
             }
+            appended.entry
         }
 
         // Recorded twice, deliberately, and the two copies do different jobs.
@@ -104,6 +106,10 @@ object Audit {
             subject = subject,
             before = before,
             after = after,
+            previousHash = linked.previousHash,
+            hash = linked.hash,
+            entryId = linked.id,
+            atMillis = linked.at.toEpochMilli(),
         )
     }
 
@@ -146,18 +152,128 @@ object Audit {
      * breaks every link after it. The screen shows the result, because a history
      * whose integrity is never checked is one nobody has any reason to believe.
      *
-     * What it does not establish: the anchor is read from the same preferences
-     * file as the entries, so anyone able to rewrite one can rewrite the other
-     * and this still returns Intact. It proves the copy is self-consistent. The
-     * evidence that survives a deliberate rewrite is the parent's, via
+     * Each entry with a [AuditEntry.sig] (#84) is also checked against a fresh
+     * [AuditSignature.sign] of its own hash. This is the one thing the plain
+     * SHA-256 chain alone cannot catch: SHA-256 has no secret in it, so anyone
+     * who can write to this preferences file can also recompute a chain that
+     * verifies perfectly — a forged history and a real one look identical to
+     * [AuditChain.verify] alone. Reproducing a *signature* needs the Keystore
+     * to actually sign again, which needs this app's identity, not just file
+     * access. An entry with no `sig` — recorded before this existed, or on a
+     * device whose keystore refused — is skipped rather than treated as
+     * broken; the plain hash chain still covers it exactly as before.
+     *
+     * What neither check establishes: the anchor is read from the same
+     * preferences file as the entries, so anyone able to rewrite one can
+     * rewrite the other and this still returns Intact — and an attacker who
+     * can run *this app's own code* can still ask its own Keystore key to
+     * sign a rewritten chain, the same limit [SecretVault] already lives with
+     * for the family passphrase. The evidence that survives a deliberate
+     * rewrite by someone who cannot run this app at all is the parent's, via
      * [witness] — see IntegrityRules.historyRewritten.
      */
     fun check(context: Context): ChainCheck {
         val prefs = prefs(context)
-        return AuditChain.verify(
-            entries = AuditLogFormat.decodeAll(prefs.getString(KEY_LOG, null)),
-            anchor = prefs.getString(KEY_ANCHOR, null) ?: AuditChain.GENESIS,
+        val entries = AuditLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
+        val anchor = prefs.getString(KEY_ANCHOR, null) ?: AuditChain.GENESIS
+
+        val chained = AuditChain.verify(entries, anchor)
+        if (!chained.isIntact) return chained
+
+        entries.forEachIndexed { index, entry ->
+            val sig = entry.sig ?: return@forEachIndexed
+            if (sig != AuditSignature.sign(entry.hash)) return ChainCheck.Broken(index)
+        }
+        return ChainCheck.Intact
+    }
+
+    /**
+     * Whether every *other* device's own replicated chain still adds up (#84).
+     *
+     * [check] only ever proved this phone's own copy was self-consistent —
+     * exactly the limit its own doc comment names. Each device now replicates
+     * its entries' [AuditEntry.previousHash]/[AuditEntry.hash] alongside their
+     * content, computed the same way [check] verifies them, so a receiving
+     * phone can re-walk another device's chain instead of only displaying it.
+     * A replica cannot repair that after the fact: it did not record the
+     * entry, so it does not have the one previous hash that would make a
+     * forged replacement link up.
+     *
+     * Grouped by [ReplicatedAuditEntry.by], then ordered by *following the
+     * links* rather than by timestamp. Timestamps were the first attempt and
+     * were wrong twice over: entries recorded in the same second sort
+     * arbitrarily, and the replication stream rounds them to seconds anyway.
+     * The chain already says what order it is in, so it is asked.
+     *
+     * An entry is only checkable when all four of the recording device's own
+     * chain fields arrived — its id, millisecond timestamp, previous hash and
+     * hash. Anything missing one (replicated before this existed) is skipped
+     * rather than counted as broken; a family mid-upgrade is not a family
+     * under attack.
+     *
+     * What this does and does not establish. Each walked entry's hash is
+     * recomputed from its content, so an edited subject, actor or timestamp
+     * shows up; each link is checked against the one before it, so a
+     * reordering inside the walked run shows up. The run is anchored at
+     * whichever entry no other entry precedes, because the recording device's
+     * log is capped and its true anchor may have aged out — so entries the
+     * walk cannot reach are reported as nothing at all, not as damage.
+     * Replication being incomplete is the ordinary case, and crying tamper at
+     * it would make this check worthless the first time a phone was offline.
+     */
+    fun checkFamily(context: Context): ChainCheck {
+        val self = LocalDeviceId.current()
+        val byDevice = AuditReplication(context).entries()
+            .filter { self == null || it.by != self }
+            .groupBy { it.by }
+
+        byDevice.values.forEach { deviceEntries ->
+            val chained = deviceEntries.mapNotNull(::rebuild)
+            val ordered = followLinks(chained)
+            if (ordered.isEmpty()) return@forEach
+            val result = AuditChain.verify(ordered, anchor = ordered.first().previousHash)
+            if (!result.isIntact) return result
+        }
+        return ChainCheck.Intact
+    }
+
+    /**
+     * The recording device's entry, rebuilt byte-for-byte as it was hashed.
+     *
+     * Null unless every field [AuditChain.link] covers survived replication —
+     * including the two the stream would otherwise substitute its own values
+     * for, [ReplicatedAuditEntry.entryId] and [ReplicatedAuditEntry.atMillis].
+     */
+    private fun rebuild(entry: ReplicatedAuditEntry): AuditEntry? {
+        val actor = AuditActor.entries.firstOrNull { it.name == entry.actor } ?: return null
+        val action = AuditAction.entries.firstOrNull { it.name == entry.action } ?: return null
+        return AuditEntry(
+            id = entry.entryId ?: return null,
+            at = Instant.ofEpochMilli(entry.atMillis ?: return null),
+            actor = actor,
+            action = action,
+            subject = entry.subject,
+            before = entry.before,
+            after = entry.after,
+            previousHash = entry.previousHash ?: return null,
+            hash = entry.hash ?: return null,
         )
+    }
+
+    /** [entries] in chain order, starting from the one nothing else precedes. */
+    private fun followLinks(entries: List<AuditEntry>): List<AuditEntry> {
+        if (entries.isEmpty()) return emptyList()
+        val byPrevious = entries.associateBy { it.previousHash }
+        val hashes = entries.mapTo(mutableSetOf()) { it.hash }
+        val head = entries.firstOrNull { it.previousHash !in hashes } ?: return emptyList()
+
+        val ordered = mutableListOf<AuditEntry>()
+        var current: AuditEntry? = head
+        while (current != null && ordered.size < entries.size) {
+            ordered += current
+            current = byPrevious[current.hash]
+        }
+        return ordered
     }
 
     /**

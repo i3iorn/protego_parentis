@@ -44,7 +44,14 @@ class AuditActivity : DementorActivity() {
         // to verify every hash, and reading+grouping the entries is real disk and
         // CPU work — both belong off the main thread, the same as every other
         // screen that loads a store.
-        Background.load(this, { Audit.entries(this) to Audit.check(this) }) { (entries, check) ->
+        Background.load(this, {
+            val entries = Audit.entries(this)
+            // This phone's own chain first: if that is already broken, saying
+            // so is more useful than a family-wide check that would fail for
+            // the same underlying reason.
+            val check = Audit.check(this).takeIf { !it.isIntact } ?: Audit.checkFamily(this)
+            entries to check
+        }) { (entries, check) ->
             renderEntries(column, entries, check)
         }
     }
