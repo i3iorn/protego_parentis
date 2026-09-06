@@ -236,6 +236,14 @@ class AuditReplication(context: Context) {
      * the wire the same way [subject]/[before]/[after] are, so a receiving
      * phone on an older build sees exactly what it would have seen before
      * this existed.
+     *
+     * [entryId] and [atMillis] travel for the same reason, and were the first
+     * attempt's undoing: `AuditChain.link` hashes the recording device's own
+     * entry id and its timestamp *in milliseconds*, while this stream has its
+     * own append id and stamps entries in whole seconds. Rebuilding the entry
+     * from those two on the far side produced a different hash every time, so
+     * a perfectly honest chain never verified. The receiver needs the exact
+     * values that were hashed, not the stream's approximations of them.
      */
     fun record(
         actor: String,
@@ -245,6 +253,8 @@ class AuditReplication(context: Context) {
         after: String?,
         previousHash: String,
         hash: String,
+        entryId: String,
+        atMillis: Long,
     ): String? = stream.append(
         section = ReplicationRules.AUDIT,
         fields = buildMap {
@@ -258,6 +268,8 @@ class AuditReplication(context: Context) {
             put(FIELD_DEVICE, deviceName())
             previousHash.takeIf(String::isNotBlank)?.let { put(FIELD_PREVIOUS_HASH, it) }
             hash.takeIf(String::isNotBlank)?.let { put(FIELD_HASH, it) }
+            entryId.takeIf(String::isNotBlank)?.let { put(FIELD_ENTRY_ID, it) }
+            atMillis.takeIf { it > 0L }?.let { put(FIELD_AT_MILLIS, it.toString()) }
         },
     )
 
@@ -278,6 +290,8 @@ class AuditReplication(context: Context) {
                 // Audit.checkFamily.
                 previousHash = entry.text(FIELD_PREVIOUS_HASH),
                 hash = entry.text(FIELD_HASH),
+                entryId = entry.text(FIELD_ENTRY_ID),
+                atMillis = entry.text(FIELD_AT_MILLIS)?.toLongOrNull(),
             )
         }
 
@@ -292,6 +306,8 @@ class AuditReplication(context: Context) {
         const val FIELD_DEVICE = "device"
         const val FIELD_PREVIOUS_HASH = "prev"
         const val FIELD_HASH = "hash"
+        const val FIELD_ENTRY_ID = "eid"
+        const val FIELD_AT_MILLIS = "atms"
     }
 }
 
@@ -320,6 +336,17 @@ data class ReplicatedAuditEntry(
      */
     val previousHash: String? = null,
     val hash: String? = null,
+    /**
+     * The two fields the recording device's hash covers that this stream does
+     * not otherwise preserve (#84): its own entry id — [id] above is the
+     * stream's append id, a different value — and its timestamp in
+     * milliseconds, where [at] has been rounded to whole seconds. Verifying a
+     * replicated chain means recomputing the hash over exactly what was
+     * hashed, so both travel verbatim; null on an entry replicated before
+     * this existed.
+     */
+    val entryId: String? = null,
+    val atMillis: Long? = null,
 )
 
 /**

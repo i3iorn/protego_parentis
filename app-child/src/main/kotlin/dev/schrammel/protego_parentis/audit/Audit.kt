@@ -9,6 +9,7 @@ import dev.schrammel.protego_parentis.model.AuditEntry
 import dev.schrammel.protego_parentis.sync.AuditReplication
 import dev.schrammel.protego_parentis.model.ChainCheck
 import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.sync.ReplicatedAuditEntry
 import java.time.Instant
 import java.time.LocalTime
 import java.util.UUID
@@ -107,6 +108,8 @@ object Audit {
             after = after,
             previousHash = linked.previousHash,
             hash = linked.hash,
+            entryId = linked.id,
+            atMillis = linked.at.toEpochMilli(),
         )
     }
 
@@ -196,11 +199,27 @@ object Audit {
      * entry, so it does not have the one previous hash that would make a
      * forged replacement link up.
      *
-     * Grouped by [ReplicatedAuditEntry.by] and ordered by [ReplicatedAuditEntry.at]
-     * — the order the recording device wrote them in, which its own chain
-     * fields were computed against. Entries with no chain fields at all
-     * (replicated before this existed) are skipped rather than counted as
-     * broken; a family mid-upgrade is not a family under attack.
+     * Grouped by [ReplicatedAuditEntry.by], then ordered by *following the
+     * links* rather than by timestamp. Timestamps were the first attempt and
+     * were wrong twice over: entries recorded in the same second sort
+     * arbitrarily, and the replication stream rounds them to seconds anyway.
+     * The chain already says what order it is in, so it is asked.
+     *
+     * An entry is only checkable when all four of the recording device's own
+     * chain fields arrived — its id, millisecond timestamp, previous hash and
+     * hash. Anything missing one (replicated before this existed) is skipped
+     * rather than counted as broken; a family mid-upgrade is not a family
+     * under attack.
+     *
+     * What this does and does not establish. Each walked entry's hash is
+     * recomputed from its content, so an edited subject, actor or timestamp
+     * shows up; each link is checked against the one before it, so a
+     * reordering inside the walked run shows up. The run is anchored at
+     * whichever entry no other entry precedes, because the recording device's
+     * log is capped and its true anchor may have aged out — so entries the
+     * walk cannot reach are reported as nothing at all, not as damage.
+     * Replication being incomplete is the ordinary case, and crying tamper at
+     * it would make this check worthless the first time a phone was offline.
      */
     fun checkFamily(context: Context): ChainCheck {
         val self = LocalDeviceId.current()
@@ -209,28 +228,52 @@ object Audit {
             .groupBy { it.by }
 
         byDevice.values.forEach { deviceEntries ->
-            val chained = deviceEntries
-                .filter { it.hash != null && it.previousHash != null }
-                .sortedBy { it.at }
-                .mapNotNull { entry ->
-                    val actor = AuditActor.entries.firstOrNull { it.name == entry.actor } ?: return@mapNotNull null
-                    val action = AuditAction.entries.firstOrNull { it.name == entry.action } ?: return@mapNotNull null
-                    AuditEntry(
-                        id = entry.id,
-                        at = entry.at,
-                        actor = actor,
-                        action = action,
-                        subject = entry.subject,
-                        before = entry.before,
-                        after = entry.after,
-                        previousHash = entry.previousHash ?: AuditChain.GENESIS,
-                        hash = entry.hash.orEmpty(),
-                    )
-                }
-            val result = AuditChain.verify(chained)
+            val chained = deviceEntries.mapNotNull(::rebuild)
+            val ordered = followLinks(chained)
+            if (ordered.isEmpty()) return@forEach
+            val result = AuditChain.verify(ordered, anchor = ordered.first().previousHash)
             if (!result.isIntact) return result
         }
         return ChainCheck.Intact
+    }
+
+    /**
+     * The recording device's entry, rebuilt byte-for-byte as it was hashed.
+     *
+     * Null unless every field [AuditChain.link] covers survived replication —
+     * including the two the stream would otherwise substitute its own values
+     * for, [ReplicatedAuditEntry.entryId] and [ReplicatedAuditEntry.atMillis].
+     */
+    private fun rebuild(entry: ReplicatedAuditEntry): AuditEntry? {
+        val actor = AuditActor.entries.firstOrNull { it.name == entry.actor } ?: return null
+        val action = AuditAction.entries.firstOrNull { it.name == entry.action } ?: return null
+        return AuditEntry(
+            id = entry.entryId ?: return null,
+            at = Instant.ofEpochMilli(entry.atMillis ?: return null),
+            actor = actor,
+            action = action,
+            subject = entry.subject,
+            before = entry.before,
+            after = entry.after,
+            previousHash = entry.previousHash ?: return null,
+            hash = entry.hash ?: return null,
+        )
+    }
+
+    /** [entries] in chain order, starting from the one nothing else precedes. */
+    private fun followLinks(entries: List<AuditEntry>): List<AuditEntry> {
+        if (entries.isEmpty()) return emptyList()
+        val byPrevious = entries.associateBy { it.previousHash }
+        val hashes = entries.mapTo(mutableSetOf()) { it.hash }
+        val head = entries.firstOrNull { it.previousHash !in hashes } ?: return emptyList()
+
+        val ordered = mutableListOf<AuditEntry>()
+        var current: AuditEntry? = head
+        while (current != null && ordered.size < entries.size) {
+            ordered += current
+            current = byPrevious[current.hash]
+        }
+        return ordered
     }
 
     /**

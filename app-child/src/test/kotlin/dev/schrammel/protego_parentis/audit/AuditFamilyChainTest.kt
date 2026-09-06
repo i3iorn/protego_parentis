@@ -57,7 +57,7 @@ class AuditFamilyChainTest {
     @Test
     fun `entries replicated with no chain fields at all are skipped, not broken`() {
         // Simulates a family where another device is still on a build from
-        // before #84 — its entries replicate with content but no prev/hash.
+        // before #84 — its entries replicate with content but no chain fields.
         LocalDeviceId.useInTests("DEVICEA")
         AuditReplication(context).record(
             actor = AuditActor.PARENT.name,
@@ -67,10 +67,39 @@ class AuditFamilyChainTest {
             after = null,
             previousHash = "",
             hash = "",
+            entryId = "",
+            atMillis = 0L,
         )
 
         LocalDeviceId.useInTests("DEVICEB")
 
         assertTrue(Audit.checkFamily(context) is ChainCheck.Intact)
+    }
+
+    /**
+     * The failure the first attempt at this shipped with, kept as a test so it
+     * cannot come back: the hash covers the recording device's own entry id
+     * and a millisecond timestamp, and the replication stream has neither —
+     * its own append id and a whole-second stamp are different values. Two
+     * entries written inside the same second also made any timestamp ordering
+     * a coin toss. Recording several in a burst exercises both at once.
+     */
+    @Test
+    fun `a burst of entries written within the same second still verifies`() {
+        LocalDeviceId.useInTests("DEVICEA")
+        repeat(5) { index ->
+            Audit.record(
+                context,
+                AuditActor.PARENT,
+                AuditAction.APP_LIMIT_CHANGED,
+                subject = "App$index",
+                before = index.toString(),
+                after = (index + 1).toString(),
+            )
+        }
+
+        LocalDeviceId.useInTests("DEVICEB")
+
+        assertTrue(Audit.checkFamily(context).isIntact)
     }
 }
