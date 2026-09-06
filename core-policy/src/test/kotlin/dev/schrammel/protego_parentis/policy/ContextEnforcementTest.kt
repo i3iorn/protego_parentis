@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceContext
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Reason
+import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
@@ -13,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
@@ -45,8 +47,77 @@ class ContextEnforcementTest {
         val reason = atSchool.suspend[GAME]
         assertTrue(reason is Reason.ContextRuleActive)
         assertEquals("No games at school", (reason as Reason.ContextRuleActive).ruleName)
-        // Context is not a schedule, so there is no honest answer to "until when".
+        // Nobody can say when this phone leaves the school Wi-Fi, so there is no
+        // honest answer to "until when" for *this* condition. #103 made that a
+        // property of the condition rather than of contextual rules as a class —
+        // a window-based rule does answer it, below.
         assertNull(reason.liftsAt)
+    }
+
+    /**
+     * #103: the half of the promise a schedule always kept and a rule could not.
+     * A block screen that knows when it ends and refuses to say so is
+     * withholding something it has.
+     */
+    @Test
+    fun `a window rule tells the child when the block lifts`() {
+        val policy = policy().copy(
+            contextRules = listOf(
+                rule(
+                    "School hours",
+                    Condition.DuringWindow(
+                        RecurringWindow(
+                            days = setOf(weekdayOf("2026-08-21")),
+                            start = LocalTime.parse("08:00"),
+                            end = LocalTime.parse("15:00"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val duringSchool = PolicyEngine.evaluate(
+            policy = policy,
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-21", "10:00"),
+        )
+
+        val reason = duringSchool.suspend[GAME]
+        assertTrue(reason is Reason.ContextRuleActive)
+        assertEquals(at("2026-08-21", "15:00"), (reason as Reason.ContextRuleActive).liftsAt)
+    }
+
+    /**
+     * #103: and enforcement has to wake up to act on it. Without an alarm at the
+     * window's own edge the block would sit there until something unrelated
+     * roused the service, which on a quiet phone can be hours.
+     */
+    @Test
+    fun `a window rule sets an alarm at its own edge`() {
+        val policy = policy().copy(
+            contextRules = listOf(
+                rule(
+                    "School hours",
+                    Condition.DuringWindow(
+                        RecurringWindow(
+                            days = setOf(weekdayOf("2026-08-21")),
+                            start = LocalTime.parse("08:00"),
+                            end = LocalTime.parse("15:00"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val duringSchool = PolicyEngine.evaluate(
+            policy = policy,
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-21", "10:00"),
+        )
+
+        assertEquals(at("2026-08-21", "15:00"), duringSchool.nextChangeAt)
     }
 
     @Test
