@@ -225,6 +225,17 @@ class AuditReplication(context: Context) {
      * for the family, not for a support ticket, and it is deliberately not the
      * content-free diagnostic log. It is sealed like everything else before it
      * leaves the phone.
+     *
+     * Carries [previousHash] and [hash] alongside it (#84) — the same two
+     * fields [dev.schrammel.protego_parentis.audit.Audit]'s own local chain
+     * already computed for this entry before calling here. A replica cannot
+     * recompute these after the fact without the *actual* previous entry to
+     * hash against, so carrying them is what lets another phone verify this
+     * device's own history rather than merely display it. Blank rather than
+     * omitted is a caller's choice to record without them — kept absent from
+     * the wire the same way [subject]/[before]/[after] are, so a receiving
+     * phone on an older build sees exactly what it would have seen before
+     * this existed.
      */
     fun record(
         actor: String,
@@ -232,6 +243,8 @@ class AuditReplication(context: Context) {
         subject: String?,
         before: String?,
         after: String?,
+        previousHash: String,
+        hash: String,
     ): String? = stream.append(
         section = ReplicationRules.AUDIT,
         fields = buildMap {
@@ -243,6 +256,8 @@ class AuditReplication(context: Context) {
             before?.takeIf(String::isNotBlank)?.let { put(FIELD_BEFORE, it) }
             after?.takeIf(String::isNotBlank)?.let { put(FIELD_AFTER, it) }
             put(FIELD_DEVICE, deviceName())
+            previousHash.takeIf(String::isNotBlank)?.let { put(FIELD_PREVIOUS_HASH, it) }
+            hash.takeIf(String::isNotBlank)?.let { put(FIELD_HASH, it) }
         },
     )
 
@@ -258,6 +273,11 @@ class AuditReplication(context: Context) {
                 after = entry.text(FIELD_AFTER),
                 device = entry.text(FIELD_DEVICE).orEmpty(),
                 by = entry.by,
+                // Absent on an entry replicated before #84 existed — never
+                // treated as broken, only as not (yet) checkable; see
+                // Audit.checkFamily.
+                previousHash = entry.text(FIELD_PREVIOUS_HASH),
+                hash = entry.text(FIELD_HASH),
             )
         }
 
@@ -270,6 +290,8 @@ class AuditReplication(context: Context) {
         const val FIELD_BEFORE = "before"
         const val FIELD_AFTER = "after"
         const val FIELD_DEVICE = "device"
+        const val FIELD_PREVIOUS_HASH = "prev"
+        const val FIELD_HASH = "hash"
     }
 }
 
@@ -291,6 +313,13 @@ data class ReplicatedAuditEntry(
      * chained log, which already holds them — see [dev.schrammel.protego_parentis.audit.Audit.entries].
      */
     val by: String,
+    /**
+     * This entry's place in the *recording* device's own chain (#84) — null on
+     * an entry replicated before this field existed. See
+     * [dev.schrammel.protego_parentis.audit.Audit.checkFamily].
+     */
+    val previousHash: String? = null,
+    val hash: String? = null,
 )
 
 /**

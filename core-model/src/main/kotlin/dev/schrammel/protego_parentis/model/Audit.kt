@@ -157,4 +157,13 @@ data class AuditEntry(
      */
     val previousHash: String = AuditChain.GENESIS,
     val hash: String = "",
+    /**
+     * A keyed signature over [hash], from a key this device generated and
+     * cannot export (#84) — see `AuditSignature` in app-child, the one thing
+     * [AuditChain] cannot do itself since it is pure Kotlin with no keystore
+     * to reach. Null on every entry recorded before this existed, and on any
+     * entry from a device whose keystore refused; neither is treated as
+     * tampering, only as unsigned.
+     */
+    val sig: String? = null,
 )
