@@ -146,19 +146,19 @@ class PinActivity : DementorActivity() {
 
         input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            // #69: TYPE_NUMBER_VARIATION_PASSWORD alone is an unreliable masking
-            // signal — several OEM keyboards render the digit in the clear
-            // before (or instead of) obscuring it, since the numeric password
-            // variation gets far less IME-side attention than the text one.
-            // Forcing the transformation method here masks at the view layer,
-            // independent of whatever the active keyboard does with the hint.
-            transformationMethod = PasswordTransformationMethod.getInstance()
             hint = getString(R.string.pin_hint)
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
             // PINs here are variable-length (min 4, no fixed max), so there is no
             // "complete" length to auto-submit at. Instead, submitting is one tap
             // away on the keyboard itself rather than only the on-screen button.
             setSingleLine(true)
+            // #69: must come *after* setSingleLine. A password input type does
+            // install PasswordTransformationMethod, but setSingleLine replaces
+            // whatever is there with SingleLineTransformationMethod — so the
+            // field above was showing every digit in the clear, on every device
+            // and every keyboard, which is exactly what was reported. Setting it
+            // last is the fix; moving it back up silently un-masks the PIN again.
+            transformationMethod = PasswordTransformationMethod.getInstance()
             imeOptions = EditorInfo.IME_ACTION_DONE
             setOnEditorActionListener { _, actionId, event ->
                 val isDone = actionId == EditorInfo.IME_ACTION_DONE ||

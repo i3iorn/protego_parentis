@@ -12,10 +12,13 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * #69: a report that every digit typed into a PIN field was visible.
- * `TYPE_NUMBER_VARIATION_PASSWORD` alone is not a reliable masking signal on
- * every keyboard — some OEM IMEs show the digit before obscuring it. Forcing
- * [PasswordTransformationMethod] on the view is what actually guarantees
- * masking, independent of the active keyboard.
+ *
+ * The cause was ordering, not the keyboard. A password input type does install
+ * [PasswordTransformationMethod], but `setSingleLine(true)` then replaces the
+ * transformation with `SingleLineTransformationMethod` — so the field rendered
+ * its contents in the clear on every device, whatever the IME did. This pins
+ * the end state rather than the call order, so the field stays masked however
+ * the builder is later rearranged.
  */
 @RunWith(RobolectricTestRunner::class)
 class PinActivityTest {
@@ -27,7 +30,8 @@ class PinActivityTest {
         val input = findEditText(activity.window.decorView)
 
         assertTrue(
-            "the PIN field must force PasswordTransformationMethod",
+            "the PIN field must end up with PasswordTransformationMethod, not " +
+                "whatever setSingleLine last installed",
             input?.transformationMethod is PasswordTransformationMethod,
         )
     }
