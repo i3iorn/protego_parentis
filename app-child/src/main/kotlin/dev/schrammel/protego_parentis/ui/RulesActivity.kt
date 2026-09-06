@@ -205,29 +205,34 @@ class RulesActivity : ParentGatedActivity() {
             },
         )
 
-        // Answering requests only makes sense standing at the phone the request
-        // came from. Family devices used to sit in this section too, but that made
-        // "Family" mean two different things app-wide (#78) — it is reachable
-        // top-level now, alongside every other family-wide screen.
-        if (target.isOwnDevice && enabled(Feature.REQUESTS)) {
-            addSection(
-                column,
-                getString(R.string.rules_group_requests),
-                buildList {
+        // Answering a request only makes sense standing at the phone it came
+        // from, so that row stays own-device-only. Family devices used to sit
+        // in this section too, but that made "Family" mean two different
+        // things app-wide (#78) — it is reachable top-level now, alongside
+        // every other family-wide screen.
+        //
+        // Deciding when a standing yes should apply (#89) is a rule about the
+        // child's phone rather than an action on it, so unlike the row above
+        // it is not gated to the own device — a parent editing a remote
+        // child's rules can set this exactly as they can any other rule.
+        if (enabled(Feature.REQUESTS)) {
+            val rows = buildList {
+                if (target.isOwnDevice) {
                     add(
                         row(R.string.rules_row_requests, R.string.rules_row_requests_detail) {
                             startActivity(RequestInboxActivity.intent(this@RulesActivity))
                         },
                     )
-                    if (enabled(Feature.AUTO_APPROVE)) {
-                        add(
-                            row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
-                                startActivity(AutoApprovalActivity.intent(this@RulesActivity))
-                            },
-                        )
-                    }
-                },
-            )
+                }
+                if (enabled(Feature.AUTO_APPROVE)) {
+                    add(
+                        row(R.string.rules_row_auto, R.string.rules_row_auto_detail) {
+                            startActivity(AutoApprovalActivity.intent(this@RulesActivity, target.childId))
+                        },
+                    )
+                }
+            }
+            if (rows.isNotEmpty()) addSection(column, getString(R.string.rules_group_requests), rows)
         }
     }
 
