@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.text.method.PasswordTransformationMethod
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -145,6 +146,13 @@ class PinActivity : DementorActivity() {
 
         input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            // #69: TYPE_NUMBER_VARIATION_PASSWORD alone is an unreliable masking
+            // signal — several OEM keyboards render the digit in the clear
+            // before (or instead of) obscuring it, since the numeric password
+            // variation gets far less IME-side attention than the text one.
+            // Forcing the transformation method here masks at the view layer,
+            // independent of whatever the active keyboard does with the hint.
+            transformationMethod = PasswordTransformationMethod.getInstance()
             hint = getString(R.string.pin_hint)
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
             // PINs here are variable-length (min 4, no fixed max), so there is no
