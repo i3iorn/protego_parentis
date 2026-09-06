@@ -174,7 +174,7 @@ class RulesActivity : ParentGatedActivity() {
                             row(
                                 R.string.rules_row_places_alerts,
                                 R.string.rules_row_places_alerts_detail,
-                            ) { startActivity(PlaceAlertsActivity.intent(this@RulesActivity)) },
+                            ) { startActivity(PlaceAlertsActivity.intent(this@RulesActivity, target.childId)) },
                         )
                     } else {
                         add(
