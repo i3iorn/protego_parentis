@@ -1083,6 +1083,9 @@
 
     <string name="app_search_hint">Sök appar</string>
     <string name="app_search_none">Ingen app matchar det.</string>
+    <string name="app_picker_empty_remote_hint">Ingen applista har kommit tillbaka från den telefonen än.</string>
+    <string name="app_picker_request_list">Begär applista</string>
+    <string name="app_picker_request_list_sent">Frågat. Listan visas när den telefonen svarar.</string>
     <string name="support_message_short">En förälder har ställt in det här, inte en arbetsgivare. Öppna appen för att se vilken regel som gäller och för att be om en ändring.</string>
     <string name="support_message_long">Den här telefonen sköts av %1$s, en app för föräldrakontroll som någon i familjen har ställt in — inte av en arbetsplats eller en IT-avdelning. Alla regler som gäller, och varje ändring någon har gjort, syns i appen på den här telefonen. Om något är blockerat och du tycker att det inte borde vara det: öppna appen och skicka en förfrågan, så går den till föräldern som satt reglerna.</string>
 

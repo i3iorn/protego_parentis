@@ -1091,6 +1091,9 @@
 
     <string name="app_search_hint">Search apps</string>
     <string name="app_search_none">No app matches that.</string>
+    <string name="app_picker_empty_remote_hint">No app list has come back from that phone yet.</string>
+    <string name="app_picker_request_list">Request app list</string>
+    <string name="app_picker_request_list_sent">Asked. The list will appear once that phone answers.</string>
     <string name="support_message_short">A parent set this, not an employer. Open the app to see which rule applies and to ask for it to be changed.</string>
     <string name="support_message_long">This phone is managed by %1$s, a parental-control app set up by someone in this family — not by a workplace or an IT department. Every rule that applies, and every change anyone has made, is visible in the app on this phone. If something is blocked and you think it should not be, open the app and send a request; it goes to the parent who set the rules.</string>
 
