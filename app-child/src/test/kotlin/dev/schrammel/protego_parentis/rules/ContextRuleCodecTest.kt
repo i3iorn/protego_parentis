@@ -5,13 +5,18 @@ import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceId
+import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -32,6 +37,30 @@ class ContextRuleCodecTest {
             Condition.AllOf(listOf(Condition.OnWifi("HomeNet"), Condition.BatteryBelow(20))),
             Condition.AnyOf(listOf(Condition.OnWifi("HomeNet"), Condition.AtPlace(PlaceId("place-1")))),
             Condition.Not(Condition.OnWifi("HomeNet")),
+            // #101, in all three shapes it comes in: a same-day window, one
+            // crossing midnight, and one on alternating weeks.
+            Condition.DuringWindow(
+                RecurringWindow(
+                    days = setOf(DayOfWeek.MONDAY, DayOfWeek.FRIDAY),
+                    start = LocalTime.of(8, 0),
+                    end = LocalTime.of(15, 0),
+                ),
+            ),
+            Condition.DuringWindow(
+                RecurringWindow(
+                    days = setOf(DayOfWeek.SATURDAY),
+                    start = LocalTime.of(22, 30),
+                    end = LocalTime.of(7, 0),
+                ),
+            ),
+            Condition.DuringWindow(
+                RecurringWindow(
+                    days = setOf(DayOfWeek.WEDNESDAY),
+                    start = LocalTime.of(9, 15),
+                    end = LocalTime.of(10, 45),
+                    parityAnchor = LocalDate.of(2026, 8, 21),
+                ),
+            ),
         )
 
         conditions.forEach { condition ->
@@ -69,6 +98,41 @@ class ContextRuleCodecTest {
         repeat(ContextRuleCodec.MAX_CONDITION_DEPTH) { condition = Condition.Not(condition) }
 
         assertEquals(condition, ContextRuleCodec.decodeCondition(ContextRuleCodec.encodeCondition(condition)))
+    }
+
+    /**
+     * #101: [RecurringWindow] refuses a window with no days or with equal
+     * start and end. Stored JSON can be corrupt or hand-edited, and this runs
+     * on the phone that has to keep working — so a window that cannot be built
+     * drops its rule rather than taking the whole rule list down with it.
+     */
+    @Test
+    fun `a malformed window decodes to null rather than throwing`() {
+        val validDays = JSONArray(listOf(DayOfWeek.MONDAY.value))
+
+        val noDays = JSONObject()
+            .put("kind", "window")
+            .put("days", JSONArray(emptyList<Int>()))
+            .put("startMinute", 8 * 60)
+            .put("endMinute", 15 * 60)
+        val sameStartAndEnd = JSONObject()
+            .put("kind", "window")
+            .put("days", validDays)
+            .put("startMinute", 8 * 60)
+            .put("endMinute", 8 * 60)
+        val startOutOfRange = JSONObject()
+            .put("kind", "window")
+            .put("days", validDays)
+            .put("startMinute", 24 * 60)
+            .put("endMinute", 15 * 60)
+        val noDaysField = JSONObject()
+            .put("kind", "window")
+            .put("startMinute", 8 * 60)
+            .put("endMinute", 15 * 60)
+
+        listOf(noDays, sameStartAndEnd, startOutOfRange, noDaysField).forEach { json ->
+            assertNull(ContextRuleCodec.decodeCondition(json))
+        }
     }
 
     @Test

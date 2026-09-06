@@ -114,6 +114,15 @@ class RulesInventoryTest {
         // #90: a Mixed target's categories, alongside KEY_PARTS' packages —
         // exactly as remote-reachable as the rest of a rule's target already is.
         "KEY_PARTS_CATEGORIES=partsCategories" to PARENT,
+        // #101: a DuringWindow condition's timing. A schedule's equivalent
+        // fields are already PARENT on ScheduleStore, and these are the same
+        // rule expressed as a condition, so anything else would mean the same
+        // setting being remotely reachable or not depending on which of two
+        // ways a parent happened to write it.
+        "KEY_DAYS=days" to PARENT,
+        "KEY_START=startMinute" to PARENT,
+        "KEY_END=endMinute" to PARENT,
+        "KEY_PARITY_ANCHOR=parityAnchorEpochDay" to PARENT,
     )
 
     // #42 closed this store: all nine fields ride PolicySnapshot now, the same
