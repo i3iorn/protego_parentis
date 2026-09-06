@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.usage.AppInfo
 
@@ -53,7 +54,7 @@ class AppPickerActivity : ParentGatedActivity() {
         authenticated = true
         if (loaded) return
         loaded = true
-        val target = RuleTargets.resolve(this) ?: return finish()
+        target = RuleTargets.resolve(this) ?: return finish()
         // Loading every launchable app's label and icon is the slowest thing this
         // screen does, so the list arrives after the frame rather than blocking it.
         Background.load(this, { appCatalog(this, target).launchable() }) { loadedApps ->
@@ -71,6 +72,10 @@ class AppPickerActivity : ParentGatedActivity() {
      */
     private fun renderRows() {
         rows.removeAllViews()
+        if (apps.isEmpty() && !target.isOwnDevice) {
+            rows.addView(requestAppListHint())
+            return
+        }
         val visible = AppSearch.filter(apps, query, { it.label }, { it.pkg.value })
         if (visible.isEmpty() && apps.isNotEmpty()) {
             rows.addView(noSearchResults())
@@ -79,7 +84,30 @@ class AppPickerActivity : ParentGatedActivity() {
         visible.forEach { app -> rows.addView(row(app.pkg.value, app.label, app.icon)) }
     }
 
+    /**
+     * The managed phone's own list arrives only when asked for — nothing on this
+     * screen requests it automatically, since a parent opening a picker that
+     * already has a cached list should not re-trigger a sync every time. Before
+     * #85, nothing anywhere ever asked either, so a family that enrolled after
+     * this screen last ran a request saw a permanently empty list with no way
+     * to explain or fix it.
+     */
+    private fun requestAppListHint(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(bodyText(getString(R.string.app_picker_empty_remote_hint)))
+        addView(
+            actionButton().apply {
+                setText(R.string.app_picker_request_list)
+                setOnClickListener {
+                    SyncCoordinator(this@AppPickerActivity).publishAppInventoryRequest()
+                    toast(getString(R.string.app_picker_request_list_sent))
+                }
+            },
+        )
+    }
+
     private lateinit var content: LinearLayout
+    private lateinit var target: RuleTarget
     private val rows: LinearLayout by lazy {
         LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     }
