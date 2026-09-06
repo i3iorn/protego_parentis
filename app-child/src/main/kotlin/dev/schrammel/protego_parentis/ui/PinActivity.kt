@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.text.method.PasswordTransformationMethod
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -151,6 +152,13 @@ class PinActivity : DementorActivity() {
             // "complete" length to auto-submit at. Instead, submitting is one tap
             // away on the keyboard itself rather than only the on-screen button.
             setSingleLine(true)
+            // #69: must come *after* setSingleLine. A password input type does
+            // install PasswordTransformationMethod, but setSingleLine replaces
+            // whatever is there with SingleLineTransformationMethod — so the
+            // field above was showing every digit in the clear, on every device
+            // and every keyboard, which is exactly what was reported. Setting it
+            // last is the fix; moving it back up silently un-masks the PIN again.
+            transformationMethod = PasswordTransformationMethod.getInstance()
             imeOptions = EditorInfo.IME_ACTION_DONE
             setOnEditorActionListener { _, actionId, event ->
                 val isDone = actionId == EditorInfo.IME_ACTION_DONE ||
