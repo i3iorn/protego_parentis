@@ -56,19 +56,27 @@ object ScheduleResolver {
      * The next moment any of [blocks] starts or stops, which is when enforcement
      * would change on its own. Used to set an exact alarm instead of polling.
      *
-     * Deliberately still takes [ScheduleBlock] rather than gaining a
-     * [RecurringWindow] overload: the two would erase to the same JVM
-     * signature, making an `emptyList()` argument ambiguous at every call
-     * site. Waking for a
-     * [dev.schrammel.protego_parentis.model.Condition.DuringWindow] rule's own
-     * edges is #103's business, once a rule-driven block reports when it lifts.
+     * Named apart from [nextWindowEdgeAfter] rather than overloading it: the
+     * two would erase to the same JVM signature, making an `emptyList()`
+     * argument ambiguous at every call site.
      */
-    fun nextEdgeAfter(blocks: List<ScheduleBlock>, now: ZonedDateTime): Instant? {
+    fun nextEdgeAfter(blocks: List<ScheduleBlock>, now: ZonedDateTime): Instant? =
+        nextWindowEdgeAfter(blocks.map { it.window }, now)
+
+    /**
+     * The same, for windows that did not come from a schedule (#103).
+     *
+     * A [dev.schrammel.protego_parentis.model.Condition.DuringWindow] rule
+     * needs an alarm at its own edges exactly as a schedule does — without one
+     * the block would sit there until something unrelated woke enforcement,
+     * which on a quiet phone can be hours after the window ended.
+     */
+    fun nextWindowEdgeAfter(windows: List<RecurringWindow>, now: ZonedDateTime): Instant? {
         val today = now.toLocalDate()
-        return blocks.asSequence()
-            .flatMap { block ->
+        return windows.asSequence()
+            .flatMap { window ->
                 (-1L..Defaults.SCHEDULE_HORIZON_DAYS).asSequence().mapNotNull { offset ->
-                    windowStartingOn(block.window, today.plusDays(offset), now)
+                    windowStartingOn(window, today.plusDays(offset), now)
                 }
             }
             .flatMap { sequenceOf(it.start, it.end) }

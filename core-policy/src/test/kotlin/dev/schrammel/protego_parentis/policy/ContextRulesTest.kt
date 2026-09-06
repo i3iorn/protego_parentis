@@ -262,6 +262,111 @@ class ContextRulesTest {
         assertTrue(after.blocked.isEmpty())
     }
 
+    // ---------- when a rule lifts (#103) ----------
+
+    @Test
+    fun `a window condition says exactly when it lifts`() {
+        val schoolHours = window(startingOn = "2026-08-21", start = "08:00", end = "15:00")
+
+        assertEquals(
+            zdt("2026-08-21", "15:00").toInstant(),
+            ContextRules.liftsAt(schoolHours, zdt("2026-08-21", "10:00")),
+        )
+    }
+
+    @Test
+    fun `a condition with nothing clock-like about it says nothing`() {
+        assertNull(ContextRules.liftsAt(Condition.OnWifi(school), zdt("2026-08-21", "10:00")))
+        assertNull(ContextRules.liftsAt(Condition.Always, zdt("2026-08-21", "10:00")))
+        assertNull(ContextRules.liftsAt(Condition.AtPlace(schoolPlace), zdt("2026-08-21", "10:00")))
+    }
+
+    /**
+     * The composite stops as soon as its first branch does, so a branch that
+     * cannot say when it ends only ever makes the real end earlier than the one
+     * reported — which is the safe direction.
+     */
+    @Test
+    fun `an all-of reports the earliest end its branches know`() {
+        val early = window(startingOn = "2026-08-21", start = "09:00", end = "12:00")
+        val late = window(startingOn = "2026-08-21", start = "08:00", end = "15:00")
+        val at = zdt("2026-08-21", "10:00")
+
+        assertEquals(
+            zdt("2026-08-21", "12:00").toInstant(),
+            ContextRules.liftsAt(Condition.AllOf(listOf(late, early)), at),
+        )
+        // The Wi-Fi branch drops out rather than poisoning the answer.
+        assertEquals(
+            zdt("2026-08-21", "15:00").toInstant(),
+            ContextRules.liftsAt(Condition.AllOf(listOf(late, Condition.OnWifi(school))), at),
+        )
+        assertNull(
+            ContextRules.liftsAt(Condition.AllOf(listOf(Condition.OnWifi(school))), at),
+        )
+    }
+
+    /**
+     * Even though both branches know their own ends. An OR holds while *any*
+     * branch does, so a branch that is not holding yet can start later and carry
+     * the block past anything computed from the branches that are — and a block
+     * still running at the time the phone promised it would end is the app
+     * having lied about its own rules.
+     */
+    @Test
+    fun `an any-of promises nothing, because a branch can start later and extend it`() {
+        val morning = window(startingOn = "2026-08-21", start = "08:00", end = "12:00")
+        val afternoon = window(startingOn = "2026-08-21", start = "13:00", end = "17:00")
+
+        assertNull(
+            ContextRules.liftsAt(Condition.AnyOf(listOf(morning, afternoon)), zdt("2026-08-21", "10:00")),
+        )
+    }
+
+    @Test
+    fun `a negated condition promises nothing`() {
+        val schoolHours = window(startingOn = "2026-08-21", start = "08:00", end = "15:00")
+
+        // "Not during school" ends when school starts — a question about when a
+        // condition begins, which this does not answer.
+        assertNull(ContextRules.liftsAt(Condition.Not(schoolHours), zdt("2026-08-21", "16:00")))
+    }
+
+    @Test
+    fun `a rule that is blocked but has no window reports no end`() {
+        val rules = listOf(rule(Condition.OnWifi(school)))
+
+        val outcome = evaluate(rules, DeviceContext(wifiSsid = school))
+
+        assertEquals(setOf(GAME), outcome.blocked.keys)
+        assertNull(ContextRules.liftsAt(outcome.blocked.getValue(GAME).condition, midweek))
+    }
+
+    // ---------- alarm edges (#103) ----------
+
+    @Test
+    fun `every window in a condition tree is found, however it is nested`() {
+        val morning = window(startingOn = "2026-08-21", start = "08:00", end = "12:00")
+        val evening = window(startingOn = "2026-08-21", start = "18:00", end = "20:00")
+
+        val nested = Condition.AllOf(
+            listOf(
+                Condition.OnWifi(school),
+                Condition.Not(morning),
+                Condition.AnyOf(listOf(evening, Condition.AtPlace(schoolPlace))),
+            ),
+        )
+
+        // Collected from under a Not and an AnyOf too: this module will not
+        // promise those ends, but the edges are still when the answer changes.
+        assertEquals(listOf(morning.window, evening.window), ContextRules.windowsIn(nested))
+    }
+
+    @Test
+    fun `a condition with no windows contributes no edges`() {
+        assertTrue(ContextRules.windowsIn(Condition.AllOf(listOf(Condition.OnWifi(school)))).isEmpty())
+    }
+
     @Test
     fun `a pathologically nested condition does not blow the stack`() {
         // Conditions come from storage and could be corrupt. This runs inside the

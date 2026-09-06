@@ -48,17 +48,26 @@ sealed interface Reason {
 
     /**
      * A contextual rule applies right now — on this network, near this device, at
-     * this place.
+     * this place, or inside a time window.
      *
-     * [liftsAt] is null because context is not a schedule: nobody can say when the
-     * phone will leave the school Wi-Fi. The block screen says which rule, not when.
+     * [liftsAt] was null by construction until #103, on the reasoning that
+     * context is not a schedule and nobody can say when the phone will leave the
+     * school Wi-Fi. That is still true of a Wi-Fi or place condition, and null
+     * still means exactly that. It stopped being true of every rule once #101
+     * gave conditions a time window: a rule that applies between 08:00 and 15:00
+     * knows precisely when it stops, and a block screen that refused to say so
+     * would be withholding something it had.
+     *
+     * So this is now derived from the rule's own condition rather than assumed
+     * from which subsystem fired — see `ContextRules.liftsAt`. Null keeps its
+     * meaning of "no end this app can promise", and the block screen already
+     * says only which rule in that case.
      */
     data class ContextRuleActive(
         val ruleId: String,
         val ruleName: String,
-    ) : Reason {
-        override val liftsAt: Instant? get() = null
-    }
+        override val liftsAt: Instant?,
+    ) : Reason
 
     /**
      * A category this app belongs to has spent its allowance. Carries the name so

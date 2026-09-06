@@ -5,9 +5,11 @@ import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceContext
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
+import java.time.Instant
 import java.time.ZonedDateTime
 
 /** What the active contextual rules add up to. */
@@ -135,6 +137,89 @@ object ContextRules {
                 condition.conditions.any { holds(it, context, now, depth + 1) }
 
             is Condition.Not -> !holds(condition.condition, context, now, depth + 1)
+        }
+    }
+
+    /**
+     * When [condition] stops holding, or null if this app cannot say (#103).
+     *
+     * Only meaningful for a condition that holds at [now] — the caller has
+     * already decided the rule is active, and "when does a thing that is not
+     * happening stop happening" has no answer worth showing anyone.
+     *
+     * Null means "no end this app can promise", and is deliberately not the
+     * same claim as "never ends". Both are unshowable, so both are null; the
+     * block screen simply names the rule and says nothing about when.
+     *
+     * The rule throughout is that under-promising is safe and over-promising is
+     * not. A block that lifts earlier than announced is a pleasant surprise; one
+     * that is still there at the time the phone promised it would end is the
+     * app having lied to a child about its own rules, which is the one thing
+     * this product cannot afford.
+     *
+     *  - [Condition.DuringWindow] knows its own end exactly.
+     *  - [Condition.AllOf] holds only while every branch does, so it stops when
+     *    the first branch stops: the earliest known end. Branches that cannot
+     *    say drop out of the comparison, which is safe — they can only make the
+     *    real end earlier than the one reported, never later.
+     *  - [Condition.AnyOf] reports nothing, even when every branch knows its
+     *    own end. It holds while *any* branch does, so a branch that is not
+     *    holding now can start later and extend the block past any time
+     *    computed from the branches that are. That is precisely the
+     *    over-promise above. (An earlier note of mine on #103 claimed an OR
+     *    has a knowable end whenever all its branches do — that is wrong for
+     *    exactly this reason, and the issue has been corrected.)
+     *  - [Condition.Not] reports nothing. "Not at school" stops when school
+     *    starts, which is a question about when a condition *begins* — a
+     *    different traversal from this one, and not one anything needs yet.
+     */
+    fun liftsAt(condition: Condition, now: ZonedDateTime, depth: Int = 0): Instant? {
+        if (depth > MAX_DEPTH) return null
+
+        return when (condition) {
+            is Condition.DuringWindow -> ScheduleResolver.endOfActiveWindow(condition.window, now)
+
+            is Condition.AllOf ->
+                condition.conditions.mapNotNull { liftsAt(it, now, depth + 1) }.minOrNull()
+
+            is Condition.AnyOf -> null
+            is Condition.Not -> null
+
+            is Condition.Always,
+            is Condition.OnWifi,
+            is Condition.NearDevice,
+            is Condition.AtPlace,
+            is Condition.BatteryBelow,
+            -> null
+        }
+    }
+
+    /**
+     * Every time window anywhere in [condition], however deeply nested (#103).
+     *
+     * Enforcement sets an exact alarm at the next moment its answer could
+     * change, rather than polling. A schedule's edges already fed that; a rule
+     * carrying a window would otherwise stay blocked until something unrelated
+     * woke the service, which on a quiet phone can be hours. Collected from the
+     * whole tree — including under a [Condition.Not] or an [Condition.AnyOf],
+     * whose *ends* this module will not promise but whose edges are still
+     * exactly when the answer changes.
+     */
+    fun windowsIn(condition: Condition, depth: Int = 0): List<RecurringWindow> {
+        if (depth > MAX_DEPTH) return emptyList()
+
+        return when (condition) {
+            is Condition.DuringWindow -> listOf(condition.window)
+            is Condition.AllOf -> condition.conditions.flatMap { windowsIn(it, depth + 1) }
+            is Condition.AnyOf -> condition.conditions.flatMap { windowsIn(it, depth + 1) }
+            is Condition.Not -> windowsIn(condition.condition, depth + 1)
+
+            is Condition.Always,
+            is Condition.OnWifi,
+            is Condition.NearDevice,
+            is Condition.AtPlace,
+            is Condition.BatteryBelow,
+            -> emptyList()
         }
     }
 

@@ -139,7 +139,16 @@ object PolicyEngine {
                     add(Reason.ScheduleActive(schedule.id, schedule.name, endsAt))
                 }
                 contextOutcome.blocked[pkg]?.let { rule ->
-                    add(Reason.ContextRuleActive(rule.id, rule.name))
+                    // #103: derived from the rule's own condition rather than
+                    // assumed null. A window-based rule can say when it lifts;
+                    // a Wi-Fi one still cannot, and null still means that.
+                    add(
+                        Reason.ContextRuleActive(
+                            ruleId = rule.id,
+                            ruleName = rule.name,
+                            liftsAt = ContextRules.liftsAt(rule.condition, nowZdt),
+                        ),
+                    )
                 }
                 if (deviceBudget.isExhausted) add(Reason.DeviceBudgetExhausted(dayEnd))
                 if (appBudgets[pkg]?.isExhausted == true) add(Reason.AppBudgetExhausted(pkg, dayEnd))
@@ -324,6 +333,15 @@ object PolicyEngine {
         val candidates = mutableListOf(dayEnd)
 
         ScheduleResolver.nextEdgeAfter(policy.schedules, nowZdt)?.let(candidates::add)
+        // #103: a rule carrying a time window changes on its own at the window's
+        // edges, exactly as a schedule does. Without this the block would sit
+        // there until something unrelated woke enforcement, which on a quiet
+        // phone can be hours after the window ended. Disabled rules are skipped
+        // — waking for a rule that cannot fire is battery spent on nothing.
+        val ruleWindows = policy.contextRules
+            .filter { it.enabled }
+            .flatMap { ContextRules.windowsIn(it.condition) }
+        ScheduleResolver.nextWindowEdgeAfter(ruleWindows, nowZdt)?.let(candidates::add)
         liveGrants.forEach { candidates += it.expiresAt }
         // Otherwise an installation window would stay open until the next tick for
         // some unrelated reason, which could be five minutes or the 4am reset.
