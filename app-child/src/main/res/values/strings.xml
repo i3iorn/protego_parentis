@@ -298,7 +298,6 @@
     <string name="rules_group_limits">How much</string>
     <string name="rules_group_day">How the day works</string>
     <string name="rules_group_requests">Requests</string>
-    <string name="rules_group_device">This device</string>
     <string name="rules_row_limits">Daily limit and bedtime</string>
     <string name="rules_row_limits_detail">The allowance, quiet hours, and apps that ignore both</string>
     <string name="rules_row_categories">Categories</string>
@@ -317,8 +316,6 @@
     <string name="rules_row_bonus_detail">Extra minutes for today only</string>
     <string name="rules_row_requests">Requests</string>
     <string name="rules_row_requests_detail">Answer requests for more time</string>
-    <string name="rules_row_sync">Parent phones</string>
-    <string name="rules_row_sync_detail">Send requests and answers to another phone</string>
     <string name="rules_row_device">Security and control</string>
     <string name="rules_row_device_detail">PIN, lockdown, and handing the phone back</string>
 
@@ -471,33 +468,6 @@
     <string name="parent_limit_sent">Sent</string>
     <string name="parent_limit_unknown">This phone has not heard from the child\'s phone yet, so the slider starts at zero rather than a guess.</string>
 
-    <string name="parent_rules_title">Rules</string>
-    <string name="parent_rules_intro">Nothing changes on the other phone until you send it. Refreshing replaces anything not yet sent with what is actually running there right now.</string>
-    <string name="parent_rules_loading">Waiting to hear back from the other phone…</string>
-    <string name="parent_rules_refresh">Refresh from the phone</string>
-    <string name="parent_rules_send">Send to the phone</string>
-    <string name="parent_rules_sent">Sent</string>
-    <string name="parent_rules_conflict">Not sent: the rules changed on that phone since this screen last heard from it. Refresh, then try again.</string>
-    <string name="parent_rules_daily_limit">Daily limit</string>
-    <string name="parent_rules_install_header">New apps</string>
-    <string name="parent_rules_install_notify">Allowed, and I\'m told</string>
-    <string name="parent_rules_install_gated">Blocked until I open a window</string>
-    <string name="parent_rules_categories_add">Add a category</string>
-    <string name="parent_rules_category_summary">%1$s · %2$d apps</string>
-    <string name="parent_rules_schedules_header">Schedules</string>
-    <string name="parent_rules_schedules_add">Add a schedule</string>
-    <string name="parent_rules_schedules_rename">Rename</string>
-    <string name="parent_rules_schedules_apps_paused">%1$d apps paused</string>
-    <string name="parent_rules_schedules_apps_stay_usable">%1$d apps stay usable</string>
-    <string name="parent_rules_apps_header">Apps</string>
-    <string name="parent_rules_apps_none">Waiting for the app list from the other phone…</string>
-    <string name="parent_rules_app_limit">Limit: %1$s</string>
-    <string name="parent_rules_app_no_limit">No limit set</string>
-    <string name="parent_rules_app_blocked">Blocked</string>
-    <string name="parent_rules_app_network_blocked">No network</string>
-    <string name="parent_rules_app_exempt">Never limited</string>
-
-    <string name="parent_settings_pin_header">PIN</string>
     <string name="parent_settings_pin_body">The PIN protects the settings on whichever phone it is set on.</string>
     <string name="parent_settings_role_header">What this phone is</string>
     <string name="parent_settings_role_body">This phone answers requests. Switching it makes it the phone with the limits instead.</string>

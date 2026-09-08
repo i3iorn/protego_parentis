@@ -4,6 +4,7 @@ import dev.schrammel.protego_parentis.model.Grant
 import dev.schrammel.protego_parentis.model.GrantId
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.Request
+import dev.schrammel.protego_parentis.model.RequestId
 import dev.schrammel.protego_parentis.model.RequestState
 import java.time.Instant
 import kotlin.time.Duration
@@ -118,7 +119,7 @@ object RequestRules {
             grantedAt = now,
             expiresAt = grantExpiresAt,
             grantedBy = by,
-            sourceRequestId = request.id.value,
+            sourceRequestId = request.id,
         )
         return approved to grant
     }
@@ -159,7 +160,7 @@ object RequestRules {
             grantedAt = now,
             expiresAt = grantExpiresAt,
             grantedBy = by,
-            sourceRequestId = request.id.value,
+            sourceRequestId = request.id,
         )
         return approved to grant
     }

@@ -16,8 +16,6 @@ import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.usage.InstalledApps
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * The parent's side of the negotiation.
@@ -33,7 +31,6 @@ class RequestInboxActivity : ParentGatedActivity() {
     private lateinit var installedApps: InstalledApps
     private lateinit var container: LinearLayout
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,7 +85,7 @@ class RequestInboxActivity : ParentGatedActivity() {
             body(
                 getString(
                     R.string.inbox_expires_at,
-                    timeFormat.format(request.expiresAt.atZone(ZoneId.systemDefault())),
+                    formatTime(request.expiresAt),
                 ),
             ).styleAs(R.style.TextAppearance_Dementor_Caption),
         )
@@ -146,7 +143,6 @@ class RequestInboxActivity : ParentGatedActivity() {
     }
 
     companion object {
-        private const val TIME_PATTERN = "HH:mm"
 
         fun intent(context: Context) = Intent(context, RequestInboxActivity::class.java)
     }

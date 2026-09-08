@@ -121,7 +121,7 @@ object ReplayGuard {
      * message's own, because the set does not record which type each id came
      * from and the cost of a slightly generous horizon is a few more rows.
      */
-    fun remember(seen: List<SeenMessage>, message: SyncMessage, now: Instant): Remembered {
+    fun remember(message: SyncMessage, now: Instant, seen: List<SeenMessage>): Remembered {
         val kept = (seen.filterNot { it.id == message.id } + SeenMessage(message.id, message.sentAt))
             .filter { !isPastKeeping(it, now) }
 

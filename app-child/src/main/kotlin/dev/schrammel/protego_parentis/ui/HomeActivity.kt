@@ -30,8 +30,6 @@ import dev.schrammel.protego_parentis.sync.ParentPollWorker
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.usage.UsageAccess
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.time.Duration
 
 /**
@@ -47,7 +45,6 @@ class HomeActivity : DementorActivity() {
     private lateinit var store: LocalPolicyStore
     private lateinit var goals: GoalCoordinator
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     /**
      * Set when this launch was handed to another screen.
@@ -423,7 +420,7 @@ class HomeActivity : DementorActivity() {
         val until = reason.liftsAt?.let {
             getString(
                 R.string.home_until,
-                timeFormat.format(it.atZone(ZoneId.systemDefault())),
+                formatTime(it),
             )
         }
         // Resources rather than literals: these were the last English strings
@@ -543,7 +540,6 @@ class HomeActivity : DementorActivity() {
 
     private companion object {
         const val REQUEST_NOTIFICATIONS = 1
-        const val TIME_PATTERN = "HH:mm"
         const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
     }
 }

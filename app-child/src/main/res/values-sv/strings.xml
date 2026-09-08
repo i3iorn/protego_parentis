@@ -19,6 +19,13 @@
     <string name="service_used_up">Dagens tid är slut</string>
     <string name="service_no_limit">%1$s i dag</string>
 
+    <!-- Familjesynkens ständiga notis. Håller familjelämnet öppet så att
+         meddelanden kommer fram så fort de publiceras, på båda hållen. -->
+    <string name="realtime_channel_name">Familjeanslutning</string>
+    <string name="realtime_channel_description">Håller telefonen i kontakt med familjen så att förfrågningar och kommandon kommer fram direkt.</string>
+    <string name="realtime_notification_title">Familjen är ansluten</string>
+    <string name="realtime_notification_text">Lyssnar efter familjen…</string>
+
     <!-- Format.kt: generisk formatering av tid/gräns som delas mellan skärmar. -->
     <string name="format_no_limit">ingen gräns</string>
     <string name="format_no_limit_capitalized">Ingen gräns</string>
@@ -296,7 +303,6 @@
     <string name="rules_group_limits">Hur mycket</string>
     <string name="rules_group_day">Hur dagen fungerar</string>
     <string name="rules_group_requests">Förfrågningar</string>
-    <string name="rules_group_device">Den här telefonen</string>
     <string name="rules_row_limits">Daglig gräns och läggdags</string>
     <string name="rules_row_limits_detail">Tiden, lugna timmar och appar som struntar i båda</string>
     <string name="rules_row_categories">Kategorier</string>
@@ -313,8 +319,6 @@
     <string name="rules_row_bonus_detail">Extra minuter bara för i dag</string>
     <string name="rules_row_requests">Förfrågningar</string>
     <string name="rules_row_requests_detail">Svara på förfrågningar om mer tid</string>
-    <string name="rules_row_sync">Föräldrars telefoner</string>
-    <string name="rules_row_sync_detail">Skicka förfrågningar och svar till en annan telefon</string>
     <string name="rules_row_device">Säkerhet och kontroll</string>
     <string name="rules_row_device_detail">PIN-kod, nedlåsning och att lämna tillbaka telefonen</string>
 
@@ -461,33 +465,6 @@
     <string name="parent_limit_sent">Skickat</string>
     <string name="parent_limit_unknown">Den här telefonen har inte hört något från barnets telefon än, så skjutreglaget börjar på noll i stället för en gissning.</string>
 
-    <string name="parent_rules_title">Regler</string>
-    <string name="parent_rules_intro">Inget ändras på den andra telefonen förrän du skickar det. Uppdatering ersätter allt som inte skickats än med det som faktiskt körs där just nu.</string>
-    <string name="parent_rules_loading">Väntar på svar från den andra telefonen…</string>
-    <string name="parent_rules_refresh">Uppdatera från telefonen</string>
-    <string name="parent_rules_send">Skicka till telefonen</string>
-    <string name="parent_rules_sent">Skickat</string>
-    <string name="parent_rules_conflict">Skickades inte: reglerna ändrades på den telefonen sedan denna skärm senast hörde från den. Uppdatera och försök igen.</string>
-    <string name="parent_rules_daily_limit">Daglig gräns</string>
-    <string name="parent_rules_install_header">Nya appar</string>
-    <string name="parent_rules_install_notify">Tillåtet, och jag blir informerad</string>
-    <string name="parent_rules_install_gated">Blockerat tills jag öppnar ett fönster</string>
-    <string name="parent_rules_categories_add">Lägg till en kategori</string>
-    <string name="parent_rules_category_summary">%1$s · %2$d appar</string>
-    <string name="parent_rules_schedules_header">Scheman</string>
-    <string name="parent_rules_schedules_add">Lägg till ett schema</string>
-    <string name="parent_rules_schedules_rename">Byt namn</string>
-    <string name="parent_rules_schedules_apps_paused">%1$d appar pausade</string>
-    <string name="parent_rules_schedules_apps_stay_usable">%1$d appar förblir användbara</string>
-    <string name="parent_rules_apps_header">Appar</string>
-    <string name="parent_rules_apps_none">Väntar på applistan från den andra telefonen…</string>
-    <string name="parent_rules_app_limit">Gräns: %1$s</string>
-    <string name="parent_rules_app_no_limit">Ingen gräns satt</string>
-    <string name="parent_rules_app_blocked">Blockerad</string>
-    <string name="parent_rules_app_network_blocked">Inget nätverk</string>
-    <string name="parent_rules_app_exempt">Aldrig begränsad</string>
-
-    <string name="parent_settings_pin_header">PIN-kod</string>
     <string name="parent_settings_pin_body">PIN-koden skyddar inställningarna på den telefon där den är satt.</string>
     <string name="parent_settings_role_header">Vad den här telefonen är</string>
     <string name="parent_settings_role_body">Den här telefonen svarar på förfrågningar. Byter du blir den i stället telefonen med gränserna.</string>

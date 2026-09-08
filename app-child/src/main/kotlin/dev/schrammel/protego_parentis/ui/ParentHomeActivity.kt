@@ -23,8 +23,6 @@ import dev.schrammel.protego_parentis.sync.ParentPollWorker
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * The dashboard on a parent's own phone.
@@ -49,7 +47,6 @@ class ParentHomeActivity : ParentRoleActivity() {
     /** Null until this phone has successfully reached the topic in this session. */
     private var lastCheckedAt: Instant? = null
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
@@ -219,7 +216,7 @@ class ParentHomeActivity : ParentRoleActivity() {
             captionText(
                 getString(
                     R.string.parent_today_as_of,
-                    timeFormat.format(today.receivedAt.atZone(ZoneId.systemDefault())),
+                    formatTime(today.receivedAt),
                 ),
             ),
         )
@@ -300,7 +297,7 @@ class ParentHomeActivity : ParentRoleActivity() {
         lastCheckedAt == null -> getString(R.string.parent_checking)
         else -> getString(
             R.string.parent_checked_at,
-            timeFormat.format(checkNotNull(lastCheckedAt).atZone(ZoneId.systemDefault())),
+            formatTime(checkNotNull(lastCheckedAt)),
         )
     }
 
@@ -322,7 +319,6 @@ class ParentHomeActivity : ParentRoleActivity() {
     }
 
     companion object {
-        private const val TIME_PATTERN = "HH:mm"
 
         fun intent(context: Context) = Intent(context, ParentHomeActivity::class.java)
     }

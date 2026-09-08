@@ -113,7 +113,4 @@ object Passphrases {
 
     /** One byte per word, which is what makes the entropy count honest. */
     const val ALPHABET_SIZE = 256
-
-    /** Bits of entropy in a suggestion, for anywhere that wants to say so. */
-    const val ENTROPY_BITS = WORDS * 8
 }

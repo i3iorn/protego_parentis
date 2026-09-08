@@ -30,7 +30,6 @@ class AuditActivity : DementorActivity() {
 
     private val dateFormat: DateTimeFormatter =
         DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -142,7 +141,7 @@ class AuditActivity : DementorActivity() {
                 text = getString(
                     R.string.audit_by_at,
                     AuditText.actor(context, entry.actor),
-                    timeFormat.format(entry.at.atZone(ZoneId.systemDefault())),
+                    formatTime(entry.at),
                 )
                 styleAs(R.style.TextAppearance_Dementor_Caption)
             },
@@ -150,8 +149,6 @@ class AuditActivity : DementorActivity() {
     }
 
     companion object {
-        private const val TIME_PATTERN = "HH:mm"
-
         fun intent(context: Context) = Intent(context, AuditActivity::class.java)
     }
 }

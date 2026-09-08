@@ -26,8 +26,6 @@ import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * Messages between the phones in the family.
@@ -75,7 +73,6 @@ class ChatActivity : DementorActivity() {
     private lateinit var composer: View
     private lateinit var status: TextView
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
     private val pollHandler = Handler(Looper.getMainLooper())
     private val pollTick = object : Runnable {
         override fun run() {
@@ -313,7 +310,7 @@ class ChatActivity : DementorActivity() {
                 text = getString(
                     R.string.chat_attribution,
                     if (message.mine) getString(R.string.chat_me) else message.sender,
-                    timeFormat.format(message.at.atZone(ZoneId.systemDefault())),
+                    formatTime(message.at),
                 )
                 styleAs(R.style.TextAppearance_Dementor_Caption)
             },
@@ -353,7 +350,6 @@ class ChatActivity : DementorActivity() {
     }
 
     companion object {
-        private const val TIME_PATTERN = "HH:mm"
 
         /** The box grows to this and then scrolls, rather than eating the screen. */
         private const val COMPOSER_MAX_LINES = 5

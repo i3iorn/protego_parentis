@@ -18,8 +18,6 @@ import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.usage.InstalledApps
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -40,7 +38,6 @@ class RequestsActivity : DementorActivity() {
     private lateinit var reasonInput: EditText
     private var target: GrantTarget = GrantTarget.Device
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -228,7 +225,7 @@ class RequestsActivity : DementorActivity() {
                     R.string.requests_row_summary,
                     request.amount.inWholeMinutes,
                     describe(request.target),
-                    timeFormat.format(request.createdAt.atZone(ZoneId.systemDefault())),
+                    formatTime(request.createdAt),
                 ),
             ).styleAs(R.style.TextAppearance_Dementor_ListItem),
         )
@@ -287,7 +284,6 @@ class RequestsActivity : DementorActivity() {
     }
 
     companion object {
-        private const val TIME_PATTERN = "HH:mm"
         private const val DEFAULT_CUSTOM_MINUTES = 45
 
         fun intent(context: Context) = Intent(context, RequestsActivity::class.java)

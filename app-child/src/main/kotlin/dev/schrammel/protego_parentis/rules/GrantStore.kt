@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import dev.schrammel.protego_parentis.model.Grant
 import dev.schrammel.protego_parentis.model.GrantId
 import dev.schrammel.protego_parentis.model.GrantTarget
+import dev.schrammel.protego_parentis.model.RequestId
 import dev.schrammel.protego_parentis.policy.PolicyClock
 import org.json.JSONArray
 import org.json.JSONObject
@@ -85,7 +86,7 @@ class GrantStore(context: Context) {
         put(KEY_MINUTES, grant.amount.inWholeMinutes)
         put(KEY_GRANTED_AT, grant.grantedAt.toEpochMilli())
         put(KEY_EXPIRES_AT, grant.expiresAt.toEpochMilli())
-        grant.sourceRequestId?.let { put(KEY_SOURCE_REQUEST, it) }
+        grant.sourceRequestId?.let { put(KEY_SOURCE_REQUEST, it.value) }
         TargetJson.write(this, grant.target)
     }
 
@@ -105,7 +106,7 @@ class GrantStore(context: Context) {
             grantedAt = Instant.ofEpochMilli(grantedAt),
             expiresAt = Instant.ofEpochMilli(expiresAt),
             grantedBy = GRANTED_BY_LOCAL,
-            sourceRequestId = json.optString(KEY_SOURCE_REQUEST).takeIf(String::isNotBlank),
+            sourceRequestId = json.optString(KEY_SOURCE_REQUEST).takeIf(String::isNotBlank)?.let(::RequestId),
         )
     }
 

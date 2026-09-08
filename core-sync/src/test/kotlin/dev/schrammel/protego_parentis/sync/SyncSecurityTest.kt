@@ -282,7 +282,7 @@ class ReplayGuardTest {
     fun `the seen set stays bounded`() {
         var seen = emptyList<SeenMessage>()
         repeat(ReplayGuard.MAX_REMEMBERED * 2) {
-            seen = ReplayGuard.remember(seen, message(id = "m-$it"), now).seen
+            seen = ReplayGuard.remember(message(id = "m-$it"), now, seen).seen
         }
 
         assertEquals(ReplayGuard.MAX_REMEMBERED, seen.size)
@@ -291,8 +291,8 @@ class ReplayGuardTest {
 
     @Test
     fun `remembering the same id twice does not duplicate it`() {
-        val once = ReplayGuard.remember(emptyList(), message(id = "m-1"), now).seen
-        val twice = ReplayGuard.remember(once, message(id = "m-1"), now).seen
+        val once = ReplayGuard.remember(message(id = "m-1"), now, emptyList()).seen
+        val twice = ReplayGuard.remember(message(id = "m-1"), now, once).seen
 
         assertEquals(1, twice.size)
         assertEquals("m-1", twice.single().id)
@@ -313,9 +313,9 @@ class ReplayGuardTest {
     @Test
     fun `a captured grant is still refused after heavy traffic`() {
         val grant = message(id = "the-grant", sentAt = now)
-        var seen = ReplayGuard.remember(emptyList(), grant, now).seen
+        var seen = ReplayGuard.remember(grant, now, emptyList()).seen
 
-        repeat(1_000) { seen = ReplayGuard.remember(seen, message(id = "chatter-$it"), now).seen }
+        repeat(1_000) { seen = ReplayGuard.remember(message(id = "chatter-$it"), now, seen).seen }
 
         assertEquals(
             Admission.Reject(RejectReason.ALREADY_SEEN),
@@ -328,7 +328,7 @@ class ReplayGuardTest {
     fun `an id too old to be replayed is not kept`() {
         val ancient = message(id = "last-week", sentAt = now.minusSeconds(60L * 60 * 24 * 7))
 
-        val seen = ReplayGuard.remember(emptyList(), ancient, now).seen
+        val seen = ReplayGuard.remember(ancient, now, emptyList()).seen
 
         assertTrue(seen.none { it.id == "last-week" })
     }
@@ -344,10 +344,10 @@ class ReplayGuardTest {
     fun `overflowing the memory is counted`() {
         var seen = emptyList<SeenMessage>()
         repeat(ReplayGuard.MAX_REMEMBERED) {
-            seen = ReplayGuard.remember(seen, message(id = "m-$it"), now).seen
+            seen = ReplayGuard.remember(message(id = "m-$it"), now, seen).seen
         }
 
-        val overflowing = ReplayGuard.remember(seen, message(id = "one-too-many"), now)
+        val overflowing = ReplayGuard.remember(message(id = "one-too-many"), now, seen)
 
         assertEquals(1, overflowing.droppedWhileFresh)
     }
@@ -358,7 +358,7 @@ class ReplayGuardTest {
         var seen = emptyList<SeenMessage>()
 
         repeat(500) {
-            val step = ReplayGuard.remember(seen, message(id = "m-$it"), now)
+            val step = ReplayGuard.remember(message(id = "m-$it"), now, seen)
             assertEquals(0, step.droppedWhileFresh)
             seen = step.seen
         }

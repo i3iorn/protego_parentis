@@ -23,8 +23,6 @@ import dev.schrammel.protego_parentis.sync.NewApp
 import dev.schrammel.protego_parentis.sync.NewAppStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * How the child's phone is doing, from a parent's phone (TR-2, AC-3).
@@ -45,7 +43,6 @@ class ParentDeviceActivity : ParentRoleActivity() {
     private lateinit var sync: SyncCoordinator
     private lateinit var column: LinearLayout
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         heartbeats = HeartbeatStore(this)
@@ -99,7 +96,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
                                 },
                                 event.place,
                             ),
-                            timeFormat.format(event.at.atZone(ZoneId.systemDefault())),
+                            formatTime(event.at),
                         )
                     },
                 ),
@@ -243,7 +240,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
             TextView(this@ParentDeviceActivity).apply {
                 text = getString(
                     R.string.parent_locate_at,
-                    timeFormat.format(position.at.atZone(ZoneId.systemDefault())),
+                    formatTime(position.at),
                 )
                 styleAs(R.style.TextAppearance_Dementor_Subtitle)
             },
@@ -383,7 +380,6 @@ class ParentDeviceActivity : ParentRoleActivity() {
 
     companion object {
         /** Enough to answer "did they get there"; too few to read as a trail. */
-        private const val TIME_PATTERN = "HH:mm"
 
         /** Enough to answer "did they get there"; too few to read as a trail. */
         private const val TRANSITION_ROWS = 6

@@ -272,7 +272,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             )
         }
 
-        val remembered = ReplayGuard.remember(seen, message, now)
+        val remembered = ReplayGuard.remember(message, now, seen)
         config.rememberSeen(remembered.seen)
         if (remembered.droppedWhileFresh > 0) {
             // The ceiling was reached, which real traffic does not do. Ids were

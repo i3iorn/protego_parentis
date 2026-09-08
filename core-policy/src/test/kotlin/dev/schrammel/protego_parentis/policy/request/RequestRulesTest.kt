@@ -204,7 +204,7 @@ class RequestRulesTest {
         assertEquals(game, grant.target)
         assertEquals(15.minutes, grant.amount)
         assertEquals(dayEnd, grant.expiresAt)
-        assertEquals("r1", grant.sourceRequestId)
+        assertEquals("r1", grant.sourceRequestId?.value)
     }
 
     @Test

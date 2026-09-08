@@ -28,7 +28,7 @@ data class Grant(
     val grantedAt: Instant,
     val expiresAt: Instant,
     val grantedBy: String,
-    val sourceRequestId: String? = null,
+    val sourceRequestId: RequestId? = null,
 ) {
     init {
         require(amount.isPositive()) { "grant amount must be positive" }

@@ -15,8 +15,6 @@ import dev.schrammel.protego_parentis.sync.IncomingRequest
 import dev.schrammel.protego_parentis.sync.InboxStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * Answering requests from a parent's own phone.
@@ -37,7 +35,6 @@ class ParentInboxActivity : ParentRoleActivity() {
     private lateinit var inbox: InboxStore
     private lateinit var column: LinearLayout
 
-    private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern(TIME_PATTERN)
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
         sync = SyncCoordinator(this)
@@ -94,7 +91,7 @@ class ParentInboxActivity : ParentRoleActivity() {
             captionText(
                 getString(
                     R.string.inbox_expires_at,
-                    timeFormat.format(request.expiresAt.atZone(ZoneId.systemDefault())),
+                    formatTime(request.expiresAt),
                 ),
             ),
         )
@@ -209,7 +206,6 @@ class ParentInboxActivity : ParentRoleActivity() {
     }
 
     companion object {
-        private const val TIME_PATTERN = "HH:mm"
 
         /** Enough to see this week's answers without becoming an archive. */
         private const val HISTORY_ROWS = 10
