@@ -13,6 +13,7 @@ import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.ParentSession
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * The first question the app asks: whose phone is this?
@@ -133,9 +134,17 @@ class RoleSetupActivity : DementorActivity() {
         )
         // A parent phone has no enforcement tick to fold polling into, so it
         // needs its own background check to hear about a request while closed.
+        // Both roles run the realtime stream so messages land as they are
+        // published rather than on the next poll.
         when (role) {
-            DeviceRole.CHILD -> ParentPollWorker.cancel(this)
-            DeviceRole.PARENT -> ParentPollWorker.schedule(this)
+            DeviceRole.CHILD -> {
+                ParentPollWorker.cancel(this)
+                RealtimeSyncService.start(this)
+            }
+            DeviceRole.PARENT -> {
+                ParentPollWorker.schedule(this)
+                RealtimeSyncService.start(this)
+            }
         }
         // Safe only because choose() has no path here that skips the PIN screen.
         // Whoever reached this line either just created the PIN or just entered

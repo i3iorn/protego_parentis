@@ -20,6 +20,7 @@ import dev.schrammel.protego_parentis.sync.DailySummary
 import dev.schrammel.protego_parentis.sync.DailySummaryStore
 import dev.schrammel.protego_parentis.sync.InboxStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Instant
 import java.time.ZoneId
@@ -57,6 +58,9 @@ class ParentHomeActivity : ParentRoleActivity() {
         // Idempotent, and re-asserted here so a phone that was granted the family
         // connection after choosing its role still starts listening.
         ParentPollWorker.schedule(this)
+        // The realtime stream ensures messages land as soon as they are published
+        // rather than waiting for the next poll. Idempotent if already running.
+        RealtimeSyncService.start(this)
 
         column = contentColumn()
         showColumn(column)

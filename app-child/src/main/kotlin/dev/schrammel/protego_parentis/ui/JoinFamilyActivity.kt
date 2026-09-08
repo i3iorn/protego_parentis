@@ -31,6 +31,7 @@ import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.SyncSettings
 import dev.schrammel.protego_parentis.sync.TransportKind
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * Joining a family, or starting one.
@@ -464,6 +465,8 @@ class JoinFamilyActivity : ParentGatedActivity() {
         // Introduce this phone straight away, so it appears on the other one while
         // somebody is still standing in front of it.
         sync.announceSelf(force = true)
+        // Start streaming so messages land as soon as they are published.
+        RealtimeSyncService.start(this)
         Toast.makeText(this, R.string.join_done, Toast.LENGTH_LONG).show()
         render()
     }

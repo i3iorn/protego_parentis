@@ -40,6 +40,7 @@ import dev.schrammel.protego_parentis.rules.WebActivityStore
 import dev.schrammel.protego_parentis.rules.WebFilterStore
 import dev.schrammel.protego_parentis.sync.AppTime
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import java.time.LocalDate
 import dev.schrammel.protego_parentis.ui.HomeActivity
 import dev.schrammel.protego_parentis.ui.formatDuration
@@ -159,6 +160,10 @@ class EnforcementService : Service() {
         // The lock arrives as a message and is carried out here, because the
         // sync layer has no business holding a device policy port.
         sync = SyncCoordinator(this)
+        // The managed phone streams too, so a parent's decision, a bonus, a daily
+        // limit change or a lock command lands as soon as it is published rather
+        // than on the next enforcement tick. Idempotent if already running.
+        RealtimeSyncService.start(this)
         sos = SosStore(this)
         places = PlaceWatcher(this)
         createNotificationChannel()

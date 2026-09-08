@@ -22,6 +22,7 @@ import dev.schrammel.protego_parentis.sync.FamilyTokens
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.TransportKind
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * Where the family's messages are carried.
@@ -209,6 +210,9 @@ class SyncBackendActivity : ParentGatedActivity() {
         // Say hello at the new address at once, so the other phones that have
         // already moved find this one waiting rather than an hour later.
         sync.announceSelf(force = true)
+        // Restart the realtime stream against the new server.
+        RealtimeSyncService.stop(this)
+        RealtimeSyncService.start(this)
         showNewCode(token)
     }
 

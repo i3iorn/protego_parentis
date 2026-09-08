@@ -11,6 +11,7 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * Turning a parent's phone into the managed one.
@@ -70,6 +71,7 @@ class RoleSwitchActivity : ParentGatedActivity() {
         ) {
             RoleStore(this).choose(DeviceRole.CHILD)
             ParentPollWorker.cancel(this)
+            RealtimeSyncService.start(this)
             Audit.record(
                 context = this,
                 actor = AuditActor.PARENT,

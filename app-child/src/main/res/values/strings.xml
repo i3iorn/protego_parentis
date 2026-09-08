@@ -12,6 +12,13 @@
     <string name="service_used_up">Today\'s time is used up</string>
     <string name="service_no_limit">%1$s today</string>
 
+    <!-- Realtime sync foreground service. Keeps the family topic stream open so
+         messages land as soon as they are published, on either side of a family. -->
+    <string name="realtime_channel_name">Family sync</string>
+    <string name="realtime_channel_description">Keeps this phone in touch with the family so requests and commands arrive straight away.</string>
+    <string name="realtime_notification_title">Family connected</string>
+    <string name="realtime_notification_text">Listening for the family…</string>
+
     <!-- Format.kt: generic duration/limit formatting shared across screens. -->
     <string name="format_no_limit">no limit</string>
     <string name="format_no_limit_capitalized">No limit</string>

@@ -7,6 +7,7 @@ import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * Re-arms enforcement after a reboot.
@@ -24,7 +25,14 @@ class BootReceiver : BroadcastReceiver() {
         // Only the managed phone has anything to enforce. Starting the service on
         // a parent's own handset gave it a permanent monitoring notification and,
         // worse, made it publish heartbeats that other parents read as the child's.
-        if (RoleStore(context).roleOrChild != DeviceRole.CHILD) return
-        EnforcementService.start(context)
+        if (RoleStore(context).roleOrChild == DeviceRole.CHILD) {
+            EnforcementService.start(context)
+        }
+
+        // Both roles run the realtime stream so messages land as they are
+        // published rather than on the next poll. The socket manager checks
+        // settings.isUsable before opening a connection, so a half-configured
+        // phone harmlessly does nothing.
+        RealtimeSyncService.start(context)
     }
 }

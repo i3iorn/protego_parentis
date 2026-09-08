@@ -180,6 +180,26 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     }
 
     /**
+     * Applies one envelope that arrived on the realtime stream.
+     *
+     * The realtime socket feeds envelopes here as they arrive, so a parent hears
+     * about a request and a child hears about a decision as soon as they are
+     * published rather than waiting for the next poll. Runs on the shared sync
+     * executor so the replay-guard write cannot interleave with a publish, exactly
+     * as with [pollNow].
+     *
+     * Returns true if the envelope was applied, false otherwise (ignored own
+     * traffic, undecryptable, refused, a stranger offered for enrolment). Unlike
+     * [pollNow] this does not re-run the whole replica-sync pass on every message
+     * — that happens on the slow reconciliation poll to avoid redundant pushes.
+     */
+    fun receiveEnvelope(key: SyncKey, envelope: String): Boolean {
+        val applied = apply(key, envelope)
+        config.recordPolledAt(Instant.now())
+        return applied
+    }
+
+    /**
      * Opens one envelope and acts on it.
      *
      * Anything that fails to decrypt is someone else's traffic on a public topic,

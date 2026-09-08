@@ -27,6 +27,7 @@ import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.usage.UsageAccess
 import java.time.ZoneId
@@ -101,6 +102,9 @@ class HomeActivity : DementorActivity() {
                 // Left over if this phone was ever a parent's. Polling is folded
                 // into the enforcement tick here, so the worker is redundant.
                 ParentPollWorker.cancel(this)
+                // The child side also streams so parent commands (lock, decisions)
+                // land as they are published rather than on the enforcement tick.
+                RealtimeSyncService.start(this)
                 return false
             }
         }

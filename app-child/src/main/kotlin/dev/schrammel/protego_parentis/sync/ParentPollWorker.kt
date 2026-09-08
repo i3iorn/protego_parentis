@@ -19,14 +19,15 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * Keeps a parent's phone listening while the app is closed.
+ * Keeps a parent's phone converging with the family while the app is closed.
  *
- * ntfy is polled rather than streamed, so without this a parent would only learn
- * about a request by opening the app — which makes a two-hour expiry window a
- * coin flip. Fifteen minutes is the shortest period Android allows for periodic
- * work, and it is the right trade here: a request is not an alarm, and a
- * foreground service with a permanent notification on a parent's own phone would
- * be a much worse bargain.
+ * Real-time delivery now runs through [RealtimeSyncService]'s long-lived stream,
+ * so a request lands the moment it is published rather than on the next poll.
+ * This worker is the reconciliation safety net in case the stream was down or
+ * the app restarted before reconnecting: a periodic poll picks up anything
+ * missed, and replays the guard filters the duplicates. Fifteen minutes is the
+ * shortest period Android allows for periodic work, which is frequent enough to
+ * stay within a request's expiry and cheap enough to run forever.
  *
  * The child device does not use this. Its enforcement service already ticks, and
  * polling is folded into that tick.

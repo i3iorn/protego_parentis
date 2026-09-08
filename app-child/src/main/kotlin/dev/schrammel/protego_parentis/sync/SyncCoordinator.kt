@@ -64,7 +64,10 @@ class SyncCoordinator(context: Context) {
     fun join(token: FamilyToken, passphrase: String) = publisher.join(token, passphrase)
 
     /** Leaves, keeping nothing behind that could reconnect or decrypt on its own. */
-    fun leave() = publisher.leave()
+    fun leave() {
+        RealtimeSyncService.stop(context)
+        publisher.leave()
+    }
 
     fun suggestTopic(): String = publisher.suggestTopic()
 

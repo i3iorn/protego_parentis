@@ -457,6 +457,15 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Enforces the family's screen-time rules and keeps the parent's dashboard current." />
         </service>
+
+        <service
+            android:name=".sync.RealtimeSyncService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the family's message stream open so requests and commands arrive in real time." />
+        </service>
     </application>
 
 </manifest>
