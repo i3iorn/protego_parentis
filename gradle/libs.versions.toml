@@ -48,4 +48,5 @@ zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

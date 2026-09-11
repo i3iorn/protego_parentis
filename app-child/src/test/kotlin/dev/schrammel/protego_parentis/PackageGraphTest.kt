@@ -35,6 +35,12 @@ import java.io.File
  * `app-child`'s own `sync` package, which they are not — an early draft of
  * this test made exactly that mistake and it briefly looked like `security`
  * belonged in the cycle too.
+ *
+ * `security` itself became a second such case once it was extracted into
+ * its own `:security` Android library module (Phase 3's first extraction):
+ * it kept its package name, so nothing needed a new explicit exclusion here
+ * — its directory simply no longer exists under `app-child`'s own source
+ * root, so imports of it resolve to nothing and are dropped the same way.
  */
 class PackageGraphTest {
 
