@@ -1,2 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      UsageCollector.queryEvents needs this. app-child's own manifest already
+      declares it too (it needs a Play declaration form at submission time
+      regardless of which module the call site lives in) - this declaration
+      is what lets :usage build and lint on its own, as a library that could
+      in principle be used by a different app with a different manifest.
+      Manifest merging dedupes the identical entry.
+    -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+</manifest>
