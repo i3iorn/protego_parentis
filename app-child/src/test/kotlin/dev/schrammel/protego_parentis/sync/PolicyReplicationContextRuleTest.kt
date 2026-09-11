@@ -20,6 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**
  * Contextual rules as the second worked example of #40's field-per-path

@@ -17,7 +17,7 @@ import dev.schrammel.protego_parentis.sync.ConsensusKind
 import dev.schrammel.protego_parentis.sync.ConsensusReplication
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.KnownDevice
-import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.appVersionName
 import dev.schrammel.protego_parentis.sync.versionsDiffer
 import dev.schrammel.protego_parentis.sync.core.PendingDevice
