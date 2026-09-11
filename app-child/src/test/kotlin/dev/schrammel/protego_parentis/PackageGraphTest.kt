@@ -74,7 +74,7 @@ class PackageGraphTest {
     }
 
     private fun packageOf(root: File, file: File): String {
-        val relative = file.parentFile.relativeTo(root).path
+        val relative = file.parentFile!!.relativeTo(root).path
         return if (relative.isEmpty()) basePackage else "$basePackage.${relative.replace(File.separatorChar, '.')}"
     }
 
