@@ -118,6 +118,7 @@
     <string name="context_when_not">inte %1$s</string>
     <string name="context_when_window">under %1$s %2$s</string>
     <string name="context_when_window_alternating">under %1$s %2$s, varannan vecka</string>
+    <string name="context_when_allowance_spent">%1$d minuters skärmtid använd idag</string>
     <string name="context_join_and"> och </string>
     <string name="context_join_or"> eller </string>
     <string name="context_place_unknown">en borttagen plats</string>
