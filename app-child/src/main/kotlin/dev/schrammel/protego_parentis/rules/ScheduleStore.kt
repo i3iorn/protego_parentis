@@ -87,25 +87,27 @@ data class StoredSchedule(
 }
 
 /**
- * The family's named schedule windows.
+ * The family's named schedule windows — the storage format #105/#106
+ * migrated away from for anything a parent can still reach, kept alive here
+ * only for [LocalPolicyStore]'s one-time migration, sync/replication of a
+ * schedule to or from a sibling phone still on an older build, and this
+ * store's own dedicated tests.
  *
  * Bedtime lives here too, as the one entry at [BEDTIME_ID] with
  * [ScheduleBlock.Kind.BEDTIME] — [dev.schrammel.protego_parentis.model.Policy]
  * already treated a replicated schedule and the synthesised bedtime block as
- * the same kind of object once assembled (#12), and this makes that true of
+ * the same kind of object once assembled (#12), and this made that true of
  * storage too, closing the gap #41 opened it for: only a replicated schedule
  * could be set from a parent's own phone, so bedtime — the most-used remote
  * control in the product — could not.
  *
- * The risk that motivated keeping it separate originally — a family deleting
- * bedtime by accident while tidying up a homework block — is handled by every
- * screen that lists these windows filtering [BEDTIME_ID] out and giving it its
- * own dedicated card instead (see [dev.schrammel.protego_parentis.ui.SchedulesActivity]):
- * bedtime is never offered through the generic add/delete flow at all, so
- * there is no accident to have. #43 deleted `ParentRulesActivity`, the
- * dedicated card's other home — a parent's phone has no bedtime card of its
- * own yet, since `LimitsActivity` (where the managed phone's card lives) is
- * one of the screens #43 left local-only, not yet reachable remotely.
+ * [BEDTIME_ID] no longer needs the special treatment that history left it —
+ * the unified rules screen (#106) offers bedtime as an ordinary starter like
+ * any other window, generic add/delete flow included, since a family with no
+ * bedtime rule yet cannot accidentally delete one either way. A migrated
+ * pre-#105 bedtime schedule still lands at the same well-known rule id that
+ * starter uses (`LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + BEDTIME_ID`),
+ * so the two paths describe the same rule rather than two.
  */
 class ScheduleStore(context: Context) {
 

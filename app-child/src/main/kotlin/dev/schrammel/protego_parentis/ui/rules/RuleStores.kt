@@ -12,9 +12,7 @@ import dev.schrammel.protego_parentis.rules.AutoApprovalStore
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
-import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
-import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
@@ -71,40 +69,6 @@ fun PolicyRuleStore.upsertCategory(category: StoredCategory) {
 fun PolicyRuleStore.deleteCategory(id: String) {
     val snapshot = read() ?: return
     write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == id }))
-}
-
-interface ScheduleRuleStore {
-    fun read(): List<StoredSchedule>
-    fun write(schedules: List<StoredSchedule>)
-}
-
-class LocalScheduleRuleStore(private val context: Context) : ScheduleRuleStore {
-    private val store = ScheduleStore(context)
-    override fun read(): List<StoredSchedule> = store.schedules
-    override fun write(schedules: List<StoredSchedule>) {
-        store.schedules = schedules
-        AppRegistry.ruleMutationSink.rulesChanged()
-    }
-}
-
-class RemoteScheduleRuleStore(private val context: Context, private val childId: DeviceId) : ScheduleRuleStore {
-    override fun read(): List<StoredSchedule> = PolicyReplication(context).readSchedules(childId)
-    override fun write(schedules: List<StoredSchedule>) =
-        SyncCoordinator(context).applyScheduleEdit(schedules, childId)
-}
-
-fun scheduleRuleStore(context: Context, target: RuleTarget): ScheduleRuleStore =
-    if (target.isOwnDevice) LocalScheduleRuleStore(context) else RemoteScheduleRuleStore(context, target.childId)
-
-/** [ScheduleStore]'s find/upsert/delete convenience shape, generalised to either device. */
-fun ScheduleRuleStore.find(id: String): StoredSchedule? = read().firstOrNull { it.id == id }
-
-fun ScheduleRuleStore.upsert(schedule: StoredSchedule) {
-    write(read().filterNot { it.id == schedule.id } + schedule)
-}
-
-fun ScheduleRuleStore.delete(id: String) {
-    write(read().filterNot { it.id == id })
 }
 
 interface ContextRuleRuleStore {

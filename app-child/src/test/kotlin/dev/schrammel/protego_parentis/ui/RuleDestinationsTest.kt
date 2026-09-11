@@ -46,30 +46,36 @@ class RuleDestinationsTest {
         RoleStore(context).choose(DeviceRole.CHILD)
     }
 
+    /**
+     * #106: the daily limit, schedules, and context rules collapsed into one
+     * screen — reached the same way regardless of which kind of phone edits
+     * it, unlike the dedicated local/remote pair ([LimitsActivity]/
+     * [ParentLimitActivity]) it replaces.
+     */
     @Test
-    fun `on the managed phone itself, the daily limit opens the local screen`() {
+    fun `on the managed phone itself, rules opens the unified screen`() {
         RoleStore(context).choose(DeviceRole.CHILD)
         LocalDeviceId.useInTests("THISPHONE")
         val activity = rulesActivity()
 
-        click(activity, R.string.rules_row_limits)
+        click(activity, R.string.rules_row_rules)
 
         assertEquals(
-            LimitsActivity::class.java.name,
+            ContextRulesActivity::class.java.name,
             shadowOf(activity).nextStartedActivity?.component?.className,
         )
     }
 
     @Test
-    fun `editing a child's rules remotely, the daily limit sends a message instead`() {
+    fun `editing a child's rules remotely, rules opens the same unified screen`() {
         RoleStore(context).choose(DeviceRole.PARENT)
         enrolChild("CHILD1")
         val activity = rulesActivity()
 
-        click(activity, R.string.rules_row_limits)
+        click(activity, R.string.rules_row_rules)
 
         assertEquals(
-            ParentLimitActivity::class.java.name,
+            ContextRulesActivity::class.java.name,
             shadowOf(activity).nextStartedActivity?.component?.className,
         )
     }

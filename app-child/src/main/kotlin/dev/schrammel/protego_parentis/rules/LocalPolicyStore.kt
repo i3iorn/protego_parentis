@@ -166,13 +166,18 @@ class LocalPolicyStore(context: Context) {
      * it was never enforced before this either.
      *
      * Deliberately leaves [scheduleStore]'s own schedules, this store's
-     * [dailyLimitMinutes], and [exemptPackages] exactly as they are:
-     * `SchedulesActivity` and `LimitsActivity`/`ParentLimitActivity` still
-     * edit them directly until #106 replaces those screens with one that
-     * writes rules instead, and a family mid-upgrade must not lose whichever
-     * screen it opens first. This runs once, so an edit made through the old
-     * screens after that point will not be reflected here again — accepted
-     * as a short-lived gap #106 closes immediately after.
+     * [dailyLimitMinutes], and [exemptPackages] exactly as they are, rather
+     * than deleting them once migrated: nothing writes them any more once
+     * #106 removes their editors (`LimitsActivity`/`ParentLimitActivity`
+     * stay unreachable rather than deleted outright — #107 finishes that),
+     * but a device mid-upgrade, or still replicating an old-format edit from
+     * a sibling phone that has not upgraded yet, must not lose the rule
+     * because the field it was read from vanished under it. This runs once,
+     * so an edit made through the old fields after that point — replicated
+     * in from an older build, most plausibly — will not be reflected here
+     * again; the accepted gap is now that narrow rather than closed by #106
+     * as originally expected, since #106 turned out to still need #107's
+     * `SET_DAILY_LIMIT` retirement to remove `ParentLimitActivity` outright.
      */
     fun migrateToUnifiedRules() {
         if (prefs.getBoolean(KEY_RULES_MIGRATED, false)) return
@@ -270,9 +275,8 @@ class LocalPolicyStore(context: Context) {
             // ScheduleStore is a different SharedPreferences file from this
             // store's own, so the version bump every other setter here relies
             // on to signal a change never happens for this one — starting
-            // enforcement directly, the same way SchedulesActivity already
-            // does for every other schedule edit, is what SchedulesActivity's
-            // own comment calls out: a window may be starting right now.
+            // enforcement directly is needed instead, since a window may be
+            // starting right now.
             AppRegistry.ruleMutationSink.rulesChanged()
         }
 

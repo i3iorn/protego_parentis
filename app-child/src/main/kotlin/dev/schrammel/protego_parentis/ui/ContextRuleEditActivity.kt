@@ -312,11 +312,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     /**
-     * A recurring window — days plus a start/end time, the same shape a
-     * schedule already edits in [ScheduleEditActivity]. Built here too rather
-     * than only ever produced by the schedule migration (#105), so a rule with
-     * this condition round-trips through its own editor instead of losing the
-     * window the moment somebody renames the rule and saves.
+     * A recurring window — days plus a start/end time, the shape the old
+     * dedicated schedules screen used to edit before #106 folded it in here.
+     * Built here too rather than only ever produced by the schedule migration
+     * (#105), so a rule with this condition round-trips through its own
+     * editor instead of losing the window the moment somebody renames the
+     * rule and saves.
      */
     private fun askForWindow(current: Condition?, onPicked: (Condition) -> Unit) {
         val existing = current as? Condition.DuringWindow
@@ -379,9 +380,9 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             .setPositiveButton(android.R.string.ok, null)
             .setNegativeButton(android.R.string.cancel, null)
             .create()
-        // Wired after showing, like ScheduleEditActivity's own window dialog —
-        // a plain setPositiveButton closure dismisses on any input, valid or
-        // not, and this validates the same way the schedule editor does.
+        // Wired after showing, like the old dedicated schedule editor's own
+        // window dialog did — a plain setPositiveButton closure dismisses on
+        // any input, valid or not, and this validates the same way it did.
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 if (days.isEmpty()) {

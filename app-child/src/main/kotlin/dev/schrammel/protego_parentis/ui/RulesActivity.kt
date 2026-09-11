@@ -36,12 +36,14 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  * — a parent's own phone has no features to speak of, and reading its flags
  * here would answer a question about the wrong device entirely.
  *
- * The daily limit and bonus time route to a local screen ([LimitsActivity],
- * [BonusTimeActivity]) when [target] is this device's own, and to the
- * parent-side send-a-message screen ([ParentLimitActivity], [ParentBonusActivity])
- * otherwise — the same local/remote split #43 already established for every
- * other rule store (#78). Places gets the same split for the same reason
- * (#86): the arrival-announcement toggle only means anything read on the
+ * The daily limit, schedules and context rules are one rule engine now (#106)
+ * and share one row and one screen ([ContextRulesActivity]), on either kind
+ * of phone — [ContextRulesActivity]'s own local/remote split handles the
+ * rest. Bonus time still routes to a local screen ([BonusTimeActivity]) when
+ * [target] is this device's own, and to the parent-side send-a-message
+ * screen ([ParentBonusActivity]) otherwise — the same local/remote split #43
+ * already established for every other rule store (#78). Places gets the same
+ * split for the same reason (#86): the arrival-announcement toggle only means anything read on the
  * device doing the arriving, but the saved places themselves are exactly the
  * list Contextual rules already edits remotely, so a remote target gets a
  * direct door to [PlacesActivity] rather than losing them along with the
@@ -95,18 +97,6 @@ class RulesActivity : ParentGatedActivity() {
             column,
             getString(R.string.rules_group_limits),
             buildList {
-                // The daily limit is the reason the app exists; it has no switch,
-                // and no offline case either — a parent editing it remotely reaches
-                // the same send-a-message screen the old top-level "Limit" row did.
-                add(
-                    row(R.string.rules_row_limits, R.string.rules_row_limits_detail) {
-                        if (target.isOwnDevice) {
-                            startActivity(Intent(this@RulesActivity, LimitsActivity::class.java))
-                        } else {
-                            startActivity(ParentLimitActivity.intent(this@RulesActivity, target.childId))
-                        }
-                    },
-                )
                 if (enabled(Feature.CATEGORIES)) {
                     add(
                         row(R.string.rules_row_categories, R.string.rules_row_categories_detail) {
@@ -150,16 +140,13 @@ class RulesActivity : ParentGatedActivity() {
             column,
             getString(R.string.rules_group_day),
             buildList {
-                if (enabled(Feature.SCHEDULES)) {
+                // #106: the daily limit, named windows, and context rules are one
+                // rule engine now, so they are one row and one screen — the daily
+                // limit itself has no switch, so this row shows whenever either
+                // feature is on rather than needing one of its own.
+                if (enabled(Feature.SCHEDULES) || enabled(Feature.CONTEXT_RULES)) {
                     add(
-                        row(R.string.rules_row_schedules, R.string.rules_row_schedules_detail) {
-                            startActivity(SchedulesActivity.intent(this@RulesActivity, target.childId))
-                        },
-                    )
-                }
-                if (enabled(Feature.CONTEXT_RULES)) {
-                    add(
-                        row(R.string.rules_row_context, R.string.rules_row_context_detail) {
+                        row(R.string.rules_row_rules, R.string.rules_row_rules_detail) {
                             startActivity(ContextRulesActivity.intent(this@RulesActivity, target.childId))
                         },
                     )
