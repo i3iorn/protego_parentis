@@ -70,6 +70,10 @@ object PolicyEngine {
             hierarchy = hierarchyForRules,
             installedPackages = installedPackages,
             now = nowZdt,
+            // Net of bonus time, matching what the dedicated device-budget
+            // comparison below treats as "used" — a Condition.AllowanceSpent
+            // rule and Policy.deviceBudget must agree on that arithmetic.
+            deviceUsage = (usage.deviceTotal - bonusFor(GrantTarget.Device)).coerceAtLeast(Duration.ZERO),
         )
         val effectiveDeviceBudget = contextOutcome.deviceBudget ?: policy.deviceBudget
 

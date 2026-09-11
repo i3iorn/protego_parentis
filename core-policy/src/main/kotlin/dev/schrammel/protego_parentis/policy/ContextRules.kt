@@ -11,6 +11,8 @@ import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import java.time.Instant
 import java.time.ZonedDateTime
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 /** What the active contextual rules add up to. */
 data class ContextOutcome(
@@ -67,8 +69,19 @@ object ContextRules {
          * compile error instead.
          */
         now: ZonedDateTime,
+        /**
+         * How much of the device's daily allowance is already spent (#102).
+         *
+         * Same requirement as [now]: [Condition.AllowanceSpent] cannot be
+         * answered from [DeviceContext] alone, and a defaulted usage figure
+         * would let a caller silently evaluate every allowance condition as
+         * never met. Net of bonus time, exactly like the dedicated
+         * `Policy.deviceBudget` comparison this condition is meant to match —
+         * see `PolicyEngine`'s call site for where that netting happens.
+         */
+        deviceUsage: Duration,
     ): ContextOutcome {
-        val active = rules.filter { it.enabled && holds(it.condition, context, now) }
+        val active = rules.filter { it.enabled && holds(it.condition, context, now, deviceUsage) }
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val allowed = mutableSetOf<PackageName>()
@@ -106,7 +119,13 @@ object ContextRules {
      * practical effect is that a half-built rule with no conditions chosen yet does
      * not silently start blocking things.
      */
-    fun holds(condition: Condition, context: DeviceContext, now: ZonedDateTime, depth: Int = 0): Boolean {
+    fun holds(
+        condition: Condition,
+        context: DeviceContext,
+        now: ZonedDateTime,
+        deviceUsage: Duration,
+        depth: Int = 0,
+    ): Boolean {
         if (depth > MAX_DEPTH) return false
 
         return when (condition) {
@@ -130,13 +149,15 @@ object ContextRules {
             // disagree about midnight or an alternating week.
             is Condition.DuringWindow -> ScheduleResolver.isActive(condition.window, now)
 
+            is Condition.AllowanceSpent -> deviceUsage >= condition.minutes.minutes
+
             is Condition.AllOf ->
-                condition.conditions.all { holds(it, context, now, depth + 1) }
+                condition.conditions.all { holds(it, context, now, deviceUsage, depth + 1) }
 
             is Condition.AnyOf ->
-                condition.conditions.any { holds(it, context, now, depth + 1) }
+                condition.conditions.any { holds(it, context, now, deviceUsage, depth + 1) }
 
-            is Condition.Not -> !holds(condition.condition, context, now, depth + 1)
+            is Condition.Not -> !holds(condition.condition, context, now, deviceUsage, depth + 1)
         }
     }
 
@@ -185,6 +206,12 @@ object ContextRules {
             is Condition.AnyOf -> null
             is Condition.Not -> null
 
+            // The day boundary is the real end, but this function has no policy
+            // to ask for one (see the class doc on under- vs over-promising) —
+            // guessing here would risk disagreeing with `PolicyEngine`'s own
+            // answer for the dedicated device-budget path this mirrors.
+            is Condition.AllowanceSpent -> null
+
             is Condition.Always,
             is Condition.OnWifi,
             is Condition.NearDevice,
@@ -219,6 +246,7 @@ object ContextRules {
             is Condition.NearDevice,
             is Condition.AtPlace,
             is Condition.BatteryBelow,
+            is Condition.AllowanceSpent,
             -> emptyList()
         }
     }

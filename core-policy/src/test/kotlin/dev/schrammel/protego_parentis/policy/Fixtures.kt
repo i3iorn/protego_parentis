@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.policy
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.ChildId
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Grant
 import dev.schrammel.protego_parentis.model.GrantId
 import dev.schrammel.protego_parentis.model.GrantTarget
@@ -44,6 +45,7 @@ internal fun policy(
     appRules: Map<PackageName, AppRule> = emptyMap(),
     categories: List<Category> = emptyList(),
     schedules: List<ScheduleBlock> = emptyList(),
+    contextRules: List<ContextRule> = emptyList(),
     safetyAllowlist: Set<PackageName> = setOf(DIALER),
     dayBoundaryHour: Int = 4,
 ) = Policy(
@@ -54,6 +56,7 @@ internal fun policy(
     appRules = appRules,
     categories = categories,
     schedules = schedules,
+    contextRules = contextRules,
     safetyAllowlist = safetyAllowlist,
     dayBoundaryHour = dayBoundaryHour,
 )
