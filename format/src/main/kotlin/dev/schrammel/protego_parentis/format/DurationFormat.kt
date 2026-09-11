@@ -1,7 +1,6 @@
 package dev.schrammel.protego_parentis.format
 
 import android.content.Context
-import dev.schrammel.protego_parentis.R
 import kotlin.time.Duration
 
 /**

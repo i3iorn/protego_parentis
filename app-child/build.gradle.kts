@@ -179,6 +179,7 @@ dependencies {
     implementation(project(":usage"))
     implementation(project(":context"))
     implementation(project(":diagnostics"))
+    implementation(project(":format"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.work)
