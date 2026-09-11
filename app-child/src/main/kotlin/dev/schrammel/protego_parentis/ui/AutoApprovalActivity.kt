@@ -20,6 +20,8 @@ import dev.schrammel.protego_parentis.ui.rules.autoApprovalRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.upsert
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 

@@ -8,6 +8,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

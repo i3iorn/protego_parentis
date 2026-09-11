@@ -12,6 +12,8 @@ import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
  * The hub, on whichever kind of phone edits [target]'s rules (#43).
