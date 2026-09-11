@@ -37,6 +37,9 @@ enum class DiagnosticEvent {
     SYNC_POLLED,
     SYNC_POLL_FAILED,
 
+    /** The realtime stream dropped or could not be opened; it will retry. */
+    SYNC_STREAM_FAILED,
+
     /**
      * The family key could not be derived from the stored passphrase and topic.
      * Distinct from [SYNC_PUBLISH_FAILED] / [SYNC_POLL_FAILED] on purpose: those
