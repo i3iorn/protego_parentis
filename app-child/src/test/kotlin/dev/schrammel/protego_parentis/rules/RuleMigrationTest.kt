@@ -149,6 +149,18 @@ class RuleMigrationTest {
     }
 
     @Test
+    fun `an exempt package migrates to a safety-exempt rule`() {
+        store().exemptPackages = setOf("com.google.android.apps.docs")
+
+        store().migrateToUnifiedRules()
+
+        val rule = rules().rules.singleOrNull { it.id == "migrated-exempt-com.google.android.apps.docs" }
+        assertEquals(Condition.Always, rule?.condition)
+        assertEquals(RuleEffect.SafetyExempt, rule?.effect)
+        assertEquals(RuleTarget.Apps(setOf(PackageName("com.google.android.apps.docs"))), rule?.target)
+    }
+
+    @Test
     fun `running the migration twice changes nothing`() {
         schedules().upsert(
             StoredSchedule(

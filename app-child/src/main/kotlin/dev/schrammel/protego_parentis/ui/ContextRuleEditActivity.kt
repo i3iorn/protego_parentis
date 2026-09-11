@@ -467,6 +467,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             listOf(
                 getString(R.string.context_effect_block) to { effect = RuleEffect.Block; render() },
                 getString(R.string.context_effect_allow) to { effect = RuleEffect.Allow; render() },
+                getString(R.string.context_choose_safety_exempt) to { effect = RuleEffect.SafetyExempt; render() },
                 getString(R.string.context_choose_budget) to { askForBudget() },
             ),
         )
@@ -657,6 +658,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun describeEffect(): String = when (val current = effect) {
         is RuleEffect.Block -> getString(R.string.context_effect_block)
         is RuleEffect.Allow -> getString(R.string.context_effect_allow)
+        is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
         is RuleEffect.SetDeviceBudget ->
             getString(R.string.context_effect_budget, formatDuration(current.budget.default))
     }

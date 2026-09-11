@@ -20,6 +20,12 @@ data class ContextOutcome(
     val blocked: Map<PackageName, ContextRule>,
     /** Exempt from every limit while their rule applies. */
     val allowed: Set<PackageName>,
+    /**
+     * Exempt from everything while their rule applies — the same tier as the
+     * built-in safety allowlist, not just the other contextual rules [allowed]
+     * settles. See [RuleEffect.SafetyExempt].
+     */
+    val safetyExempt: Set<PackageName>,
     /** Replaces the device budget when present. */
     val deviceBudget: WeeklyBudget?,
     /** The rules that are currently applying, for showing on screen. */
@@ -85,6 +91,7 @@ object ContextRules {
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val allowed = mutableSetOf<PackageName>()
+        val safetyExempt = mutableSetOf<PackageName>()
         var budget: WeeklyBudget? = null
 
         active.forEach { rule ->
@@ -97,6 +104,9 @@ object ContextRules {
                 is RuleEffect.Allow ->
                     allowed += resolve(rule.target, hierarchy, installedPackages)
 
+                is RuleEffect.SafetyExempt ->
+                    safetyExempt += resolve(rule.target, hierarchy, installedPackages)
+
                 is RuleEffect.SetDeviceBudget ->
                     budget = tightest(budget, effect.budget)
             }
@@ -104,8 +114,9 @@ object ContextRules {
 
         return ContextOutcome(
             // Allow wins: see the note above.
-            blocked = blocked.filterKeys { it !in allowed },
+            blocked = blocked.filterKeys { it !in allowed && it !in safetyExempt },
             allowed = allowed,
+            safetyExempt = safetyExempt,
             deviceBudget = budget,
             activeRules = active,
         )

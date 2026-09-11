@@ -90,12 +90,19 @@ object PolicyEngine {
         )
         val hierarchy = hierarchyForRules
 
+        // A RuleEffect.SafetyExempt rule sits at the same tier as the built-in
+        // safety allowlist — a parent-configured invariant, not just a
+        // contextual allow — so every place that used to ask Policy alone now
+        // asks this instead.
+        fun isSafetyExempt(pkg: PackageName): Boolean =
+            policy.isSafetyExempt(pkg) || pkg in contextOutcome.safetyExempt
+
         // A category's usage is the sum of its members' time. An app in two
         // categories spends from both — see Category's documentation. Apps that are
         // exempt from limits do not consume a category's allowance either.
         val categoryBudgets = policy.categories.associate { category ->
             val used = hierarchy.packagesIn(category.id)
-                .filterNot { policy.isSafetyExempt(it) }
+                .filterNot(::isSafetyExempt)
                 .fold(Duration.ZERO) { acc, pkg -> acc + usage.forPackage(pkg) }
             category.id to statusOf(
                 allowed = category.budget.forDay(weekday),
@@ -124,7 +131,7 @@ object PolicyEngine {
             }
 
             // Hard invariant, checked before anything else can restrict the app.
-            if (policy.isSafetyExempt(pkg)) continue
+            if (isSafetyExempt(pkg)) continue
 
             // A contextual allow works like a temporary safety exemption: nothing
             // else may restrict the app while the rule applies.
@@ -208,7 +215,7 @@ object PolicyEngine {
             networkBlocked = if (emergency) {
                 emptySet()
             } else {
-                policy.networkBlockedPackages.filterNot(policy::isSafetyExempt).toSet()
+                policy.networkBlockedPackages.filterNot(::isSafetyExempt).toSet()
             },
             installsBlocked = installsBlocked(policy, now),
             nextChangeAt = nextChangeAt(
@@ -220,6 +227,7 @@ object PolicyEngine {
                 deviceBudget = deviceBudget,
                 appBudgets = appBudgets,
                 categoryBudgets = categoryBudgets,
+                contextSafetyExempt = contextOutcome.safetyExempt,
                 hierarchy = hierarchy,
                 deviceState = deviceState,
             ),
@@ -330,6 +338,7 @@ object PolicyEngine {
         categoryBudgets: Map<CategoryId, BudgetStatus>,
         hierarchy: ResolvedHierarchy,
         deviceState: DeviceState,
+        contextSafetyExempt: Set<PackageName>,
     ): Instant? {
         val candidates = mutableListOf(dayEnd)
 
@@ -348,7 +357,7 @@ object PolicyEngine {
         policy.installWindowUntil?.let(candidates::add)
 
         val foreground = deviceState.foregroundPackage
-        if (foreground != null && !policy.isSafetyExempt(foreground)) {
+        if (foreground != null && !policy.isSafetyExempt(foreground) && foreground !in contextSafetyExempt) {
             // Whichever of the budgets covering this app runs out first is the one
             // that decides when the next warning fires.
             val covering = buildList {

@@ -124,7 +124,9 @@
     <string name="context_place_unknown">en borttagen plats</string>
     <string name="context_effect_block">blockera</string>
     <string name="context_effect_allow">tillåt fritt</string>
+    <string name="context_effect_safety_exempt">undanta helt, som uppringaren</string>
     <string name="context_effect_budget">begränsa telefonen till %1$s</string>
+    <string name="context_choose_safety_exempt">Undanta helt</string>
     <string name="context_target_everything">allt</string>
     <string name="context_target_categories">vissa kategorier</string>
     <string name="context_target_mixed">%1$s och %2$s</string>
