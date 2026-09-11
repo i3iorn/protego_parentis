@@ -20,17 +20,17 @@ import dev.schrammel.protego_parentis.model.Passphrases
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.PinLock
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.FamilyToken
-import dev.schrammel.protego_parentis.sync.FamilyTokens
-import dev.schrammel.protego_parentis.sync.Band
-import dev.schrammel.protego_parentis.sync.PassphraseStrength
-import dev.schrammel.protego_parentis.sync.PassphraseVerdict
-import dev.schrammel.protego_parentis.sync.Weakness
-import dev.schrammel.protego_parentis.sync.MessageCrypto
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.FamilyTokens
+import dev.schrammel.protego_parentis.sync.core.Band
+import dev.schrammel.protego_parentis.sync.core.PassphraseStrength
+import dev.schrammel.protego_parentis.sync.core.PassphraseVerdict
+import dev.schrammel.protego_parentis.sync.core.Weakness
+import dev.schrammel.protego_parentis.sync.core.MessageCrypto
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.SyncSettings
-import dev.schrammel.protego_parentis.sync.TransportKind
+import dev.schrammel.protego_parentis.sync.core.TransportKind
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**

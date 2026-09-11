@@ -13,10 +13,10 @@ import dev.schrammel.protego_parentis.security.ParentSession
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.AppInventoryEntry
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
-import dev.schrammel.protego_parentis.sync.SyncRole
-import dev.schrammel.protego_parentis.sync.Vouch
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Vouch
 import org.junit.After
 import org.junit.Assert.assertNull
 import org.junit.Test

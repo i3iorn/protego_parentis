@@ -15,6 +15,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import java.time.Instant
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.PendingDevice
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 
 /**
  * The fixed set of high-stakes family decisions, and the two shapes their

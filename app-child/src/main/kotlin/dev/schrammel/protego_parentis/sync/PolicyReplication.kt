@@ -24,6 +24,11 @@ import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.security.RoleStore
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.StateMerge
+import dev.schrammel.protego_parentis.sync.core.StateOp
 
 /**
  * The rules, as paths.

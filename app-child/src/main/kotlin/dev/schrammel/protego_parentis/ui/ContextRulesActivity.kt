@@ -16,7 +16,7 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore

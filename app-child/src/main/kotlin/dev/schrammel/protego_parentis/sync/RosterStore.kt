@@ -5,6 +5,12 @@ import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
+import dev.schrammel.protego_parentis.sync.core.PendingDevice
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Vouch
 
 /**
  * Which devices this phone trusts, and which have asked to be trusted.

@@ -17,11 +17,11 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.sync.FamilyToken
-import dev.schrammel.protego_parentis.sync.FamilyTokens
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.FamilyTokens
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
-import dev.schrammel.protego_parentis.sync.TransportKind
+import dev.schrammel.protego_parentis.sync.core.TransportKind
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**

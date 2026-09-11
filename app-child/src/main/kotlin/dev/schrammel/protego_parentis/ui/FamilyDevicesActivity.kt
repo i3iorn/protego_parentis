@@ -15,17 +15,17 @@ import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.sync.ConsensusKind
 import dev.schrammel.protego_parentis.sync.ConsensusReplication
-import dev.schrammel.protego_parentis.sync.DeviceId
-import dev.schrammel.protego_parentis.sync.KnownDevice
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
 import dev.schrammel.protego_parentis.sync.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.appVersionName
 import dev.schrammel.protego_parentis.sync.versionsDiffer
-import dev.schrammel.protego_parentis.sync.PendingDevice
+import dev.schrammel.protego_parentis.sync.core.PendingDevice
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
-import dev.schrammel.protego_parentis.sync.Enrolment
-import dev.schrammel.protego_parentis.sync.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.toSyncRole
 import dev.schrammel.protego_parentis.security.RoleStore
 

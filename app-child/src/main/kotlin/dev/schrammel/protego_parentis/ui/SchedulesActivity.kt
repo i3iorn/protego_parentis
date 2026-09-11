@@ -21,7 +21,7 @@ import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.toMinuteOfDay
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.find
