@@ -26,13 +26,12 @@
     <string name="realtime_notification_title">Familjen är ansluten</string>
     <string name="realtime_notification_text">Lyssnar efter familjen…</string>
 
-    <!-- Format.kt: generisk formatering av tid/gräns som delas mellan skärmar. -->
-    <string name="format_no_limit">ingen gräns</string>
+    <!--
+      ui/Format.kt only. The rest of this family (format_no_limit,
+      format_under_a_minute, format_hours[_minutes], format_minutes) moved to
+      the :format module's own strings.xml with DurationFormat.kt.
+    -->
     <string name="format_no_limit_capitalized">Ingen gräns</string>
-    <string name="format_under_a_minute">mindre än en minut</string>
-    <string name="format_hours_minutes">%1$dh %2$dm</string>
-    <string name="format_hours">%1$dh</string>
-    <string name="format_minutes">%1$dm</string>
 
     <!-- Varningarna. -->
     <string name="warning_channel_name">Tidsvarningar</string>

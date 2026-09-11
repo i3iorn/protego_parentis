@@ -19,13 +19,12 @@
     <string name="realtime_notification_title">Family connected</string>
     <string name="realtime_notification_text">Listening for the family…</string>
 
-    <!-- Format.kt: generic duration/limit formatting shared across screens. -->
-    <string name="format_no_limit">no limit</string>
+    <!--
+      ui/Format.kt only. The rest of this family (format_no_limit,
+      format_under_a_minute, format_hours[_minutes], format_minutes) moved to
+      the :format module's own strings.xml with DurationFormat.kt.
+    -->
     <string name="format_no_limit_capitalized">No limit</string>
-    <string name="format_under_a_minute">under a minute</string>
-    <string name="format_hours_minutes">%1$dh %2$dm</string>
-    <string name="format_hours">%1$dh</string>
-    <string name="format_minutes">%1$dm</string>
 
     <!-- The warning ladder. -->
     <string name="warning_channel_name">Time warnings</string>

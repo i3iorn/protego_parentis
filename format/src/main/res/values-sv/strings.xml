@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="format_no_limit">ingen gräns</string>
+    <string name="format_under_a_minute">mindre än en minut</string>
+    <string name="format_hours_minutes">%1$dh %2$dm</string>
+    <string name="format_hours">%1$dh</string>
+    <string name="format_minutes">%1$dm</string>
+</resources>
