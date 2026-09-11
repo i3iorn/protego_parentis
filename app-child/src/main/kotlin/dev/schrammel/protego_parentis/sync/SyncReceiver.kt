@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.sync
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
@@ -592,7 +593,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             subject = InstalledApps(appContext).labelFor(PackageName(packageName)),
             after = Audit.flag(blocked),
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 
@@ -931,7 +932,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             PolicyReplication(appContext).pullContextRulesIntoLocal()
             PolicyReplication(appContext).pullPlaceRefsIntoLocal()
             PolicyReplication(appContext).pullAutoApprovalsIntoLocal()
-            EnforcementService.start(appContext)
+            AppRegistry.ruleMutationSink.rulesChanged()
         }
         // Additive only, and never for the managed phone: see the doc comment
         // on pullIntoRoster for why trust must fail closed here.
@@ -1127,7 +1128,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             subject = TargetLabels.describe(appContext, target),
             after = Audit.minutes(minutes),
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 
@@ -1153,7 +1154,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             before = Audit.minutes(before),
             after = Audit.minutes(store.dailyLimitMinutes),
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 
@@ -1184,7 +1185,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             actor = AuditActor.PARENT,
             action = AuditAction.RULES_REPLACED,
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 

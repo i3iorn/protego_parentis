@@ -6,8 +6,8 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestId
@@ -125,7 +125,7 @@ class RequestInboxActivity : ParentGatedActivity() {
             if (approve) {
                 coordinator.approve(id, text)
                 // Apply at once so the extra time is usable immediately.
-                EnforcementService.start(this)
+                AppRegistry.ruleMutationSink.rulesChanged()
             } else {
                 coordinator.deny(id, text)
             }

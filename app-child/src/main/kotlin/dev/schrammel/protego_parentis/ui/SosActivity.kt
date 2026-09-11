@@ -5,9 +5,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.SosStore
@@ -105,7 +105,7 @@ class SosActivity : DementorActivity() {
         sync.publishSosRaised()
         // Straight away, so every restriction lifts now rather than at the next
         // tick — the point of the feature is the phone working immediately.
-        EnforcementService.start(this)
+        AppRegistry.ruleMutationSink.rulesChanged()
         render()
     }
 
@@ -113,7 +113,7 @@ class SosActivity : DementorActivity() {
         sos.clear()
         Audit.record(this, AuditActor.CHILD, AuditAction.SOS_CLEARED)
         sync.publishSosCleared()
-        EnforcementService.start(this)
+        AppRegistry.ruleMutationSink.rulesChanged()
         render()
     }
 

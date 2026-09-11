@@ -5,10 +5,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.CheckBox
 import android.widget.LinearLayout
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.policy.PolicyClock
@@ -62,7 +62,7 @@ class WebActivityActivity : DementorActivity() {
                         action = AuditAction.WEB_LOGGING_CHANGED,
                         after = Audit.flag(wanted),
                     )
-                    EnforcementService.start(this@WebActivityActivity)
+                    AppRegistry.ruleMutationSink.rulesChanged()
                 }
             },
         )
