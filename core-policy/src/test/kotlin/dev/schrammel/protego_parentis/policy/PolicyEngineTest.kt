@@ -2,9 +2,13 @@ package dev.schrammel.protego_parentis.policy
 
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.BudgetLevel
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceState
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.Reason
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.junit.Assert.assertEquals
@@ -206,6 +210,59 @@ class PolicyEngineTest {
 
         assertEquals(Duration.ZERO, result.deviceBudget.bonus)
         assertTrue(result.suspend.containsKey(GAME))
+    }
+
+    // ---------- allowance rules (#102) ----------
+
+    private fun allowanceRule(minutes: Int) = ContextRule(
+        id = "allowance-rule",
+        name = "Allowance rule",
+        enabled = true,
+        condition = Condition.AllowanceSpent(minutes),
+        effect = RuleEffect.Block,
+        target = RuleTarget.Everything,
+    )
+
+    @Test
+    fun `an allowance rule blocks everything the same way the dedicated device budget does`() {
+        val now = at("2026-08-21", "18:00")
+
+        fun outcome(rules: List<ContextRule>, usedMinutes: Long) = PolicyEngine.evaluate(
+            policy = policy(contextRules = rules),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", deviceTotal = usedMinutes.minutes),
+            now = now,
+        )
+
+        val dedicated = PolicyEngine.evaluate(
+            policy = policy(deviceBudget = WeeklyBudget.flat(60.minutes)),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", deviceTotal = 60.minutes),
+            now = now,
+        )
+        val viaRule = outcome(listOf(allowanceRule(60)), usedMinutes = 60)
+
+        assertEquals(dedicated.suspend.keys, viaRule.suspend.keys)
+        assertTrue(outcome(listOf(allowanceRule(60)), usedMinutes = 59).suspend.isEmpty())
+    }
+
+    @Test
+    fun `a device grant delays an allowance rule exactly as it delays the dedicated budget`() {
+        val now = at("2026-08-21", "18:00")
+
+        val result = PolicyEngine.evaluate(
+            policy = policy(contextRules = listOf(allowanceRule(60))),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", deviceTotal = 60.minutes),
+            grants = listOf(
+                grant(GrantTarget.Device, 20.minutes, from = now, until = at("2026-08-22", "04:00")),
+            ),
+            now = now,
+        )
+
+        // The grant nets against usage before the rule's condition is checked,
+        // exactly as it does for the dedicated device budget (#102's "done when").
+        assertTrue(result.suspend.isEmpty())
     }
 
     // ---------- per-app budgets ----------

@@ -90,6 +90,14 @@ internal object ContextRuleCodec {
                 condition.window.parityAnchor?.let { put(KEY_PARITY_ANCHOR, it.toEpochDay()) }
             }
 
+            // #102. Same minute unit and the same MAX_MINUTES clamp as
+            // RuleEffect.SetDeviceBudget's KEY_MINUTES, since both describe a
+            // duration within one day.
+            is Condition.AllowanceSpent -> {
+                put(KEY_KIND, ALLOWANCE_SPENT)
+                put(KEY_VALUE, condition.minutes.coerceIn(0, MAX_MINUTES.toInt()))
+            }
+
             is Condition.AllOf -> {
                 put(KEY_KIND, ALL_OF)
                 put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
@@ -129,6 +137,9 @@ internal object ContextRuleCodec {
                 .takeIf { it in 1..100 }
                 ?.let(Condition::BatteryBelow)
             WINDOW -> decodeWindow(json)?.let(Condition::DuringWindow)
+            ALLOWANCE_SPENT -> json.optInt(KEY_VALUE, -1)
+                .takeIf { it >= 0 }
+                ?.let(Condition::AllowanceSpent)
             ALL_OF -> Condition.AllOf(parts())
             ANY_OF -> Condition.AnyOf(parts())
             NOT -> parts().firstOrNull()?.let(Condition::Not)
@@ -268,6 +279,7 @@ internal object ContextRuleCodec {
     private const val PLACE = "place"
     private const val BATTERY = "battery"
     private const val WINDOW = "window"
+    private const val ALLOWANCE_SPENT = "allowanceSpent"
     private const val ALL_OF = "allOf"
     private const val ANY_OF = "anyOf"
     private const val NOT = "not"

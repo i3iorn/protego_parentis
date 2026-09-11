@@ -111,6 +111,7 @@
     <string name="context_when_not">not %1$s</string>
     <string name="context_when_window">during %1$s %2$s</string>
     <string name="context_when_window_alternating">during %1$s %2$s, every other week</string>
+    <string name="context_when_allowance_spent">%1$d minutes of screen time used today</string>
     <string name="context_join_and"> and </string>
     <string name="context_join_or"> or </string>
     <string name="context_place_unknown">a deleted place</string>

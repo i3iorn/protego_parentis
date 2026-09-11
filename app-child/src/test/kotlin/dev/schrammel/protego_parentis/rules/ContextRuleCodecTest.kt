@@ -34,6 +34,8 @@ class ContextRuleCodecTest {
             Condition.NearDevice(DeviceTag("watch-1")),
             Condition.AtPlace(PlaceId("place-1")),
             Condition.BatteryBelow(20),
+            // #102, the daily-limit condition.
+            Condition.AllowanceSpent(60),
             Condition.AllOf(listOf(Condition.OnWifi("HomeNet"), Condition.BatteryBelow(20))),
             Condition.AnyOf(listOf(Condition.OnWifi("HomeNet"), Condition.AtPlace(PlaceId("place-1")))),
             Condition.Not(Condition.OnWifi("HomeNet")),

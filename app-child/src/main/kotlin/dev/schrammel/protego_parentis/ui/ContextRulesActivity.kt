@@ -223,6 +223,11 @@ class ContextRulesActivity : ParentGatedActivity() {
             ),
         )
 
+        // #102. Same wording as the dedicated device budget's own screens use
+        // for "minutes used", since to a parent this is that same daily limit,
+        // just expressed as a rule.
+        is Condition.AllowanceSpent -> getString(R.string.context_when_allowance_spent, condition.minutes)
+
         is Condition.Not -> getString(
             R.string.context_when_not,
             describeCondition(condition.condition, places),

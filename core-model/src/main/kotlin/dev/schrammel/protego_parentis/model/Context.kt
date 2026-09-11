@@ -160,6 +160,23 @@ sealed interface Condition {
      */
     data class DuringWindow(val window: RecurringWindow) : Condition
 
+    /**
+     * The device has already used this many minutes of screen time today (#102).
+     *
+     * The condition a flat daily limit becomes once it is a rule rather than its
+     * own dedicated field — see #72. It reads the same device usage total the
+     * standalone `Policy.deviceBudget` path already compares against, so a rule
+     * written this way and the dedicated budget cannot disagree about what
+     * counts as "used": both see grants and bonus time the same way, since that
+     * accounting happens once, in `PolicyEngine`, before either ever sees a
+     * number.
+     */
+    data class AllowanceSpent(val minutes: Int) : Condition {
+        init {
+            require(minutes >= 0) { "minutes spent cannot be negative" }
+        }
+    }
+
     data class AllOf(val conditions: List<Condition>) : Condition
 
     data class AnyOf(val conditions: List<Condition>) : Condition

@@ -20,6 +20,7 @@ import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZonedDateTime
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
@@ -52,15 +53,20 @@ class ContextRulesTest {
      */
     private val midweek = zdt("2026-08-19", "10:00")
 
-    private fun holds(condition: Condition, context: DeviceContext, at: ZonedDateTime = midweek) =
-        ContextRules.holds(condition, context, at)
+    private fun holds(
+        condition: Condition,
+        context: DeviceContext,
+        at: ZonedDateTime = midweek,
+        deviceUsage: Duration = Duration.ZERO,
+    ) = ContextRules.holds(condition, context, at, deviceUsage)
 
     private fun evaluate(
         rules: List<ContextRule>,
         context: DeviceContext,
         hierarchy: ResolvedHierarchy = empty,
         at: ZonedDateTime = midweek,
-    ) = ContextRules.evaluate(rules, context, hierarchy, ALL_PACKAGES, at)
+        deviceUsage: Duration = Duration.ZERO,
+    ) = ContextRules.evaluate(rules, context, hierarchy, ALL_PACKAGES, at, deviceUsage)
 
     // ---------- conditions ----------
 
@@ -114,6 +120,23 @@ class ContextRulesTest {
     @Test
     fun `always holds with nothing known at all`() {
         assertTrue(holds(Condition.Always, DeviceContext.UNKNOWN))
+    }
+
+    @Test
+    fun `an allowance condition holds once usage reaches the limit`() {
+        val condition = Condition.AllowanceSpent(60)
+
+        assertFalse(holds(condition, DeviceContext.UNKNOWN, deviceUsage = 59.minutes))
+        assertTrue(holds(condition, DeviceContext.UNKNOWN, deviceUsage = 60.minutes))
+        assertTrue(holds(condition, DeviceContext.UNKNOWN, deviceUsage = 90.minutes))
+    }
+
+    @Test
+    fun `an allowance condition reports no end and no window edges`() {
+        val condition = Condition.AllowanceSpent(60)
+
+        assertNull(ContextRules.liftsAt(condition, midweek))
+        assertTrue(ContextRules.windowsIn(condition).isEmpty())
     }
 
     // ---------- combining ----------
@@ -510,6 +533,14 @@ class ContextRulesTest {
             WeeklyBudget.flat(30.minutes),
             evaluate(rules, DeviceContext.UNKNOWN).deviceBudget,
         )
+    }
+
+    @Test
+    fun `an allowance rule blocks its target once usage reaches the limit`() {
+        val rules = listOf(rule(Condition.AllowanceSpent(60)))
+
+        assertTrue(evaluate(rules, DeviceContext.UNKNOWN, deviceUsage = 30.minutes).blocked.isEmpty())
+        assertEquals(setOf(GAME), evaluate(rules, DeviceContext.UNKNOWN, deviceUsage = 60.minutes).blocked.keys)
     }
 
     @Test
