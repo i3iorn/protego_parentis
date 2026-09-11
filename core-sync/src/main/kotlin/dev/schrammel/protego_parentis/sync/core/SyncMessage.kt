@@ -40,10 +40,12 @@ enum class SyncMessageType {
     /**
      * Parent → child: change the daily allowance.
      *
-     * The one rule edit that can be made from a phone other than the child's own,
-     * because it is the rule the product exists for and the one most likely to
-     * need changing in the moment rather than the next time somebody is standing
-     * at the managed phone.
+     * **Superseded by [STATE_OPS]** (#104): the daily limit is a replicated
+     * field like every other rule now, so a parent's edit merges the same way
+     * a schedule or contextual rule's does rather than racing this message
+     * against the CRDT register underneath it. Kept, like [POLICY_REQUESTED],
+     * so a phone still on the older build can be understood rather than
+     * refused outright.
      */
     SET_DAILY_LIMIT,
 

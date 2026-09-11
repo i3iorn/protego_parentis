@@ -96,9 +96,6 @@ class SyncCoordinator(context: Context) {
     /** Sends bonus time to the child's phone. */
     fun publishBonus(minutes: Int) = publisher.publishBonus(minutes)
 
-    /** Changes the child device's daily allowance from a parent's own phone. */
-    fun publishSetDailyLimit(minutes: Int) = publisher.publishSetDailyLimit(minutes)
-
     /** Says the child device is still alive and still working (TR-2). */
     fun publishHeartbeat(heartbeat: Heartbeat, force: Boolean = false) =
         publisher.publishHeartbeat(heartbeat, force)

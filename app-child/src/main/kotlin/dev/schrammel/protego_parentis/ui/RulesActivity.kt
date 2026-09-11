@@ -103,7 +103,7 @@ class RulesActivity : ParentGatedActivity() {
                         if (target.isOwnDevice) {
                             startActivity(Intent(this@RulesActivity, LimitsActivity::class.java))
                         } else {
-                            startActivity(ParentLimitActivity.intent(this@RulesActivity))
+                            startActivity(ParentLimitActivity.intent(this@RulesActivity, target.childId))
                         }
                     },
                 )
