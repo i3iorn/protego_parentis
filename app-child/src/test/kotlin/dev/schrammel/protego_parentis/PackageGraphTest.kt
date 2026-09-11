@@ -27,10 +27,11 @@ import java.io.File
  * unexpectedly, or gain company elsewhere in the graph. Untangling it is
  * follow-up work, not something Phase 2 is scoped to do.
  *
- * `model`, `policy`, `provisioning`, `security` and `sync.core` (the
- * `:core-model`, `:core-policy`, `:core-provisioning`, `:security` and
- * `:core-sync` modules) are deliberately excluded from the graph this test
- * builds: each is a separate Gradle module, not a package of `app-child`,
+ * `model`, `policy`, `provisioning`, `security`, `sync.core` and `usage`
+ * (the `:core-model`, `:core-policy`, `:core-provisioning`, `:security`,
+ * `:core-sync` and `:usage` modules) are deliberately excluded from the
+ * graph this test builds: each is a separate Gradle module, not a package
+ * of `app-child`,
  * and Gradle's own one-directional module dependency already rules out a
  * cycle through any of them. Without the exclusion, an import like
  * `model.DeviceContext` — or, since `:security` was extracted out of
@@ -89,6 +90,7 @@ class PackageGraphTest {
         "$basePackage.provisioning",
         "$basePackage.security",
         "$basePackage.sync.core",
+        "$basePackage.usage",
     )
 
     private fun findSourceRoot(): File {
