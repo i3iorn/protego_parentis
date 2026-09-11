@@ -1,0 +1,9 @@
+# Normalize line endings to LF in the repository and on checkout.
+# Without this, files edited on a Windows machine get rewritten with CRLF,
+# which makes every file show as modified and floods diffs with pure
+# whitespace changes. See PHILOSOPHY.md: everywhere "consistency beats
+# technically-better"; line endings are stored as LF everywhere.
+* text=auto eol=lf
+
+# Gradle wrapper JAR is a binary; do not treat it as text.
+*.jar binary
