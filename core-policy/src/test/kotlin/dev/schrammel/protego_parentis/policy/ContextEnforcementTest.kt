@@ -161,7 +161,8 @@ class ContextEnforcementTest {
     fun `a contextual allow survives an exhausted budget`() {
         // "Homework apps are unlimited at home" has to beat the daily limit, or it
         // is not really an allowance.
-        val policy = policy(deviceBudget = WeeklyBudget.flat(1.hours)).copy(
+        val policy = policy(
+            deviceBudget = WeeklyBudget.flat(1.hours),
             contextRules = listOf(
                 rule(
                     name = "Homework at home",
@@ -186,7 +187,8 @@ class ContextEnforcementTest {
 
     @Test
     fun `a contextual rule can replace the daily limit`() {
-        val policy = policy(deviceBudget = WeeklyBudget.flat(4.hours)).copy(
+        val policy = policy(
+            deviceBudget = WeeklyBudget.flat(4.hours),
             contextRules = listOf(
                 rule(
                     name = "Tight away from home",
@@ -257,7 +259,8 @@ class ContextEnforcementTest {
     @Test
     fun `a proximity rule can loosen things while a parent is nearby`() {
         val dad = dev.schrammel.protego_parentis.model.DeviceTag("dads-phone")
-        val policy = policy(deviceBudget = WeeklyBudget.flat(30.minutes)).copy(
+        val policy = policy(
+            deviceBudget = WeeklyBudget.flat(30.minutes),
             contextRules = listOf(
                 rule(
                     name = "With a grown-up",

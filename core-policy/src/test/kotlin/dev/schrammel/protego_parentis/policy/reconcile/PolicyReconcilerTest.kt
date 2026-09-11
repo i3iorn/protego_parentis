@@ -158,7 +158,6 @@ class PolicyReconcilerTest {
         ),
         appBudgets = emptyMap(),
         categoryBudgets = emptyMap(),
-        activeSchedules = emptyList(),
         dnsHost = dnsHost,
         appRestrictions = appRestrictions,
         installsBlocked = installsBlocked,

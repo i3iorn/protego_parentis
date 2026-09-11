@@ -128,6 +128,7 @@
     <string name="context_target_everything">allt</string>
     <string name="context_target_categories">vissa kategorier</string>
     <string name="context_target_mixed">%1$s och %2$s</string>
+    <string name="context_target_everything_except">allt utom %1$s</string>
 
     <string name="context_edit_title">Regel</string>
     <string name="context_name_hint">Namn, till exempel Inga spel i skolan</string>
@@ -151,6 +152,11 @@
     <string name="context_choose_budget">Sätt en annan daglig gräns</string>
     <string name="context_choose_categories">Vissa kategorier</string>
     <string name="context_choose_apps">Vissa appar</string>
+    <string name="context_choose_window">Under ett tidsfönster</string>
+    <string name="context_choose_allowance">Efter viss skärmtid</string>
+    <string name="context_window_days_header">Dagar</string>
+    <string name="context_window_every_other_week">Varannan vecka</string>
+    <string name="context_choose_everything_except">Allt utom vissa appar</string>
     <string name="context_save">Spara regeln</string>
     <string name="context_delete">Ta bort regeln</string>
 

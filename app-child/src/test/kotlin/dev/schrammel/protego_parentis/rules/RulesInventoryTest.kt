@@ -63,6 +63,11 @@ class RulesInventoryTest {
         // phone is the single change this app treats as too dangerous to make
         // from a distance — see LocalPolicyStore's own doc comment.
         "KEY_TAMPER=tamper_protection" to LOCAL_ONLY,
+        // #105: whether this device has already folded its schedules and
+        // daily limit into ContextRuleStore. Bookkeeping about this device
+        // having run a one-time conversion, the same kind KEY_VERSION
+        // already is — never itself a rule a parent sets.
+        "KEY_RULES_MIGRATED=rules_migrated_v1" to NOT_A_RULE,
     )
 
     private val schedules = mapOf(

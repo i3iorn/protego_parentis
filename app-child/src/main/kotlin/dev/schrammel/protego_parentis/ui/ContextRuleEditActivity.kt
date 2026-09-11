@@ -32,6 +32,7 @@ import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.PlaceRef
+import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
@@ -45,6 +46,8 @@ import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
@@ -80,11 +83,21 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private var effect: RuleEffect = RuleEffect.Block
     private var ruleTarget: RuleTarget = RuleTarget.Everything
 
+    /**
+     * Set just before [pickApps] launches for "everything except some apps," so
+     * its callback knows to build a [RuleTarget.EverythingExcept] instead of
+     * merging into [RuleTarget.Apps]/[RuleTarget.Mixed] via [mergedTarget] —
+     * the two pickers share one activity but produce different target shapes.
+     */
+    private var pickingExcept: Boolean = false
+
     private val pickApps = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         val picked = AppPickerActivity.resultFrom(result.data)
-        if (picked.isNotEmpty()) {
+        if (pickingExcept) {
+            ruleTarget = RuleTarget.EverythingExcept(picked.map(::PackageName).toSet())
+        } else if (picked.isNotEmpty()) {
             ruleTarget = mergedTarget(picked.map(::PackageName).toSet(), ruleTarget.targetCategories())
         }
         render()
@@ -281,6 +294,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             }
             add(getString(R.string.context_choose_device) to { chooseDevice(onPicked) })
             add(getString(R.string.context_choose_battery) to { askForBattery(current, onPicked) })
+            add(getString(R.string.context_choose_window) to { askForWindow(current, onPicked) })
+            add(getString(R.string.context_choose_allowance) to { askForAllowance(current, onPicked) })
         }
         menu(R.string.context_when_header, options)
     }
@@ -294,6 +309,128 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             initialProgress = existing - 1,
             format = { getString(R.string.context_when_battery, it + 1) },
         ) { progress -> onPicked(Condition.BatteryBelow(progress + 1)) }
+    }
+
+    /**
+     * A recurring window — days plus a start/end time, the same shape a
+     * schedule already edits in [ScheduleEditActivity]. Built here too rather
+     * than only ever produced by the schedule migration (#105), so a rule with
+     * this condition round-trips through its own editor instead of losing the
+     * window the moment somebody renames the rule and saves.
+     */
+    private fun askForWindow(current: Condition?, onPicked: (Condition) -> Unit) {
+        val existing = current as? Condition.DuringWindow
+        var days = existing?.window?.days ?: DEFAULT_WINDOW_DAYS
+        var start = existing?.window?.start ?: DEFAULT_WINDOW_START
+        var end = existing?.window?.end ?: DEFAULT_WINDOW_END
+        var everyOtherWeek = existing?.window?.parityAnchor != null
+        var parityAnchorEpochDay = existing?.window?.parityAnchor?.toEpochDay()
+
+        lateinit var dialog: AlertDialog
+        lateinit var body: LinearLayout
+
+        fun renderBody() {
+            body.removeAllViews()
+            body.addView(TextView(this).apply { setText(R.string.context_window_days_header) })
+            body.addView(DayPicker.build(this@ContextRuleEditActivity, days) { days = it })
+            body.addView(
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    addView(
+                        Button(context).apply {
+                            text = getString(R.string.schedules_from, formatTime(start))
+                            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                            setOnClickListener { pickTime(start) { start = it; renderBody() } }
+                        },
+                    )
+                    addView(
+                        Button(context).apply {
+                            text = getString(R.string.schedules_to, formatTime(end))
+                            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                            setOnClickListener { pickTime(end) { end = it; renderBody() } }
+                        },
+                    )
+                },
+            )
+            body.addView(
+                CheckBox(this).apply {
+                    setText(R.string.context_window_every_other_week)
+                    isChecked = everyOtherWeek
+                    setOnCheckedChangeListener { _, checked ->
+                        everyOtherWeek = checked
+                        if (checked && parityAnchorEpochDay == null) {
+                            parityAnchorEpochDay = LocalDate.now().toEpochDay()
+                        }
+                    }
+                },
+            )
+        }
+
+        body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dimen(R.dimen.screen_padding)
+            setPadding(pad, pad, pad, 0)
+        }
+        renderBody()
+
+        dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.context_choose_window)
+            .setView(body)
+            .setPositiveButton(android.R.string.ok, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+        // Wired after showing, like ScheduleEditActivity's own window dialog —
+        // a plain setPositiveButton closure dismisses on any input, valid or
+        // not, and this validates the same way the schedule editor does.
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (days.isEmpty()) {
+                    toast(getString(R.string.schedules_needs_days))
+                    return@setOnClickListener
+                }
+                if (start == end) {
+                    toast(getString(R.string.schedules_needs_window))
+                    return@setOnClickListener
+                }
+                onPicked(
+                    Condition.DuringWindow(
+                        RecurringWindow(
+                            days = days,
+                            start = start,
+                            end = end,
+                            parityAnchor = if (everyOtherWeek) {
+                                parityAnchorEpochDay?.let(LocalDate::ofEpochDay)
+                            } else {
+                                null
+                            },
+                        ),
+                    ),
+                )
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
+
+    private fun pickTime(current: LocalTime, onPicked: (LocalTime) -> Unit) {
+        android.app.TimePickerDialog(
+            this,
+            { _, hour, minute -> onPicked(LocalTime.of(hour, minute)) },
+            current.hour,
+            current.minute,
+            true,
+        ).show()
+    }
+
+    /** How much of today's allowance must already be spent for this to hold. */
+    private fun askForAllowance(current: Condition?, onPicked: (Condition) -> Unit) {
+        val existing = (current as? Condition.AllowanceSpent)?.minutes ?: DEFAULT_ALLOWANCE_MINUTES
+        sliderDialog(
+            title = R.string.context_choose_allowance,
+            max = LimitSlider.MAX_STEPS,
+            initialProgress = LimitSlider.progressFor(existing),
+            format = { formatLimit(LimitSlider.minutesFor(it)) },
+        ) { progress -> onPicked(Condition.AllowanceSpent(LimitSlider.minutesFor(progress))) }
     }
 
     /**
@@ -360,11 +497,24 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 },
                 getString(R.string.context_choose_categories) to { chooseCategories() },
                 getString(R.string.context_choose_apps) to {
+                    pickingExcept = false
                     pickApps.launch(
                         AppPickerActivity.intent(
                             this,
                             getString(R.string.context_choose_apps),
                             ruleTarget.targetApps().map { it.value },
+                            target.childId,
+                        ),
+                    )
+                },
+                getString(R.string.context_choose_everything_except) to {
+                    pickingExcept = true
+                    val current = (ruleTarget as? RuleTarget.EverythingExcept)?.packages.orEmpty()
+                    pickApps.launch(
+                        AppPickerActivity.intent(
+                            this,
+                            getString(R.string.context_choose_everything_except),
+                            current.map { it.value },
                             target.childId,
                         ),
                     )
@@ -470,6 +620,22 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
         is Condition.BatteryBelow -> getString(R.string.context_when_battery, current.percent)
 
+        is Condition.DuringWindow -> getString(
+            if (current.window.parityAnchor == null) {
+                R.string.context_when_window
+            } else {
+                R.string.context_when_window_alternating
+            },
+            DayPicker.describe(this, current.window.days),
+            getString(
+                R.string.schedules_window,
+                formatTime(current.window.start),
+                formatTime(current.window.end),
+            ),
+        )
+
+        is Condition.AllowanceSpent -> getString(R.string.context_when_allowance_spent, current.minutes)
+
         else -> getString(R.string.context_when_always)
     }
 
@@ -501,6 +667,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         is RuleTarget.Categories -> describeCategories(current.categories)
         is RuleTarget.Mixed ->
             getString(R.string.context_target_mixed, describeApps(current.packages), describeCategories(current.categories))
+        is RuleTarget.EverythingExcept ->
+            getString(R.string.context_target_everything_except, describeApps(current.packages))
     }
 
     private fun describeApps(packages: Set<PackageName>): String =
@@ -567,6 +735,10 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         private const val DEFAULT_BUDGET_MINUTES = 30
         private const val DEFAULT_BATTERY_PERCENT = 20
         private const val MAX_BATTERY_PERCENT = 100
+        private const val DEFAULT_ALLOWANCE_MINUTES = 60
+        private val DEFAULT_WINDOW_DAYS = setOf(java.time.DayOfWeek.MONDAY)
+        private val DEFAULT_WINDOW_START: LocalTime = LocalTime.of(8, 0)
+        private val DEFAULT_WINDOW_END: LocalTime = LocalTime.of(15, 0)
 
         fun intent(context: Context, ruleId: String? = null, childId: DeviceId? = null): Intent =
             dev.schrammel.protego_parentis.ui.rules.RuleTargets.putExtra(

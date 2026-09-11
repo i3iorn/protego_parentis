@@ -30,13 +30,6 @@ sealed interface Reason {
         override val liftsAt: Instant? get() = null
     }
 
-    /** A named schedule window is running and does not allow this app. */
-    data class ScheduleActive(
-        val scheduleId: ScheduleId,
-        val scheduleName: String,
-        override val liftsAt: Instant,
-    ) : Reason
-
     /** The device-wide daily allowance is spent. */
     data class DeviceBudgetExhausted(override val liftsAt: Instant) : Reason
 
@@ -130,7 +123,6 @@ data class Enforcement(
     val deviceBudget: BudgetStatus,
     val appBudgets: Map<PackageName, BudgetStatus>,
     val categoryBudgets: Map<CategoryId, BudgetStatus>,
-    val activeSchedules: List<ScheduleBlock>,
     /** Contextual rules applying right now, for showing on the dashboard. */
     val activeContextRules: List<ContextRule> = emptyList(),
     /**

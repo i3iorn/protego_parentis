@@ -265,6 +265,7 @@ object ContextRules {
         is RuleTarget.Mixed -> target.packages + target.categories.flatMapTo(mutableSetOf()) { id: CategoryId ->
             hierarchy.packagesIn(id)
         }
+        is RuleTarget.EverythingExcept -> installedPackages - target.packages
     }
 
     /** The smaller of two budgets, comparing the most permissive day of each. */

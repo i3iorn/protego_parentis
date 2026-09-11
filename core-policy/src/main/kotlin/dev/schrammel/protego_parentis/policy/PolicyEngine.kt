@@ -17,6 +17,7 @@ import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.model.RestrictionValue
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import dev.schrammel.protego_parentis.model.WarningThresholds
+import dev.schrammel.protego_parentis.model.WeeklyBudget
 import java.time.Instant
 import kotlin.time.Duration
 
@@ -75,7 +76,11 @@ object PolicyEngine {
             // rule and Policy.deviceBudget must agree on that arithmetic.
             deviceUsage = (usage.deviceTotal - bonusFor(GrantTarget.Device)).coerceAtLeast(Duration.ZERO),
         )
-        val effectiveDeviceBudget = contextOutcome.deviceBudget ?: policy.deviceBudget
+        // #105: no fallback to policy.deviceBudget any more — the migrated
+        // daily limit is a Condition.Always/SetDeviceBudget rule now, so an
+        // unlimited default here means only "no rule set one", never "the
+        // unified format still needs the old field to answer this".
+        val effectiveDeviceBudget = contextOutcome.deviceBudget ?: WeeklyBudget.UNLIMITED
 
         val deviceBudget = statusOf(
             allowed = effectiveDeviceBudget.forDay(weekday),
@@ -99,8 +104,6 @@ object PolicyEngine {
                 thresholds = policy.warningThresholds,
             )
         }
-
-        val activeSchedules = policy.schedules.filter { ScheduleResolver.isActive(it, nowZdt) }
 
         val suspend = LinkedHashMap<PackageName, Reason>()
         val hide = LinkedHashSet<PackageName>()
@@ -136,11 +139,6 @@ object PolicyEngine {
                 // straight round the filter, so with filtering on it is paused.
                 if (unmanageableBrowser(policy, browsers, pkg)) {
                     add(Reason.UnmanagedBrowser)
-                }
-                for (schedule in activeSchedules) {
-                    if (!schedule.appliesTo(pkg)) continue
-                    val endsAt = ScheduleResolver.endOfActiveWindow(schedule, nowZdt) ?: continue
-                    add(Reason.ScheduleActive(schedule.id, schedule.name, endsAt))
                 }
                 contextOutcome.blocked[pkg]?.let { rule ->
                     // #103: derived from the rule's own condition rather than
@@ -197,7 +195,6 @@ object PolicyEngine {
             deviceBudget = deviceBudget,
             appBudgets = appBudgets,
             categoryBudgets = categoryBudgets,
-            activeSchedules = activeSchedules,
             activeContextRules = contextOutcome.activeRules,
             // Filtering stays on in an emergency. It blocks sites, not calls or
             // maps, so lifting it would buy nothing and cost the one protection
@@ -336,7 +333,6 @@ object PolicyEngine {
     ): Instant? {
         val candidates = mutableListOf(dayEnd)
 
-        ScheduleResolver.nextEdgeAfter(policy.schedules, nowZdt)?.let(candidates::add)
         // #103: a rule carrying a time window changes on its own at the window's
         // edges, exactly as a schedule does. Without this the block would sit
         // there until something unrelated woke enforcement, which on a quiet

@@ -219,6 +219,11 @@ internal object ContextRuleCodec {
                 put(KEY_PARTS, JSONArray(target.packages.map { it.value }))
                 put(KEY_PARTS_CATEGORIES, JSONArray(target.categories.map { it.value }))
             }
+
+            is RuleTarget.EverythingExcept -> {
+                put(KEY_KIND, EVERYTHING_EXCEPT)
+                put(KEY_PARTS, JSONArray(target.packages.map { it.value }))
+            }
         }
     }
 
@@ -238,6 +243,7 @@ internal object ContextRuleCodec {
                 packages = values().map(::PackageName).toSet(),
                 categories = valuesAt(KEY_PARTS_CATEGORIES).map(::CategoryId).toSet(),
             )
+            EVERYTHING_EXCEPT -> RuleTarget.EverythingExcept(values().map(::PackageName).toSet())
 
             else -> null
         }
@@ -292,4 +298,5 @@ internal object ContextRuleCodec {
     private const val APPS = "apps"
     private const val CATEGORIES = "categories"
     private const val MIXED = "mixed"
+    private const val EVERYTHING_EXCEPT = "everythingExcept"
 }
