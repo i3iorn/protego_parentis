@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.GoalAchievement
 import dev.schrammel.protego_parentis.rules.GoalStore
 import java.time.format.DateTimeFormatter

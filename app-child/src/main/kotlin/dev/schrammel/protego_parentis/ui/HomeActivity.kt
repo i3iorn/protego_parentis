@@ -15,6 +15,7 @@ import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot

@@ -11,7 +11,7 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.BudgetStatus
 import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.formatDuration
+import dev.schrammel.protego_parentis.format.formatDuration
 import java.time.LocalDate
 
 /**
