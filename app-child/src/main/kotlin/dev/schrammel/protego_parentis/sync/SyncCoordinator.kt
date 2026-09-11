@@ -16,6 +16,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.KnownDevice
 import dev.schrammel.protego_parentis.sync.core.RosterRules
+import dev.schrammel.protego_parentis.sync.core.SyncKey
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 
 /** Which sync identity a device's local role corresponds to. */
@@ -231,6 +232,10 @@ class SyncCoordinator(context: Context) {
 
     /** Fetches and applies anything the other phones have sent. */
     fun pollNow(onFinished: (String) -> Unit = {}) = receiver.pollNow(onFinished)
+
+    /** Applies one envelope [RealtimeSyncService] read off the live stream. */
+    fun receiveEnvelope(key: SyncKey, envelope: String): Boolean =
+        receiver.receiveEnvelope(key, envelope)
 
     companion object {
         const val RESULT_NOT_CONFIGURED = SyncReceiver.RESULT_NOT_CONFIGURED
