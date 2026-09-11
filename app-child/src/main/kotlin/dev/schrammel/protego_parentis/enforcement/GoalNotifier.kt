@@ -9,7 +9,7 @@ import androidx.core.app.NotificationCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.GoalAchievement
 import dev.schrammel.protego_parentis.ui.CelebrationActivity
-import dev.schrammel.protego_parentis.ui.formatDuration
+import dev.schrammel.protego_parentis.format.formatDuration
 
 /**
  * Announces an earned prize on the next unlock.

@@ -43,7 +43,7 @@ import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import java.time.LocalDate
 import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.formatDuration
+import dev.schrammel.protego_parentis.format.formatDuration
 import java.time.Instant
 
 /**
