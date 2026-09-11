@@ -117,7 +117,9 @@
     <string name="context_place_unknown">a deleted place</string>
     <string name="context_effect_block">block</string>
     <string name="context_effect_allow">allow freely</string>
+    <string name="context_effect_safety_exempt">exempt entirely, like the dialer</string>
     <string name="context_effect_budget">limit the phone to %1$s</string>
+    <string name="context_choose_safety_exempt">Exempt entirely</string>
     <string name="context_target_everything">everything</string>
     <string name="context_target_categories">some categories</string>
     <string name="context_target_mixed">%1$s and %2$s</string>

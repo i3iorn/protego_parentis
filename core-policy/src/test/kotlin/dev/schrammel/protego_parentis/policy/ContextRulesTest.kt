@@ -494,6 +494,24 @@ class ContextRulesTest {
     }
 
     @Test
+    fun `a safety-exempt rule also beats a block, and is reported separately from allow`() {
+        val rules = listOf(
+            rule(Condition.Always, RuleEffect.Block, RuleTarget.Everything, name = "block"),
+            rule(Condition.Always, RuleEffect.SafetyExempt, RuleTarget.Apps(setOf(HOMEWORK)), name = "exempt"),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertFalse(HOMEWORK in outcome.blocked)
+        assertTrue(HOMEWORK in outcome.safetyExempt)
+        // Not just an ordinary allow: PolicyEngine treats this set as the
+        // stronger tier (network blocking, DNS filtering included), so the
+        // two must not be conflated here either.
+        assertFalse(HOMEWORK in outcome.allowed)
+        assertTrue(GAME in outcome.blocked)
+    }
+
+    @Test
     fun `the block names the rule that caused it`() {
         val rules = listOf(rule(Condition.OnWifi(school), name = "No games at school"))
 

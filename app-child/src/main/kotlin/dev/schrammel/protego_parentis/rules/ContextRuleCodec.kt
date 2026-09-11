@@ -181,6 +181,7 @@ internal object ContextRuleCodec {
         when (effect) {
             is RuleEffect.Block -> put(KEY_KIND, BLOCK)
             is RuleEffect.Allow -> put(KEY_KIND, ALLOW)
+            is RuleEffect.SafetyExempt -> put(KEY_KIND, SAFETY_EXEMPT)
             is RuleEffect.SetDeviceBudget -> {
                 put(KEY_KIND, BUDGET)
                 // Clamped: an infinite duration is Long.MAX_VALUE minutes, which
@@ -194,6 +195,7 @@ internal object ContextRuleCodec {
     fun decodeEffect(json: JSONObject): RuleEffect? = when (json.optString(KEY_KIND)) {
         BLOCK -> RuleEffect.Block
         ALLOW -> RuleEffect.Allow
+        SAFETY_EXEMPT -> RuleEffect.SafetyExempt
         BUDGET -> RuleEffect.SetDeviceBudget(
             WeeklyBudget.flat(json.optLong(KEY_MINUTES, 0L).coerceIn(0L, MAX_MINUTES).toInt().minutes),
         )
@@ -292,6 +294,7 @@ internal object ContextRuleCodec {
 
     private const val BLOCK = "block"
     private const val ALLOW = "allow"
+    private const val SAFETY_EXEMPT = "safetyExempt"
     private const val BUDGET = "budget"
 
     private const val EVERYTHING = "everything"

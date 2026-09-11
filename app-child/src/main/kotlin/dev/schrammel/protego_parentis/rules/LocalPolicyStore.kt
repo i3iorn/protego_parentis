@@ -149,8 +149,8 @@ class LocalPolicyStore(context: Context) {
     // ---------- migration (#105) ----------
 
     /**
-     * Folds every stored schedule and the flat daily limit into the unified
-     * [ContextRuleStore] rule format, once.
+     * Folds every stored schedule, the flat daily limit, and every exempt
+     * package into the unified [ContextRuleStore] rule format, once.
      *
      * Idempotent by construction rather than by locking: [ContextRuleStore.upsert]
      * replaces by id, so running this again writes the exact same rules back.
@@ -165,14 +165,14 @@ class LocalPolicyStore(context: Context) {
      * way [ScheduleStore.active] already treats it as not a real schedule —
      * it was never enforced before this either.
      *
-     * Deliberately leaves [scheduleStore]'s and this store's own
-     * [dailyLimitMinutes] fields exactly as they are: `SchedulesActivity` and
-     * `LimitsActivity`/`ParentLimitActivity` still edit them directly until
-     * #106 replaces those screens with one that writes rules instead, and a
-     * family mid-upgrade must not lose whichever screen it opens first. This
-     * runs once, so an edit made through the old screens after that point
-     * will not be reflected here again — accepted as a short-lived gap #106
-     * closes immediately after.
+     * Deliberately leaves [scheduleStore]'s own schedules, this store's
+     * [dailyLimitMinutes], and [exemptPackages] exactly as they are:
+     * `SchedulesActivity` and `LimitsActivity`/`ParentLimitActivity` still
+     * edit them directly until #106 replaces those screens with one that
+     * writes rules instead, and a family mid-upgrade must not lose whichever
+     * screen it opens first. This runs once, so an edit made through the old
+     * screens after that point will not be reflected here again — accepted
+     * as a short-lived gap #106 closes immediately after.
      */
     fun migrateToUnifiedRules() {
         if (prefs.getBoolean(KEY_RULES_MIGRATED, false)) return
@@ -204,6 +204,25 @@ class LocalPolicyStore(context: Context) {
                     condition = Condition.Always,
                     effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(limit.minutes)),
                     target = RuleTarget.Everything,
+                ),
+            )
+        }
+
+        // AppRule.AlwaysAllowed was the only thing exemptPackages ever meant —
+        // the same safety-allowlist tier a rule can now name for itself via
+        // RuleEffect.SafetyExempt, so each exempt package becomes one rule
+        // rather than a fixed field the rule engine cannot see. Left as
+        // AppRule.AlwaysAllowed too (see appRules below), for the same
+        // mid-upgrade reason the schedule/limit stores are left alone above.
+        exemptPackages.forEach { pkg ->
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = "$MIGRATED_EXEMPT_ID_PREFIX$pkg",
+                    name = appContext.getString(R.string.rules_exempt_header),
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SafetyExempt,
+                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
                 ),
             )
         }
@@ -465,5 +484,8 @@ class LocalPolicyStore(context: Context) {
 
         /** The fixed id prefix a schedule becomes as a rule (#105). */
         const val MIGRATED_SCHEDULE_ID_PREFIX = "migrated-schedule-"
+
+        /** The fixed id prefix an exempt package becomes as a rule (#105). */
+        const val MIGRATED_EXEMPT_ID_PREFIX = "migrated-exempt-"
     }
 }

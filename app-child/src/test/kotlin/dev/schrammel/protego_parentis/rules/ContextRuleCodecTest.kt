@@ -149,6 +149,7 @@ class ContextRuleCodecTest {
         val effects = listOf(
             RuleEffect.Block,
             RuleEffect.Allow,
+            RuleEffect.SafetyExempt,
             RuleEffect.SetDeviceBudget(WeeklyBudget.flat(45.minutes)),
         )
 

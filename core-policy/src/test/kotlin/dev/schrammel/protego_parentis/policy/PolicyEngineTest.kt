@@ -58,6 +58,41 @@ class PolicyEngineTest {
         assertTrue(result.suspend.containsKey(YOUTUBE))
     }
 
+    /**
+     * A [RuleEffect.SafetyExempt] rule is a parent-configured version of the
+     * same tier [AppRule.AlwaysAllowed]/the safety allowlist already occupy —
+     * unlike a plain [RuleEffect.Allow], it has to reach network blocking too,
+     * not just the device budget.
+     */
+    @Test
+    fun `safety-exempt context rule exempts an app from the device budget and network blocking`() {
+        val policy = policy(
+            deviceBudget = WeeklyBudget.flat(1.hours),
+            contextRules = listOf(
+                ContextRule(
+                    id = "exempt-homework",
+                    name = "Exempt",
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SafetyExempt,
+                    target = RuleTarget.Apps(setOf(HOMEWORK)),
+                ),
+            ),
+        ).copy(networkBlockedPackages = setOf(HOMEWORK, YOUTUBE))
+
+        val result = PolicyEngine.evaluate(
+            policy = policy,
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", deviceTotal = 2.hours),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        assertNull(result.suspend[HOMEWORK])
+        assertTrue(result.suspend.containsKey(YOUTUBE))
+        assertTrue("an ordinary blocked app stays network-blocked", YOUTUBE in result.networkBlocked)
+        assertTrue("the safety-exempt app must not be", HOMEWORK !in result.networkBlocked)
+    }
+
     // ---------- device budget ----------
 
     @Test

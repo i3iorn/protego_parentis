@@ -190,8 +190,25 @@ sealed interface RuleEffect {
     /** Blocks the target outright. */
     data object Block : RuleEffect
 
-    /** Exempts the target from every limit, as though it were always allowed. */
+    /**
+     * Exempts the target from every other contextual rule and from the device
+     * budget, as though it were always allowed. Weaker than [SafetyExempt]: it
+     * settles only what [ContextRule]s decide between themselves, so it has no
+     * bearing on network blocking, DNS filtering, or anything outside this
+     * resolution — see [SafetyExempt] for the stronger form.
+     */
     data object Allow : RuleEffect
+
+    /**
+     * Exempts the target from everything, at the same tier as the built-in
+     * safety allowlist (the dialer, and so on): the device budget, every other
+     * contextual rule, network blocking, and DNS filtering. What
+     * `exemptPackages`/`AppRule.AlwaysAllowed` used to mean before the rule
+     * engine could express it directly — a parent-configured rule now, not a
+     * fixed invariant, so it can be as narrow or as broad a condition/target as
+     * any other rule.
+     */
+    data object SafetyExempt : RuleEffect
 
     /**
      * Replaces the device's daily allowance. With several active, the smallest
