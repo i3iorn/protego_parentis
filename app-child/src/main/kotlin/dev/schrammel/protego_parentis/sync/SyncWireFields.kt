@@ -1,5 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
+import dev.schrammel.protego_parentis.sync.core.StateCodec
+import dev.schrammel.protego_parentis.sync.core.SyncMessage
 /**
  * Field names and bounds for [SyncMessage.fields], shared by [SyncPublisher]
  * (which writes them) and [SyncReceiver] (which reads them back).

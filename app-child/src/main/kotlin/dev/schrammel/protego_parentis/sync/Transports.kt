@@ -2,7 +2,6 @@ package dev.schrammel.protego_parentis.sync
 
 import dev.schrammel.protego_parentis.sync.core.FamilyTransport
 import dev.schrammel.protego_parentis.sync.core.TransportKind
-
 /**
  * Picks the backend a family's settings name.
  *

@@ -16,6 +16,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import kotlin.time.Duration.Companion.minutes
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**
  * Auto-approval rules — #42's last list-of-records slice, the same shape

@@ -14,9 +14,10 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.PackageName
@@ -177,7 +178,7 @@ class HomeActivity : DementorActivity() {
         requestNotificationPermissionIfNeeded()
         render()
         // Safe to call repeatedly; the service ignores a duplicate start.
-        if (coordinator.hasUsageAccess()) EnforcementService.start(this)
+        if (coordinator.hasUsageAccess()) AppRegistry.ruleMutationSink.rulesChanged()
     }
 
     /**

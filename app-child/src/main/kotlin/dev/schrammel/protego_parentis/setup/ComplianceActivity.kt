@@ -13,11 +13,11 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.ui.DementorActivity
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.dpc.PairingStore
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.PinLock
 import dev.schrammel.protego_parentis.security.RoleStore
@@ -121,7 +121,7 @@ class ComplianceActivity : DementorActivity() {
     }
 
     private fun finishSetup() {
-        EnforcementService.start(this)
+        AppRegistry.ruleMutationSink.rulesChanged()
         setResult(RESULT_OK)
         finish()
     }

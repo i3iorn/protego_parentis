@@ -28,6 +28,8 @@ import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.labelFor
 import dev.schrammel.protego_parentis.ui.rules.scheduleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime

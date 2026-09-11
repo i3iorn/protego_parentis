@@ -10,10 +10,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.Defaults
@@ -25,6 +25,8 @@ import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.InstalledApps
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -493,7 +495,7 @@ class DeviceControlActivity : ParentGatedActivity() {
                             )
                             // Applied at once: turning it off is how someone
                             // recovers a device.
-                            EnforcementService.start(this@DeviceControlActivity)
+                            AppRegistry.ruleMutationSink.rulesChanged()
                         }
                     },
                 )
@@ -519,7 +521,7 @@ class DeviceControlActivity : ParentGatedActivity() {
                                 action = AuditAction.INSTALL_POLICY_CHANGED,
                                 after = chosen.name,
                             )
-                            EnforcementService.start(this@DeviceControlActivity)
+                            AppRegistry.ruleMutationSink.rulesChanged()
                             render()
                         }
                     },
@@ -587,7 +589,7 @@ class DeviceControlActivity : ParentGatedActivity() {
                             action = AuditAction.INSTALL_WINDOW_OPENED,
                             after = Audit.minutes(Defaults.INSTALL_WINDOW_MINUTES.toInt()),
                         )
-                        EnforcementService.start(this@DeviceControlActivity)
+                        AppRegistry.ruleMutationSink.rulesChanged()
                         render()
                     }
                 },

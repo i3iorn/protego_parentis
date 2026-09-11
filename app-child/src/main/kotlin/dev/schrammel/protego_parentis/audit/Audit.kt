@@ -6,10 +6,8 @@ import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.AuditChain
 import dev.schrammel.protego_parentis.model.AuditEntry
-import dev.schrammel.protego_parentis.sync.AuditReplication
 import dev.schrammel.protego_parentis.model.ChainCheck
-import dev.schrammel.protego_parentis.sync.LocalDeviceId
-import dev.schrammel.protego_parentis.sync.ReplicatedAuditEntry
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import java.time.Instant
 import java.time.LocalTime
 import java.util.UUID

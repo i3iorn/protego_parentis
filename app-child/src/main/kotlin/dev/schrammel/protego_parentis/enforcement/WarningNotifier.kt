@@ -2,16 +2,14 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.BudgetStatus
-import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.formatDuration
+import dev.schrammel.protego_parentis.format.formatDuration
 import java.time.LocalDate
 
 /**
@@ -76,14 +74,7 @@ class WarningNotifier(context: Context) {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        appContext,
-                        0,
-                        Intent(appContext, HomeActivity::class.java),
-                        PendingIntent.FLAG_IMMUTABLE,
-                    ),
-                )
+                .setContentIntent(AppRegistry.notificationUx.openHome(NOTIFICATION_ID))
                 .build(),
         )
     }

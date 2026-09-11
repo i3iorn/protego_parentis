@@ -15,6 +15,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.StateMerge
+import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**
  * Schedules as the worked example for #40's modelling problem: a list of

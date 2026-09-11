@@ -4,8 +4,7 @@ import android.content.Context
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.ChainCheck
-import dev.schrammel.protego_parentis.sync.AuditReplication
-import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.ReplicatedStateStore
 import org.junit.After
 import org.junit.Assert.assertTrue

@@ -2,7 +2,6 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -16,6 +15,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
@@ -39,11 +39,8 @@ import dev.schrammel.protego_parentis.rules.SosStore
 import dev.schrammel.protego_parentis.rules.WebActivityStore
 import dev.schrammel.protego_parentis.rules.WebFilterStore
 import dev.schrammel.protego_parentis.sync.AppTime
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
-import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import java.time.LocalDate
-import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.formatDuration
+import dev.schrammel.protego_parentis.format.formatDuration
 import java.time.Instant
 
 /**
@@ -72,7 +69,6 @@ class EnforcementService : Service() {
     private lateinit var warnings: WarningNotifier
     private lateinit var goals: GoalCoordinator
     private lateinit var goalNotifier: GoalNotifier
-    private lateinit var sync: SyncCoordinator
     private lateinit var review: AppReviewStore
     private lateinit var installedApps: InstalledApps
     private lateinit var requestNotifier: RequestNotifier
@@ -126,7 +122,7 @@ class EnforcementService : Service() {
     private val onShutdown = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != Intent.ACTION_SHUTDOWN) return
-            runCatching { sync.publishStopping() }
+            runCatching { AppRegistry.realtimeSync.publishStopping() }
         }
     }
 
@@ -157,13 +153,10 @@ class EnforcementService : Service() {
         warnings = WarningNotifier(this)
         goals = GoalCoordinator(this)
         goalNotifier = GoalNotifier(this)
-        // The lock arrives as a message and is carried out here, because the
-        // sync layer has no business holding a device policy port.
-        sync = SyncCoordinator(this)
         // The managed phone streams too, so a parent's decision, a bonus, a daily
         // limit change or a lock command lands as soon as it is published rather
         // than on the next enforcement tick. Idempotent if already running.
-        RealtimeSyncService.start(this)
+        AppRegistry.realtimeSync.connectRealtime()
         sos = SosStore(this)
         places = PlaceWatcher(this)
         createNotificationChannel()
@@ -248,7 +241,7 @@ class EnforcementService : Service() {
             // different responses from a parent.
             runCatching {
                 val (head, count) = Audit.witness(this)
-                sync.publishHeartbeat(
+                AppRegistry.realtimeSync.publishHeartbeat(
                     Heartbeat(
                         sentAt = now,
                         policyVersion = 0L,
@@ -261,7 +254,7 @@ class EnforcementService : Service() {
                     ),
                 )
             }.onFailure { Log.w(TAG, "Could not send heartbeat", it) }
-            sync.pollNow()
+            AppRegistry.realtimeSync.pollNow()
             return MAX_INTERVAL_MILLIS
         }
 
@@ -297,7 +290,7 @@ class EnforcementService : Service() {
 
         // Throttled inside the coordinator: this tick can fire every fifteen
         // seconds when a limit is close, and a heartbeat that often is a battery bug.
-        val saidHello = runCatching { sync.publishHeartbeat(heartbeatOf(snapshot, now)) }
+        val saidHello = runCatching { AppRegistry.realtimeSync.publishHeartbeat(heartbeatOf(snapshot, now)) }
             .onFailure { Log.w(TAG, "Could not send heartbeat", it) }
             .isSuccess
 
@@ -323,12 +316,12 @@ class EnforcementService : Service() {
 
         // Introduces this phone to any parent that has not enrolled it yet.
         // Throttled inside the coordinator to once an hour.
-        runCatching { sync.announceSelf() }
+        runCatching { AppRegistry.realtimeSync.announceSelf() }
             .onFailure { Log.w(TAG, "Could not announce this device", it) }
 
         // Piggybacks on the same tick rather than holding a connection open.
         // Failures are reported through the callback and never reach here.
-        sync.pollNow()
+        AppRegistry.realtimeSync.pollNow()
 
         return delayUntil(snapshot.enforcement.nextChangeAt, now)
     }
@@ -356,7 +349,7 @@ class EnforcementService : Service() {
         fresh.forEach { pkg ->
             val label = installedApps.labelFor(PackageName(pkg))
             requestNotifier.notifyNewAppLocally(label)
-            sync.publishAppInstalled(pkg, label)
+            AppRegistry.realtimeSync.publishAppInstalled(pkg, label)
         }
     }
 
@@ -402,7 +395,7 @@ class EnforcementService : Service() {
                 AppTime(installedApps.labelFor(pkg), time.inWholeMinutes.toInt())
             }
 
-        sync.publishDailySummary(
+        AppRegistry.realtimeSync.publishDailySummary(
             usedMinutes = budget.used.inWholeMinutes.toInt(),
             // Infinite means no limit; zero is how that travels.
             allowedMinutes = if (budget.isUnlimited) 0 else budget.allowed.inWholeMinutes.toInt(),
@@ -447,9 +440,9 @@ class EnforcementService : Service() {
         if (!due) return
 
         sos.lastSentAt = now
-        sync.publishSosRaised()
+        AppRegistry.realtimeSync.publishSosRaised()
         LocationSharing(this).locate()?.let { position ->
-            sync.publishLocation(position, forEmergency = true)
+            AppRegistry.realtimeSync.publishLocation(position, forEmergency = true)
         }
     }
 
@@ -478,7 +471,7 @@ class EnforcementService : Service() {
                 },
                 subject = transition.place.name,
             )
-            sync.publishPlaceTransition(transition)
+            AppRegistry.realtimeSync.publishPlaceTransition(transition)
         }
     }
 
@@ -497,7 +490,7 @@ class EnforcementService : Service() {
         val visits = store.visits(today)
         if (visits.isEmpty()) return
 
-        sync.publishWebSummary(
+        AppRegistry.realtimeSync.publishWebSummary(
             domains = visits.map { it.domain to it.count },
             blocked = store.blockedAttempts(today),
         )
@@ -562,14 +555,7 @@ class EnforcementService : Service() {
         .setContentText(text)
         .setOngoing(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setContentIntent(
-            PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, HomeActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
+        .setContentIntent(AppRegistry.notificationUx.openHome(NOTIFICATION_ID))
         .build()
 
     companion object {

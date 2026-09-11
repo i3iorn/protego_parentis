@@ -18,6 +18,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.minutes
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**
  * What the managed phone publishes about its own rules, and when it decides not

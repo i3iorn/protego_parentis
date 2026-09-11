@@ -3,8 +3,8 @@ package dev.schrammel.protego_parentis.rules
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.BrowserPolicy
 import dev.schrammel.protego_parentis.model.Category
@@ -185,7 +185,7 @@ class LocalPolicyStore(context: Context) {
             // enforcement directly, the same way SchedulesActivity already
             // does for every other schedule edit, is what SchedulesActivity's
             // own comment calls out: a window may be starting right now.
-            EnforcementService.start(appContext)
+            AppRegistry.ruleMutationSink.rulesChanged()
         }
 
     // ---------- web filter (#42) ----------

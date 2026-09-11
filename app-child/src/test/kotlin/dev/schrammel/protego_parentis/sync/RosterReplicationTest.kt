@@ -13,6 +13,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import java.security.KeyPairGenerator
 import java.security.spec.ECGenParameterSpec
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.Fingerprints
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**
  * #45's own done-when list asks for `RosterStore.child()`'s one production

@@ -2,11 +2,9 @@ package dev.schrammel.protego_parentis.diagnostics
 
 import android.app.Application
 import android.content.Context
-import android.content.Intent
 import android.os.Process
 import android.util.Log
 import androidx.core.content.edit
-import dev.schrammel.protego_parentis.ui.HomeActivity
 import kotlin.system.exitProcess
 
 /**
@@ -44,7 +42,16 @@ object CrashRecovery {
      */
     private const val LOOP_WINDOW_MILLIS = 10_000L
 
-    fun install(app: Application) {
+    /**
+     * [restartLauncher] is a supplier, not a plain [RestartLauncher], because
+     * this must be installed before the composition root that constructs one
+     * — see `DementorApplication.onCreate`, which calls this first specifically
+     * so a crash during the composition root's own setup is still caught.
+     * Resolving it eagerly at the call site would read an uninitialized
+     * property; deferring it to a supplier means it is only read once a crash
+     * actually reaches this handler, by which point installation has finished.
+     */
+    fun install(app: Application, restartLauncher: () -> RestartLauncher) {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
 
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -62,7 +69,7 @@ object CrashRecovery {
                 return@setDefaultUncaughtExceptionHandler
             }
 
-            runCatching { restart(app) }
+            runCatching { restartLauncher().restart(app) }
             Process.killProcess(Process.myPid())
             exitProcess(1)
         }
@@ -74,18 +81,5 @@ object CrashRecovery {
         val last = prefs.getLong(KEY_LAST_CRASH_AT, 0L)
         prefs.edit { putLong(KEY_LAST_CRASH_AT, now) }
         return last > 0L && now - last < LOOP_WINDOW_MILLIS
-    }
-
-    /**
-     * The same screen a normal cold launch opens — it already knows how to
-     * route to the right place for whatever this phone is (README: see
-     * [HomeActivity.routeByRole]), which is safer than trying to remember
-     * where the crash happened and return there.
-     */
-    private fun restart(app: Application) {
-        val intent = Intent(app, HomeActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
-        app.startActivity(intent)
     }
 }

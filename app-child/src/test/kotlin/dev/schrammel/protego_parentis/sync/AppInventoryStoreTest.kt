@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 
 /**
  * #43: a parent's cached copy of a managed phone's app list, keyed per

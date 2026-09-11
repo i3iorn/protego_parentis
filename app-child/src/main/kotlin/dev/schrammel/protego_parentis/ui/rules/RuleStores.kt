@@ -1,7 +1,7 @@
 package dev.schrammel.protego_parentis.ui.rules
 
 import android.content.Context
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.model.AutoApproval
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.PackageName
@@ -21,7 +21,6 @@ import dev.schrammel.protego_parentis.sync.AppInventoryStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
-import dev.schrammel.protego_parentis.ui.RuleTarget
 import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.usage.InstalledApps
 
@@ -31,7 +30,7 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  *
  * Deliberately not collapsed into a single code path through
  * [PolicyReplication] for both kinds of phone: [PolicyReplication.write] and
- * its siblings return no ops — silently — when [dev.schrammel.protego_parentis.sync.LocalDeviceId]
+ * its siblings return no ops — silently — when [dev.schrammel.protego_parentis.security.LocalDeviceId]
  * cannot produce an identity, a real and documented case (a keystore key
  * invalidated by a biometric change, the moments before first unlock). The
  * managed phone's own edits go straight to the local store precisely so that
@@ -49,7 +48,7 @@ class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore {
     override fun read(): PolicySnapshot = store.snapshot()
     override fun write(snapshot: PolicySnapshot) {
         store.applySnapshot(snapshot)
-        EnforcementService.start(context)
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 
@@ -84,7 +83,7 @@ class LocalScheduleRuleStore(private val context: Context) : ScheduleRuleStore {
     override fun read(): List<StoredSchedule> = store.schedules
     override fun write(schedules: List<StoredSchedule>) {
         store.schedules = schedules
-        EnforcementService.start(context)
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 
@@ -118,7 +117,7 @@ class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleS
     override fun read(): List<ContextRule> = store.rules
     override fun write(rules: List<ContextRule>) {
         store.rules = rules
-        EnforcementService.start(context)
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 

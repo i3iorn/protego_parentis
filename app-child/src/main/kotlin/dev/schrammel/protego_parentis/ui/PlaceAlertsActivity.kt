@@ -11,6 +11,8 @@ import dev.schrammel.protego_parentis.context.PlaceWatcher
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
  * Telling the parents about arrivals (LOC-1).

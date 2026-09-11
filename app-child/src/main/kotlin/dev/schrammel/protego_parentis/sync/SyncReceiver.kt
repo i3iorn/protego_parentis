@@ -1,10 +1,11 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
-import android.content.Intent
 import android.util.Log
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.audit.AuditReplication
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
@@ -31,28 +32,6 @@ import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.core.Admission
-import dev.schrammel.protego_parentis.sync.core.Admittance
-import dev.schrammel.protego_parentis.sync.core.DecryptResult
-import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.core.Enrolment
-import dev.schrammel.protego_parentis.sync.core.MessageCrypto
-import dev.schrammel.protego_parentis.sync.core.MessageSignatures
-import dev.schrammel.protego_parentis.sync.core.ReplayGuard
-import dev.schrammel.protego_parentis.sync.core.ReplicationRules
-import dev.schrammel.protego_parentis.sync.core.RosterRules
-import dev.schrammel.protego_parentis.sync.core.StateCodec
-import dev.schrammel.protego_parentis.sync.core.StateDigest
-import dev.schrammel.protego_parentis.sync.core.StateOp
-import dev.schrammel.protego_parentis.sync.core.SyncCodec
-import dev.schrammel.protego_parentis.sync.core.SyncKey
-import dev.schrammel.protego_parentis.sync.core.SyncMessage
-import dev.schrammel.protego_parentis.sync.core.SyncMessageType
-import dev.schrammel.protego_parentis.sync.core.SyncRole
-import dev.schrammel.protego_parentis.sync.core.TransportResult
-import dev.schrammel.protego_parentis.sync.core.Vouch
-import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.JoinFamilyActivity
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
@@ -102,6 +81,26 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_SUMMARY_APPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_SUMMARY_DOMAINS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_WIRE_TEXT
 import java.time.Instant
+import dev.schrammel.protego_parentis.sync.core.Admission
+import dev.schrammel.protego_parentis.sync.core.Admittance
+import dev.schrammel.protego_parentis.sync.core.DecryptResult
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.MessageCrypto
+import dev.schrammel.protego_parentis.sync.core.MessageSignatures
+import dev.schrammel.protego_parentis.sync.core.ReplayGuard
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.RosterRules
+import dev.schrammel.protego_parentis.sync.core.StateCodec
+import dev.schrammel.protego_parentis.sync.core.StateDigest
+import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.sync.core.SyncCodec
+import dev.schrammel.protego_parentis.sync.core.SyncKey
+import dev.schrammel.protego_parentis.sync.core.SyncMessage
+import dev.schrammel.protego_parentis.sync.core.SyncMessageType
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.TransportResult
+import dev.schrammel.protego_parentis.sync.core.Vouch
 
 /**
  * Everything a phone *receives*: opening an envelope, deciding whether to
@@ -592,7 +591,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             subject = InstalledApps(appContext).labelFor(PackageName(packageName)),
             after = Audit.flag(blocked),
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 
@@ -691,12 +690,12 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         )
         return when (roles.roleOrChild) {
             DeviceRole.CHILD -> {
-                notifier.notifyFamilyDisbanded(Intent(appContext, HomeActivity::class.java))
+                notifier.notifyFamilyDisbanded()
                 true
             }
 
             DeviceRole.PARENT -> {
-                notifier.notifyFamilyDisbanded(JoinFamilyActivity.intent(appContext))
+                notifier.notifyFamilyDisbanded()
                 publisher.leave()
                 true
             }
@@ -931,7 +930,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             PolicyReplication(appContext).pullContextRulesIntoLocal()
             PolicyReplication(appContext).pullPlaceRefsIntoLocal()
             PolicyReplication(appContext).pullAutoApprovalsIntoLocal()
-            EnforcementService.start(appContext)
+            AppRegistry.ruleMutationSink.rulesChanged()
         }
         // Additive only, and never for the managed phone: see the doc comment
         // on pullIntoRoster for why trust must fail closed here.
@@ -1127,7 +1126,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             subject = TargetLabels.describe(appContext, target),
             after = Audit.minutes(minutes),
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 
@@ -1153,7 +1152,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             before = Audit.minutes(before),
             after = Audit.minutes(store.dailyLimitMinutes),
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 
@@ -1184,7 +1183,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             actor = AuditActor.PARENT,
             action = AuditAction.RULES_REPLACED,
         )
-        EnforcementService.start(appContext)
+        AppRegistry.ruleMutationSink.rulesChanged()
         return true
     }
 

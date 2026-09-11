@@ -21,7 +21,7 @@ import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.sync.ChatMessage
 import dev.schrammel.protego_parentis.sync.ChatStore
 import dev.schrammel.protego_parentis.sync.core.KnownDevice
-import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Duration

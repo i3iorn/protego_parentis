@@ -11,6 +11,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

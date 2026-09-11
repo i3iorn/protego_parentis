@@ -7,6 +7,7 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 
 /** One app, as a parent's phone is told about it: a name, never an icon or usage. */
 data class AppInventoryEntry(val packageName: String, val label: String)

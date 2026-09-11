@@ -1,7 +1,6 @@
-package dev.schrammel.protego_parentis.sync
+package dev.schrammel.protego_parentis.security
 
 import androidx.annotation.VisibleForTesting
-import dev.schrammel.protego_parentis.security.KeystoreSigner
 
 /**
  * Who this phone is, when a caller needs to say so but not to sign anything.
@@ -29,9 +28,14 @@ import dev.schrammel.protego_parentis.security.KeystoreSigner
  *
  * It is deliberately narrow, and worth being careful about, because device
  * identity is what the roster and the shared history rest on: a phone that
- * could choose its own id could write as another device. So the setter is
- * `internal` — nothing outside this module can reach it — and nothing in the
- * app calls it. It is not a configuration point and must not become one.
+ * could choose its own id could write as another device. The setter used to
+ * be `internal`, back when this class and every one of its test call sites
+ * lived in the same module; extracting `security` into its own Gradle module
+ * broke that, since `app-child`'s own tests are the majority of those call
+ * sites and `internal` is module-scoped, not source-set-scoped. It is public
+ * now, but [VisibleForTesting] still says what it has always said: this is
+ * not a configuration point, nothing in the app calls it, and it must not
+ * become one just because the compiler no longer stops it.
  *
  * This does **not** widen what can be forged in a real family. The identity
  * that matters on the wire is the one that *signs* a message, and signing still
@@ -55,7 +59,7 @@ object LocalDeviceId {
      * it again, since the process outlives any one of them.
      */
     @VisibleForTesting
-    internal fun useInTests(id: String?) {
+    fun useInTests(id: String?) {
         testOverride = id
     }
 }

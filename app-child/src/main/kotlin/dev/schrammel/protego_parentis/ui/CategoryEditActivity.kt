@@ -28,6 +28,8 @@ import dev.schrammel.protego_parentis.ui.rules.deleteCategory
 import dev.schrammel.protego_parentis.ui.rules.labelFor
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsertCategory
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
 
 /**

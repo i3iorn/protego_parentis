@@ -3,11 +3,11 @@ package dev.schrammel.protego_parentis.enforcement
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * Re-arms enforcement after a reboot.
@@ -33,6 +33,6 @@ class BootReceiver : BroadcastReceiver() {
         // published rather than on the next poll. The socket manager checks
         // settings.isUsable before opening a connection, so a half-configured
         // phone harmlessly does nothing.
-        RealtimeSyncService.start(context)
+        AppRegistry.realtimeSync.connectRealtime()
     }
 }
