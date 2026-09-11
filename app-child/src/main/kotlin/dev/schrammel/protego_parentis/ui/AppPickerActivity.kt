@@ -10,7 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.usage.AppInfo

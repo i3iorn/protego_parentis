@@ -2,6 +2,8 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.StateOp
 import java.time.Instant
 
 /**

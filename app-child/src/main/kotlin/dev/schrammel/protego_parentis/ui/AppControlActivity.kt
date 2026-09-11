@@ -15,7 +15,7 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.AppReviewStore
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore

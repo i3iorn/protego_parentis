@@ -1,6 +1,10 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.util.Log
+import dev.schrammel.protego_parentis.sync.core.FamilyTransport
+import dev.schrammel.protego_parentis.sync.core.TransportFailureKind
+import dev.schrammel.protego_parentis.sync.core.TransportKind
+import dev.schrammel.protego_parentis.sync.core.TransportResult
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.net.HttpURLConnection

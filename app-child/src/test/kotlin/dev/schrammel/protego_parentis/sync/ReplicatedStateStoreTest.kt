@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.sync.core.*
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -306,7 +307,7 @@ class ReplicatedStateStoreTest {
      * refusing a peer's op was already tested, but a local write went straight
      * into the map and the outbound queue with no equivalent check, so the two
      * replicas disagreed on every digest exchange forever. See
-     * [dev.schrammel.protego_parentis.sync.ReplicationRulesTest].
+     * [dev.schrammel.protego_parentis.sync.core.ReplicationRulesTest].
      */
     @Test
     fun `a write this device may not make is refused, not merely queued and later refused`() {

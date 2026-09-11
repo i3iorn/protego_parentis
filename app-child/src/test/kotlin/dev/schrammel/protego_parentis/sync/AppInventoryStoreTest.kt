@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.sync.core.*
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

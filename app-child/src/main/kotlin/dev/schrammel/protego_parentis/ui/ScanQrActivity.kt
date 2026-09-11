@@ -25,7 +25,7 @@ import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.sync.FamilyTokens
+import dev.schrammel.protego_parentis.sync.core.FamilyTokens
 import java.util.concurrent.Executors
 
 /**

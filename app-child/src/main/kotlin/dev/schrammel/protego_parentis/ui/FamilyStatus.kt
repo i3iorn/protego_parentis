@@ -2,10 +2,10 @@ package dev.schrammel.protego_parentis.ui
 
 import android.content.Context
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.Enrolment
+import dev.schrammel.protego_parentis.sync.core.Enrolment
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
-import dev.schrammel.protego_parentis.sync.SyncRole
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.toSyncRole
 
 /** Where this phone has got to in joining a family. */

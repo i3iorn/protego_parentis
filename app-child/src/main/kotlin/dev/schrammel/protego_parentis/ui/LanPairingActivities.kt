@@ -11,7 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.sync.LanPairing
 import dev.schrammel.protego_parentis.sync.NearbyPhone
-import dev.schrammel.protego_parentis.sync.PairingWire
+import dev.schrammel.protego_parentis.sync.core.PairingWire
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import java.util.concurrent.TimeUnit
 
@@ -240,7 +240,7 @@ class LanFindActivity : DementorActivity() {
             is PairingWire.Answer.Granted -> {
                 setResult(
                     RESULT_OK,
-                    Intent().putExtra(EXTRA_CODE, dev.schrammel.protego_parentis.sync.FamilyTokens.encode(answer.token)),
+                    Intent().putExtra(EXTRA_CODE, dev.schrammel.protego_parentis.sync.core.FamilyTokens.encode(answer.token)),
                 )
                 finish()
             }

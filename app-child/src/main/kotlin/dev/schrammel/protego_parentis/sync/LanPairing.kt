@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.util.Log
+import dev.schrammel.protego_parentis.sync.core.PairingWire
 import java.io.BufferedReader
 import java.io.IOException
 import java.net.InetAddress

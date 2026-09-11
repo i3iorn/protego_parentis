@@ -21,7 +21,7 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.policy.CategoryHierarchy
 import dev.schrammel.protego_parentis.rules.StoredCategory
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.deleteCategory

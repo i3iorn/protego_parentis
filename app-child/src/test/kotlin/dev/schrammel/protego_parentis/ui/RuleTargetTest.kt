@@ -4,11 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
-import dev.schrammel.protego_parentis.sync.SyncRole
-import dev.schrammel.protego_parentis.sync.Vouch
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Vouch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

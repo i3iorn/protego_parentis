@@ -2,6 +2,10 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 import java.time.Instant
 import java.util.UUID
 

@@ -1,5 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
+import dev.schrammel.protego_parentis.sync.core.MessageCrypto
+import dev.schrammel.protego_parentis.sync.core.SyncKey
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 

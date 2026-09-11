@@ -7,6 +7,9 @@ import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.security.SecretVault
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.SeenMessage
+import dev.schrammel.protego_parentis.sync.core.TransportKind
 import dev.schrammel.protego_parentis.sync.SyncSettings.Companion.DEFAULT_SERVER
 import java.time.Instant
 import java.util.UUID

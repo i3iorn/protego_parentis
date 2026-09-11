@@ -2,6 +2,11 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
+import dev.schrammel.protego_parentis.sync.core.PendingDevice
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Vouch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant

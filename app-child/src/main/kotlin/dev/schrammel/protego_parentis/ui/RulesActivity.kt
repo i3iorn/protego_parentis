@@ -9,7 +9,7 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 

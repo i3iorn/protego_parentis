@@ -2,9 +2,9 @@ package dev.schrammel.protego_parentis.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import dev.schrammel.protego_parentis.sync.DeviceId
-import dev.schrammel.protego_parentis.sync.Fingerprints
-import dev.schrammel.protego_parentis.sync.Signer
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.Fingerprints
+import dev.schrammel.protego_parentis.sync.core.Signer
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
