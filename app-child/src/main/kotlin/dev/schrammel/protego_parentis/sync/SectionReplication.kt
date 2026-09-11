@@ -11,12 +11,6 @@ import dev.schrammel.protego_parentis.sync.core.StateOp
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch
 import java.time.Instant
-import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.core.Enrolment
-import dev.schrammel.protego_parentis.sync.core.ReplicationRules
-import dev.schrammel.protego_parentis.sync.core.StateOp
-import dev.schrammel.protego_parentis.sync.core.SyncRole
-import dev.schrammel.protego_parentis.sync.core.Vouch
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**

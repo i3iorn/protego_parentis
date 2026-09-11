@@ -13,11 +13,7 @@ import java.net.URL
 import java.net.UnknownHostException
 import java.time.Instant
 import java.util.concurrent.TimeUnit
-import dev.schrammel.protego_parentis.sync.core.FamilyTransport
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
-import dev.schrammel.protego_parentis.sync.core.TransportFailureKind
-import dev.schrammel.protego_parentis.sync.core.TransportKind
-import dev.schrammel.protego_parentis.sync.core.TransportResult
 
 /**
  * Carries a family's messages over an ntfy topic.

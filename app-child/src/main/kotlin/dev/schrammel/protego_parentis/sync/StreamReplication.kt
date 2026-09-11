@@ -6,9 +6,7 @@ import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import java.time.Instant
 import java.util.UUID
-import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.core.StateCodec
-import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /**
