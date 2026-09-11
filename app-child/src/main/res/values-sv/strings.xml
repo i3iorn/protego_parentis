@@ -128,6 +128,7 @@
     <string name="context_target_everything">allt</string>
     <string name="context_target_categories">vissa kategorier</string>
     <string name="context_target_mixed">%1$s och %2$s</string>
+    <string name="context_target_everything_except">allt utom %1$s</string>
 
     <string name="context_edit_title">Regel</string>
     <string name="context_name_hint">Namn, till exempel Inga spel i skolan</string>

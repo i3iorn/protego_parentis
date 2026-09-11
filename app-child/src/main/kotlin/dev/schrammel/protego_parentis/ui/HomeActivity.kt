@@ -429,7 +429,6 @@ class HomeActivity : DementorActivity() {
         val what = when (reason) {
             is Reason.ManuallyBlocked -> getString(R.string.reason_blocked)
             is Reason.UnmanagedBrowser -> getString(R.string.reason_unmanaged_browser)
-            is Reason.ScheduleActive -> reason.scheduleName
             is Reason.DeviceBudgetExhausted -> getString(R.string.reason_daily_limit)
             is Reason.AppBudgetExhausted -> getString(R.string.reason_app_limit)
             is Reason.CategoryBudgetExhausted -> reason.categoryName

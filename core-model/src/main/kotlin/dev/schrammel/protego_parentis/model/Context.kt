@@ -215,6 +215,18 @@ sealed interface RuleTarget {
      * through the simpler variant unchanged.
      */
     data class Mixed(val packages: Set<PackageName>, val categories: Set<CategoryId>) : RuleTarget
+
+    /**
+     * Every installed app except these (#105).
+     *
+     * The migrated shape of a `StoredSchedule` in `EXCLUSIVE` mode — "block
+     * everything except the alarm clock" — which [Apps]/[Mixed] cannot
+     * express: both name what a rule covers, never what it excludes. Resolved
+     * against installed packages at evaluation time, the same as [Everything]
+     * already is, so it stays correct as apps are installed or removed rather
+     * than freezing the complement at the moment a schedule was migrated.
+     */
+    data class EverythingExcept(val packages: Set<PackageName>) : RuleTarget
 }
 
 /**

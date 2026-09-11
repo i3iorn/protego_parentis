@@ -46,9 +46,21 @@ data class Policy(
     val version: Long,
     val childId: ChildId,
     val timeZone: ZoneId,
+    /**
+     * No longer read by `PolicyEngine` (#105) — a device budget is expressed
+     * as a [ContextRule] now, one whose condition always holds. Left here
+     * rather than removed because it is still a general, meaningful shape for
+     * a `Policy` to carry, and every store built before the migration keeps
+     * constructing one; deleting the field is a separate cleanup (#106-#108).
+     */
     val deviceBudget: WeeklyBudget = WeeklyBudget.UNLIMITED,
     val appRules: Map<PackageName, AppRule> = emptyMap(),
     val categories: List<Category> = emptyList(),
+    /**
+     * No longer read by `PolicyEngine` (#105) — a schedule is a [ContextRule]
+     * carrying a [Condition.DuringWindow] now. Left here for the same reason
+     * [deviceBudget] is.
+     */
     val schedules: List<ScheduleBlock> = emptyList(),
     /** Rules that apply only in certain circumstances. See [ContextRule]. */
     val contextRules: List<ContextRule> = emptyList(),

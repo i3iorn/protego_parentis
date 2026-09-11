@@ -178,6 +178,7 @@ class ContextRuleCodecTest {
                 packages = setOf(PackageName("com.example.app")),
                 categories = setOf(CategoryId("games")),
             ),
+            RuleTarget.EverythingExcept(setOf(PackageName("com.android.deskclock"))),
         )
 
         targets.forEach { target ->

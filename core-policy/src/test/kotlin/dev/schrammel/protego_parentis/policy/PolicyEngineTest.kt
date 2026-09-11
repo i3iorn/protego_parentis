@@ -319,7 +319,7 @@ class PolicyEngineTest {
 
         assertEquals(setOf(GAME, YOUTUBE), result.suspend.keys)
         assertNull("an app the window does not name must carry on", result.suspend[HOMEWORK])
-        assertTrue(result.suspend[GAME] is Reason.ScheduleActive)
+        assertTrue(result.suspend[GAME] is Reason.ContextRuleActive)
     }
 
     /**
@@ -357,8 +357,8 @@ class PolicyEngineTest {
         assertNull("the alarm clock must survive bedtime", result.suspend[CLOCK])
 
         val reason = result.suspend[YOUTUBE]
-        assertTrue(reason is Reason.ScheduleActive)
-        assertEquals("Bedtime", (reason as Reason.ScheduleActive).scheduleName)
+        assertTrue(reason is Reason.ContextRuleActive)
+        assertEquals("Bedtime", (reason as Reason.ContextRuleActive).ruleName)
         assertEquals(at("2026-08-22", "07:00"), reason.liftsAt)
     }
 
@@ -372,7 +372,7 @@ class PolicyEngineTest {
         )
 
         assertEquals(emptyMap<Any, Any>(), result.suspend)
-        assertEquals(emptyList<Any>(), result.activeSchedules)
+        assertEquals(emptyList<Any>(), result.activeContextRules)
     }
 
     @Test
@@ -419,7 +419,7 @@ class PolicyEngineTest {
         )
 
         val reason = result.suspend[YOUTUBE]
-        assertTrue("expected the schedule to win, got $reason", reason is Reason.ScheduleActive)
+        assertTrue("expected the schedule to win, got $reason", reason is Reason.ContextRuleActive)
         assertEquals(at("2026-08-22", "07:00"), reason?.liftsAt)
     }
 

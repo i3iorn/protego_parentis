@@ -71,6 +71,13 @@ class EnforcementCoordinator(context: Context) {
     private val port = AndroidDevicePolicyPort(appContext)
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
 
+    init {
+        // Runs once, before anything here ever reads a Policy — see the
+        // method's own doc comment for why this is safe to call every time
+        // this class is constructed rather than gating it here too.
+        store.migrateToUnifiedRules()
+    }
+
     fun hasUsageAccess(): Boolean = UsageAccess.isGranted(appContext)
 
     /** Closed days from history plus today, computed live. */

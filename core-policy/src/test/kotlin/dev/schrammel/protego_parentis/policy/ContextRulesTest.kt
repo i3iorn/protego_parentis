@@ -431,6 +431,14 @@ class ContextRulesTest {
         assertEquals(ALL_PACKAGES, evaluate(rules, DeviceContext.UNKNOWN).blocked.keys)
     }
 
+    /** #105: the migrated shape of an EXCLUSIVE-mode schedule. */
+    @Test
+    fun `everything-except covers every installed app but the ones it names`() {
+        val rules = listOf(rule(Condition.Always, target = RuleTarget.EverythingExcept(setOf(CLOCK))))
+
+        assertEquals(ALL_PACKAGES - CLOCK, evaluate(rules, DeviceContext.UNKNOWN).blocked.keys)
+    }
+
     @Test
     fun `a category target follows nesting`() {
         val hierarchy = CategoryHierarchy.resolve(

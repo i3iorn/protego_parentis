@@ -2,10 +2,14 @@ package dev.schrammel.protego_parentis.policy
 
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.ChildId
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceState
 import dev.schrammel.protego_parentis.model.DnsFilter
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.junit.Assert.assertEquals
@@ -31,13 +35,27 @@ class EmergencyTest {
     private val game = PackageName("com.example.game")
     private val chat = PackageName("com.example.chat")
 
-    /** A policy that would suspend everything: the allowance is spent. */
+    /**
+     * A policy that would suspend everything: the allowance is spent.
+     *
+     * The device budget is a rule now (#105), not the [Policy.deviceBudget]
+     * field `PolicyEngine` no longer reads.
+     */
     private val spent = Policy(
         version = 1L,
         childId = ChildId("test"),
         timeZone = zone,
-        deviceBudget = WeeklyBudget.flat(30.minutes),
         appRules = mapOf(game to AppRule.Blocked(hidden = true)),
+        contextRules = listOf(
+            ContextRule(
+                id = "device-budget",
+                name = "Device budget",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(30.minutes)),
+                target = RuleTarget.Everything,
+            ),
+        ),
         networkBlockedPackages = setOf(chat),
         dnsFilter = DnsFilter("family.cloudflare-dns.com"),
     )

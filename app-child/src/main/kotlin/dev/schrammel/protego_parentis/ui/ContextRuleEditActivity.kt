@@ -501,6 +501,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         is RuleTarget.Categories -> describeCategories(current.categories)
         is RuleTarget.Mixed ->
             getString(R.string.context_target_mixed, describeApps(current.packages), describeCategories(current.categories))
+        is RuleTarget.EverythingExcept ->
+            getString(R.string.context_target_everything_except, describeApps(current.packages))
     }
 
     private fun describeApps(packages: Set<PackageName>): String =

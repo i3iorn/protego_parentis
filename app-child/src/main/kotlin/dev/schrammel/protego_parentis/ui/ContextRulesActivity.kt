@@ -179,6 +179,8 @@ class ContextRulesActivity : ParentGatedActivity() {
             is RuleTarget.Categories -> describeCategories(ruleTarget.categories)
             is RuleTarget.Mixed ->
                 getString(R.string.context_target_mixed, describeApps(ruleTarget.packages), describeCategories(ruleTarget.categories))
+            is RuleTarget.EverythingExcept ->
+                getString(R.string.context_target_everything_except, describeApps(ruleTarget.packages))
         }
         return getString(R.string.context_rule_summary, describeCondition(rule.condition, places), what, who)
     }

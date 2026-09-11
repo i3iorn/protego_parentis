@@ -2,7 +2,6 @@ package dev.schrammel.protego_parentis.policy
 
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.RecurringWindow
-import dev.schrammel.protego_parentis.model.ScheduleBlock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZonedDateTime
@@ -14,11 +13,12 @@ import java.time.ZonedDateTime
  * of 22:30–07:00 on Monday is active at 02:00 on Tuesday, so "is it active now"
  * has to consider yesterday's window as well as today's.
  *
- * Works on [RecurringWindow] rather than [ScheduleBlock] since #101, so a
- * schedule and a [dev.schrammel.protego_parentis.model.Condition.DuringWindow]
- * rule resolve through exactly this arithmetic. The [ScheduleBlock] overloads
- * remain for the callers that still hold one, and simply read its
- * [ScheduleBlock.window].
+ * Works on [RecurringWindow] rather than the domain `ScheduleBlock` since
+ * #101, so a schedule and a
+ * [dev.schrammel.protego_parentis.model.Condition.DuringWindow] rule resolve
+ * through exactly this arithmetic. #105 migrated every stored schedule into
+ * that same rule shape and switched enforcement to read only rules, which is
+ * why nothing here takes a `ScheduleBlock` any more either.
  */
 object ScheduleResolver {
 
@@ -43,33 +43,18 @@ object ScheduleResolver {
     fun isActive(window: RecurringWindow, now: ZonedDateTime): Boolean =
         windowsAround(window, now).any { it.contains(now) }
 
-    fun isActive(block: ScheduleBlock, now: ZonedDateTime): Boolean = isActive(block.window, now)
-
     /** When the currently-running window ends, or null if it is not running. */
     fun endOfActiveWindow(window: RecurringWindow, now: ZonedDateTime): Instant? =
         windowsAround(window, now).firstOrNull { it.contains(now) }?.end?.toInstant()
 
-    fun endOfActiveWindow(block: ScheduleBlock, now: ZonedDateTime): Instant? =
-        endOfActiveWindow(block.window, now)
-
     /**
-     * The next moment any of [blocks] starts or stops, which is when enforcement
-     * would change on its own. Used to set an exact alarm instead of polling.
-     *
-     * Named apart from [nextWindowEdgeAfter] rather than overloading it: the
-     * two would erase to the same JVM signature, making an `emptyList()`
-     * argument ambiguous at every call site.
-     */
-    fun nextEdgeAfter(blocks: List<ScheduleBlock>, now: ZonedDateTime): Instant? =
-        nextWindowEdgeAfter(blocks.map { it.window }, now)
-
-    /**
-     * The same, for windows that did not come from a schedule (#103).
+     * The next moment any of [windows] starts or stops, which is when
+     * enforcement would change on its own — an exact alarm instead of polling.
      *
      * A [dev.schrammel.protego_parentis.model.Condition.DuringWindow] rule
-     * needs an alarm at its own edges exactly as a schedule does — without one
-     * the block would sit there until something unrelated woke enforcement,
-     * which on a quiet phone can be hours after the window ended.
+     * needs this at its own edges — without it the block would sit there
+     * until something unrelated woke enforcement, which on a quiet phone can
+     * be hours after the window ended.
      */
     fun nextWindowEdgeAfter(windows: List<RecurringWindow>, now: ZonedDateTime): Instant? {
         val today = now.toLocalDate()

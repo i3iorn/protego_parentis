@@ -10,11 +10,15 @@ import dev.schrammel.protego_parentis.model.BrowserPolicy
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.ChildId
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DailyGoal
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONObject
@@ -141,6 +145,71 @@ class LocalPolicyStore(context: Context) {
     var dailyLimitMinutes: Int
         get() = prefs.getInt(KEY_DAILY_LIMIT, Defaults.DAILY_LIMIT.inWholeMinutes.toInt())
         set(value) = write { putInt(KEY_DAILY_LIMIT, value.clampToDay()) }
+
+    // ---------- migration (#105) ----------
+
+    /**
+     * Folds every stored schedule and the flat daily limit into the unified
+     * [ContextRuleStore] rule format, once.
+     *
+     * Idempotent by construction rather than by locking: [ContextRuleStore.upsert]
+     * replaces by id, so running this again writes the exact same rules back.
+     * That is also what makes it safe to interrupt — a crash before
+     * [KEY_RULES_MIGRATED] is written just means the whole conversion runs
+     * again next time, redundantly but harmlessly, rather than half of it
+     * being stuck undone. The flag itself is written directly rather than
+     * through [write], since it is bookkeeping about this device having run
+     * the conversion, not a rule change a parent's phone needs to hear about.
+     *
+     * A schedule with [StoredSchedule.isComplete] false is skipped, the same
+     * way [ScheduleStore.active] already treats it as not a real schedule —
+     * it was never enforced before this either.
+     *
+     * Deliberately leaves [scheduleStore]'s and this store's own
+     * [dailyLimitMinutes] fields exactly as they are: `SchedulesActivity` and
+     * `LimitsActivity`/`ParentLimitActivity` still edit them directly until
+     * #106 replaces those screens with one that writes rules instead, and a
+     * family mid-upgrade must not lose whichever screen it opens first. This
+     * runs once, so an edit made through the old screens after that point
+     * will not be reflected here again — accepted as a short-lived gap #106
+     * closes immediately after.
+     */
+    fun migrateToUnifiedRules() {
+        if (prefs.getBoolean(KEY_RULES_MIGRATED, false)) return
+
+        scheduleStore.schedules.forEach { stored ->
+            val block = stored.toDomain() ?: return@forEach
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = "$MIGRATED_SCHEDULE_ID_PREFIX${stored.id}",
+                    name = stored.name,
+                    enabled = stored.enabled,
+                    condition = Condition.DuringWindow(block.window),
+                    effect = RuleEffect.Block,
+                    target = when (stored.mode) {
+                        ScheduleBlock.Mode.INCLUSIVE -> RuleTarget.Apps(block.packages)
+                        ScheduleBlock.Mode.EXCLUSIVE -> RuleTarget.EverythingExcept(block.packages)
+                    },
+                ),
+            )
+        }
+
+        val limit = dailyLimitMinutes
+        if (limit > 0) {
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = MIGRATED_DAILY_LIMIT_ID,
+                    name = appContext.getString(R.string.rules_row_limits),
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(limit.minutes)),
+                    target = RuleTarget.Everything,
+                ),
+            )
+        }
+
+        prefs.edit { putBoolean(KEY_RULES_MIGRATED, true) }
+    }
 
     // ---------- bedtime ----------
 
@@ -389,5 +458,12 @@ class LocalPolicyStore(context: Context) {
         const val KEY_APP_LIMITS = "app_limits"
         const val KEY_INSTALL_POLICY = "install_policy"
         const val KEY_TAMPER = "tamper_protection"
+        const val KEY_RULES_MIGRATED = "rules_migrated_v1"
+
+        /** The fixed id the daily limit becomes as a rule (#105). */
+        const val MIGRATED_DAILY_LIMIT_ID = "migrated-daily-limit"
+
+        /** The fixed id prefix a schedule becomes as a rule (#105). */
+        const val MIGRATED_SCHEDULE_ID_PREFIX = "migrated-schedule-"
     }
 }
