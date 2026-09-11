@@ -176,6 +176,7 @@ dependencies {
     implementation(project(":core-provisioning"))
     implementation(project(":core-sync"))
     implementation(project(":security"))
+    implementation(project(":usage"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.work)
