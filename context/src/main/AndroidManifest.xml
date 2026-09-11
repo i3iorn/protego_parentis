@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      ContextProvider.wifiSsid reads ConnectivityManager.activeNetwork /
+      getNetworkCapabilities. app-child's own manifest already declares this
+      too - this declaration is what lets :context build and lint on its own.
+      Manifest merging dedupes the identical entry.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+</manifest>

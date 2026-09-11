@@ -177,6 +177,7 @@ dependencies {
     implementation(project(":core-sync"))
     implementation(project(":security"))
     implementation(project(":usage"))
+    implementation(project(":context"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.work)
