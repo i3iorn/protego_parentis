@@ -11,26 +11,34 @@ import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.sync.DailySummaryStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 
 /**
  * Changing the daily allowance from a parent's own phone.
  *
- * Like [ParentBonusActivity], this is a message, not a local change: the phone
- * this runs on has no rules of its own to edit. It arrives on the child's phone
- * at the next poll and applies there the same way an edit made standing at that
- * phone would, which is why the confirmation says "sent" rather than "changed".
+ * The edit itself is a replicated write, same as every other rule (#104): it
+ * merges with whatever else changed on [target] rather than racing a
+ * dedicated message against the rest of the policy, and the confirmation
+ * says "sent" rather than "changed" only because it still has to reach the
+ * child's phone over the network to take effect there.
  *
- * The slider starts from the limit last reported in a daily summary rather than
- * zero, since this phone keeps no copy of the child's rules — that figure can be
- * a day stale, or absent from a phone that has never connected, so it is offered
- * as a starting point rather than presented as certain.
+ * The slider starts from the currently replicated limit when this phone has
+ * one, falling back to the last daily summary otherwise — a family whose
+ * other phones are still on an older build, or a phone that has never
+ * exchanged state with [target], holds no replicated policy at all yet.
  */
 class ParentLimitActivity : ParentRoleActivity() {
 
+    private lateinit var target: RuleTarget
     private lateinit var sync: SyncCoordinator
     private lateinit var summaries: DailySummaryStore
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
         sync = SyncCoordinator(this)
         summaries = DailySummaryStore(this)
 
@@ -45,7 +53,8 @@ class ParentLimitActivity : ParentRoleActivity() {
 
         column.addView(bodyText(getString(R.string.parent_limit_body)))
 
-        val known = summaries.latest?.allowedMinutes ?: 0
+        val replicated = policyRuleStore(this, target).read()?.dailyLimitMinutes
+        val known = replicated ?: summaries.latest?.allowedMinutes ?: 0
         var chosenMinutes = known
         column.addView(
             limitSliderBlock(initialMinutes = known, onChanged = { minutes -> chosenMinutes = minutes }),
@@ -61,14 +70,15 @@ class ParentLimitActivity : ParentRoleActivity() {
                 setOnClickListener { send(chosenMinutes) }
             },
         )
-        if (summaries.latest == null) {
+        if (replicated == null && summaries.latest == null) {
             column.addView(captionText(getString(R.string.parent_limit_unknown)))
         }
         showColumn(column)
     }
 
     private fun send(minutes: Int) {
-        sync.publishSetDailyLimit(minutes)
+        val snapshot = policyRuleStore(this, target).read() ?: return
+        policyRuleStore(this, target).write(snapshot.copy(dailyLimitMinutes = minutes))
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
@@ -80,6 +90,7 @@ class ParentLimitActivity : ParentRoleActivity() {
     }
 
     companion object {
-        fun intent(context: Context) = Intent(context, ParentLimitActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, ParentLimitActivity::class.java), childId)
     }
 }

@@ -209,17 +209,6 @@ class SyncPublisher(context: Context) {
     )
 
     /**
-     * Changes the child device's daily allowance from a parent's own phone.
-     *
-     * Zero means no limit, the same convention `LocalPolicyStore.dailyLimitMinutes`
-     * already uses — there is no separate "unlimited" message.
-     */
-    fun publishSetDailyLimit(minutes: Int) = publish(
-        type = SyncMessageType.SET_DAILY_LIMIT,
-        fields = mapOf(FIELD_MINUTES to minutes.toString()),
-    )
-
-    /**
      * Says the child device is still alive and still working (TR-2).
      *
      * Throttled against the clock rather than left to the caller, because the

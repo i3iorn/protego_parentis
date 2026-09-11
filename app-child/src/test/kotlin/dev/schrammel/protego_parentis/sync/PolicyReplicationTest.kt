@@ -212,4 +212,31 @@ class PolicyReplicationTest {
         assertEquals("Extra bonus time", read?.goalPrize)
         assertEquals(setOf("WEB_ACTIVITY", "CHAT"), read?.disabledFeatures)
     }
+
+    // ---------- #104: the daily limit merges the same way every other rule does ----------
+
+    /**
+     * The daily limit used to have a second way to change it — the dedicated
+     * `SET_DAILY_LIMIT` sync message — that raced this register rather than
+     * going through it. Now that it is gone (#104), two parents changing the
+     * limit while out of contact resolve exactly the way
+     * `PolicyReplicationContextRuleTest` and `PolicyReplicationScheduleTest`
+     * already prove for their own rule kinds: whichever write has the higher
+     * Lamport stamp wins, whatever order the two arrive in.
+     */
+    @Test
+    fun `two parents changing the daily limit concurrently converge on the higher lamport stamp, in every order`() {
+        val fromA = StateOp(dailyLimitPath, "90", lamport = 5, origin = "AAAA")
+        val fromB = StateOp(dailyLimitPath, "45", lamport = 9, origin = "BBBB")
+
+        listOf(
+            listOf(fromA, fromB),
+            listOf(fromB, fromA),
+        ).forEach { ops ->
+            ReplicatedStateStore(context).forgetAll()
+            ReplicatedStateStore(context).receive(ops)
+
+            assertEquals("45", PolicyReplication(context).read(thisChildId)?.dailyLimitMinutes.toString())
+        }
+    }
 }
