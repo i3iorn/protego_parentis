@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.LinearLayout
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 
 /**
@@ -80,7 +81,12 @@ class SettingsActivity : DementorActivity() {
         SettingsDestination.SECURITY_AND_CONTROL ->
             startActivity(Intent(this, DeviceControlActivity::class.java))
 
-        SettingsDestination.FEATURES -> startActivity(FeatureSettingsActivity.intent(this))
+        SettingsDestination.FEATURES ->
+            if (RoleStore(this).roleOrChild == DeviceRole.CHILD) {
+                startActivity(FeatureSettingsActivity.intent(this))
+            } else {
+                FeatureSettingsEntry.launch(this)
+            }
         SettingsDestination.ROLE_SWITCH -> startActivity(RoleSwitchActivity.intent(this))
     }
 

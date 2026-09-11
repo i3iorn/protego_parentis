@@ -36,7 +36,7 @@ class HomeSectionsTest {
         Feature.entries.forEach { FeatureFlags(context).setEnabled(it, true) }
     }
 
-    private fun labelsFor(role: DeviceRole) = homeSections(role, allOn()).map { it.label }
+    private fun labelsFor(role: DeviceRole) = homeSections(role, allOn()::isEnabled).map { it.label }
 
     @Test
     fun `both roles see the same group labels in the same order`() {
@@ -46,8 +46,8 @@ class HomeSectionsTest {
 
     @Test
     fun `the first group is unlabelled on both`() {
-        assertEquals(null, homeSections(DeviceRole.CHILD, allOn()).first().label)
-        assertEquals(null, homeSections(DeviceRole.PARENT, allOn()).first().label)
+        assertEquals(null, homeSections(DeviceRole.CHILD, allOn()::isEnabled).first().label)
+        assertEquals(null, homeSections(DeviceRole.PARENT, allOn()::isEnabled).first().label)
     }
 
     /**
@@ -100,7 +100,7 @@ class HomeSectionsTest {
     fun `no section is offered without rows in it`() {
         val off = FeatureFlags(context)
         DeviceRole.entries.forEach { role ->
-            homeSections(role, off).forEach { section ->
+            homeSections(role, off::isEnabled).forEach { section ->
                 assertTrue("$role has an empty section", section.rows.isNotEmpty())
             }
         }
@@ -109,7 +109,7 @@ class HomeSectionsTest {
     @Test
     fun `every row carries a title and a detail`() {
         DeviceRole.entries.forEach { role ->
-            homeSections(role, allOn()).flatMap { it.rows }.forEach { entry ->
+            homeSections(role, allOn()::isEnabled).flatMap { it.rows }.forEach { entry ->
                 assertTrue("${entry.destination} has no title", entry.title != 0)
                 assertTrue("${entry.destination} has no detail", entry.detail != 0)
             }
@@ -119,7 +119,7 @@ class HomeSectionsTest {
     private fun destinationsFor(role: DeviceRole) = destinations(role, allOn())
 
     private fun destinations(role: DeviceRole, flags: FeatureFlags) =
-        homeSections(role, flags).flatMap { it.rows }.map { it.destination }
+        homeSections(role, flags::isEnabled).flatMap { it.rows }.map { it.destination }
 
     private companion object {
         val REST = listOf(

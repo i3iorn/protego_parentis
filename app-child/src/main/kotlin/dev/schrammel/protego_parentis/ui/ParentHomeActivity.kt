@@ -14,13 +14,15 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
-import dev.schrammel.protego_parentis.rules.FeatureFlags
+import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.sync.DailySummary
 import dev.schrammel.protego_parentis.sync.DailySummaryStore
 import dev.schrammel.protego_parentis.sync.InboxStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
+import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
+import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import java.time.Instant
 
@@ -121,7 +123,7 @@ class ParentHomeActivity : ParentRoleActivity() {
         // "Settings" being back on the dashboard rather than one tap inside
         // Family is the same fix as the managed phone's — reachable "only by
         // way of the family it configures" read well and meant nobody found it.
-        homeSections(DeviceRole.PARENT, FeatureFlags(this)).forEach { section ->
+        homeSections(DeviceRole.PARENT, ::featureVisible).forEach { section ->
             addSection(
                 column,
                 section.label?.let(::getString),
@@ -146,6 +148,29 @@ class ParentHomeActivity : ParentRoleActivity() {
             HomeDestination.WEB_ACTIVITY,
             HomeDestination.PRIVACY,
             -> error("$destination does not appear on a parent's home screen")
+        }
+    }
+
+    /**
+     * Whether [feature] should show on this dashboard (#91).
+     *
+     * This phone has no rules of its own — Feature toggles are per managed
+     * child now, the same as every other rule (#104's decision applied here
+     * too), and this dashboard is not about any one of them. Hiding a row
+     * only once *every* managed child has the feature switched off is the
+     * direction that never surprises a parent: it can only ever make a row
+     * disappear that no child still uses, never one that some child does.
+     * A child this phone has not yet heard a policy from counts as still
+     * having it on, matching the "everything on by default" rule
+     * [dev.schrammel.protego_parentis.rules.FeatureFlags] already applies
+     * locally.
+     */
+    private fun featureVisible(feature: Feature): Boolean {
+        val children = RosterStore(this).children()
+        if (children.isEmpty()) return true
+        return children.any { child ->
+            val disabled = PolicyReplication(this).read(child.id)?.disabledFeatures
+            disabled == null || feature.name !in disabled
         }
     }
 

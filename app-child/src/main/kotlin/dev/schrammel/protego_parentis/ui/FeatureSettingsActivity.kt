@@ -11,15 +11,24 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
+import dev.schrammel.protego_parentis.sync.RosterStore
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 
 /**
- * Which parts of the app this family uses.
+ * Which parts of the app [target]'s family uses (#91).
  *
  * PIN-gated, and recorded in the shared history. Putting a feature away changes
  * what the child can see and reach — the request screen, the emergency button's
  * neighbours, the browsing summary — so it is a rule change in everything but
  * name, and the child should be able to find out that it happened.
+ *
+ * A rule like any other now, replicated per managed child the same way a
+ * daily limit or a schedule is, rather than a setting each phone kept for
+ * itself — a parent editing it here changes what that specific child sees,
+ * wherever the family looks.
  *
  * The three that cannot be put away are listed with their reasons rather than
  * omitted. A missing switch reads as an oversight; a switch that is not there and
@@ -27,29 +36,47 @@ import dev.schrammel.protego_parentis.rules.FeatureFlags
  */
 class FeatureSettingsActivity : ParentGatedActivity() {
 
-    private lateinit var flags: FeatureFlags
+    private lateinit var target: RuleTarget
     private lateinit var column: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        flags = FeatureFlags(this)
         column = contentColumn()
         showColumn(column)
     }
 
-    override fun onGatedContentVisible() = render()
+    override fun onGatedContentVisible() {
+        val resolved = RuleTargets.resolve(this) ?: return finish()
+        target = resolved
+        if (!requireStillInFamily(target)) return
+        render()
+    }
 
     override fun onGatedContentHidden() {
         column.removeAllViews()
+    }
+
+    private fun disabled(): Set<String> = policyRuleStore(this, target).read()?.disabledFeatures.orEmpty()
+
+    private fun isEnabled(feature: Feature): Boolean = !feature.optional || feature.name !in disabled()
+
+    private fun setEnabled(feature: Feature, enabled: Boolean) {
+        if (!feature.optional) return
+        val snapshot = policyRuleStore(this, target).read() ?: return
+        val updated = if (enabled) snapshot.disabledFeatures - feature.name else snapshot.disabledFeatures + feature.name
+        policyRuleStore(this, target).write(snapshot.copy(disabledFeatures = updated))
     }
 
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.features_title)))
         column.addView(bodyText(getString(R.string.features_intro)))
-        // The two things about this screen that could surprise somebody: it is
-        // per-phone, and it does not undo anything.
-        column.addView(captionText(getString(R.string.features_each_phone)))
+        if (!target.isOwnDevice) {
+            val name = RosterStore(this).children().firstOrNull { it.id == target.childId }?.name
+            if (name != null) column.addView(captionText(getString(R.string.features_editing_whose, name)))
+        }
+        // Putting a feature away does not undo it — the one thing about this
+        // screen that could surprise somebody.
         column.addView(captionText(getString(R.string.features_still_apply)))
 
         val (optional, fixed) = Feature.entries.partition { it.optional }
@@ -70,9 +97,9 @@ class FeatureSettingsActivity : ParentGatedActivity() {
         addView(
             CheckBox(context).apply {
                 setText(titleOf(feature))
-                isChecked = flags.isEnabled(feature)
+                isChecked = isEnabled(feature)
                 setOnCheckedChangeListener { _, wanted ->
-                    flags.setEnabled(feature, wanted)
+                    setEnabled(feature, wanted)
                     Audit.record(
                         context = this@FeatureSettingsActivity,
                         actor = AuditActor.PARENT,
@@ -151,6 +178,7 @@ class FeatureSettingsActivity : ParentGatedActivity() {
     }
 
     companion object {
-        fun intent(context: Context) = Intent(context, FeatureSettingsActivity::class.java)
+        fun intent(context: Context, childId: DeviceId? = null) =
+            RuleTargets.putExtra(Intent(context, FeatureSettingsActivity::class.java), childId)
     }
 }
