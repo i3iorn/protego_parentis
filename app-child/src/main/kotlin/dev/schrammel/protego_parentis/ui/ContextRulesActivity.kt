@@ -22,7 +22,6 @@ import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
