@@ -27,20 +27,28 @@ import java.io.File
  * unexpectedly, or gain company elsewhere in the graph. Untangling it is
  * follow-up work, not something Phase 2 is scoped to do.
  *
- * `sync.core` (the `:core-sync` module) is deliberately excluded from the
- * graph this test builds: it is a separate Gradle module, not a package of
- * `app-child`, and Gradle's own one-directional module dependency already
- * rules out a cycle through it. Counting it here would misattribute
- * `security`'s imports of `sync.core.*` (`KeystoreSigner.kt`) as edges into
- * `app-child`'s own `sync` package, which they are not — an early draft of
- * this test made exactly that mistake and it briefly looked like `security`
- * belonged in the cycle too.
+ * `model`, `policy`, `provisioning`, `security` and `sync.core` (the
+ * `:core-model`, `:core-policy`, `:core-provisioning`, `:security` and
+ * `:core-sync` modules) are deliberately excluded from the graph this test
+ * builds: each is a separate Gradle module, not a package of `app-child`,
+ * and Gradle's own one-directional module dependency already rules out a
+ * cycle through any of them. Without the exclusion, an import like
+ * `model.DeviceContext` — or, since `:security` was extracted out of
+ * `app-child` in Phase 3, `security.RoleStore` — fails to match a real
+ * `app-child` directory at its full length and falls through to matching
+ * bare `basePackage` instead, misattributing it as a *root*-package import.
  *
- * `security` itself became a second such case once it was extracted into
- * its own `:security` Android library module (Phase 3's first extraction):
- * it kept its package name, so nothing needed a new explicit exclusion here
- * — its directory simply no longer exists under `app-child`'s own source
- * root, so imports of it resolve to nothing and are dropped the same way.
+ * An early draft of this test made exactly that mistake for `sync.core`
+ * specifically, and it briefly looked like `security` belonged in
+ * [knownCycle] too. A later pass, made while extracting `:security`,
+ * assumed removing its directory would be enough on its own — it is not:
+ * the loop still falls through to matching bare `basePackage`, the same
+ * bug, just newly triggered by a package that used to be a real `app-child`
+ * directory and no longer is. Both `security`'s case and the pre-existing,
+ * undetected one for `model`/`policy`/`provisioning` (harmless to the cycle
+ * check, since root is already exempt either way, but wrong about what the
+ * graph actually looks like) are covered by the same explicit list now,
+ * rather than special-casing each one.
  */
 class PackageGraphTest {
 
@@ -69,6 +77,20 @@ class PackageGraphTest {
         "$basePackage.sync",
     )
 
+    /**
+     * Packages that share `app-child`'s own namespace but actually live in a
+     * different Gradle module. See the comment on `resolveImportPackage`
+     * (inside `buildGraph`) for why these need an explicit list rather than
+     * just being absent from the known-directories set.
+     */
+    private val externalModulePackages = setOf(
+        "$basePackage.model",
+        "$basePackage.policy",
+        "$basePackage.provisioning",
+        "$basePackage.security",
+        "$basePackage.sync.core",
+    )
+
     private fun findSourceRoot(): File {
         var dir = File(System.getProperty("user.dir") ?: ".").absoluteFile
         val relative = "app-child/src/main/kotlin/dev/schrammel/protego_parentis"
@@ -94,13 +116,17 @@ class PackageGraphTest {
         val importLine = Regex("""^import\s+(dev\.schrammel\.protego_parentis(?:\.[a-zA-Z0-9_]+)*)""", RegexOption.MULTILINE)
 
         fun resolveImportPackage(import: String): String? {
-            // :core-sync is a separate Gradle module; its own package
-            // (sync.core) is not one of app-child's, and Gradle's
-            // one-directional module dependency already forbids a cycle
-            // through it. Treating it as one of app-child's own packages
-            // would misattribute these imports onto app-child's "sync"
-            // package instead (see the class doc).
-            if (import.startsWith("$basePackage.sync.core.")) return null
+            // These packages share app-child's own namespace but live in other
+            // Gradle modules (:core-model, :core-policy, :core-provisioning,
+            // :core-sync, :security) — Gradle's one-directional module
+            // dependencies already forbid a cycle through any of them. Without
+            // this check, an import like model.DeviceContext fails to match any
+            // real app-child directory at its full length and then falls
+            // through the loop below all the way down to matching bare
+            // `basePackage` — misattributing it as a root-package import,
+            // exactly the mistake an early draft of this test made for
+            // sync.core specifically (see the class doc).
+            if (externalModulePackages.any { import == it || import.startsWith("$it.") }) return null
             val parts = import.split(".")
             for (length in parts.size - 1 downTo 1) {
                 val candidate = parts.subList(0, length).joinToString(".")
