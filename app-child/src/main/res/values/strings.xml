@@ -974,7 +974,7 @@
     <!-- Which parts of the app this family uses. -->
     <string name="features_title">Parts you use</string>
     <string name="features_row_detail">Put away the parts this family does not need</string>
-    <string name="features_intro">The settings have grown past what any one family uses. Turn off what you do not want and its screens disappear from this phone.</string>
+    <string name="features_intro">The settings have grown past what any one family uses. Turn off what you do not want and its screens disappear.</string>
     <string name="features_still_apply">Putting something away hides its screens. Rules you have already made keep working — delete them first if you want them gone.</string>
     <string name="features_choose_header">Up to you</string>
     <string name="features_always_header">Always there</string>
@@ -997,7 +997,9 @@
     <string name="home_group_family">Family</string>
     <string name="home_group_rules">Rules</string>
     <string name="join_relay_header">How messages travel</string>
-    <string name="features_each_phone">Set on each phone separately. This one only changes what you see here.</string>
+    <string name="features_editing_whose">Editing %1$s\'s parts</string>
+    <string name="features_picker_title">Whose parts?</string>
+    <string name="features_picker_hint">This family has more than one managed phone. Choose which one to edit.</string>
 
     <string name="rules_protection_header">Protection</string>
     <string name="rules_release_header">Handing this phone back</string>

@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.ui
 import androidx.annotation.StringRes
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.security.DeviceRole
 
 /**
@@ -58,8 +57,14 @@ internal data class HomeSection(
 )
 
 /**
- * What [role]'s home screen offers, given which parts of the app [flags] has
- * switched on.
+ * What [role]'s home screen offers, given which parts of the app [isEnabled]
+ * says are switched on.
+ *
+ * Takes a predicate rather than a concrete [dev.schrammel.protego_parentis.rules.FeatureFlags]
+ * because the two roles no longer read the same kind of thing (#91): a managed
+ * phone's row set still comes straight from its own local flags, but a
+ * parent's now has to ask about a specific managed child's replicated ones —
+ * see [ParentHomeActivity]'s call site.
  *
  * [HomeDestination.PRIVACY] is deliberately never offered to a parent: it is
  * titled "what leaves this phone" and reads this device's own web-filter and
@@ -68,19 +73,19 @@ internal data class HomeSection(
  * case, the *same* shared family record read from either phone, which is why
  * it appears in Openness on both rather than only on one.
  */
-internal fun homeSections(role: DeviceRole, flags: FeatureFlags): List<HomeSection> = when (role) {
+internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): List<HomeSection> = when (role) {
     DeviceRole.CHILD -> listOf(
         HomeSection(
             label = null,
             rows = buildList {
-                if (flags.isEnabled(Feature.REQUESTS)) {
+                if (isEnabled(Feature.REQUESTS)) {
                     add(HomeRow(R.string.home_open_requests, R.string.home_open_requests_detail, HomeDestination.REQUESTS))
                 }
-                if (flags.isEnabled(Feature.CHAT)) {
+                if (isEnabled(Feature.CHAT)) {
                     add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
                 }
                 add(HomeRow(R.string.home_open_week, R.string.home_open_week_detail, HomeDestination.WEEK))
-                if (flags.isEnabled(Feature.WEB_ACTIVITY)) {
+                if (isEnabled(Feature.WEB_ACTIVITY)) {
                     add(
                         HomeRow(
                             R.string.rules_row_web_activity,
@@ -118,14 +123,14 @@ internal fun homeSections(role: DeviceRole, flags: FeatureFlags): List<HomeSecti
         HomeSection(
             label = null,
             rows = buildList {
-                if (flags.isEnabled(Feature.REQUESTS)) {
+                if (isEnabled(Feature.REQUESTS)) {
                     add(HomeRow(R.string.parent_row_inbox, R.string.parent_row_inbox_detail, HomeDestination.INBOX))
                 }
-                if (flags.isEnabled(Feature.CHAT)) {
+                if (isEnabled(Feature.CHAT)) {
                     add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
                 }
                 add(HomeRow(R.string.parent_row_lock, R.string.parent_row_lock_detail, HomeDestination.LOCK_NOW))
-                if (flags.isEnabled(Feature.LOCATION)) {
+                if (isEnabled(Feature.LOCATION)) {
                     add(HomeRow(R.string.parent_row_locate, R.string.parent_row_locate_detail, HomeDestination.LOCATE))
                 }
             },

@@ -125,7 +125,7 @@ class HomeActivity : DementorActivity() {
         val navigation = findViewById<LinearLayout>(R.id.navigation)
         navigation.removeAllViews()
 
-        homeSections(DeviceRole.CHILD, FeatureFlags(this)).forEach { section ->
+        homeSections(DeviceRole.CHILD, FeatureFlags(this)::isEnabled).forEach { section ->
             addSection(
                 navigation,
                 section.label?.let(::getString),

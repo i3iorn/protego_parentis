@@ -349,6 +349,12 @@
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
 
+        <!-- Only reached when a parent's family has more than one managed phone. -->
+        <activity
+            android:name=".ui.FeatureSettingsPickerActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.SettingsActivity" />
+
         <!-- Behind Settings now, not More — More was deleted in #78 part 2. -->
         <activity
             android:name=".ui.NotificationSettingsActivity"

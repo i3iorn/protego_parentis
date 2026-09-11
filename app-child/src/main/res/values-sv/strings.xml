@@ -971,7 +971,7 @@
     <!-- Vilka delar av appen familjen använder. -->
     <string name="features_title">Delar ni använder</string>
     <string name="features_row_detail">Lägg undan det den här familjen inte behöver</string>
-    <string name="features_intro">Inställningarna har vuxit förbi vad någon enskild familj använder. Stäng av det du inte vill ha, så försvinner dess skärmar från den här telefonen.</string>
+    <string name="features_intro">Inställningarna har vuxit förbi vad någon enskild familj använder. Stäng av det du inte vill ha, så försvinner dess skärmar.</string>
     <string name="features_still_apply">Att lägga undan något döljer dess skärmar. Regler du redan skapat fortsätter gälla — ta bort dem först om du vill bli av med dem.</string>
     <string name="features_choose_header">Du bestämmer</string>
     <string name="features_always_header">Alltid kvar</string>
@@ -994,7 +994,9 @@
     <string name="home_group_family">Familj</string>
     <string name="home_group_rules">Regler</string>
     <string name="join_relay_header">Hur meddelanden färdas</string>
-    <string name="features_each_phone">Ställs in separat på varje telefon. Den här ändrar bara vad du ser här.</string>
+    <string name="features_editing_whose">Redigerar %1$s\'s delar</string>
+    <string name="features_picker_title">Vems delar?</string>
+    <string name="features_picker_hint">Den här familjen har mer än en hanterad telefon. Välj vilken som ska redigeras.</string>
 
     <string name="rules_protection_header">Skydd</string>
     <string name="rules_release_header">Lämna tillbaka telefonen</string>
