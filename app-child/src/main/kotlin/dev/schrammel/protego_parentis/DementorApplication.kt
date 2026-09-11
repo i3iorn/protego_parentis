@@ -16,7 +16,7 @@ class DementorApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashRecovery.install(this)
+        CrashRecovery.install(this) { AppRegistry.restartLauncher }
         AppRegistry.install(this)
     }
 }

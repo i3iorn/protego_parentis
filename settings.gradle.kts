@@ -35,6 +35,7 @@ include(":core-sync")
 include(":security")
 include(":usage")
 include(":context")
+include(":diagnostics")
 
 // The Device Policy Controller that runs on the teen's phone.
 // This is the module that produces the installable APK.
