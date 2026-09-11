@@ -10,9 +10,9 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.DnsProfile
@@ -129,7 +129,7 @@ class WebFilterActivity : ParentGatedActivity() {
         // Applied at once, and the result matters: Android refuses a host that
         // does not answer DNS-over-TLS, and the family needs to find out now
         // rather than believe the phone is filtered when it is not.
-        EnforcementService.start(this)
+        AppRegistry.ruleMutationSink.rulesChanged()
         toast(R.string.web_dns_saved)
         render()
     }
@@ -152,7 +152,7 @@ class WebFilterActivity : ParentGatedActivity() {
                             subject = getString(labelRes),
                             after = Audit.flag(value),
                         )
-                        EnforcementService.start(this@WebFilterActivity)
+                        AppRegistry.ruleMutationSink.rulesChanged()
                     }
                 },
             )

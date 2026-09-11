@@ -5,9 +5,9 @@ import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
@@ -275,7 +275,7 @@ class RulesActivity : ParentGatedActivity() {
         // A screen below may have changed the rules; push them through so the
         // effect is live by the time the parent puts the phone down — only
         // meaningful for this device's own enforcement.
-        if (isFinishing && ::target.isInitialized && target.isOwnDevice) EnforcementService.start(this)
+        if (isFinishing && ::target.isInitialized && target.isOwnDevice) AppRegistry.ruleMutationSink.rulesChanged()
     }
 
     companion object {

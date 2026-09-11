@@ -1,7 +1,7 @@
 package dev.schrammel.protego_parentis.ui.rules
 
 import android.content.Context
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.model.AutoApproval
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.PackageName
@@ -49,7 +49,7 @@ class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore {
     override fun read(): PolicySnapshot = store.snapshot()
     override fun write(snapshot: PolicySnapshot) {
         store.applySnapshot(snapshot)
-        EnforcementService.start(context)
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 
@@ -84,7 +84,7 @@ class LocalScheduleRuleStore(private val context: Context) : ScheduleRuleStore {
     override fun read(): List<StoredSchedule> = store.schedules
     override fun write(schedules: List<StoredSchedule>) {
         store.schedules = schedules
-        EnforcementService.start(context)
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 
@@ -118,7 +118,7 @@ class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleS
     override fun read(): List<ContextRule> = store.rules
     override fun write(rules: List<ContextRule>) {
         store.rules = rules
-        EnforcementService.start(context)
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 

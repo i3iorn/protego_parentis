@@ -7,8 +7,8 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.audit.Audit
@@ -79,7 +79,7 @@ class BonusTimeActivity : ParentGatedActivity() {
                     .apply { topMargin = dimen(R.dimen.row_icon) }
                 setOnClickListener {
                     grants.clearAll()
-                    EnforcementService.start(this@BonusTimeActivity)
+                    AppRegistry.ruleMutationSink.rulesChanged()
                     toast(getString(R.string.bonus_cleared))
                 }
             },
@@ -121,7 +121,7 @@ class BonusTimeActivity : ParentGatedActivity() {
             after = Audit.minutes(minutes),
         )
         // Apply immediately: the point of bonus time is that it unblocks now.
-        EnforcementService.start(this)
+        AppRegistry.ruleMutationSink.rulesChanged()
         toast(resources.getQuantityString(R.plurals.bonus_granted, minutes, minutes))
     }
 
