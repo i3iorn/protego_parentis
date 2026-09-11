@@ -22,6 +22,8 @@ import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
  * Rule-making, on its own screen, on whichever kind of phone edits [target]'s
@@ -40,7 +42,7 @@ import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
  */
 class ContextRulesActivity : ParentGatedActivity() {
 
-    private lateinit var target: dev.schrammel.protego_parentis.ui.RuleTarget
+    private lateinit var target: dev.schrammel.protego_parentis.ui.rules.RuleTarget
     private lateinit var container: LinearLayout
 
     override fun supportsReadOnly() = true

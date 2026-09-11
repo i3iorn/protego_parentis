@@ -24,8 +24,9 @@ import org.robolectric.Shadows.shadowOf
  * #78 part 3: Rules owns every rule, on either kind of phone. The daily limit
  * and bonus time used to be the one thing a remote edit of [RulesActivity]
  * could not reach at all — this pins that both now resolve somewhere, and
- * resolve to the *right* somewhere: the local screen when [RuleTarget] is this
- * device's own, the parent-side send-a-message screen when it is not.
+ * resolve to the *right* somewhere: the local screen when
+ * [dev.schrammel.protego_parentis.ui.rules.RuleTarget] is this device's own,
+ * the parent-side send-a-message screen when it is not.
  */
 @RunWith(RobolectricTestRunner::class)
 class RuleDestinationsTest {

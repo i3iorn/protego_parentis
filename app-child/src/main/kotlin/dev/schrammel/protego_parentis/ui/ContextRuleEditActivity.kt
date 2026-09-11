@@ -44,6 +44,8 @@ import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
+import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
@@ -57,7 +59,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 class ContextRuleEditActivity : ParentGatedActivity() {
 
-    private lateinit var target: dev.schrammel.protego_parentis.ui.RuleTarget
+    private lateinit var target: dev.schrammel.protego_parentis.ui.rules.RuleTarget
     private lateinit var container: LinearLayout
 
     private var ruleId: String = ""
@@ -93,7 +95,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val resolved = dev.schrammel.protego_parentis.ui.RuleTargets.resolve(this) ?: return finish()
+        val resolved = dev.schrammel.protego_parentis.ui.rules.RuleTargets.resolve(this) ?: return finish()
         target = resolved
 
         val existing = intent.getStringExtra(EXTRA_ID)
@@ -568,7 +570,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         private const val MAX_BATTERY_PERCENT = 100
 
         fun intent(context: Context, ruleId: String? = null, childId: DeviceId? = null): Intent =
-            dev.schrammel.protego_parentis.ui.RuleTargets.putExtra(
+            dev.schrammel.protego_parentis.ui.rules.RuleTargets.putExtra(
                 Intent(context, ContextRuleEditActivity::class.java)
                     .apply { ruleId?.let { putExtra(EXTRA_ID, it) } },
                 childId,
@@ -586,14 +588,14 @@ class ContextRuleEditActivity : ParentGatedActivity() {
  */
 class PlacesActivity : ParentGatedActivity() {
 
-    private lateinit var target: dev.schrammel.protego_parentis.ui.RuleTarget
+    private lateinit var target: dev.schrammel.protego_parentis.ui.rules.RuleTarget
     private lateinit var container: LinearLayout
 
     override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val resolved = dev.schrammel.protego_parentis.ui.RuleTargets.resolve(this) ?: return finish()
+        val resolved = dev.schrammel.protego_parentis.ui.rules.RuleTargets.resolve(this) ?: return finish()
         target = resolved
 
         container = contentColumn()
@@ -931,6 +933,6 @@ class PlacesActivity : ParentGatedActivity() {
         private const val MAX_RADIUS_METRES = 5000
 
         fun intent(context: Context, childId: DeviceId? = null) =
-            dev.schrammel.protego_parentis.ui.RuleTargets.putExtra(Intent(context, PlacesActivity::class.java), childId)
+            dev.schrammel.protego_parentis.ui.rules.RuleTargets.putExtra(Intent(context, PlacesActivity::class.java), childId)
     }
 }

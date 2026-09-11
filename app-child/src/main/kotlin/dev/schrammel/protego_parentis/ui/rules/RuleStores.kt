@@ -21,7 +21,6 @@ import dev.schrammel.protego_parentis.sync.AppInventoryStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
-import dev.schrammel.protego_parentis.ui.RuleTarget
 import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.usage.InstalledApps
 

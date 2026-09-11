@@ -1,4 +1,4 @@
-package dev.schrammel.protego_parentis.ui
+package dev.schrammel.protego_parentis.ui.rules
 
 import android.app.Activity
 import android.content.Intent
