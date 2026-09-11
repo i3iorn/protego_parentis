@@ -34,6 +34,7 @@ include(":core-sync")
 // Context, Keystore, or other framework APIs a pure-JVM module can't touch.
 include(":security")
 include(":usage")
+include(":context")
 
 // The Device Policy Controller that runs on the teen's phone.
 // This is the module that produces the installable APK.
