@@ -5,7 +5,7 @@ import android.content.Intent
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.LocalDeviceId
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch

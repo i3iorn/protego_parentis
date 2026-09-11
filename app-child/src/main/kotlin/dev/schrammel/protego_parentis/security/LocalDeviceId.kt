@@ -1,7 +1,6 @@
-package dev.schrammel.protego_parentis.sync
+package dev.schrammel.protego_parentis.security
 
 import androidx.annotation.VisibleForTesting
-import dev.schrammel.protego_parentis.security.KeystoreSigner
 
 /**
  * Who this phone is, when a caller needs to say so but not to sign anything.

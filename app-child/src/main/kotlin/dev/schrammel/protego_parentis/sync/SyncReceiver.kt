@@ -5,6 +5,7 @@ import android.util.Log
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.audit.AuditReplication
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.enforcement.EnforcementService

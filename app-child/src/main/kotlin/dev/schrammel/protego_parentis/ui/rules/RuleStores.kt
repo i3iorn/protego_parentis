@@ -31,7 +31,7 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  *
  * Deliberately not collapsed into a single code path through
  * [PolicyReplication] for both kinds of phone: [PolicyReplication.write] and
- * its siblings return no ops — silently — when [dev.schrammel.protego_parentis.sync.LocalDeviceId]
+ * its siblings return no ops — silently — when [dev.schrammel.protego_parentis.security.LocalDeviceId]
  * cannot produce an identity, a real and documented case (a keystore key
  * invalidated by a biometric change, the moments before first unlock). The
  * managed phone's own edits go straight to the local store precisely so that
