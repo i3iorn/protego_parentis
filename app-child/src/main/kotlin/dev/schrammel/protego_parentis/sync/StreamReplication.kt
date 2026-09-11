@@ -4,6 +4,9 @@ import android.content.Context
 import dev.schrammel.protego_parentis.security.RoleStore
 import java.time.Instant
 import java.util.UUID
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.StateCodec
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 
 /**
  * The shared plumbing for everything that is a *stream* rather than a setting.

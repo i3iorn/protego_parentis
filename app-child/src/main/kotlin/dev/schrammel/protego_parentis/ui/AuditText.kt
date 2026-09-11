@@ -9,7 +9,7 @@ import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.ValueKind
 import dev.schrammel.protego_parentis.rules.DnsProfile
 import dev.schrammel.protego_parentis.security.DeviceRole
-import dev.schrammel.protego_parentis.sync.SyncRole
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 import java.time.LocalTime
 
 /**

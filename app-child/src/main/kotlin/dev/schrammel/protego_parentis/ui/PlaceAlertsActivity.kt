@@ -9,7 +9,7 @@ import android.widget.LinearLayout
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.context.PlaceWatcher
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.sync.DeviceId
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 
 /**

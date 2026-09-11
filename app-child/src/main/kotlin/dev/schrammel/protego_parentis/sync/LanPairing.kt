@@ -11,6 +11,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import dev.schrammel.protego_parentis.sync.core.PairingWire
 
 private const val TAG = "LanPairing"
 

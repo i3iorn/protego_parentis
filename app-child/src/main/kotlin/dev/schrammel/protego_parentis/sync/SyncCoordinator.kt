@@ -12,6 +12,11 @@ import dev.schrammel.protego_parentis.context.Position
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
+import dev.schrammel.protego_parentis.sync.core.RosterRules
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 
 /** Which sync identity a device's local role corresponds to. */
 internal fun DeviceRole.toSyncRole(): SyncRole = when (this) {
