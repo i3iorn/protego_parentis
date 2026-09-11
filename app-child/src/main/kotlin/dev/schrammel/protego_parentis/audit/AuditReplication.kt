@@ -1,7 +1,7 @@
 package dev.schrammel.protego_parentis.audit
 
 import android.content.Context
-import dev.schrammel.protego_parentis.sync.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.StreamReplication
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import java.time.Instant
