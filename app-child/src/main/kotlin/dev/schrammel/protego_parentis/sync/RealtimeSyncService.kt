@@ -2,7 +2,6 @@ package dev.schrammel.protego_parentis.sync
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,11 +10,11 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.sync.core.TransportKind
-import dev.schrammel.protego_parentis.ui.HomeActivity
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.ExecutorService
@@ -205,14 +204,7 @@ class RealtimeSyncService : Service() {
         .setContentText(getString(R.string.realtime_notification_text))
         .setOngoing(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setContentIntent(
-            PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, HomeActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
+        .setContentIntent(AppRegistry.notificationUx.openHome(NOTIFICATION_ID))
         .build()
 
     companion object {

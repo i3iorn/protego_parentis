@@ -2,7 +2,6 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -16,6 +15,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
@@ -42,7 +42,6 @@ import dev.schrammel.protego_parentis.sync.AppTime
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import java.time.LocalDate
-import dev.schrammel.protego_parentis.ui.HomeActivity
 import dev.schrammel.protego_parentis.format.formatDuration
 import java.time.Instant
 
@@ -562,14 +561,7 @@ class EnforcementService : Service() {
         .setContentText(text)
         .setOngoing(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setContentIntent(
-            PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, HomeActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
+        .setContentIntent(AppRegistry.notificationUx.openHome(NOTIFICATION_ID))
         .build()
 
     companion object {

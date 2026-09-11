@@ -2,13 +2,11 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.GoalAchievement
-import dev.schrammel.protego_parentis.ui.CelebrationActivity
 import dev.schrammel.protego_parentis.format.formatDuration
 
 /**
@@ -57,15 +55,7 @@ class GoalNotifier(context: Context) {
                     ),
                 )
                 .setAutoCancel(true)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        appContext,
-                        NOTIFICATION_ID,
-                        CelebrationActivity.intent(appContext)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                    ),
-                )
+                .setContentIntent(AppRegistry.notificationUx.openCelebration(NOTIFICATION_ID))
                 .build(),
         )
     }

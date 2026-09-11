@@ -1,7 +1,6 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
-import android.content.Intent
 import android.util.Log
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
@@ -32,8 +31,6 @@ import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.JoinFamilyActivity
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
@@ -692,12 +689,12 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         )
         return when (roles.roleOrChild) {
             DeviceRole.CHILD -> {
-                notifier.notifyFamilyDisbanded(Intent(appContext, HomeActivity::class.java))
+                notifier.notifyFamilyDisbanded()
                 true
             }
 
             DeviceRole.PARENT -> {
-                notifier.notifyFamilyDisbanded(JoinFamilyActivity.intent(appContext))
+                notifier.notifyFamilyDisbanded()
                 publisher.leave()
                 true
             }
