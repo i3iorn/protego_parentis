@@ -4,26 +4,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
-import androidx.core.app.TaskStackBuilder
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.ui.FamilyDevicesActivity
-import dev.schrammel.protego_parentis.ui.ChatActivity
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestState
-import dev.schrammel.protego_parentis.security.DeviceRole
-import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.IncomingRequest
 import dev.schrammel.protego_parentis.sync.NewApp
-import dev.schrammel.protego_parentis.ui.AppControlActivity
-import dev.schrammel.protego_parentis.ui.AuditActivity
-import dev.schrammel.protego_parentis.ui.HomeActivity
-import dev.schrammel.protego_parentis.ui.ParentDeviceActivity
-import dev.schrammel.protego_parentis.ui.ParentHomeActivity
-import dev.schrammel.protego_parentis.ui.ParentInboxActivity
-import dev.schrammel.protego_parentis.ui.RequestInboxActivity
-import dev.schrammel.protego_parentis.ui.RequestsActivity
 
 /**
  * Tells each side that the other has said something.
@@ -87,7 +74,7 @@ class RequestNotifier(context: Context) {
                 request.amount.inWholeMinutes.toInt(),
                 request.reason,
             ),
-            destination = RequestInboxActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openRequestInbox(NOTIFICATION_INCOMING),
         )
     }
 
@@ -110,7 +97,7 @@ class RequestNotifier(context: Context) {
                 request.minutes,
                 request.reason,
             ),
-            destination = ParentInboxActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentInbox(NOTIFICATION_INCOMING),
         )
     }
 
@@ -128,7 +115,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.NEW_APP,
             title = appContext.getString(R.string.new_app_notification_title),
             body = appContext.getString(R.string.new_app_notification_body, app.label),
-            destination = ParentDeviceActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentDevice(NOTIFICATION_NEW_APP),
         )
     }
 
@@ -140,7 +127,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.NEW_APP,
             title = appContext.getString(R.string.new_app_notification_title),
             body = appContext.getString(R.string.new_app_notification_body, label),
-            destination = AppControlActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openAppControl(NOTIFICATION_NEW_APP),
         )
     }
 
@@ -158,7 +145,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.DEVICE_HEALTH,
             title = appContext.getString(R.string.integrity_notification_title),
             body = body,
-            destination = ParentDeviceActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentDevice(NOTIFICATION_SILENT),
         )
     }
 
@@ -177,19 +164,19 @@ class RequestNotifier(context: Context) {
      * system, outside this app's own screens, so anything that could misrepresent
      * itself there is out of reach once it is posted.
      *
-     * Skipped while [ChatActivity.isVisible] — a message arriving while somebody
-     * is already watching the conversation update live (#70) does not need a
-     * banner telling them the same thing a second time.
+     * Skipped while the chat screen is already open — a message arriving while
+     * somebody is already watching the conversation update live (#70) does not
+     * need a banner telling them the same thing a second time.
      */
     fun notifyChat(sender: String, text: String) {
-        if (ChatActivity.isVisible) return
+        if (AppRegistry.notificationUx.isChatVisible()) return
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_CHAT,
             kind = NotificationKind.CHAT_MESSAGE,
             title = sender,
             body = text,
-            destination = Intent(appContext, ChatActivity::class.java),
+            destination = AppRegistry.notificationUx.openChat(NOTIFICATION_CHAT),
         )
     }
 
@@ -221,7 +208,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.DEVICE_PENDING,
             title = appContext.getString(R.string.family_pending_notification_title),
             body = appContext.getString(R.string.family_pending_notification_body),
-            destination = FamilyDevicesActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openFamilyDevices(NOTIFICATION_DEVICE_PENDING),
         )
     }
 
@@ -243,7 +230,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.DEVICE_ADDED,
             title = appContext.getString(R.string.family_added_notification_title),
             body = appContext.getString(R.string.family_added_notification_body, name),
-            destination = FamilyDevicesActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openFamilyDevices(NOTIFICATION_DEVICE_ADDED),
         )
     }
 
@@ -263,25 +250,26 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.DEVICE_REMOVED,
             title = appContext.getString(R.string.family_removed_notification_title),
             body = appContext.getString(R.string.family_removed_notification_body, name),
-            destination = FamilyDevicesActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openFamilyDevices(NOTIFICATION_DEVICE_REMOVED),
         )
     }
 
     /**
      * This phone's family no longer exists.
      *
-     * The destination differs by whether this phone acted on the disband or
-     * only heard about it — see the two call sites in `SyncReceiver`. Either
-     * way this is the one place the news reaches whoever is holding the phone.
+     * Where this reopens to differs by whether this phone acted on the disband
+     * or only heard about it — see the two call sites in `SyncReceiver`, and
+     * [NotificationUx.openFamilyDisbanded]. Either way this is the one place
+     * the news reaches whoever is holding the phone.
      */
-    fun notifyFamilyDisbanded(destination: Intent) {
+    fun notifyFamilyDisbanded() {
         post(
             channel = CHANNEL_INCOMING,
             id = NOTIFICATION_FAMILY_DISBANDED,
             kind = NotificationKind.FAMILY_DISBANDED,
             title = appContext.getString(R.string.family_disbanded_notification_title),
             body = appContext.getString(R.string.family_disbanded_notification_body),
-            destination = destination,
+            destination = AppRegistry.notificationUx.openFamilyDisbanded(NOTIFICATION_FAMILY_DISBANDED),
         )
     }
 
@@ -292,7 +280,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.LOCKED,
             title = appContext.getString(R.string.locked_notification_title),
             body = appContext.getString(R.string.locked_notification_body),
-            destination = AuditActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openAudit(NOTIFICATION_LOCKED),
         )
     }
 
@@ -311,7 +299,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.LOCATED,
             title = appContext.getString(R.string.located_notification_title),
             body = appContext.getString(R.string.located_notification_body),
-            destination = AuditActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openAudit(NOTIFICATION_LOCATED),
         )
     }
 
@@ -323,7 +311,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.AUTO_APPROVED,
             title = appContext.getString(R.string.auto_notification_title),
             body = appContext.getString(R.string.auto_notification_body, ruleName),
-            destination = ParentInboxActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentInbox(NOTIFICATION_AUTO_APPROVED),
         )
     }
 
@@ -340,7 +328,7 @@ class RequestNotifier(context: Context) {
                 if (arrived) R.string.place_arrived_body else R.string.place_left_body,
                 place,
             ),
-            destination = ParentDeviceActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentDevice(NOTIFICATION_PLACE),
         )
     }
 
@@ -361,7 +349,7 @@ class RequestNotifier(context: Context) {
             body = appContext.getString(
                 if (moved) R.string.sos_notification_moved else R.string.sos_notification_body,
             ),
-            destination = ParentDeviceActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentDevice(NOTIFICATION_SOS),
             ongoing = true,
         )
     }
@@ -374,7 +362,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.EMERGENCY,
             title = appContext.getString(R.string.sos_cleared_title),
             body = appContext.getString(R.string.sos_cleared_body),
-            destination = ParentDeviceActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openParentDevice(NOTIFICATION_SOS_CLEARED),
         )
     }
 
@@ -396,7 +384,7 @@ class RequestNotifier(context: Context) {
             kind = NotificationKind.REQUEST_ANSWERED,
             title = appContext.getString(R.string.request_decision_title),
             body = withNote,
-            destination = RequestsActivity.intent(appContext),
+            destination = AppRegistry.notificationUx.openRequests(NOTIFICATION_DECISION),
         )
     }
 
@@ -406,7 +394,7 @@ class RequestNotifier(context: Context) {
         kind: NotificationKind,
         title: String,
         body: String,
-        destination: Intent,
+        destination: PendingIntent,
         ongoing: Boolean = false,
     ) {
         // One gate, on the way out, rather than a check at each of eleven call
@@ -423,65 +411,12 @@ class RequestNotifier(context: Context) {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                 .setAutoCancel(!ongoing)
                 .setOngoing(ongoing)
-                .setContentIntent(openFor(destination, id))
+                .setContentIntent(destination)
                 .build(),
         )
     }
 
-    /**
-     * Opens [destination] with the screens above it already on the stack.
-     *
-     * Built from `parentActivityName` in the manifest, so a notification about a
-     * request opens the inbox with the home screen underneath it — and back goes
-     * home rather than out of the app. That is what someone expects, and it is
-     * what happens when they reach the same screen by tapping through.
-     *
-     * Falls back to the plain intent if the stack cannot be built, because a
-     * notification that opens the right screen with the wrong back behaviour is
-     * still far better than one that does not open.
-     */
-    private fun openFor(destination: Intent, id: Int): PendingIntent? {
-        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-
-        return runCatching {
-            stackFor(destination).getPendingIntent(id, flags)
-        }.getOrNull() ?: PendingIntent.getActivity(
-            appContext,
-            id,
-            destination.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            flags,
-        )
-    }
-
-    /**
-     * [destination]'s ancestors, chosen for whichever phone is about to open it.
-     *
-     * `parentActivityName` can only name one class, but a chat message or a
-     * family-roster change can land on either kind of phone (#78) — there is no
-     * single manifest entry that is correct for both. These two are built by
-     * hand, rooted at whichever home this device actually has; every other
-     * destination still comes from the manifest, unchanged.
-     */
-    private fun stackFor(destination: Intent): TaskStackBuilder {
-        val className = destination.component?.className
-        val ambiguous = className != null && ROLE_AMBIGUOUS_DESTINATIONS.contains(className)
-        if (!ambiguous) return TaskStackBuilder.create(appContext).addNextIntentWithParentStack(destination)
-
-        val home = if (RoleStore(appContext).roleOrChild == DeviceRole.PARENT) {
-            ParentHomeActivity.intent(appContext)
-        } else {
-            Intent(appContext, HomeActivity::class.java)
-        }
-        return TaskStackBuilder.create(appContext).addNextIntent(home).addNextIntent(destination)
-    }
-
     private companion object {
-        /** Notification destinations with no single correct manifest parent — see [stackFor]. */
-        val ROLE_AMBIGUOUS_DESTINATIONS = setOf(
-            ChatActivity::class.java.name,
-            FamilyDevicesActivity::class.java.name,
-        )
-
         const val CHANNEL_INCOMING = "requests_incoming"
         const val CHANNEL_DECISION = "requests_decision"
 
