@@ -313,28 +313,12 @@ class ParentDeviceActivity : ParentRoleActivity() {
         )
         addView(captionText(app.packageName))
         addView(
-            LinearLayout(this@ParentDeviceActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
-                    topMargin = dimen(R.dimen.space_sm)
-                }
-                addView(
-                    Button(context).apply {
-                        setText(R.string.apps_allow)
-                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
-                            marginEnd = dimen(R.dimen.space_xs)
-                        }
-                        setOnClickListener { decide(app, blocked = false) }
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        setText(R.string.apps_block)
-                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
-                        setOnClickListener { decide(app, blocked = true) }
-                    },
-                )
-            },
+            twoButtonRow(
+                R.string.apps_allow,
+                { decide(app, blocked = false) },
+                R.string.apps_block,
+                { decide(app, blocked = true) },
+            ),
         )
     }
 

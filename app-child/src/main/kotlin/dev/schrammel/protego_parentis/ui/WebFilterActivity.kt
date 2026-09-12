@@ -114,7 +114,7 @@ class WebFilterActivity : ParentGatedActivity() {
 
     private fun saveDns(profile: DnsProfile, host: String) {
         if (profile == DnsProfile.CUSTOM && !isPlausibleHost(host)) {
-            Toast.makeText(this, R.string.web_dns_bad_host, Toast.LENGTH_LONG).show()
+            toast(R.string.web_dns_bad_host, Toast.LENGTH_LONG)
             return
         }
 

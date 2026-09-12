@@ -3,6 +3,8 @@ package dev.schrammel.protego_parentis.ui
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
+import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
@@ -44,6 +46,18 @@ class BonusTimeActivityTest {
         val active = grants().active(Instant.now())
         assertEquals(1, active.size)
         assertEquals(10, active.single().amount.inWholeMinutes.toInt())
+    }
+
+    @Test
+    fun `with no categories set up, the category section explains why instead of vanishing`() {
+        val activity = activity()
+
+        val texts = findAll(activity.window.decorView) { it is TextView }
+            .filterIsInstance<TextView>()
+            .map { it.text.toString() }
+
+        assertTrue(texts.contains(activity.getString(R.string.bonus_category_header)))
+        assertTrue(texts.contains(activity.getString(R.string.bonus_no_categories)))
     }
 
     @Test

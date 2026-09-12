@@ -511,15 +511,7 @@ class HomeActivity : DementorActivity() {
      * says so rather than looking broken.
      */
     private fun View.makeOpenable(pkg: PackageName) {
-        val outValue = android.util.TypedValue()
-        context.theme.resolveAttribute(
-            android.R.attr.selectableItemBackground,
-            outValue,
-            true,
-        )
-        setBackgroundResource(outValue.resourceId)
-        isClickable = true
-        isFocusable = true
+        withRipple()
         setOnClickListener {
             val launch = packageManager.getLaunchIntentForPackage(pkg.value)
             if (launch == null) {

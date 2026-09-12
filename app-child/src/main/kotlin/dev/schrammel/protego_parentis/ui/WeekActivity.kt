@@ -60,7 +60,7 @@ class WeekActivity : DementorActivity() {
 
     private fun show(recorded: List<UsageSnapshot>) {
         if (recorded.isEmpty()) {
-            container.addView(body(getString(R.string.week_no_data)))
+            container.addView(bodyText(getString(R.string.week_no_data)))
             return
         }
 
@@ -79,9 +79,9 @@ class WeekActivity : DementorActivity() {
         )
 
         container.addView(title(formatDuration(summary.total), 34f))
-        container.addView(body(getString(R.string.week_total_caption)))
+        container.addView(bodyText(getString(R.string.week_total_caption)))
         container.addView(
-            body(getString(R.string.week_average, formatDuration(summary.dailyAverage))),
+            bodyText(getString(R.string.week_average, formatDuration(summary.dailyAverage))),
         )
         container.addView(deltaLine(UsageAggregates.delta(thisWeek, lastWeek), lastWeek))
 
@@ -90,11 +90,11 @@ class WeekActivity : DementorActivity() {
 
         container.addView(title(getString(R.string.week_top_apps), 20f))
         if (summary.topApps.isEmpty()) {
-            container.addView(body(getString(R.string.week_no_apps)))
+            container.addView(bodyText(getString(R.string.week_no_apps)))
         } else {
             summary.topApps.forEach { app ->
                 container.addView(
-                    row(
+                    statRow(
                         installedApps.labelFor(app.pkg),
                         formatDuration(app.total),
                     ),
@@ -188,7 +188,7 @@ class WeekActivity : DementorActivity() {
 
             else -> getString(R.string.week_same_as_last)
         }
-        return body(text)
+        return bodyText(text)
     }
 
     private fun shortDayName(date: LocalDate): String =
@@ -198,25 +198,6 @@ class WeekActivity : DementorActivity() {
         this.text = text
         textSize = size
         setPadding(0, dimen(R.dimen.space_xl), 0, dimen(R.dimen.space_xxs))
-    }
-
-    private fun body(text: String) = TextView(this).apply {
-        this.text = text
-        styleAs(R.style.TextAppearance_Dementor_Body)
-        setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_hairline))
-    }
-
-    private fun row(label: String, trailing: String) = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
-        addView(
-            TextView(context).apply {
-                text = label
-                styleAs(R.style.TextAppearance_Dementor_Body)
-                layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
-            },
-        )
-        addView(TextView(context).apply { text = trailing; styleAs(R.style.TextAppearance_Dementor_Body) })
     }
 
     companion object {

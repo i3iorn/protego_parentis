@@ -161,7 +161,7 @@ class GoalActivity : ParentGatedActivity() {
                 setOnClickListener {
                     val text = prize.text.toString().trim()
                     if (text.isEmpty()) {
-                        Toast.makeText(context, R.string.rules_goal_needs_prize, Toast.LENGTH_SHORT).show()
+                        this@GoalActivity.toast(R.string.rules_goal_needs_prize)
                         return@setOnClickListener
                     }
                     val minutes = chosenMinutes
@@ -183,7 +183,7 @@ class GoalActivity : ParentGatedActivity() {
                             action = AuditAction.GOAL_PRIZE_CHANGED,
                         )
                     }
-                    Toast.makeText(context, R.string.rules_goal_saved, Toast.LENGTH_SHORT).show()
+                    this@GoalActivity.toast(R.string.rules_goal_saved)
                 }
             },
         )
@@ -380,7 +380,7 @@ class DeviceControlActivity : ParentGatedActivity() {
     private fun confirmRelease(coordinator: EnforcementCoordinator) {
         Background.load(this, { coordinator.isDeviceOwner() }) { owner ->
             if (!owner) {
-                Toast.makeText(this, R.string.rules_release_not_owner, Toast.LENGTH_LONG).show()
+                toast(R.string.rules_release_not_owner, Toast.LENGTH_LONG)
                 return@load
             }
             confirmDialog(
@@ -394,7 +394,7 @@ class DeviceControlActivity : ParentGatedActivity() {
                     action = AuditAction.DEVICE_RELEASED,
                 )
                 Background.load(this, { coordinator.releaseDevice() }) {
-                    Toast.makeText(this, R.string.rules_release_done, Toast.LENGTH_LONG).show()
+                    toast(R.string.rules_release_done, Toast.LENGTH_LONG)
                     finish()
                 }
             }

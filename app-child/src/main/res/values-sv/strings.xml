@@ -425,6 +425,7 @@
     <string name="bonus_hint">Extra tid för i dag. Den går ut klockan 04 och ändrar inte gränserna.</string>
     <string name="bonus_device_header">Hela telefonen</string>
     <string name="bonus_category_header">En kategori</string>
+    <string name="bonus_no_categories">Skapa kategorier under Regler för att ge extratid till bara en av dem.</string>
     <string name="bonus_add_minutes">+%1$d min</string>
     <plurals name="bonus_granted">
         <item quantity="one">La till %d minut för i dag.</item>

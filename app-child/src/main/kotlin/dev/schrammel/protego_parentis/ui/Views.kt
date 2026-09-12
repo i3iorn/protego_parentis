@@ -155,11 +155,7 @@ private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextVie
     val vertical = dimen(R.dimen.space_md)
     setPadding(0, vertical, 0, vertical)
 
-    val outValue = android.util.TypedValue()
-    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-    setBackgroundResource(outValue.resourceId)
-    isClickable = true
-    isFocusable = true
+    withRipple()
     setOnClickListener { onClick() }
 }
 
@@ -170,6 +166,14 @@ private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextVie
  * family that has put a feature away does not see its row — and a heading standing
  * over an empty card looks like something failed to load. Nothing to show means
  * nothing is shown, heading included.
+ *
+ * This is for a section whose whole existence is conditional — "waiting
+ * devices", "refused devices" — not one that always exists but can be
+ * currently empty, such as "trusted devices" or "all apps": those want their
+ * header every time, with an explanatory line (`devices_none`, `apps_none`)
+ * standing in for the list, precisely so an empty family/catalog reads as
+ * "checked, there are none" rather than "this section vanished." Screens
+ * doing that add their header directly instead of calling this.
  *
  * A null [title] gives an unlabelled group, for the first block on a screen where
  * the screen title has already said what these are.
@@ -191,6 +195,40 @@ internal fun Activity.actionButton(): Button = Button(this).apply {
     layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
         topMargin = dimen(R.dimen.space_md)
     }
+}
+
+/**
+ * Two evenly-weighted buttons side by side — "approve this or deny it",
+ * "allow this or block it". Independently hand-built at three call sites
+ * before this existed; pulled in once that passed this project's own
+ * third-occurrence threshold.
+ */
+internal fun Activity.twoButtonRow(
+    @StringRes firstLabel: Int,
+    onFirst: () -> Unit,
+    @StringRes secondLabel: Int,
+    onSecond: () -> Unit,
+): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+        topMargin = dimen(R.dimen.space_sm)
+    }
+    addView(
+        Button(context).apply {
+            setText(firstLabel)
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
+                marginEnd = dimen(R.dimen.space_xs)
+            }
+            setOnClickListener { onFirst() }
+        },
+    )
+    addView(
+        Button(context).apply {
+            setText(secondLabel)
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            setOnClickListener { onSecond() }
+        },
+    )
 }
 
 /**
@@ -349,6 +387,20 @@ internal fun Activity.card(build: LinearLayout.() -> Unit): LinearLayout =
     }
 
 /**
+ * Marks this view clickable with the system's default ripple/highlight — the
+ * feedback a real control gives, rather than a plain view that happens to have
+ * a listener. Pulled out once three call sites ([navigationRow], [showMoreRow],
+ * and `HomeActivity`'s own openable app rows) had each rebuilt it by hand.
+ */
+internal fun View.withRipple(): View = apply {
+    val outValue = android.util.TypedValue()
+    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+    setBackgroundResource(outValue.resourceId)
+    isClickable = true
+    isFocusable = true
+}
+
+/**
  * A row that goes somewhere.
  *
  * Title, a line explaining what is behind it, and a chevron. The description is
@@ -367,15 +419,7 @@ internal fun Activity.navigationRow(
     setPadding(0, vertical, 0, vertical)
 
     // Gives the row a touch response, so it looks like the control it is.
-    val outValue = android.util.TypedValue()
-    context.theme.resolveAttribute(
-        android.R.attr.selectableItemBackground,
-        outValue,
-        true,
-    )
-    setBackgroundResource(outValue.resourceId)
-    isClickable = true
-    isFocusable = true
+    withRipple()
     setOnClickListener { onClick() }
 
     addView(
@@ -426,11 +470,16 @@ internal fun Activity.divider(): View = View(this).apply {
     setBackgroundResource(R.color.card_stroke)
 }
 
-/** A short message, gone on its own. The common case for "that worked" or "that didn't". */
-internal fun Activity.toast(message: String) =
-    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+/**
+ * A short message, gone on its own. The common case for "that worked" or "that
+ * didn't". [duration] defaults to the ordinary case; pass `Toast.LENGTH_LONG`
+ * for a message worth more time to read, such as an error explaining itself.
+ */
+internal fun Activity.toast(message: String, duration: Int = Toast.LENGTH_SHORT) =
+    Toast.makeText(this, message, duration).show()
 
-internal fun Activity.toast(@StringRes messageRes: Int) = toast(getString(messageRes))
+internal fun Activity.toast(@StringRes messageRes: Int, duration: Int = Toast.LENGTH_SHORT) =
+    toast(getString(messageRes), duration)
 
 /**
  * Asks before a consequential or irreversible action: title, message, a
@@ -443,6 +492,21 @@ internal fun Activity.toast(@StringRes messageRes: Int) = toast(getString(messag
  */
 internal fun Activity.confirmDialog(
     @StringRes title: Int,
+    message: String,
+    @StringRes positiveText: Int,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setMessage(message)
+        .setPositiveButton(positiveText) { _, _ -> onConfirm() }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+/** As above, for a title that isn't a string resource — e.g. the name of the thing being deleted. */
+internal fun Activity.confirmDialog(
+    title: String,
     message: String,
     @StringRes positiveText: Int,
     onConfirm: () -> Unit,

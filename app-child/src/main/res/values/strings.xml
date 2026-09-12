@@ -431,6 +431,7 @@
     <string name="bonus_hint">Extra time for today. It expires at 4am and does not change the limits.</string>
     <string name="bonus_device_header">Whole device</string>
     <string name="bonus_category_header">A category</string>
+    <string name="bonus_no_categories">Set up categories in Rules to grant bonus time to just one of them.</string>
     <string name="bonus_add_minutes">+%1$d min</string>
     <plurals name="bonus_granted">
         <item quantity="one">Added %d minute for today.</item>

@@ -41,7 +41,7 @@ class BonusTimeActivity : ParentGatedActivity() {
     private fun buildLayout(): LinearLayout {
         val content = contentColumn()
 
-        content.addView(heading(getString(R.string.bonus_title), 28f))
+        content.addView(screenTitle(getString(R.string.bonus_title)))
         content.addView(
             TextView(this).apply {
                 setText(R.string.bonus_hint)
@@ -54,8 +54,10 @@ class BonusTimeActivity : ParentGatedActivity() {
         content.addView(amountRow { minutes -> grant(GrantTarget.Device, minutes) })
 
         val categories = store.categories
-        if (categories.isNotEmpty()) {
-            content.addView(heading(getString(R.string.bonus_category_header), 20f))
+        content.addView(heading(getString(R.string.bonus_category_header), 20f))
+        if (categories.isEmpty()) {
+            content.addView(captionText(getString(R.string.bonus_no_categories)))
+        } else {
             categories.sortedBy { it.name.lowercase() }.forEach { category ->
                 content.addView(
                     TextView(this).apply {
@@ -76,7 +78,7 @@ class BonusTimeActivity : ParentGatedActivity() {
             Button(this).apply {
                 setText(R.string.bonus_clear)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.row_icon) }
+                    .apply { topMargin = dimen(R.dimen.space_lg) }
                 setOnClickListener {
                     grants.clearAll()
                     AppRegistry.ruleMutationSink.rulesChanged()

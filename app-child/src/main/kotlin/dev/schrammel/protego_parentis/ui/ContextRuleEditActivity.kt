@@ -257,6 +257,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                     Button(this).apply {
                         setText(R.string.context_delete)
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                            .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
                             val deleted = name
                             contextRuleRuleStore(this@ContextRuleEditActivity, target).delete(ruleId)
@@ -1041,17 +1042,12 @@ class PlacesActivity : ParentGatedActivity() {
     }
 
     private fun confirmDelete(store: ContextRuleStore, place: Place) {
-        AlertDialog.Builder(this)
-            .setTitle(place.name)
-            // Rules referring to it go too, rather than being left permanently
-            // unsatisfiable.
-            .setMessage(R.string.places_delete_warning)
-            .setPositiveButton(R.string.places_delete) { _, _ ->
-                store.deletePlace(place.id)
-                render()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        // Rules referring to it go too, rather than being left permanently
+        // unsatisfiable.
+        confirmDialog(place.name, getString(R.string.places_delete_warning), R.string.places_delete) {
+            store.deletePlace(place.id)
+            render()
+        }
     }
 
     // ---------- a parent editing another device's places: rename, resize, delete only ----------
@@ -1105,15 +1101,10 @@ class PlacesActivity : ParentGatedActivity() {
                         store.resize(ref.id, radius.coerceAtLeast(Place.MINIMUM_RADIUS_METRES))
                         render()
                     }
-                    2 -> AlertDialog.Builder(this)
-                        .setTitle(ref.name)
-                        .setMessage(R.string.places_delete_warning)
-                        .setPositiveButton(R.string.places_delete) { _, _ ->
-                            store.delete(ref.id)
-                            render()
-                        }
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show()
+                    2 -> confirmDialog(ref.name, getString(R.string.places_delete_warning), R.string.places_delete) {
+                        store.delete(ref.id)
+                        render()
+                    }
                 }
             }
             .show()
