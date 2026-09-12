@@ -167,6 +167,14 @@ private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextVie
  * over an empty card looks like something failed to load. Nothing to show means
  * nothing is shown, heading included.
  *
+ * This is for a section whose whole existence is conditional — "waiting
+ * devices", "refused devices" — not one that always exists but can be
+ * currently empty, such as "trusted devices" or "all apps": those want their
+ * header every time, with an explanatory line (`devices_none`, `apps_none`)
+ * standing in for the list, precisely so an empty family/catalog reads as
+ * "checked, there are none" rather than "this section vanished." Screens
+ * doing that add their header directly instead of calling this.
+ *
  * A null [title] gives an unlabelled group, for the first block on a screen where
  * the screen title has already said what these are.
  */

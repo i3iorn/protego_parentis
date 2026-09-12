@@ -54,8 +54,10 @@ class BonusTimeActivity : ParentGatedActivity() {
         content.addView(amountRow { minutes -> grant(GrantTarget.Device, minutes) })
 
         val categories = store.categories
-        if (categories.isNotEmpty()) {
-            content.addView(heading(getString(R.string.bonus_category_header), 20f))
+        content.addView(heading(getString(R.string.bonus_category_header), 20f))
+        if (categories.isEmpty()) {
+            content.addView(captionText(getString(R.string.bonus_no_categories)))
+        } else {
             categories.sortedBy { it.name.lowercase() }.forEach { category ->
                 content.addView(
                     TextView(this).apply {
