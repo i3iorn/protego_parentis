@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.ui
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RecurringWindow
@@ -124,6 +125,37 @@ class ContextRuleEditActivityTest {
 
         val saved = store().rules.single { it.id == "custom-allowance" }
         assertEquals(Condition.AllowanceSpent(60), saved.condition)
+    }
+
+    @Test
+    fun `a negated extra condition describes itself instead of reading as Always`() {
+        store().upsert(
+            ContextRule(
+                id = "nested-condition",
+                name = "Not on school wifi, unless charged",
+                enabled = true,
+                condition = Condition.AllOf(
+                    listOf(
+                        Condition.OnWifi("School"),
+                        Condition.Not(Condition.BatteryBelow(20)),
+                    ),
+                ),
+                effect = RuleEffect.Block,
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "nested-condition"),
+        ).setup().get()
+
+        // The second condition (Not(BatteryBelow(20))) must describe what it
+        // actually is, not silently fall back to "Always" the way an
+        // unhandled Not/AllOf/AnyOf used to.
+        val texts = findAllText(activity.window.decorView)
+        assertTrue(texts.any { it.contains("20") })
+        assertTrue(texts.none { it == context.getString(R.string.context_when_always) })
     }
 
     private fun renameField(activity: ContextRuleEditActivity): android.widget.EditText? =

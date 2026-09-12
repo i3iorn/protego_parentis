@@ -469,16 +469,18 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 getString(R.string.context_effect_block) to { effect = RuleEffect.Block; render() },
                 getString(R.string.context_effect_allow) to { effect = RuleEffect.Allow; render() },
                 getString(R.string.context_choose_safety_exempt) to { effect = RuleEffect.SafetyExempt; render() },
-                getString(R.string.context_choose_budget) to { askForBudget() },
+                getString(R.string.context_choose_budget) to { askForBudget(effect) },
             ),
         )
     }
 
-    private fun askForBudget() {
+    private fun askForBudget(current: RuleEffect?) {
+        val existingMinutes = (current as? RuleEffect.SetDeviceBudget)
+            ?.budget?.default?.inWholeMinutes?.toInt()
         sliderDialog(
             title = R.string.context_choose_budget,
             max = LimitSlider.MAX_STEPS,
-            initialProgress = LimitSlider.progressFor(DEFAULT_BUDGET_MINUTES),
+            initialProgress = LimitSlider.progressFor(existingMinutes ?: DEFAULT_BUDGET_MINUTES),
             format = { formatLimit(LimitSlider.minutesFor(it)) },
         ) { progress ->
             effect = RuleEffect.SetDeviceBudget(
@@ -638,7 +640,15 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
         is Condition.AllowanceSpent -> getString(R.string.context_when_allowance_spent, current.minutes)
 
-        else -> getString(R.string.context_when_always)
+        is Condition.Not -> getString(R.string.context_when_not, describeCondition(current.condition))
+
+        is Condition.AllOf -> current.conditions
+            .joinToString(getString(R.string.context_join_and)) { describeCondition(it) }
+            .ifBlank { getString(R.string.context_when_always) }
+
+        is Condition.AnyOf -> current.conditions
+            .joinToString(getString(R.string.context_join_or)) { describeCondition(it) }
+            .ifBlank { getString(R.string.context_when_never) }
     }
 
     /**
