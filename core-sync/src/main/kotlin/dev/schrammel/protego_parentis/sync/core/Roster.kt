@@ -133,7 +133,6 @@ object RosterRules {
         SyncMessageType.APP_DECIDED -> SyncRole.PARENT
         SyncMessageType.LOCK_NOW -> SyncRole.PARENT
         SyncMessageType.LOCATE_REQUEST -> SyncRole.PARENT
-        SyncMessageType.SET_DAILY_LIMIT -> SyncRole.PARENT
         SyncMessageType.POLICY_REQUESTED -> SyncRole.PARENT
         SyncMessageType.POLICY_UPDATED -> SyncRole.PARENT
         SyncMessageType.APP_INVENTORY_REQUESTED -> SyncRole.PARENT

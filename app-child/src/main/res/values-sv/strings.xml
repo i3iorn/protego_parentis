@@ -472,12 +472,6 @@
         <item quantity="other">Skickat: %1$d extra minuter.</item>
     </plurals>
 
-    <string name="parent_limit_title">Ändra daglig gräns</string>
-    <string name="parent_limit_body">En ny gräns för varje dag, som ersätter den nuvarande. För gränser per app, kategorier, läggdags och allt annat, använd Regler istället.</string>
-    <string name="parent_limit_send">Skicka</string>
-    <string name="parent_limit_sent">Skickat</string>
-    <string name="parent_limit_unknown">Den här telefonen har inte hört något från barnets telefon än, så skjutreglaget börjar på noll i stället för en gissning.</string>
-
     <string name="parent_settings_pin_body">PIN-koden skyddar inställningarna på den telefon där den är satt.</string>
     <string name="parent_settings_role_header">Vad den här telefonen är</string>
     <string name="parent_settings_role_body">Den här telefonen svarar på förfrågningar. Byter du blir den i stället telefonen med gränserna.</string>

@@ -475,12 +475,6 @@
         <item quantity="other">Sent: %1$d extra minutes.</item>
     </plurals>
 
-    <string name="parent_limit_title">Change daily limit</string>
-    <string name="parent_limit_body">A new allowance for every day, replacing the current one. For per-app limits, categories, bedtime and everything else, use Rules instead.</string>
-    <string name="parent_limit_send">Send</string>
-    <string name="parent_limit_sent">Sent</string>
-    <string name="parent_limit_unknown">This phone has not heard from the child\'s phone yet, so the slider starts at zero rather than a guess.</string>
-
     <string name="parent_settings_pin_body">The PIN protects the settings on whichever phone it is set on.</string>
     <string name="parent_settings_role_header">What this phone is</string>
     <string name="parent_settings_role_body">This phone answers requests. Switching it makes it the phone with the limits instead.</string>

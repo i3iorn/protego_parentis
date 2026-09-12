@@ -49,8 +49,9 @@ class RuleDestinationsTest {
     /**
      * #106: the daily limit, schedules, and context rules collapsed into one
      * screen — reached the same way regardless of which kind of phone edits
-     * it, unlike the dedicated local/remote pair ([LimitsActivity]/
-     * [ParentLimitActivity]) it replaces.
+     * it, unlike the dedicated local/remote pair (`LimitsActivity`/
+     * `ParentLimitActivity`, the latter removed outright in #107) it
+     * replaces.
      */
     @Test
     fun `on the managed phone itself, rules opens the unified screen`() {

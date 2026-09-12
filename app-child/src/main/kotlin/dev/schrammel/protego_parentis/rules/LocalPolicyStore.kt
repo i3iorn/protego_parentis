@@ -167,17 +167,15 @@ class LocalPolicyStore(context: Context) {
      *
      * Deliberately leaves [scheduleStore]'s own schedules, this store's
      * [dailyLimitMinutes], and [exemptPackages] exactly as they are, rather
-     * than deleting them once migrated: nothing writes them any more once
-     * #106 removes their editors (`LimitsActivity`/`ParentLimitActivity`
-     * stay unreachable rather than deleted outright — #107 finishes that),
-     * but a device mid-upgrade, or still replicating an old-format edit from
-     * a sibling phone that has not upgraded yet, must not lose the rule
+     * than deleting them once migrated: #106 made their one remaining editor
+     * (`LimitsActivity`) unreachable rather than deleting it, and #107
+     * removed `ParentLimitActivity` and `SET_DAILY_LIMIT` outright, but a
+     * device mid-upgrade, or still replicating an old-format edit from a
+     * sibling phone that has not upgraded yet, must not lose the rule
      * because the field it was read from vanished under it. This runs once,
      * so an edit made through the old fields after that point — replicated
      * in from an older build, most plausibly — will not be reflected here
-     * again; the accepted gap is now that narrow rather than closed by #106
-     * as originally expected, since #106 turned out to still need #107's
-     * `SET_DAILY_LIMIT` retirement to remove `ParentLimitActivity` outright.
+     * again.
      */
     fun migrateToUnifiedRules() {
         if (prefs.getBoolean(KEY_RULES_MIGRATED, false)) return
