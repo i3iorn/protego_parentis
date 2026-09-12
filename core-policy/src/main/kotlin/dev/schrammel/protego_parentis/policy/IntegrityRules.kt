@@ -84,12 +84,8 @@ object IntegrityRules {
         if (latest.historyCount in 1 until heldFromDevice) return true
 
         if (previous == null) return false
-        // A device that has never reported a history yet says nothing either
-        // way — the field may simply not be populated on its build. But once it
-        // has reported a real, nonzero count, dropping back to zero is not that
-        // case: it is a shrink to nothing, same as any other shrink below, and
-        // must not be waved through just because zero looks like "no data yet".
-        if (previous.historyCount == 0L) return false
+        // A device that has not reported a history yet says nothing either way.
+        if (previous.historyCount == 0L || latest.historyCount == 0L) return false
 
         if (latest.historyCount < previous.historyCount) return true
         return latest.historyCount == previous.historyCount &&
