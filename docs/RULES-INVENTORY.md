@@ -90,13 +90,15 @@ schedule, a daily limit, or an exemption before this feature shipped, so
 gating this behind the same flag would have meant an existing family's app
 limits, blocks, hidden apps, and category budgets went silently unenforced
 the moment `PolicyEngine` stopped reading the old fields, with nothing left
-to convert them. `AppLimitsActivity`'s slider is the first screen rewritten to
-write the `ContextRule` directly rather than the old field — the same
-"shortcut over the same rule engine" shape the unified rules screen's starters
-(bedtime, the daily limit) already use. `AppControlActivity` (block/hide) and
-`CategoryEditActivity` (a category's budget) still write the old fields for
-now; migration keeps them enforced in the meantime, but rewriting those two
-screens the same way `AppLimitsActivity` was is the natural next slice.
+to convert them. `AppLimitsActivity`, `AppControlActivity`'s blocked switch,
+and `CategoryEditActivity`'s limit all now write the `ContextRule` directly
+rather than the old field — the same "shortcut over the same rule engine"
+shape the unified rules screen's starters (bedtime, the daily limit) already
+use. `AppControlActivity`'s network-blocked switch is deliberately untouched:
+it is a different restriction (offline, not suspended) that was never part of
+this unification. `CategoryEditActivity` still writes `StoredCategory` for a
+category's name, membership and nesting — only `limitMinutes` moved, written
+as `0` from here on since the real number lives in the rule.
 
 ## ScheduleStore — `schedules` · 11 Parent
 

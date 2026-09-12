@@ -16,21 +16,30 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import androidx.appcompat.app.AlertDialog
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.policy.CategoryHierarchy
+import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
+import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.deleteCategory
 import dev.schrammel.protego_parentis.ui.rules.labelFor
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.ui.rules.upsertCategory
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Creates or edits one category: a name, a daily limit, and the apps in it —
@@ -38,6 +47,16 @@ import java.util.UUID
  *
  * An app may be picked here and in any number of other categories — membership is
  * many-to-many by design, and every category it lands in is enforced separately.
+ *
+ * The limit is a shortcut over the same rule engine every other restriction
+ * goes through, not a field of its own: saving writes an ordinary [ContextRule]
+ * — [Condition.Always], [RuleEffect.SetBudget], a single-category
+ * [RuleTarget.Categories] — at [LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX]'s
+ * well-known per-category id, the same slot [LocalPolicyStore.migrateAppRulesToUnifiedRules]
+ * converts an old-format category limit into. [StoredCategory.limitMinutes]
+ * itself is written as 0 from here on — see [AppLimitsActivity]'s own doc
+ * comment for why this screen still keeps [StoredCategory] for the category's
+ * name, membership, and nesting.
  */
 class CategoryEditActivity : ParentGatedActivity() {
 
@@ -75,8 +94,21 @@ class CategoryEditActivity : ParentGatedActivity() {
         categoryId = found?.id ?: UUID.randomUUID().toString()
         packages = LinkedHashSet(found?.packages.orEmpty())
         nested = LinkedHashSet(found?.subcategories.orEmpty())
-        limitMinutes = found?.limitMinutes ?: defaultLimitMinutes
+        // The rule is the live source now; the stored field is a fallback for
+        // a category not yet migrated (or a device mid-upgrade) rather than
+        // the everyday path.
+        val rules = contextRuleRuleStore(this, target).read()
+        limitMinutes = minutesFrom(rules, categoryId) ?: found?.limitMinutes ?: defaultLimitMinutes
     }
+
+    /** [categoryId]'s budget as this screen's [ContextRule] says it, or null if there is none. */
+    private fun minutesFrom(rules: List<ContextRule>, categoryId: String): Int? {
+        val rule = rules.firstOrNull { it.id == ruleId(categoryId) } ?: return null
+        val effect = rule.effect as? RuleEffect.SetBudget ?: return null
+        return effect.budget.default.inWholeMinutes.toInt()
+    }
+
+    private fun ruleId(categoryId: String) = LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX + categoryId
 
     override fun onGatedContentVisible() {
         if (!requireStillInFamily(target)) return
@@ -169,6 +201,12 @@ class CategoryEditActivity : ParentGatedActivity() {
                             .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
                             policyRuleStore(this@CategoryEditActivity, target).deleteCategory(categoryId)
+                            // Otherwise a budget rule survives naming a
+                            // category that no longer exists — harmless to
+                            // PolicyEngine, which only builds a status for
+                            // categories still in the list, but confusing
+                            // clutter on the unified rules screen.
+                            contextRuleRuleStore(this@CategoryEditActivity, target).delete(ruleId(categoryId))
                             Audit.record(
                                 context = this@CategoryEditActivity,
                                 actor = AuditActor.PARENT,
@@ -197,11 +235,32 @@ class CategoryEditActivity : ParentGatedActivity() {
             StoredCategory(
                 id = categoryId,
                 name = name,
-                limitMinutes = minutes,
+                // Vestigial as of this rewrite: the real budget is the
+                // ContextRule below, the same way an app's own limit no
+                // longer lives on appLimits either.
+                limitMinutes = 0,
                 packages = packages.toSet(),
                 subcategories = nested.toSet(),
             ),
         )
+
+        val ruleStore = contextRuleRuleStore(this, target)
+        val id = ruleId(categoryId)
+        if (minutes > 0) {
+            ruleStore.upsert(
+                ContextRule(
+                    id = id,
+                    name = name,
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(minutes.minutes)),
+                    target = RuleTarget.Categories(setOf(CategoryId(categoryId))),
+                ),
+            )
+        } else {
+            ruleStore.delete(id)
+        }
+
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
