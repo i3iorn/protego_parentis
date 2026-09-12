@@ -49,6 +49,7 @@ The only store a parent already reaches. Its 9 Parent rows are exactly what
 | `KEY_APP_LIMITS` | `app_limits` | Parent |
 | `KEY_INSTALL_POLICY` | `install_policy` | Parent |
 | `KEY_TAMPER` | `tamper_protection` | **Local only** |
+| `KEY_RULES_MIGRATED` | `rules_migrated_v1` | Not a rule — this device's own record of having run the one-time conversion below |
 
 `tamper_protection` is the one deliberate exception in the whole inventory.
 Flipping it with nobody standing at the phone is the single rule change this app
@@ -58,6 +59,19 @@ doc comment. It stays out of scope for #37.
 Bedtime used to be four fields here (`bedtime_enabled`/`bedtime_start_minute_of_day`/
 `bedtime_end_minute_of_day`/`bedtime_days`). [#12](https://github.com/i3iorn/dementor_watch/issues/12)
 removed them — bedtime is a `StoredSchedule` now, see `ScheduleStore` below.
+
+**`daily_limit_minutes` and `exempt_packages` are Parent but no longer live**,
+as of [#72](https://github.com/i3iorn/dementor_watch/issues/72)'s rule-engine
+unification (#104–#107): a parent still *can* write them, over the same
+`PolicySnapshot` channel every other row here rides, but neither `PolicyEngine`
+nor any current screen reads them any more — see the note at the top of
+`ContextRuleStore` below for where the daily limit and exemptions actually live
+now. Classified Parent rather than reclassified, the same reasoning
+`tamper_protection`'s neighbours would get if this were a fresh design: a
+sibling phone still on a build from before #104/#105 can still send or receive
+these fields, and `LocalPolicyStore.migrateToUnifiedRules()` reads them (and
+`ScheduleStore`'s schedules) as its one-time conversion's source — reachability
+hasn't changed, even though which engine acts on the value has.
 
 ## ScheduleStore — `schedules` · 11 Parent
 
@@ -79,25 +93,52 @@ in the model when schedules gained a mode and deliberately not renamed on disk,
 because that would empty the exception list of every schedule already saved.
 
 `kind` is new as of #12: `BEDTIME` for the one fixed-id (`bedtime`) entry
-`ScheduleStore` and its screens treat specially, `CUSTOM` for everything else,
+`ScheduleStore` treats specially, `CUSTOM` for everything else,
 absent-reads-as-`CUSTOM` for anything saved before this field existed. Bedtime
 replicates through this same channel now instead of through four dedicated
 `LocalPolicyStore` fields — the engine already treated a replicated schedule and
 the synthesised bedtime block as the same kind of object once assembled, and
-this made storage agree. It keeps its own dedicated card on both kinds of
-phone rather than appearing in the generic schedules list, so a family tidying
-up a homework block can't delete it by accident — the risk that kept it
-separate in the first place, now handled by every screen that lists these
-windows filtering `bedtime` out instead.
+this made storage agree. It kept its own dedicated card, separate from the
+generic schedules list, so a family tidying up a homework block couldn't
+delete it by accident — until [#106](https://github.com/i3iorn/dementor_watch/issues/106)
+folded it into the unified rules screen as an ordinary starter alongside
+school/homework/dinner, the same as any other window rule: a family with no
+bedtime rule yet cannot accidentally delete one either way, so the dedicated
+card's original reason no longer applied. A pre-#106 `bedtime` schedule still
+lands at the same well-known migrated rule id that starter uses
+(`LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + BEDTIME_ID`), so the two
+paths describe the same rule rather than two.
 
 `parityAnchorEpochDay` is new as of #83: absent means every week, exactly what
 every schedule already meant, so nothing needed migrating. Set, it names the
 first active date, and the window skips every other 7-day step from there —
 "every other week on Fridays."
 
+**No longer edited by any screen**, as of
+[#106](https://github.com/i3iorn/dementor_watch/issues/106): the dedicated
+schedules screen this store existed for is deleted outright, its function
+folded into `ContextRuleStore`'s unified editor below (a schedule is a
+`Condition.DuringWindow` rule now). This store stays for two reasons neither
+about editing: `LocalPolicyStore.migrateToUnifiedRules()` reads it as the
+one-time conversion's source, and `PolicyReplication`/`SyncCoordinator` still
+replicate it so a sibling phone on an older build keeps working. Still all 11
+fields Parent — a family can still reach a schedule this way, just not
+through any UI that writes it any more.
+
 ## ContextRuleStore — `context_rules` · 9 Parent, 1 Pending, 2 Local only
 
-Contextual rules and the places they refer to, in one store.
+Contextual rules and the places they refer to, in one store — and, as of
+[#72](https://github.com/i3iorn/dementor_watch/issues/72)'s rule-engine
+unification (#104–#107), the *only* store any current screen writes a
+schedule, a daily limit, or a per-app exemption through: each is an ordinary
+`ContextRule` now (`Condition.DuringWindow`/`Always`, `RuleEffect.Block`/
+`SetDeviceBudget`/`SafetyExempt`), reached from one unified rules screen
+instead of the three separate ones (schedules, daily limit, contextual rules)
+that used to divide this work. `RuleEffect.SafetyExempt` (#106) sits at the
+same tier as the safety allowlist — the parent-configurable replacement for
+what `exempt_packages` above used to mean — and, like every effect and
+condition kind, is carried by `ContextRuleCodec`'s existing `KEY_KIND` below
+rather than a field of its own.
 
 `rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`, `places`,
 `radius`
@@ -111,8 +152,10 @@ under `policy/<childId>/contextRules/`, one path per field per rule with a
 `target` each replicate as one opaque JSON-string register rather than being
 decomposed further — a condition can nest `AllOf`/`AnyOf`/`Not` arbitrarily, and
 splitting that tree into paths was judged not worth the complexity for how
-rarely two parents edit the exact same rule's logic at once. This milestone is
-wiring only: no parent-phone condition-builder UI yet.
+rarely two parents edit the exact same rule's logic at once. Wiring only at
+#41; [#106](https://github.com/i3iorn/dementor_watch/issues/106) added the
+actual condition/effect/target editor, reachable the same way on either kind
+of phone.
 
 The places half closed the same way, via `writePlaceRefs`/`readPlaceRefs`/
 `pushPlaceRefsFromLocal`/`pullPlaceRefsIntoLocal` and a new model type,
