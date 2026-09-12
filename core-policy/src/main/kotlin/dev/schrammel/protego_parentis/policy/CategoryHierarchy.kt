@@ -4,8 +4,14 @@ import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.PackageName
 
-/** A category's full membership once nesting has been followed. */
-data class ResolvedHierarchy(
+/**
+ * A category's full membership once nesting has been followed.
+ *
+ * Internal: [CategoryHierarchy.resolve] is only ever called from
+ * [PolicyEngine.evaluate], in this module — a caller elsewhere wants
+ * [CategoryHierarchy.wouldCreateCycle] instead.
+ */
+internal data class ResolvedHierarchy(
     /** Every app that counts towards each category, including via nested ones. */
     val packagesByCategory: Map<CategoryId, Set<PackageName>>,
     /**
@@ -41,7 +47,7 @@ data class ResolvedHierarchy(
  */
 object CategoryHierarchy {
 
-    fun resolve(categories: List<Category>): ResolvedHierarchy {
+    internal fun resolve(categories: List<Category>): ResolvedHierarchy {
         val byId = categories.associateBy { it.id }
         val resolved = HashMap<CategoryId, Set<PackageName>>()
         val broken = mutableListOf<Pair<CategoryId, CategoryId>>()

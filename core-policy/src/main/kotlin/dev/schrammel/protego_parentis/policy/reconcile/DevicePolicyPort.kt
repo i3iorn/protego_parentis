@@ -158,8 +158,11 @@ data class SupportMessages(val short: String?, val long: String?) {
  * String literals rather than framework constants so this module stays free of
  * Android; the adapter passes them straight through, and
  * [dev.schrammel.protego_parentis.policy.reconcile] tests assert the exact values.
+ *
+ * Internal: a caller outside this module wants [DeviceLocker]/[DeviceReleaser]/
+ * [PolicyReconciler], never these raw keys directly.
  */
-object TamperRestrictions {
+internal object TamperRestrictions {
 
     /** Closes the main escape hatch: wiping the device to drop the DPC. */
     const val NO_FACTORY_RESET = "no_factory_reset"
