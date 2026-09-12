@@ -22,11 +22,11 @@ import org.robolectric.RuntimeEnvironment
 /**
  * #43: which ruleset a rules screen edits, resolved the same way on both
  * kinds of phone. The one rule that must hold regardless of everything else
- * here: a family with a single managed phone never needs a [RuleTarget]
+ * here: a family with a single managed phone never needs a [RuleScope]
  * naming it explicitly, and a family with a second one is never guessed at.
  */
 @RunWith(RobolectricTestRunner::class)
-class RuleTargetTest {
+class RuleScopeTest {
 
     private val context get() = RuntimeEnvironment.getApplication()
 

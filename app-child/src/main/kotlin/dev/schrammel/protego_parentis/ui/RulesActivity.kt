@@ -12,7 +12,7 @@ import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
@@ -54,7 +54,7 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  */
 class RulesActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var column: LinearLayout
 
     override fun supportsReadOnly() = true

@@ -20,7 +20,7 @@ import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
@@ -45,7 +45,7 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  */
 class AppControlActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var column: LinearLayout
     private lateinit var rows: LinearLayout
     private var fresh: List<AppInfo> = emptyList()
