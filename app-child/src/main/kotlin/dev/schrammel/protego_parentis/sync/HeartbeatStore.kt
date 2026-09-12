@@ -27,6 +27,8 @@ class HeartbeatStore(context: Context) {
                 managed = prefs.getBoolean(KEY_MANAGED, false),
                 usageAccessGranted = prefs.getBoolean(KEY_USAGE_ACCESS, false),
                 suspendedCount = prefs.getInt(KEY_SUSPENDED, 0),
+                historyHead = prefs.getString(KEY_HISTORY_HEAD, "") ?: "",
+                historyCount = prefs.getLong(KEY_HISTORY_COUNT, 0L),
             )
         }
         // Synchronized on LOCK: the out-of-order guard below reads the current
@@ -52,6 +54,8 @@ class HeartbeatStore(context: Context) {
                 putBoolean(KEY_MANAGED, value.managed)
                 putBoolean(KEY_USAGE_ACCESS, value.usageAccessGranted)
                 putInt(KEY_SUSPENDED, value.suspendedCount)
+                putString(KEY_HISTORY_HEAD, value.historyHead)
+                putLong(KEY_HISTORY_COUNT, value.historyCount)
             }
         }
 
@@ -120,5 +124,7 @@ class HeartbeatStore(context: Context) {
         const val KEY_ALERTED = "silenceAlerted"
         const val KEY_STOPPED_AT = "stoppedAt"
         const val KEY_HISTORY_SUSPECT = "historySuspect"
+        const val KEY_HISTORY_HEAD = "historyHead"
+        const val KEY_HISTORY_COUNT = "historyCount"
     }
 }

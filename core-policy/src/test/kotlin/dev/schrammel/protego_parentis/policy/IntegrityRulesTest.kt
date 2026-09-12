@@ -167,6 +167,18 @@ class IntegrityRulesTest {
     }
 
     @Test
+    fun `wiping the whole history is caught even without floor evidence`() {
+        // The most obvious rewrite of all: delete everything. A device that had
+        // reported real history and now reports none has shrunk its log to
+        // nothing, which must not be excused just because zero also happens to
+        // be what a device that has never reported yet would say.
+        val before = heartbeat(historyCount = 40, historyHead = "aaa")
+        val wiped = heartbeat(historyCount = 0, historyHead = "")
+
+        assertTrue(IntegrityRules.historyRewritten(before, wiped))
+    }
+
+    @Test
     fun `the floor applies even on the first heartbeat ever seen`() {
         // No previous heartbeat to compare against, but the replica already holds
         // entries this phone wrote — so a lower total is still impossible.
