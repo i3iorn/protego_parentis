@@ -22,6 +22,7 @@ private fun policy(
     appRules: Map<PackageName, AppRule> = emptyMap(),
     categories: List<Category> = emptyList(),
     schedules: List<ScheduleBlock> = emptyList(),
+    contextRules: List<ContextRule> = emptyList(),
     safetyAllowlist: Set<PackageName> = emptySet(),
     dayBoundaryHour: Int = 4,
 ) = Policy(
@@ -31,8 +32,18 @@ private fun policy(
     appRules = appRules,
     categories = categories,
     schedules = schedules,
+    contextRules = contextRules,
     safetyAllowlist = safetyAllowlist,
     dayBoundaryHour = dayBoundaryHour,
+)
+
+private fun contextRule(id: String) = ContextRule(
+    id = id,
+    name = id,
+    enabled = true,
+    condition = Condition.Always,
+    effect = RuleEffect.Block,
+    target = RuleTarget.Everything,
 )
 
 private fun schedule(id: String) = ScheduleBlock(
@@ -67,6 +78,13 @@ class PolicyTest {
 
         assertThrows(IllegalArgumentException::class.java) {
             policy(categories = listOf(one, two))
+        }
+    }
+
+    @Test
+    fun `duplicate context rule ids are rejected`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            policy(contextRules = listOf(contextRule("bedtime"), contextRule("bedtime")))
         }
     }
 
