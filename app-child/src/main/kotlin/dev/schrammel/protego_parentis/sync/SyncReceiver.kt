@@ -31,6 +31,7 @@ import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.KeystoreSigner
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
@@ -609,7 +610,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             publicKey = message.field(FIELD_VOUCHED_KEY) ?: return false,
         )
 
-        val self = runCatching { signer.deviceId }.getOrNull() ?: return false
+        val self = LocalDeviceId.current()?.let(::DeviceId) ?: return false
         if (!Enrolment.shouldAccept(vouch, self)) {
             Diagnostics.record(appContext, DiagnosticEvent.SYNC_SENDER_REFUSED)
             return false
@@ -642,7 +643,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
      */
     private fun applyRevoke(message: SyncMessage): Boolean {
         val revokedId = DeviceId(message.field(FIELD_REVOKED_ID) ?: return false)
-        val self = runCatching { signer.deviceId }.getOrNull() ?: return false
+        val self = LocalDeviceId.current()?.let(::DeviceId) ?: return false
 
         if (revokedId == self) {
             if (!Enrolment.shouldAcceptRevoke(syncRole())) return false
