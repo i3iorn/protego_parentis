@@ -465,7 +465,7 @@ class LocalPolicyStore(context: Context) {
         }
     }
 
-    private companion object {
+    companion object {
         const val FILE_NAME = "local_policy"
         const val INITIAL_VERSION = 1L
         const val LOCAL_CHILD_ID = "local"
