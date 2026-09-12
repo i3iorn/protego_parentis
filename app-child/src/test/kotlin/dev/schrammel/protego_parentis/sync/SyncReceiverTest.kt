@@ -62,7 +62,15 @@ import java.util.UUID
 class SyncReceiverTest {
 
     private val context: Context get() = RuntimeEnvironment.getApplication()
-    private val now: Instant = Instant.parse("2026-09-12T10:00:00Z")
+
+    // SyncReceiver.receiveEnvelope stamps replay-admission with the real wall
+    // clock (Instant.now()), not an injectable one — so a fixed literal here
+    // ages past ReplayGuard.FRESHNESS_WINDOW (30 minutes) the moment enough
+    // wall-clock time has passed since it was written, and every message
+    // this test delivers is silently rejected as too old regardless of its
+    // content. Reading it fresh keeps every delivered message within the
+    // window no matter when the test actually runs.
+    private val now: Instant get() = Instant.now()
 
     private val key: SyncKey = MessageCrypto.deriveKey("correct horse battery staple", "dementor-test-topic")
 
