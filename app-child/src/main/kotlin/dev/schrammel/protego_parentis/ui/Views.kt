@@ -426,11 +426,16 @@ internal fun Activity.divider(): View = View(this).apply {
     setBackgroundResource(R.color.card_stroke)
 }
 
-/** A short message, gone on its own. The common case for "that worked" or "that didn't". */
-internal fun Activity.toast(message: String) =
-    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+/**
+ * A short message, gone on its own. The common case for "that worked" or "that
+ * didn't". [duration] defaults to the ordinary case; pass `Toast.LENGTH_LONG`
+ * for a message worth more time to read, such as an error explaining itself.
+ */
+internal fun Activity.toast(message: String, duration: Int = Toast.LENGTH_SHORT) =
+    Toast.makeText(this, message, duration).show()
 
-internal fun Activity.toast(@StringRes messageRes: Int) = toast(getString(messageRes))
+internal fun Activity.toast(@StringRes messageRes: Int, duration: Int = Toast.LENGTH_SHORT) =
+    toast(getString(messageRes), duration)
 
 /**
  * Asks before a consequential or irreversible action: title, message, a
@@ -443,6 +448,21 @@ internal fun Activity.toast(@StringRes messageRes: Int) = toast(getString(messag
  */
 internal fun Activity.confirmDialog(
     @StringRes title: Int,
+    message: String,
+    @StringRes positiveText: Int,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setMessage(message)
+        .setPositiveButton(positiveText) { _, _ -> onConfirm() }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+/** As above, for a title that isn't a string resource — e.g. the name of the thing being deleted. */
+internal fun Activity.confirmDialog(
+    title: String,
     message: String,
     @StringRes positiveText: Int,
     onConfirm: () -> Unit,

@@ -181,7 +181,7 @@ class SyncBackendActivity : ParentGatedActivity() {
 
         return runCatching { FamilyToken(chosen, server, settings.topic) }
             .getOrElse {
-                Toast.makeText(this, R.string.backend_bad_server, Toast.LENGTH_LONG).show()
+                toast(R.string.backend_bad_server, Toast.LENGTH_LONG)
                 null
             }
     }

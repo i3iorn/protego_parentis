@@ -76,7 +76,7 @@ class BonusTimeActivity : ParentGatedActivity() {
             Button(this).apply {
                 setText(R.string.bonus_clear)
                 layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.row_icon) }
+                    .apply { topMargin = dimen(R.dimen.space_lg) }
                 setOnClickListener {
                     grants.clearAll()
                     AppRegistry.ruleMutationSink.rulesChanged()

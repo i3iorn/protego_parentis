@@ -31,7 +31,6 @@ class RequestInboxActivity : ParentGatedActivity() {
     private lateinit var installedApps: InstalledApps
     private lateinit var container: LinearLayout
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sync = SyncCoordinator(this)
@@ -59,7 +58,7 @@ class RequestInboxActivity : ParentGatedActivity() {
 
         Background.load(this, { coordinator.pending() }) { pending ->
             if (pending.isEmpty()) {
-                container.addView(body(getString(R.string.inbox_empty)))
+                container.addView(bodyText(getString(R.string.inbox_empty)))
             } else {
                 addCollapsibleRows(container, pending.map(::requestCard))
             }
@@ -71,7 +70,7 @@ class RequestInboxActivity : ParentGatedActivity() {
         setPadding(0, dimen(R.dimen.space_md), 0, dimen(R.dimen.space_md))
 
         addView(
-            body(
+            bodyText(
                 resources.getQuantityString(
                     R.plurals.inbox_asking_for,
                     request.amount.inWholeMinutes.toInt(),
@@ -80,9 +79,9 @@ class RequestInboxActivity : ParentGatedActivity() {
                 ),
             ).styleAs(R.style.TextAppearance_Dementor_ListItem),
         )
-        addView(body(getString(R.string.requests_row_reason, request.reason)))
+        addView(bodyText(getString(R.string.requests_row_reason, request.reason)))
         addView(
-            body(
+            bodyText(
                 getString(
                     R.string.inbox_expires_at,
                     formatTime(request.expiresAt),
@@ -135,12 +134,6 @@ class RequestInboxActivity : ParentGatedActivity() {
 
     private fun describe(target: GrantTarget): String =
         TargetLabels.describe(this, target)
-
-    private fun body(text: String) = TextView(this).apply {
-        this.text = text
-        styleAs(R.style.TextAppearance_Dementor_Body)
-        setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_hairline))
-    }
 
     companion object {
 

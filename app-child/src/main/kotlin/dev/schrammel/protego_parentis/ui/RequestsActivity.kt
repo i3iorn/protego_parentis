@@ -38,7 +38,6 @@ class RequestsActivity : DementorActivity() {
     private lateinit var reasonInput: EditText
     private var target: GrantTarget = GrantTarget.Device
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Publishing is fire-and-forget and off the main thread; an offline phone
@@ -208,7 +207,7 @@ class RequestsActivity : DementorActivity() {
 
         Background.load(this, { coordinator.all() }) { all ->
             if (all.isEmpty()) {
-                container.addView(body(getString(R.string.requests_none)))
+                container.addView(bodyText(getString(R.string.requests_none)))
             } else {
                 addCollapsibleRows(container, all.map(::requestRow))
             }
@@ -220,7 +219,7 @@ class RequestsActivity : DementorActivity() {
         setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
 
         addView(
-            body(
+            bodyText(
                 getString(
                     R.string.requests_row_summary,
                     request.amount.inWholeMinutes,
@@ -229,8 +228,8 @@ class RequestsActivity : DementorActivity() {
                 ),
             ).styleAs(R.style.TextAppearance_Dementor_ListItem),
         )
-        addView(body(getString(R.string.requests_row_reason, request.reason)))
-        addView(body(statusLine(request)))
+        addView(bodyText(getString(R.string.requests_row_reason, request.reason)))
+        addView(bodyText(statusLine(request)))
 
         if (request.state.isOpen) {
             addView(
@@ -275,12 +274,6 @@ class RequestsActivity : DementorActivity() {
         this.text = text
         styleAs(appearance)
         setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_xxs))
-    }
-
-    private fun body(text: String) = TextView(this).apply {
-        this.text = text
-        styleAs(R.style.TextAppearance_Dementor_Body)
-        setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_hairline))
     }
 
     companion object {
