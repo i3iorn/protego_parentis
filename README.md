@@ -15,12 +15,19 @@ suspended by the operating system rather than covered by an overlay.
 | --- | --- | --- |
 | `core-model` | Pure Kotlin | Domain types: `Policy`, `Category`, `WeeklyBudget`, `Grant`, `Enforcement`. No Android, no I/O. |
 | `core-policy` | Pure Kotlin | All the real logic: `ContextRules` (where and near what),  `PolicyEngine` (what should be blocked), `UsageReplay` (how much time was spent), `RequestRules` (asking and answering), `PolicyReconciler` (apply it), `DeviceReleaser` (undo it). |
-| `core-provisioning` | Pure Kotlin | The setup QR payload format. Kept Android-free so the parent app can generate codes without a device SDK. **Not wired into the app yet** — see [Turning on enforcement](#turning-on-enforcement-device-owner). |
-| `app-child` | Android app | The app that runs on the teenager's phone. Reads usage, drives `DevicePolicyManager`, stores history, hosts the UI. |
+| `core-provisioning` | Pure Kotlin | The setup QR payload format. Kept Android-free so it can be generated without a device SDK. **Nothing yet builds one or turns it into a QR code** — see [Turning on enforcement](#turning-on-enforcement-device-owner). |
+| `core-sync` | Pure Kotlin | The sync domain: `SyncMessage`, `MessageCrypto`/`MessageSignatures` (encrypt, sign, verify), `ReplayGuard`, `Enrolment`/`RosterRules` (who may say what). No network, no Android — `app-child`'s `sync` package is the transport on top of this. |
+| `security` | Android library | The PIN: `PinAttempts`/`PinBackoff` (the lockout curve), `PinHash`, `KeystoreSigner`, `SecretVault`, `ParentSession`, `LocalDeviceId`. |
+| `usage` | Android library | Screen-time measurement: `UsageCollector`, `UsageHistoryStore`, `InstalledApps`. |
+| `context` | Android library | Resolves "where and near what" for contextual rules — Wi-Fi, saved places, paired devices, battery — without ever handing a coordinate to anything downstream (see [Contextual rules](#contextual-rules)). |
+| `diagnostics` | Android library | The privacy-safe diagnostic log and crash recovery — see [Privacy](#privacy). |
+| `format` | Android library | Shared human-readable formatting (durations), so "20 minutes" reads the same everywhere. |
+| `app-child` | Android app | The app that runs on both a family's phones — teenager and parent alike, the same APK in a different role (see [Current state](#current-state)). Reads usage, drives `DevicePolicyManager`, stores history, hosts the UI, and carries sync between phones. |
 
 The rule of thumb: **decisions belong in `core-policy`, translation belongs in
 `app-child`.** Anything in the Android module that looks like a policy decision is
-in the wrong place — that separation is what lets 640 tests run without a phone.
+in the wrong place — that separation is what lets over a thousand tests run
+without a phone.
 
 ---
 
@@ -183,8 +190,8 @@ authority to lift them disappears with it. There is a test asserting
 ./gradlew test
 ```
 
-640 unit tests, all on the JVM, no device required. The bulk sit in `core-policy`
-and cover the things that are easy to get quietly wrong:
+Over a thousand unit tests, all on the JVM, no device required. The bulk sit in
+`core-policy` and cover the things that are easy to get quietly wrong:
 
 - day boundaries at 04:00, so an 23:50 session is not split across two days
 - bedtime windows that cross midnight
@@ -211,14 +218,25 @@ Working: usage measurement, device/category/per-app limits, bedtime, exempt apps
 bonus time, daily goals with a parent-written prize, the warning ladder,
 PIN-protected rules, the teen dashboard, the
 weekly view with local history, the request and approval loop, device owner
-enforcement and release.
+enforcement and release, and multi-phone sync: a parent's own phone (the same
+APK, in the parent role) can remotely view a linked child's status and edit
+most of their rules — schedules, categories, per-app limits and blocking,
+contextual rules, and auto-approval — over an end-to-end encrypted channel that
+never passes through infrastructure this project runs (see
+[Security model](#security-model) and [Privacy](#privacy)).
 
 Not built yet:
 
 - **No weekly digest.** The weekly view exists in the app, but nothing is pushed
   or emailed on a schedule.
-- **No server and no parent app.** Rules are edited on the same phone that enforces
-  them. `LocalPolicyStore` is a stand-in for Room plus sync.
+- **No company-run server or accounts.** Sync is device-to-device through a
+  public relay (ntfy.sh by default), which only ever sees ciphertext — there is
+  no backend this project operates, and nothing to sign up for.
+  `LocalPolicyStore` itself is still `SharedPreferences` rather than Room; that
+  part of the original plan is separate from sync and remains outstanding.
+- **Two rule screens are still own-device-only.** Web filtering and reviewing
+  web activity can only be set or seen standing at the managed phone itself —
+  see `docs/RULES-INVENTORY.md` for the full reachability inventory.
 - **No QR-code device-owner provisioning.** `ProvisioningPayload` in
   `core-provisioning` defines the payload format, but no screen builds one,
   renders it as a QR code, or hosts the APK it points at. Becoming device owner
@@ -288,9 +306,16 @@ no need for tooling. That shapes several decisions:
 The child is the subject, so the default is to collect and transmit as little as
 possible about them.
 
-- **Nothing leaves the device unless sync is switched on**, and then only
-  requests and their answers — minutes, target, the reason the child wrote, and
-  yes or no. No app list, no screen time, no location. Encrypted before it leaves.
+- **Nothing leaves the device unless sync is switched on.** Even then, only what
+  a specific feature needs is sent, encrypted before it leaves: requests and
+  their answers (minutes, target, the reason the child wrote, yes or no), daily
+  usage totals (not individual app sessions), the installed-app list (a name and
+  package id only, so a parent's rule screen can offer it — never usage or an
+  icon), which domains were visited today (counted, never a browsing history),
+  and a position **only** when a parent explicitly asks or during an SOS —
+  never a continuous stream, and never for a contextual "at school" style rule,
+  which only ever learns which saved place the phone is inside, not a
+  coordinate (see [Contextual rules](#contextual-rules)).
 - **The diagnostic log records what the app did, never what the child did.** Event
   names, counts and durations only: no package names, no reasons, no prize text,
   no session times. A test asserts the shape of every rendered line, so a later
