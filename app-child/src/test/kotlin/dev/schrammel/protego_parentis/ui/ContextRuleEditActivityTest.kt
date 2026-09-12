@@ -158,6 +158,93 @@ class ContextRuleEditActivityTest {
         assertTrue(texts.none { it == context.getString(R.string.context_when_always) })
     }
 
+    @Test
+    fun `an AllOf rule survives an unrelated edit, still combined with all`() {
+        store().upsert(
+            ContextRule(
+                id = "all-of-rule",
+                name = "School and low battery",
+                enabled = true,
+                condition = Condition.AllOf(
+                    listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20)),
+                ),
+                effect = RuleEffect.Block,
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "all-of-rule"),
+        ).setup().get()
+
+        clickButton(activity, "Save rule")
+
+        val saved = store().rules.single { it.id == "all-of-rule" }
+        assertEquals(
+            Condition.AllOf(listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20))),
+            saved.condition,
+        )
+    }
+
+    @Test
+    fun `an AnyOf rule survives an unrelated edit, still combined with any`() {
+        store().upsert(
+            ContextRule(
+                id = "any-of-rule",
+                name = "School or low battery",
+                enabled = true,
+                condition = Condition.AnyOf(
+                    listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20)),
+                ),
+                effect = RuleEffect.Block,
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "any-of-rule"),
+        ).setup().get()
+
+        clickButton(activity, "Save rule")
+
+        val saved = store().rules.single { it.id == "any-of-rule" }
+        assertEquals(
+            Condition.AnyOf(listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20))),
+            saved.condition,
+        )
+    }
+
+    @Test
+    fun `a negated combined rule survives an unrelated edit, still negated`() {
+        store().upsert(
+            ContextRule(
+                id = "negated-combined-rule",
+                name = "Not (school and low battery)",
+                enabled = true,
+                condition = Condition.Not(
+                    Condition.AllOf(listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20))),
+                ),
+                effect = RuleEffect.Block,
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "negated-combined-rule"),
+        ).setup().get()
+
+        clickButton(activity, "Save rule")
+
+        val saved = store().rules.single { it.id == "negated-combined-rule" }
+        assertEquals(
+            Condition.Not(Condition.AllOf(listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20)))),
+            saved.condition,
+        )
+    }
+
     private fun renameField(activity: ContextRuleEditActivity): android.widget.EditText? =
         findAll(activity.window.decorView) { it is android.widget.EditText }
             .filterIsInstance<android.widget.EditText>()
