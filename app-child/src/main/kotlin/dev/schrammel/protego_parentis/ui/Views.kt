@@ -155,11 +155,7 @@ private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextVie
     val vertical = dimen(R.dimen.space_md)
     setPadding(0, vertical, 0, vertical)
 
-    val outValue = android.util.TypedValue()
-    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-    setBackgroundResource(outValue.resourceId)
-    isClickable = true
-    isFocusable = true
+    withRipple()
     setOnClickListener { onClick() }
 }
 
@@ -349,6 +345,20 @@ internal fun Activity.card(build: LinearLayout.() -> Unit): LinearLayout =
     }
 
 /**
+ * Marks this view clickable with the system's default ripple/highlight — the
+ * feedback a real control gives, rather than a plain view that happens to have
+ * a listener. Pulled out once three call sites ([navigationRow], [showMoreRow],
+ * and `HomeActivity`'s own openable app rows) had each rebuilt it by hand.
+ */
+internal fun View.withRipple(): View = apply {
+    val outValue = android.util.TypedValue()
+    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+    setBackgroundResource(outValue.resourceId)
+    isClickable = true
+    isFocusable = true
+}
+
+/**
  * A row that goes somewhere.
  *
  * Title, a line explaining what is behind it, and a chevron. The description is
@@ -367,15 +377,7 @@ internal fun Activity.navigationRow(
     setPadding(0, vertical, 0, vertical)
 
     // Gives the row a touch response, so it looks like the control it is.
-    val outValue = android.util.TypedValue()
-    context.theme.resolveAttribute(
-        android.R.attr.selectableItemBackground,
-        outValue,
-        true,
-    )
-    setBackgroundResource(outValue.resourceId)
-    isClickable = true
-    isFocusable = true
+    withRipple()
     setOnClickListener { onClick() }
 
     addView(
