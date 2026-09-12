@@ -55,7 +55,7 @@ class RemotePolicyRuleStore(private val context: Context, private val childId: D
     override fun write(snapshot: PolicySnapshot) = SyncCoordinator(context).applyPolicyEdit(snapshot, childId)
 }
 
-fun policyRuleStore(context: Context, target: RuleTarget): PolicyRuleStore =
+fun policyRuleStore(context: Context, target: RuleScope): PolicyRuleStore =
     if (target.isOwnDevice) LocalPolicyRuleStore(context) else RemotePolicyRuleStore(context, target.childId)
 
 /** [LocalPolicyStore.categories]'s three helpers, generalised to either device. */
@@ -91,7 +91,7 @@ class RemoteContextRuleRuleStore(private val context: Context, private val child
         SyncCoordinator(context).applyContextRuleEdit(rules, childId)
 }
 
-fun contextRuleRuleStore(context: Context, target: RuleTarget): ContextRuleRuleStore =
+fun contextRuleRuleStore(context: Context, target: RuleScope): ContextRuleRuleStore =
     if (target.isOwnDevice) LocalContextRuleRuleStore(context) else RemoteContextRuleRuleStore(context, target.childId)
 
 /** [ContextRuleStore]'s upsert/delete convenience shape, generalised to either device. */
@@ -133,7 +133,7 @@ class RemoteAutoApprovalRuleStore(private val context: Context, private val chil
         SyncCoordinator(context).applyAutoApprovalEdit(rules, childId)
 }
 
-fun autoApprovalRuleStore(context: Context, target: RuleTarget): AutoApprovalRuleStore =
+fun autoApprovalRuleStore(context: Context, target: RuleScope): AutoApprovalRuleStore =
     if (target.isOwnDevice) LocalAutoApprovalRuleStore(context) else RemoteAutoApprovalRuleStore(context, target.childId)
 
 /** [AutoApprovalStore]'s find/upsert/delete convenience shape, generalised to either device. */
@@ -192,7 +192,7 @@ class RemotePlaceRuleStore(private val context: Context, private val childId: De
     }
 }
 
-fun placeRuleStore(context: Context, target: RuleTarget): PlaceRuleStore =
+fun placeRuleStore(context: Context, target: RuleScope): PlaceRuleStore =
     if (target.isOwnDevice) LocalPlaceRuleStore(context) else RemotePlaceRuleStore(context, target.childId)
 
 /**
@@ -219,7 +219,7 @@ class RemoteAppCatalog(private val context: Context, private val childId: Device
         AppInventoryStore(context).apps(childId).map { AppInfo(PackageName(it.packageName), it.label, icon = null) }
 }
 
-fun appCatalog(context: Context, target: RuleTarget): AppCatalog =
+fun appCatalog(context: Context, target: RuleScope): AppCatalog =
     if (target.isOwnDevice) LocalAppCatalog(context) else RemoteAppCatalog(context, target.childId)
 
 /** A package's label, or the package name itself if this catalog has never heard of it. */

@@ -14,7 +14,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
@@ -109,7 +109,7 @@ class AppPickerActivity : ParentGatedActivity() {
     }
 
     private lateinit var content: LinearLayout
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private val rows: LinearLayout by lazy {
         LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     }

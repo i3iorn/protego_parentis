@@ -45,6 +45,7 @@ import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.time.LocalDate
 import java.time.LocalTime
@@ -61,7 +62,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 class ContextRuleEditActivity : ParentGatedActivity() {
 
-    private lateinit var target: dev.schrammel.protego_parentis.ui.rules.RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var container: LinearLayout
 
     private var ruleId: String = ""
@@ -107,7 +108,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val resolved = dev.schrammel.protego_parentis.ui.rules.RuleTargets.resolve(this) ?: return finish()
+        val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
 
         val existing = intent.getStringExtra(EXTRA_ID)
@@ -754,7 +755,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         private val DEFAULT_WINDOW_END: LocalTime = LocalTime.of(15, 0)
 
         fun intent(context: Context, ruleId: String? = null, childId: DeviceId? = null): Intent =
-            dev.schrammel.protego_parentis.ui.rules.RuleTargets.putExtra(
+            RuleTargets.putExtra(
                 Intent(context, ContextRuleEditActivity::class.java)
                     .apply { ruleId?.let { putExtra(EXTRA_ID, it) } },
                 childId,
@@ -772,14 +773,14 @@ class ContextRuleEditActivity : ParentGatedActivity() {
  */
 class PlacesActivity : ParentGatedActivity() {
 
-    private lateinit var target: dev.schrammel.protego_parentis.ui.rules.RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var container: LinearLayout
 
     override fun supportsReadOnly() = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val resolved = dev.schrammel.protego_parentis.ui.rules.RuleTargets.resolve(this) ?: return finish()
+        val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
 
         container = contentColumn()
@@ -1117,6 +1118,6 @@ class PlacesActivity : ParentGatedActivity() {
         private const val MAX_RADIUS_METRES = 5000
 
         fun intent(context: Context, childId: DeviceId? = null) =
-            dev.schrammel.protego_parentis.ui.rules.RuleTargets.putExtra(Intent(context, PlacesActivity::class.java), childId)
+            RuleTargets.putExtra(Intent(context, PlacesActivity::class.java), childId)
     }
 }

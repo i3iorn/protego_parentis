@@ -25,7 +25,7 @@ import org.robolectric.Shadows.shadowOf
  * and bonus time used to be the one thing a remote edit of [RulesActivity]
  * could not reach at all — this pins that both now resolve somewhere, and
  * resolve to the *right* somewhere: the local screen when
- * [dev.schrammel.protego_parentis.ui.rules.RuleTarget] is this device's own,
+ * [dev.schrammel.protego_parentis.ui.rules.RuleScope] is this device's own,
  * the parent-side send-a-message screen when it is not.
  */
 @RunWith(RobolectricTestRunner::class)
