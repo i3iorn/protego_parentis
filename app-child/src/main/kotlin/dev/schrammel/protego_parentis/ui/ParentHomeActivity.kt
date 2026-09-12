@@ -232,9 +232,7 @@ class ParentHomeActivity : ParentRoleActivity() {
 
         if (today.topApps.isNotEmpty()) {
             addView(captionText(getString(R.string.parent_today_apps)))
-            today.topApps.forEach { app ->
-                addView(statRow(app.label, formatLimit(app.minutes)))
-            }
+            addCollapsibleRows(this, today.topApps.map { statRow(it.label, formatLimit(it.minutes)) })
         }
 
         addView(
