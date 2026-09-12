@@ -99,7 +99,7 @@ class ContextRulesActivity : ParentGatedActivity() {
             container.addView(
                 caption(
                     getString(
-                        if (capabilities.canReadWifi) R.string.context_wifi_ready else R.string.context_wifi_blocked,
+                        if (capabilities.canReadLocation) R.string.context_wifi_ready else R.string.context_wifi_blocked,
                     ),
                 ),
             )

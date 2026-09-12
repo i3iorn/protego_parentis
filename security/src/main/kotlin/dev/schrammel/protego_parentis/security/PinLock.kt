@@ -35,12 +35,22 @@ class PinLock(context: Context) {
         return PinHash.matches(pin, salt, expected)
     }
 
-    /** Only ever called after a successful [verify]. */
-    fun clear() {
+    /**
+     * Wipes the PIN, but only once [pin] itself has been checked.
+     *
+     * Not two separate calls — a standalone `clear()` relied on every caller
+     * remembering to check [verify] first, which is a rule that lives only in
+     * a doc comment and a bug three modules away from silently defeating.
+     * Baking the check into this call's own signature means there is no way
+     * to reach it without one.
+     */
+    fun clearIfVerified(pin: String): Boolean {
+        if (!verify(pin)) return false
         prefs.edit(commit = true) {
             remove(KEY_SALT)
             remove(KEY_HASH)
         }
+        return true
     }
 
     private fun encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)

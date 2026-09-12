@@ -90,8 +90,12 @@ class GoalStore(context: Context) {
      * record and award it again.
      */
     fun markCelebrated(day: LocalDate) = synchronized(prefs) {
+        // Bounded like every other persisted collection in this app: nothing
+        // needs the full history, and an unbounded string set would otherwise
+        // grow for as long as the family keeps using the goal feature.
+        val kept = (celebratedDays() + day).sortedDescending().take(MAX_CELEBRATED_DAYS)
         prefs.edit {
-            putStringSet(KEY_CELEBRATED, (celebratedDays() + day).map(LocalDate::toString).toSet())
+            putStringSet(KEY_CELEBRATED, kept.map(LocalDate::toString).toSet())
             remove(KEY_PENDING_DAY)
             remove(KEY_PENDING_USED)
             remove(KEY_PENDING_TARGET)
@@ -100,6 +104,9 @@ class GoalStore(context: Context) {
     }
 
     private companion object {
+        /** Owner-directed cap (#156) on how many celebrated days are kept. */
+        const val MAX_CELEBRATED_DAYS = 100
+
         const val FILE_NAME = "goal"
         const val KEY_ENABLED = "enabled"
         const val KEY_MAX_MINUTES = "max_minutes"

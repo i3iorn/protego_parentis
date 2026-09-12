@@ -56,10 +56,6 @@ class AutoApprovalActivity : ParentGatedActivity() {
         render()
     }
 
-    override fun onGatedContentHidden() {
-        column.removeAllViews()
-    }
-
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.auto_title)))
@@ -161,10 +157,6 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
     override fun onGatedContentVisible() {
         if (!requireStillInFamily(target)) return
         render()
-    }
-
-    override fun onGatedContentHidden() {
-        column.removeAllViews()
     }
 
     private fun render() {

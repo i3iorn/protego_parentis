@@ -168,8 +168,8 @@ class LocalPolicyStore(context: Context) {
      * Deliberately leaves [scheduleStore]'s own schedules, this store's
      * [dailyLimitMinutes], and [exemptPackages] exactly as they are, rather
      * than deleting them once migrated: #106 made their one remaining editor
-     * (`LimitsActivity`) unreachable rather than deleting it, and #107
-     * removed `ParentLimitActivity` and `SET_DAILY_LIMIT` outright, but a
+     * (`LimitsActivity`) unreachable, #107 removed `ParentLimitActivity` and
+     * `SET_DAILY_LIMIT` outright, and #162 deleted `LimitsActivity` too, but a
      * device mid-upgrade, or still replicating an old-format edit from a
      * sibling phone that has not upgraded yet, must not lose the rule
      * because the field it was read from vanished under it. This runs once,
@@ -455,11 +455,49 @@ class LocalPolicyStore(context: Context) {
      * lock two concurrent writers could each read the same version before either
      * commits, so one writer's bump — or its whole edit, for the compound
      * read-modify-write setters above — would be silently lost.
+     *
+     * Joins an outer [atomically] transaction when one is open on this instance,
+     * rather than committing and bumping the version on its own — see there.
      */
     private fun write(block: SharedPreferences.Editor.() -> Unit) = synchronized(prefs) {
+        val open = batchEditor
+        if (open != null) {
+            open.block()
+            return@synchronized
+        }
         prefs.edit {
             block()
             putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, INITIAL_VERSION) + 1L)
+        }
+    }
+
+    /** Set only for the duration of [atomically]; null otherwise. */
+    private var batchEditor: SharedPreferences.Editor? = null
+
+    /**
+     * Runs [block] as a single commit and a single version bump, however many
+     * of this store's setters it calls.
+     *
+     * Applying a remote snapshot used to call each setter individually — each
+     * one its own commit and its own version bump — so a concurrent
+     * `load()` from the enforcement worker could observe a [Policy] built from
+     * a mix of old and new field values partway through the snapshot, and the
+     * enforcement service would re-evaluate once per intermediate version
+     * rather than once for the whole update. `synchronized(prefs)` is
+     * reentrant on the same thread, so setters called from [block] see
+     * [batchEditor] already open and write into it instead of starting their
+     * own transaction.
+     */
+    fun atomically(block: () -> Unit) = synchronized(prefs) {
+        check(batchEditor == null) { "atomically() does not nest" }
+        val editor = prefs.edit()
+        batchEditor = editor
+        try {
+            block()
+            editor.putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, INITIAL_VERSION) + 1L)
+            editor.apply()
+        } finally {
+            batchEditor = null
         }
     }
 

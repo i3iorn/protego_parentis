@@ -107,6 +107,7 @@ data class Policy(
         require(dayBoundaryHour in 0..23) { "dayBoundaryHour must be 0..23, was $dayBoundaryHour" }
         require(schedules.map { it.id }.toSet().size == schedules.size) { "duplicate schedule ids" }
         require(categories.map { it.id }.toSet().size == categories.size) { "duplicate category ids" }
+        require(contextRules.map { it.id }.toSet().size == contextRules.size) { "duplicate context rule ids" }
     }
 
     fun ruleFor(pkg: PackageName): AppRule = appRules[pkg] ?: AppRule.Allowed
