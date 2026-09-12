@@ -257,6 +257,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                     Button(this).apply {
                         setText(R.string.context_delete)
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                            .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
                             val deleted = name
                             contextRuleRuleStore(this@ContextRuleEditActivity, target).delete(ruleId)

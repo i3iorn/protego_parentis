@@ -41,7 +41,7 @@ class BonusTimeActivity : ParentGatedActivity() {
     private fun buildLayout(): LinearLayout {
         val content = contentColumn()
 
-        content.addView(heading(getString(R.string.bonus_title), 28f))
+        content.addView(screenTitle(getString(R.string.bonus_title)))
         content.addView(
             TextView(this).apply {
                 setText(R.string.bonus_hint)

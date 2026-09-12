@@ -88,7 +88,7 @@ class CategoryEditActivity : ParentGatedActivity() {
     private fun buildLayout(existing: StoredCategory?): LinearLayout {
         val content = contentColumn()
 
-        content.addView(heading(getString(R.string.category_title), 28f))
+        content.addView(screenTitle(getString(R.string.category_title)))
         if (!canEdit) content.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         nameInput = EditText(this).apply {
