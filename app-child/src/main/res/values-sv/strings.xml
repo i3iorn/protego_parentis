@@ -104,6 +104,9 @@
     <string name="context_near_ready">Enheter i närheten: tillgängliga.</string>
     <string name="context_near_blocked">Enheter i närheten: inte tillgängliga utan Bluetooth-behörighet. Regler om enheter i närheten kommer inte att gälla.</string>
     <string name="context_manage_places">Hantera platser</string>
+    <string name="context_daily_limit_header">Daglig gräns</string>
+    <string name="context_daily_limit_add">Sätt en daglig gräns</string>
+    <string name="context_daily_limit_add_detail">Antal minuter telefonen tillåter varje dag</string>
     <string name="context_rules_header">Dina regler</string>
     <string name="context_no_rules">Inga regler än.</string>
     <string name="context_add_rule">Lägg till en regel</string>
@@ -319,6 +322,8 @@
     <string name="rules_row_app_limits_detail">En gräns för en enskild app</string>
     <string name="rules_row_context">Var och när regler gäller</string>
     <string name="rules_row_context_detail">Regler för ett Wi-Fi-nätverk, en plats eller att vara nära någon</string>
+    <string name="rules_row_rules">Regler</string>
+    <string name="rules_row_rules_detail">Den dagliga gränsen, läggdags, scheman och regler för var eller när de gäller</string>
     <string name="rules_row_goal">Mål och belöning</string>
     <string name="rules_row_goal_detail">Något att förtjäna genom att hålla sig under en gräns</string>
     <string name="rules_read_only_hint">Ange PIN-koden för att göra ändringar.</string>

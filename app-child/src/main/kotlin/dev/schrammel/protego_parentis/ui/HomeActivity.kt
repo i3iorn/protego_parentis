@@ -20,11 +20,15 @@ import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
 import dev.schrammel.protego_parentis.model.BudgetLevel
+import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Reason
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
@@ -43,7 +47,6 @@ class HomeActivity : DementorActivity() {
 
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var installedApps: InstalledApps
-    private lateinit var store: LocalPolicyStore
     private lateinit var goals: GoalCoordinator
 
 
@@ -66,7 +69,6 @@ class HomeActivity : DementorActivity() {
 
         coordinator = EnforcementCoordinator(this)
         installedApps = InstalledApps(this)
-        store = LocalPolicyStore(this)
         goals = GoalCoordinator(this)
 
         findViewById<Button>(R.id.permission_button).setOnClickListener {
@@ -343,30 +345,43 @@ class HomeActivity : DementorActivity() {
         )
     }
 
+    /**
+     * #106: both facts below used to live in [LocalPolicyStore] fields
+     * ([LocalPolicyStore.dailyLimitMinutes], [LocalPolicyStore.bedtime]) that
+     * only the now-unreachable `LimitsActivity`/`ParentLimitActivity` wrote.
+     * The unified rules screen writes a [dev.schrammel.protego_parentis.model.ContextRule]
+     * instead, at the same well-known ids that screen and #105's migration
+     * both use, so this summary reads those rules directly rather than a
+     * field nothing edits any more.
+     */
     private fun renderRules() {
         val container = clear(R.id.rules_list)
+        val rules = ContextRuleStore(this).rules
 
-        val limit = store.dailyLimitMinutes
+        val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
+        val budget = (dailyLimit?.effect as? RuleEffect.SetDeviceBudget)?.takeIf { dailyLimit.enabled }
         container.addView(
             line(
-                if (limit <= 0) {
+                if (budget == null) {
                     getString(R.string.home_rule_no_limit)
                 } else {
-                    getString(R.string.home_rule_limit, formatLimit(limit))
+                    getString(R.string.home_rule_limit, formatLimit(budget.budget.default.inWholeMinutes.toInt()))
                 },
             ),
         )
 
-        val bedtime = store.bedtime
+        val bedtimeId = LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + ScheduleStore.BEDTIME_ID
+        val bedtime = rules.firstOrNull { it.id == bedtimeId }
+        val window = (bedtime?.condition as? Condition.DuringWindow)?.takeIf { bedtime.enabled }?.window
         container.addView(
             line(
-                if (!bedtime.enabled) {
+                if (window == null) {
                     getString(R.string.home_rule_no_bedtime)
                 } else {
                     getString(
                         R.string.home_rule_bedtime,
-                        formatTime(bedtime.start),
-                        formatTime(bedtime.end),
+                        formatTime(window.start),
+                        formatTime(window.end),
                     )
                 },
             ),

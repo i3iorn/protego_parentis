@@ -209,16 +209,6 @@
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
 
-        <activity
-            android:name=".ui.SchedulesActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
-
-        <activity
-            android:name=".ui.ScheduleEditActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.SchedulesActivity" />
-
         <!--
           The black-hole tunnel for apps with no internet (WF-4).
 
