@@ -64,7 +64,7 @@ class ParentInboxActivity : ParentRoleActivity() {
         if (pending.isEmpty()) {
             column.addView(bodyText(getString(R.string.inbox_empty)))
         } else {
-            pending.forEach { column.addView(pendingCard(it)) }
+            addCollapsibleRows(column, pending.map(::pendingCard))
         }
 
         val settled = all.filterNot { it.isOpenAt(now) }

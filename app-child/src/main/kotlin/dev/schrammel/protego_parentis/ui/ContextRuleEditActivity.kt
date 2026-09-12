@@ -826,25 +826,31 @@ class PlacesActivity : ParentGatedActivity() {
                 },
             )
         }
-        places.forEach { place ->
-            container.addView(
-                TextView(this).apply {
-                    text = getString(R.string.places_row, place.name, place.radiusMetres)
-                    styleAs(R.style.TextAppearance_Dementor_ListItem)
-                    setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
-                    if (canEdit) setOnClickListener { confirmDelete(store, place) }
-                },
-            )
-            if (place.id in clampedIds) {
-                container.addView(
-                    TextView(this).apply {
-                        setText(R.string.places_radius_increased)
-                        styleAs(R.style.TextAppearance_Dementor_Caption)
-                        setPadding(0, 0, 0, dimen(R.dimen.space_sm))
-                    },
-                )
-            }
-        }
+        addCollapsibleRows(
+            container,
+            places.map { place ->
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(
+                        TextView(context).apply {
+                            text = getString(R.string.places_row, place.name, place.radiusMetres)
+                            styleAs(R.style.TextAppearance_Dementor_ListItem)
+                            setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
+                            if (canEdit) setOnClickListener { confirmDelete(store, place) }
+                        },
+                    )
+                    if (place.id in clampedIds) {
+                        addView(
+                            TextView(context).apply {
+                                setText(R.string.places_radius_increased)
+                                styleAs(R.style.TextAppearance_Dementor_Caption)
+                                setPadding(0, 0, 0, dimen(R.dimen.space_sm))
+                            },
+                        )
+                    }
+                }
+            },
+        )
 
         if (canEdit) {
             container.addView(
@@ -1062,16 +1068,17 @@ class PlacesActivity : ParentGatedActivity() {
                 },
             )
         }
-        refs.forEach { ref ->
-            container.addView(
+        addCollapsibleRows(
+            container,
+            refs.map { ref ->
                 TextView(this).apply {
                     text = getString(R.string.places_row, ref.name, ref.radiusMetres)
                     styleAs(R.style.TextAppearance_Dementor_ListItem)
                     setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
                     if (canEdit) setOnClickListener { editRemotePlace(store, ref) }
-                },
-            )
-        }
+                }
+            },
+        )
     }
 
     private fun editRemotePlace(store: dev.schrammel.protego_parentis.ui.rules.PlaceRuleStore, ref: PlaceRef) {
