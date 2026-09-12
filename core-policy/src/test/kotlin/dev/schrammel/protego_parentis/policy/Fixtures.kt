@@ -44,13 +44,19 @@ internal fun zdt(date: String, time: String): ZonedDateTime =
 internal fun weekdayOf(date: String) = LocalDate.parse(date).dayOfWeek
 
 /**
- * [deviceBudget] and [schedules] arrive here exactly as every test already
- * wrote them, and are translated into the equivalent [ContextRule]s rather
- * than set on [Policy] directly (#105) — [PolicyEngine] reads only rules
- * now, the same conversion [dev.schrammel.protego_parentis.rules.LocalPolicyStore.migrateToUnifiedRules]
+ * [deviceBudget], [schedules], and the [AppRule.Budgeted]/[AppRule.Blocked]
+ * entries of [appRules] and the `budget` of each of [categories] all arrive
+ * here exactly as every test already wrote them, and are translated into the
+ * equivalent [ContextRule]s rather than set on [Policy] directly — [PolicyEngine]
+ * reads only rules for any of these now, the same conversion
+ * [dev.schrammel.protego_parentis.rules.LocalPolicyStore.migrateToUnifiedRules]
  * does for a real device. Not shared code with that migration: this is the
  * pure-JVM test module, and duplicating a dozen lines of conversion beat
  * pulling Android into it for one function.
+ *
+ * [AppRule.AlwaysAllowed]/[AppRule.Allowed] pass through in [appRules]
+ * unchanged — [PolicyEngine] still reads those two variants directly, only
+ * [AppRule.Budgeted]/[AppRule.Blocked] moved to being rules.
  */
 internal fun policy(
     deviceBudget: WeeklyBudget = WeeklyBudget.UNLIMITED,
@@ -66,10 +72,49 @@ internal fun policy(
     timeZone = ZONE,
     appRules = appRules,
     categories = categories,
-    contextRules = contextRules + scheduleRules(schedules) + deviceBudgetRule(deviceBudget),
+    contextRules = contextRules + scheduleRules(schedules) + deviceBudgetRule(deviceBudget) +
+        appBudgetRules(appRules) + appBlockRules(appRules) + categoryBudgetRules(categories),
     safetyAllowlist = safetyAllowlist,
     dayBoundaryHour = dayBoundaryHour,
 )
+
+private fun appBudgetRules(appRules: Map<PackageName, AppRule>): List<ContextRule> =
+    appRules.entries.mapNotNull { (pkg, rule) ->
+        if (rule !is AppRule.Budgeted) return@mapNotNull null
+        ContextRule(
+            id = "app-budget-${pkg.value}",
+            name = "App budget",
+            enabled = true,
+            condition = Condition.Always,
+            effect = RuleEffect.SetBudget(rule.budget),
+            target = RuleTarget.Apps(setOf(pkg)),
+        )
+    }
+
+private fun appBlockRules(appRules: Map<PackageName, AppRule>): List<ContextRule> =
+    appRules.entries.mapNotNull { (pkg, rule) ->
+        if (rule !is AppRule.Blocked) return@mapNotNull null
+        ContextRule(
+            id = "app-block-${pkg.value}",
+            name = "App block",
+            enabled = true,
+            condition = Condition.Always,
+            effect = RuleEffect.Block(hidden = rule.hidden),
+            target = RuleTarget.Apps(setOf(pkg)),
+        )
+    }
+
+private fun categoryBudgetRules(categories: List<Category>): List<ContextRule> =
+    categories.filter { it.budget != WeeklyBudget.UNLIMITED }.map { category ->
+        ContextRule(
+            id = "category-budget-${category.id.value}",
+            name = "${category.name} budget",
+            enabled = true,
+            condition = Condition.Always,
+            effect = RuleEffect.SetBudget(category.budget),
+            target = RuleTarget.Categories(setOf(category.id)),
+        )
+    }
 
 private fun scheduleRules(schedules: List<ScheduleBlock>): List<ContextRule> = schedules.map { schedule ->
     ContextRule(
@@ -77,7 +122,7 @@ private fun scheduleRules(schedules: List<ScheduleBlock>): List<ContextRule> = s
         name = schedule.name,
         enabled = true,
         condition = Condition.DuringWindow(schedule.window),
-        effect = RuleEffect.Block,
+        effect = RuleEffect.Block(),
         target = when (schedule.mode) {
             ScheduleBlock.Mode.INCLUSIVE -> RuleTarget.Apps(schedule.packages)
             ScheduleBlock.Mode.EXCLUSIVE -> RuleTarget.EverythingExcept(schedule.packages)
@@ -93,7 +138,7 @@ private fun deviceBudgetRule(budget: WeeklyBudget): List<ContextRule> {
             name = "Device budget",
             enabled = true,
             condition = Condition.Always,
-            effect = RuleEffect.SetDeviceBudget(budget),
+            effect = RuleEffect.SetBudget(budget),
             target = RuleTarget.Everything,
         ),
     )

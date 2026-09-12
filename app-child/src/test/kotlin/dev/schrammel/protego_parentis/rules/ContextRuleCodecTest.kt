@@ -12,6 +12,7 @@ import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.DayOfWeek
@@ -147,10 +148,11 @@ class ContextRuleCodecTest {
     @Test
     fun `every effect kind round-trips`() {
         val effects = listOf(
-            RuleEffect.Block,
+            RuleEffect.Block(),
+            RuleEffect.Block(hidden = true),
             RuleEffect.Allow,
             RuleEffect.SafetyExempt,
-            RuleEffect.SetDeviceBudget(WeeklyBudget.flat(45.minutes)),
+            RuleEffect.SetBudget(WeeklyBudget.flat(45.minutes)),
         )
 
         effects.forEach { effect ->
@@ -160,6 +162,22 @@ class ContextRuleCodecTest {
                 ContextRuleCodec.decodeEffectFromString(ContextRuleCodec.encodeEffectToString(effect)),
             )
         }
+    }
+
+    /** A rule saved before hiding existed has no `hidden` key at all; absent must read as false. */
+    @Test
+    fun `a block with no hidden key decodes as not hidden`() {
+        val json = JSONObject().apply { put("kind", "block") }
+
+        assertEquals(RuleEffect.Block(hidden = false), ContextRuleCodec.decodeEffect(json))
+    }
+
+    /** A non-hidden block is written exactly as it always was, with no new key at all. */
+    @Test
+    fun `a non-hidden block encodes without a hidden key`() {
+        val json = ContextRuleCodec.encodeEffect(RuleEffect.Block())
+
+        assertFalse(json.has("hidden"))
     }
 
     @Test

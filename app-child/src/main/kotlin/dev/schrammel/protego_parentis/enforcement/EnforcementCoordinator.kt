@@ -72,10 +72,12 @@ class EnforcementCoordinator(context: Context) {
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
 
     init {
-        // Runs once, before anything here ever reads a Policy — see the
-        // method's own doc comment for why this is safe to call every time
-        // this class is constructed rather than gating it here too.
+        // Runs once each, before anything here ever reads a Policy — see
+        // each method's own doc comment for why this is safe to call every
+        // time this class is constructed rather than gating it here too, and
+        // why the two are separate calls rather than one.
         store.migrateToUnifiedRules()
+        store.migrateAppRulesToUnifiedRules()
     }
 
     fun hasUsageAccess(): Boolean = UsageAccess.isGranted(appContext)

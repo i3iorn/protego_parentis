@@ -188,7 +188,7 @@ class LocalPolicyStore(context: Context) {
                     name = stored.name,
                     enabled = stored.enabled,
                     condition = Condition.DuringWindow(block.window),
-                    effect = RuleEffect.Block,
+                    effect = RuleEffect.Block(),
                     target = when (stored.mode) {
                         ScheduleBlock.Mode.INCLUSIVE -> RuleTarget.Apps(block.packages)
                         ScheduleBlock.Mode.EXCLUSIVE -> RuleTarget.EverythingExcept(block.packages)
@@ -205,7 +205,7 @@ class LocalPolicyStore(context: Context) {
                     name = appContext.getString(R.string.rules_row_limits),
                     enabled = true,
                     condition = Condition.Always,
-                    effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(limit.minutes)),
+                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(limit.minutes)),
                     target = RuleTarget.Everything,
                 ),
             )
@@ -231,6 +231,88 @@ class LocalPolicyStore(context: Context) {
         }
 
         prefs.edit { putBoolean(KEY_RULES_MIGRATED, true) }
+    }
+
+    /**
+     * Folds every stored per-app limit, block, hide, and category budget into
+     * the unified [ContextRuleStore] rule format, once — the same job
+     * [migrateToUnifiedRules] already did for schedules, the flat daily
+     * limit, and exemptions, done separately and gated by its own flag
+     * because that migration already ran (and set [KEY_RULES_MIGRATED]) on
+     * every phone upgrading through this point: gating this behind the same
+     * flag would mean an existing family's app limits, blocks, hidden apps,
+     * and category budgets silently stopped being enforced the moment
+     * [PolicyEngine] stopped reading [AppRule.Budgeted]/[AppRule.Blocked]/
+     * `Category.budget` directly, with nothing left to convert them.
+     *
+     * Idempotent the same way: [ContextRuleStore.upsert] replaces by id, so
+     * running this again writes the same rules back. Deliberately leaves
+     * [appLimits], [blockedPackages], [hiddenPackages], and each category's
+     * `limitMinutes` exactly as they are — a sibling phone still on a build
+     * from before this migration, or one mid-upgrade, must not lose the rule
+     * because the field it was read from vanished under it.
+     */
+    fun migrateAppRulesToUnifiedRules() {
+        if (prefs.getBoolean(KEY_APP_RULES_MIGRATED, false)) return
+
+        appLimits.forEach { (pkg, minutes) ->
+            if (minutes <= 0) return@forEach
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = "$MIGRATED_APP_BUDGET_ID_PREFIX$pkg",
+                    name = appContext.getString(R.string.app_limits_title),
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(minutes.minutes)),
+                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
+                ),
+            )
+        }
+
+        // Hidden first, so a package in both sets — which no screen can
+        // produce today, but a hand-edited or replicated-from-an-older-build
+        // preference file might — migrates to the stricter of the two rather
+        // than to whichever loop happened to run last.
+        blockedPackages.forEach { pkg ->
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = "$MIGRATED_APP_BLOCK_ID_PREFIX$pkg",
+                    name = appContext.getString(R.string.apps_title),
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.Block(hidden = false),
+                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
+                ),
+            )
+        }
+        hiddenPackages.forEach { pkg ->
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = "$MIGRATED_APP_BLOCK_ID_PREFIX$pkg",
+                    name = appContext.getString(R.string.apps_title),
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.Block(hidden = true),
+                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
+                ),
+            )
+        }
+
+        categories.forEach { stored ->
+            if (stored.limitMinutes <= 0) return@forEach
+            contextRuleStore.upsert(
+                ContextRule(
+                    id = "$MIGRATED_CATEGORY_BUDGET_ID_PREFIX${stored.id}",
+                    name = stored.name,
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(stored.limitMinutes.minutes)),
+                    target = RuleTarget.Categories(setOf(CategoryId(stored.id))),
+                ),
+            )
+        }
+
+        prefs.edit { putBoolean(KEY_APP_RULES_MIGRATED, true) }
     }
 
     // ---------- bedtime ----------
@@ -519,6 +601,9 @@ class LocalPolicyStore(context: Context) {
         const val KEY_TAMPER = "tamper_protection"
         const val KEY_RULES_MIGRATED = "rules_migrated_v1"
 
+        /** Separate from [KEY_RULES_MIGRATED]: see [migrateAppRulesToUnifiedRules]'s own doc comment for why. */
+        const val KEY_APP_RULES_MIGRATED = "app_rules_migrated_v1"
+
         /** The fixed id the daily limit becomes as a rule (#105). */
         const val MIGRATED_DAILY_LIMIT_ID = "migrated-daily-limit"
 
@@ -527,5 +612,14 @@ class LocalPolicyStore(context: Context) {
 
         /** The fixed id prefix an exempt package becomes as a rule (#105). */
         const val MIGRATED_EXEMPT_ID_PREFIX = "migrated-exempt-"
+
+        /** The fixed id prefix a per-app limit becomes as a rule. */
+        const val MIGRATED_APP_BUDGET_ID_PREFIX = "migrated-app-budget-"
+
+        /** The fixed id prefix a per-app block or hide becomes as a rule. */
+        const val MIGRATED_APP_BLOCK_ID_PREFIX = "migrated-app-block-"
+
+        /** The fixed id prefix a category's budget becomes as a rule. */
+        const val MIGRATED_CATEGORY_BUDGET_ID_PREFIX = "migrated-category-budget-"
     }
 }

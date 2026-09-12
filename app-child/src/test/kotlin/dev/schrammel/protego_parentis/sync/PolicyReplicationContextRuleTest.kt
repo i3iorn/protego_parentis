@@ -180,7 +180,7 @@ class PolicyReplicationContextRuleTest {
             name = "No games at dinner",
             enabled = true,
             condition = Condition.AllOf(listOf(Condition.OnWifi("HomeNet"), Condition.BatteryBelow(20))),
-            effect = RuleEffect.Block,
+            effect = RuleEffect.Block(),
             target = RuleTarget.Categories(setOf(CategoryId("games"))),
         )
 
@@ -200,7 +200,7 @@ class PolicyReplicationContextRuleTest {
             name = "No games at dinner",
             enabled = true,
             condition = Condition.Always,
-            effect = RuleEffect.Block,
+            effect = RuleEffect.Block(),
             target = RuleTarget.Everything,
         )
         ContextRuleStore(context).rules = listOf(rule)

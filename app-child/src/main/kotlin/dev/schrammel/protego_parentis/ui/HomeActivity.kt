@@ -358,7 +358,7 @@ class HomeActivity : DementorActivity() {
         val rules = ContextRuleStore(this).rules
 
         val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
-        val budget = (dailyLimit?.effect as? RuleEffect.SetDeviceBudget)?.takeIf { dailyLimit.enabled }
+        val budget = (dailyLimit?.effect as? RuleEffect.SetBudget)?.takeIf { dailyLimit.enabled }
         container.addView(
             line(
                 if (budget == null) {

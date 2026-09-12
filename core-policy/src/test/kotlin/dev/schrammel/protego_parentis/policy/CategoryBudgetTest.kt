@@ -211,7 +211,7 @@ class CategoryBudgetTest {
             now = at("2026-08-21", "18:00"),
         )
 
-        assertEquals(Reason.ManuallyBlocked, result.suspend[GAME])
+        assertTrue(result.suspend[GAME] is Reason.ContextRuleActive)
     }
 
     @Test

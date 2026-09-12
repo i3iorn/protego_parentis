@@ -16,6 +16,15 @@ package dev.schrammel.protego_parentis.model
 data class Category(
     val id: CategoryId,
     val name: String,
+    /**
+     * No longer read by `PolicyEngine` — a category's budget is an ordinary
+     * [ContextRule] now: a [RuleEffect.SetBudget] targeting this category,
+     * the same generalisation that already moved the flat device budget out
+     * of [Policy.deviceBudget]. Left here rather than removed because every
+     * store built before that migration keeps constructing one, and
+     * `LocalPolicyStore.migrateAppRulesToUnifiedRules()` reads it as its
+     * one-time conversion's source.
+     */
     val budget: WeeklyBudget,
     val packages: Set<PackageName> = emptySet(),
     /**

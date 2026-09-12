@@ -34,6 +34,18 @@ internal data class ContextOutcome(
     val safetyExempt: Set<PackageName>,
     /** Replaces the device budget when present. */
     val deviceBudget: WeeklyBudget?,
+    /**
+     * Replaces one app's own daily allowance, for every app a [RuleEffect.SetBudget]
+     * rule named directly (via [RuleTarget.Apps] or the app half of a
+     * [RuleTarget.Mixed]). What `AppRule.Budgeted` used to mean before a
+     * per-app limit became a rule like any other.
+     */
+    val appBudgets: Map<PackageName, WeeklyBudget>,
+    /**
+     * Replaces one category's own daily allowance, the same way [appBudgets]
+     * does for an app. What `Category.budget` used to mean.
+     */
+    val categoryBudgets: Map<CategoryId, WeeklyBudget>,
     /** The rules that are currently applying, for showing on screen. */
     val activeRules: List<ContextRule>,
 )
@@ -50,8 +62,9 @@ internal data class ContextOutcome(
  *  - **Allow beats block.** An explicit "this app is fine here" is a more
  *    deliberate act than a broad block, and the safety allowlist already works
  *    this way, so the two behave alike.
- *  - **The tightest budget wins.** Several rules setting a device budget resolve
- *    to the smallest. A rule can tighten, never loosen past another rule.
+ *  - **The tightest budget wins.** Several rules setting the same device,
+ *    app, or category's budget resolve to the smallest of that group. A rule
+ *    can tighten, never loosen past another rule for the same target.
  *
  * Internal: reached only through [PolicyEngine.evaluate].
  */
@@ -100,7 +113,9 @@ internal object ContextRules {
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val allowed = mutableSetOf<PackageName>()
         val safetyExempt = mutableSetOf<PackageName>()
-        var budget: WeeklyBudget? = null
+        var deviceBudget: WeeklyBudget? = null
+        val appBudgets = HashMap<PackageName, WeeklyBudget>()
+        val categoryBudgets = HashMap<CategoryId, WeeklyBudget>()
 
         active.forEach { rule ->
             when (val effect = rule.effect) {
@@ -115,8 +130,24 @@ internal object ContextRules {
                 is RuleEffect.SafetyExempt ->
                     safetyExempt += resolve(rule.target, hierarchy, installedPackages)
 
-                is RuleEffect.SetDeviceBudget ->
-                    budget = tightest(budget, effect.budget, now.dayOfWeek)
+                is RuleEffect.SetBudget ->
+                    // Everything means the shared device-wide pool, exactly as
+                    // it always has; an app or category named directly gets
+                    // its own pool instead. EverythingExcept has no budget
+                    // reading of its own — nothing authors one, and "each
+                    // installed app but these gets its own allowance" is a
+                    // different feature from either pool this resolves.
+                    if (rule.target is RuleTarget.Everything) {
+                        deviceBudget = tightest(deviceBudget, effect.budget, now.dayOfWeek)
+                    } else {
+                        val (apps, categories) = namedIn(rule.target)
+                        apps.forEach { pkg ->
+                            appBudgets[pkg] = tightest(appBudgets[pkg], effect.budget, now.dayOfWeek)
+                        }
+                        categories.forEach { id ->
+                            categoryBudgets[id] = tightest(categoryBudgets[id], effect.budget, now.dayOfWeek)
+                        }
+                    }
             }
         }
 
@@ -125,7 +156,9 @@ internal object ContextRules {
             blocked = blocked.filterKeys { it !in allowed && it !in safetyExempt },
             allowed = allowed,
             safetyExempt = safetyExempt,
-            deviceBudget = budget,
+            deviceBudget = deviceBudget,
+            appBudgets = appBudgets,
+            categoryBudgets = categoryBudgets,
             activeRules = active,
         )
     }
@@ -285,6 +318,23 @@ internal object ContextRules {
             hierarchy.packagesIn(id)
         }
         is RuleTarget.EverythingExcept -> installedPackages - target.packages
+    }
+
+    /**
+     * The apps and categories a target names directly, without following
+     * category nesting or resolving against what is installed.
+     *
+     * Unlike [resolve], this is not "which packages does this rule cover" —
+     * it is "which budget pools does this rule's [RuleEffect.SetBudget] add
+     * to". A category names its own pool, not the flattened packages inside
+     * it, which is why [RuleTarget.Categories] answers with the category id
+     * itself here and with every nested package there.
+     */
+    private fun namedIn(target: RuleTarget): Pair<Set<PackageName>, Set<CategoryId>> = when (target) {
+        is RuleTarget.Apps -> target.packages to emptySet()
+        is RuleTarget.Categories -> emptySet<PackageName>() to target.categories
+        is RuleTarget.Mixed -> target.packages to target.categories
+        is RuleTarget.Everything, is RuleTarget.EverythingExcept -> emptySet<PackageName>() to emptySet()
     }
 
     /**

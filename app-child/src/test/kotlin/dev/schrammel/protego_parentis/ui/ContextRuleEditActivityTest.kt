@@ -76,7 +76,7 @@ class ContextRuleEditActivityTest {
                 name = "Bedtime",
                 enabled = true,
                 condition = Condition.DuringWindow(window),
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.EverythingExcept(setOf(PackageName("com.google.android.deskclock"))),
             ),
         )
@@ -111,7 +111,7 @@ class ContextRuleEditActivityTest {
                 name = "Homework only after an hour",
                 enabled = true,
                 condition = Condition.AllowanceSpent(60),
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.Everything,
             ),
         )
@@ -140,7 +140,7 @@ class ContextRuleEditActivityTest {
                         Condition.Not(Condition.BatteryBelow(20)),
                     ),
                 ),
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.Everything,
             ),
         )
@@ -168,7 +168,7 @@ class ContextRuleEditActivityTest {
                 condition = Condition.AllOf(
                     listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20)),
                 ),
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.Everything,
             ),
         )
@@ -197,7 +197,7 @@ class ContextRuleEditActivityTest {
                 condition = Condition.AnyOf(
                     listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20)),
                 ),
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.Everything,
             ),
         )
@@ -226,7 +226,7 @@ class ContextRuleEditActivityTest {
                 condition = Condition.Not(
                     Condition.AllOf(listOf(Condition.OnWifi("School"), Condition.BatteryBelow(20))),
                 ),
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.Everything,
             ),
         )

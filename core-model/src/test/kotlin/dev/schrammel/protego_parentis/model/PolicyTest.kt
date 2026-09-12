@@ -42,7 +42,7 @@ private fun contextRule(id: String) = ContextRule(
     name = id,
     enabled = true,
     condition = Condition.Always,
-    effect = RuleEffect.Block,
+    effect = RuleEffect.Block(),
     target = RuleTarget.Everything,
 )
 

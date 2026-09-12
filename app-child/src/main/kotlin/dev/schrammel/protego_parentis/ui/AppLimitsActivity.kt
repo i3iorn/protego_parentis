@@ -11,12 +11,22 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
+import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
+import dev.schrammel.protego_parentis.model.WeeklyBudget
+import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
-import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
+import dev.schrammel.protego_parentis.ui.rules.delete
+import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * A daily limit for one individual app, on whichever kind of phone edits
@@ -25,6 +35,17 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  * Separate from categories on purpose: a category answers "an hour of games in
  * total", this answers "and no more than twenty minutes of that one". Both apply,
  * and whichever runs out first is what blocks.
+ *
+ * A shortcut over the same rule engine every other restriction goes through,
+ * not a system of its own: setting a limit here writes an ordinary
+ * [ContextRule] — [Condition.Always], [RuleEffect.SetBudget], a single-app
+ * [RuleTarget.Apps] — at [LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX]'s
+ * well-known per-app id, the same slot [LocalPolicyStore.migrateAppRulesToUnifiedRules]
+ * converts an old-format limit into. A parent who wants a condition this
+ * slider cannot express — "only on the school network" — still reaches the
+ * same rule through [ContextRuleEditActivity], which is why this screen
+ * exists alongside that one rather than instead of it: a one-tap slider for
+ * the common case, the full editor for everything else.
  */
 class AppLimitsActivity : ParentGatedActivity() {
 
@@ -70,13 +91,30 @@ class AppLimitsActivity : ParentGatedActivity() {
             // Both the app list and the stored limits come off disk (or, for a
             // parent editing another device's rules, off the replica).
             appCatalog(this, target).launchable() to
-                (policyRuleStore(this, target).read()?.appLimits ?: emptyMap())
+                limitsFrom(contextRuleRuleStore(this, target).read())
         }) { (loadedApps, loadedLimits) ->
             apps = loadedApps
             limits = loadedLimits
             renderRows()
         }
     }
+
+    /**
+     * This screen's own rules, read back out as the plain package-to-minutes
+     * map the UI wants.
+     *
+     * Internal rather than private so [dev.schrammel.protego_parentis.ui.AppLimitsActivityTest]
+     * can pin the translation directly, the same way [ruleId] is.
+     */
+    internal fun limitsFrom(rules: List<ContextRule>): Map<String, Int> =
+        rules.mapNotNull { rule ->
+            val effect = rule.effect as? RuleEffect.SetBudget ?: return@mapNotNull null
+            val onlyTarget = (rule.target as? RuleTarget.Apps)?.packages?.singleOrNull() ?: return@mapNotNull null
+            if (rule.id != ruleId(onlyTarget)) return@mapNotNull null
+            onlyTarget.value to effect.budget.default.inWholeMinutes.toInt()
+        }.toMap()
+
+    internal fun ruleId(pkg: PackageName) = LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX + pkg.value
 
     private fun renderRows() {
         rows.removeAllViews()
@@ -138,12 +176,22 @@ class AppLimitsActivity : ParentGatedActivity() {
             positiveText = R.string.app_limits_save,
         ) { progress ->
             val minutes = LimitSlider.minutesFor(progress)
-            val store = policyRuleStore(this, target)
-            val snapshot = store.read() ?: return@sliderDialog
-            val updatedLimits = snapshot.appLimits.toMutableMap().apply {
-                if (minutes > 0) put(app.pkg.value, minutes) else remove(app.pkg.value)
+            val store = contextRuleRuleStore(this, target)
+            val id = ruleId(app.pkg)
+            if (minutes > 0) {
+                store.upsert(
+                    ContextRule(
+                        id = id,
+                        name = getString(R.string.app_limits_title),
+                        enabled = true,
+                        condition = Condition.Always,
+                        effect = RuleEffect.SetBudget(WeeklyBudget.flat(minutes.minutes)),
+                        target = RuleTarget.Apps(setOf(app.pkg)),
+                    ),
+                )
+            } else {
+                store.delete(id)
             }
-            store.write(snapshot.copy(appLimits = updatedLimits))
             Audit.record(
                 context = this,
                 actor = AuditActor.PARENT,

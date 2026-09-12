@@ -9,7 +9,17 @@ sealed interface AppRule {
     /** No app-specific restriction. Still subject to device budget and schedules. */
     data object Allowed : AppRule
 
-    /** Has its own daily allowance on top of the device budget. Tightest wins. */
+    /**
+     * Has its own daily allowance on top of the device budget. Tightest wins.
+     *
+     * No longer read by `PolicyEngine` — a per-app limit is an ordinary
+     * [ContextRule] now: a [RuleEffect.SetBudget] targeting this one app via
+     * [RuleTarget.Apps], the same generalisation that moved the flat device
+     * budget out of [Policy.deviceBudget]. Left here rather than removed
+     * because `LocalPolicyStore.migrateAppRulesToUnifiedRules()` reads
+     * [Policy.appRules] as its one-time conversion's source, and a sibling
+     * phone still on an older build can still send or receive one.
+     */
     data class Budgeted(val budget: WeeklyBudget) : AppRule
 
     /**
@@ -17,6 +27,11 @@ sealed interface AppRule {
      * (icon disappears) and `setPackagesSuspended` (icon greys out, data intact).
      * Suspend is the default; hiding is for apps a parent has decided are simply
      * not on this phone.
+     *
+     * No longer read by `PolicyEngine` — a per-app block is an ordinary
+     * [ContextRule] now: a [RuleEffect.Block] (carrying the same [hidden])
+     * targeting this one app, for the same reason and by the same migration
+     * as [Budgeted].
      */
     data class Blocked(val hidden: Boolean = false) : AppRule
 

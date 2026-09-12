@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.rules
 
 import android.content.Context
+import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RuleEffect
@@ -59,7 +60,7 @@ class RuleMigrationTest {
         assertEquals("Bedtime", rule?.name)
         assertTrue(rule?.enabled == true)
         assertTrue(rule?.condition is Condition.DuringWindow)
-        assertEquals(RuleEffect.Block, rule?.effect)
+        assertEquals(RuleEffect.Block(), rule?.effect)
         assertEquals(
             RuleTarget.EverythingExcept(setOf(PackageName("com.google.android.deskclock"))),
             rule?.target,
@@ -135,7 +136,7 @@ class RuleMigrationTest {
 
         val rule = rules().rules.singleOrNull { it.id == "migrated-daily-limit" }
         assertEquals(Condition.Always, rule?.condition)
-        assertEquals(RuleEffect.SetDeviceBudget(WeeklyBudget.flat(90.minutes)), rule?.effect)
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(90.minutes)), rule?.effect)
         assertEquals(RuleTarget.Everything, rule?.target)
     }
 
@@ -197,6 +198,123 @@ class RuleMigrationTest {
         store().migrateToUnifiedRules()
 
         val rule = rules().rules.single { it.id == "migrated-daily-limit" }
-        assertEquals(RuleEffect.SetDeviceBudget(WeeklyBudget.flat(60.minutes)), rule.effect)
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(60.minutes)), rule.effect)
+    }
+
+    // ---------- app limits, blocking, and category budgets ----------
+
+    @Test
+    fun `a per-app limit migrates to an always-on app budget rule`() {
+        store().appLimits = mapOf("com.supercell.clashroyale" to 20)
+
+        store().migrateAppRulesToUnifiedRules()
+
+        val rule = rules().rules.singleOrNull { it.id == "migrated-app-budget-com.supercell.clashroyale" }
+        assertEquals(Condition.Always, rule?.condition)
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(20.minutes)), rule?.effect)
+        assertEquals(RuleTarget.Apps(setOf(PackageName("com.supercell.clashroyale"))), rule?.target)
+    }
+
+    @Test
+    fun `a zero-minute app limit is not migrated as a zero-minute block`() {
+        store().appLimits = mapOf("com.supercell.clashroyale" to 0)
+
+        store().migrateAppRulesToUnifiedRules()
+
+        assertNull(rules().rules.firstOrNull { it.id == "migrated-app-budget-com.supercell.clashroyale" })
+    }
+
+    @Test
+    fun `a blocked package migrates to a visible block rule`() {
+        store().blockedPackages = setOf("com.supercell.clashroyale")
+
+        store().migrateAppRulesToUnifiedRules()
+
+        val rule = rules().rules.singleOrNull { it.id == "migrated-app-block-com.supercell.clashroyale" }
+        assertEquals(RuleEffect.Block(hidden = false), rule?.effect)
+        assertEquals(RuleTarget.Apps(setOf(PackageName("com.supercell.clashroyale"))), rule?.target)
+    }
+
+    @Test
+    fun `a hidden package migrates to a hidden block rule`() {
+        store().hiddenPackages = setOf("com.supercell.clashroyale")
+
+        store().migrateAppRulesToUnifiedRules()
+
+        val rule = rules().rules.singleOrNull { it.id == "migrated-app-block-com.supercell.clashroyale" }
+        assertEquals(RuleEffect.Block(hidden = true), rule?.effect)
+    }
+
+    @Test
+    fun `a category limit migrates to an always-on category budget rule`() {
+        store().categories = listOf(
+            StoredCategory(
+                id = "games",
+                name = "Games",
+                limitMinutes = 45,
+                packages = setOf("com.supercell.clashroyale"),
+            ),
+        )
+
+        store().migrateAppRulesToUnifiedRules()
+
+        val rule = rules().rules.singleOrNull { it.id == "migrated-category-budget-games" }
+        assertEquals("Games", rule?.name)
+        assertEquals(Condition.Always, rule?.condition)
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(45.minutes)), rule?.effect)
+        assertEquals(RuleTarget.Categories(setOf(CategoryId("games"))), rule?.target)
+    }
+
+    @Test
+    fun `a category with no limit is not migrated as a zero-minute budget`() {
+        store().categories = listOf(
+            StoredCategory(id = "games", name = "Games", limitMinutes = 0, packages = emptySet()),
+        )
+
+        store().migrateAppRulesToUnifiedRules()
+
+        assertNull(rules().rules.firstOrNull { it.id == "migrated-category-budget-games" })
+    }
+
+    @Test
+    fun `running the app-rules migration twice changes nothing`() {
+        store().appLimits = mapOf("com.supercell.clashroyale" to 20)
+        store().blockedPackages = setOf("com.google.android.youtube")
+
+        store().migrateAppRulesToUnifiedRules()
+        val firstPass = rules().rules
+
+        store().migrateAppRulesToUnifiedRules()
+
+        assertEquals(firstPass, rules().rules)
+    }
+
+    /**
+     * The whole reason this is a second migration behind its own flag rather
+     * than folded into [LocalPolicyStore.migrateToUnifiedRules]: a phone that
+     * already ran the first migration — which every phone that had a
+     * schedule, a daily limit, or an exemption before this feature shipped
+     * has — must still pick up its app limits, blocks, and category budgets.
+     */
+    @Test
+    fun `app rules are migrated even when the schedule migration already ran`() {
+        store().migrateToUnifiedRules()
+
+        store().appLimits = mapOf("com.supercell.clashroyale" to 20)
+        store().migrateAppRulesToUnifiedRules()
+
+        assertTrue(rules().rules.any { it.id == "migrated-app-budget-com.supercell.clashroyale" })
+    }
+
+    @Test
+    fun `an app-rules edit made after migration is not retroactively migrated`() {
+        store().appLimits = mapOf("com.supercell.clashroyale" to 20)
+        store().migrateAppRulesToUnifiedRules()
+
+        store().appLimits = mapOf("com.supercell.clashroyale" to 10)
+        store().migrateAppRulesToUnifiedRules()
+
+        val rule = rules().rules.single { it.id == "migrated-app-budget-com.supercell.clashroyale" }
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(20.minutes)), rule.effect)
     }
 }

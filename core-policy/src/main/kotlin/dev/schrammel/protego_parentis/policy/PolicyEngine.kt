@@ -1,6 +1,5 @@
 package dev.schrammel.protego_parentis.policy
 
-import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.BrowserRestrictions
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.BudgetStatus
@@ -77,7 +76,7 @@ object PolicyEngine {
             deviceUsage = (usage.deviceTotal - bonusFor(GrantTarget.Device)).coerceAtLeast(Duration.ZERO),
         )
         // #105: no fallback to policy.deviceBudget any more — the migrated
-        // daily limit is a Condition.Always/SetDeviceBudget rule now, so an
+        // daily limit is a Condition.Always/SetBudget rule now, so an
         // unlimited default here means only "no rule set one", never "the
         // unified format still needs the old field to answer this".
         val effectiveDeviceBudget = contextOutcome.deviceBudget ?: WeeklyBudget.UNLIMITED
@@ -100,12 +99,17 @@ object PolicyEngine {
         // A category's usage is the sum of its members' time. An app in two
         // categories spends from both — see Category's documentation. Apps that are
         // exempt from limits do not consume a category's allowance either.
+        //
+        // The allowance itself comes from contextOutcome now, not Category.budget
+        // — a category limit is an ordinary RuleEffect.SetBudget rule, the same as
+        // the device-wide case below. Unlimited when no rule has set one, the same
+        // "no fallback to the old field" convention effectiveDeviceBudget follows.
         val categoryBudgets = policy.categories.associate { category ->
             val used = hierarchy.packagesIn(category.id)
                 .filterNot(::isSafetyExempt)
                 .fold(Duration.ZERO) { acc, pkg -> acc + usage.forPackage(pkg) }
             category.id to statusOf(
-                allowed = category.budget.forDay(weekday),
+                allowed = (contextOutcome.categoryBudgets[category.id] ?: WeeklyBudget.UNLIMITED).forDay(weekday),
                 used = used,
                 bonus = bonusFor(GrantTarget.Category(category.id)),
                 thresholds = policy.warningThresholds,
@@ -117,13 +121,13 @@ object PolicyEngine {
         val appBudgets = LinkedHashMap<PackageName, BudgetStatus>()
 
         for (pkg in installedPackages) {
-            val rule = policy.ruleFor(pkg)
-
             // Computed even for exempt apps: the teen's dashboard shows usage for
-            // everything, it just does not enforce on all of it.
-            if (rule is AppRule.Budgeted) {
+            // everything, it just does not enforce on all of it. Comes from
+            // contextOutcome now, not AppRule.Budgeted — a per-app limit is an
+            // ordinary RuleEffect.SetBudget rule, the same as a category's.
+            contextOutcome.appBudgets[pkg]?.let { budget ->
                 appBudgets[pkg] = statusOf(
-                    allowed = rule.budget.forDay(weekday),
+                    allowed = budget.forDay(weekday),
                     used = usage.forPackage(pkg),
                     bonus = bonusFor(GrantTarget.App(pkg)),
                     thresholds = policy.warningThresholds,
@@ -138,16 +142,17 @@ object PolicyEngine {
             if (pkg in contextOutcome.allowed) continue
 
             val reasons = buildList {
-                if (rule is AppRule.Blocked) {
-                    add(Reason.ManuallyBlocked)
-                    if (rule.hidden) hide += pkg
-                }
                 // A browser that ignores managed configuration would be a way
                 // straight round the filter, so with filtering on it is paused.
                 if (unmanageableBrowser(policy, browsers, pkg)) {
                     add(Reason.UnmanagedBrowser)
                 }
                 contextOutcome.blocked[pkg]?.let { rule ->
+                    // A manual per-app block is an ordinary RuleEffect.Block
+                    // rule now, the same as a scheduled one — AppRule.Blocked
+                    // is no longer read here, so this is the one place hidden
+                    // apps are decided too.
+                    (rule.effect as? RuleEffect.Block)?.takeIf { it.hidden }?.let { hide += pkg }
                     // #103: derived from the rule's own condition rather than
                     // assumed null. A window-based rule can say when it lifts;
                     // a Wi-Fi one still cannot, and null still means that.

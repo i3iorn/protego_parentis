@@ -50,6 +50,7 @@ The only store a parent already reaches. Its 9 Parent rows are exactly what
 | `KEY_INSTALL_POLICY` | `install_policy` | Parent |
 | `KEY_TAMPER` | `tamper_protection` | **Local only** |
 | `KEY_RULES_MIGRATED` | `rules_migrated_v1` | Not a rule — this device's own record of having run the one-time conversion below |
+| `KEY_APP_RULES_MIGRATED` | `app_rules_migrated_v1` | Not a rule — this device's own record of having run the *separate* one-time conversion described below |
 
 `tamper_protection` is the one deliberate exception in the whole inventory.
 Flipping it with nobody standing at the phone is the single rule change this app
@@ -72,6 +73,30 @@ sibling phone still on a build from before #104/#105 can still send or receive
 these fields, and `LocalPolicyStore.migrateToUnifiedRules()` reads them (and
 `ScheduleStore`'s schedules) as its one-time conversion's source — reachability
 hasn't changed, even though which engine acts on the value has.
+
+**`app_limits`, `blocked_packages`, and `hidden_packages` are Parent but no
+longer live either**, by the same reasoning, one step further: `PolicyEngine`
+stopped reading `AppRule.Budgeted`/`AppRule.Blocked` (and, in `ContextRuleStore`
+below, `Category.budget`) once a per-app limit, a per-app block or hide, and a
+category's budget all became ordinary `ContextRule`s — a `RuleEffect.SetBudget`
+or `RuleEffect.Block` targeting one app or category instead of the whole
+device, the same generalisation `RuleEffect.SetBudget` (renamed from
+`SetDeviceBudget`) already made possible for the flat daily limit.
+`LocalPolicyStore.migrateAppRulesToUnifiedRules()` is the one-time conversion
+for these three fields plus each category's `limitMinutes` — a *second*,
+independently-flagged migration rather than folded into the first: the first
+had already run (and set `rules_migrated_v1`) on every phone that had a
+schedule, a daily limit, or an exemption before this feature shipped, so
+gating this behind the same flag would have meant an existing family's app
+limits, blocks, hidden apps, and category budgets went silently unenforced
+the moment `PolicyEngine` stopped reading the old fields, with nothing left
+to convert them. `AppLimitsActivity`'s slider is the first screen rewritten to
+write the `ContextRule` directly rather than the old field — the same
+"shortcut over the same rule engine" shape the unified rules screen's starters
+(bedtime, the daily limit) already use. `AppControlActivity` (block/hide) and
+`CategoryEditActivity` (a category's budget) still write the old fields for
+now; migration keeps them enforced in the meantime, but rewriting those two
+screens the same way `AppLimitsActivity` was is the natural next slice.
 
 ## ScheduleStore — `schedules` · 11 Parent
 
