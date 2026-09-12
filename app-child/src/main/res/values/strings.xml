@@ -2,6 +2,15 @@
     <!-- The product name is the same in every language. -->
     <string name="app_name" translatable="false">Dementor Watch</string>
 
+    <!-- The "show more" row on any list of more than a handful of rows — see
+         Views.kt's group(). Shared across every screen that lists apps,
+         categories, devices, or history: the count is the only thing that
+         changes. -->
+    <plurals name="show_more_rows">
+        <item quantity="one">Show %d more</item>
+        <item quantity="other">Show %d more</item>
+    </plurals>
+
     <!-- Persistent notification. Required by policy: this app is never hidden. -->
     <string name="service_channel_name">Screen time</string>
     <string name="service_channel_description">Shows that screen-time rules are active on this device.</string>

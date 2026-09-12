@@ -61,7 +61,7 @@ class RequestInboxActivity : ParentGatedActivity() {
             if (pending.isEmpty()) {
                 container.addView(body(getString(R.string.inbox_empty)))
             } else {
-                pending.forEach { container.addView(requestCard(it)) }
+                addCollapsibleRows(container, pending.map(::requestCard))
             }
         }
     }

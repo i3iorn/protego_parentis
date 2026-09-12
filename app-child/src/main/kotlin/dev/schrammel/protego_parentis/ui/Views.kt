@@ -70,11 +70,25 @@ internal fun Activity.sectionHeader(text: String): TextView = TextView(this).app
 }
 
 /**
+ * Rows beyond this count start hidden behind "Show N more" — see [group].
+ *
+ * A card holding dozens of apps, devices, or history entries used to just get
+ * taller than the screen instead of ever explaining itself; this keeps the
+ * initial view scannable while everything is still one tap away, in place,
+ * rather than behind a second screen.
+ */
+private const val COLLAPSED_ROW_LIMIT = 10
+
+/**
  * A raised surface holding a list of rows.
  *
  * Rows sitting straight on the window background had nothing marking where the
  * list started or ended. Grouping them onto a bordered surface is the difference
  * between a list and a pile.
+ *
+ * Past [COLLAPSED_ROW_LIMIT] rows, the rest sit behind a "Show N more" row that
+ * reveals them into this same card on tap — never a new screen, since nothing
+ * about the list itself changed, only how much of it is currently shown.
  */
 internal fun Activity.group(rows: List<View>): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
@@ -88,10 +102,65 @@ internal fun Activity.group(rows: List<View>): LinearLayout = LinearLayout(this)
         topMargin = dimen(R.dimen.space_md)
     }
 
-    rows.forEachIndexed { index, row ->
-        if (index > 0) addView(divider())
-        addView(row)
+    addCollapsibleRows(this, rows, divider = { divider() })
+}
+
+/**
+ * Adds [rows] to [container], showing at most [COLLAPSED_ROW_LIMIT] until a
+ * "Show N more" line reveals the rest in place.
+ *
+ * The one mechanism behind both [group]'s carded lists (which pass [divider] to
+ * draw the hairline between rows the card style already uses) and a screen's own
+ * flat list of already-self-contained rows or cards, which has no divider of its
+ * own to match and passes none.
+ */
+internal fun Activity.addCollapsibleRows(container: LinearLayout, rows: List<View>, divider: (() -> View)? = null) {
+    val visible = rows.take(COLLAPSED_ROW_LIMIT)
+    val hidden = rows.drop(COLLAPSED_ROW_LIMIT)
+
+    visible.forEachIndexed { index, row ->
+        if (index > 0) divider?.let { container.addView(it()) }
+        container.addView(row)
     }
+
+    if (hidden.isNotEmpty()) {
+        // Separates the last visible row from the "show more" row itself. On
+        // expansion this same divider ends up separating that last visible row
+        // from the first hidden one, which is exactly where it belongs — so the
+        // loop below must not add its own leading divider on top of it.
+        divider?.let { container.addView(it()) }
+        lateinit var moreRow: View
+        moreRow = showMoreRow(hidden.size) {
+            container.removeView(moreRow)
+            hidden.forEachIndexed { index, row ->
+                if (index > 0) divider?.let { container.addView(it()) }
+                container.addView(row)
+            }
+        }
+        container.addView(moreRow)
+    }
+}
+
+/**
+ * The tappable line standing in for whatever [group] hid past
+ * [COLLAPSED_ROW_LIMIT]. Plain text in the brand colour rather than a button or
+ * a [navigationRow]'s chevron — a chevron says "this goes somewhere else",
+ * which is exactly what tapping this does not do.
+ */
+private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextView = TextView(this).apply {
+    text = resources.getQuantityString(R.plurals.show_more_rows, hiddenCount, hiddenCount)
+    styleAs(R.style.TextAppearance_Dementor_Body)
+    setTextColor(ContextCompat.getColor(context, R.color.brand))
+    gravity = Gravity.CENTER
+    val vertical = dimen(R.dimen.space_md)
+    setPadding(0, vertical, 0, vertical)
+
+    val outValue = android.util.TypedValue()
+    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+    setBackgroundResource(outValue.resourceId)
+    isClickable = true
+    isFocusable = true
+    setOnClickListener { onClick() }
 }
 
 /**
