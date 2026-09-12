@@ -7,6 +7,7 @@ import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET_LABEL
@@ -372,5 +373,88 @@ class SyncReceiverTest {
         // already-enrolled sender, the ordinary case every poll exercises.
         assertTrue(applied)
         assertTrue(HeartbeatStore(context).latest != null)
+    }
+
+    // ---------- rememberNewApp / the app inventory it keeps fresh ----------
+
+    @Test
+    fun `an app-install notice updates an already-synced inventory`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+        val childId = Fingerprints.of(child.public.encoded)
+        AppInventoryStore(context).setApps(childId, listOf(AppInventoryEntry("com.example.old", "Old App")))
+
+        val applied = deliver(
+            message(
+                child,
+                SyncMessageType.APP_INSTALLED,
+                SyncRole.CHILD,
+                fields = mapOf(
+                    FIELD_PACKAGE to "com.example.new",
+                    FIELD_TARGET_LABEL to "New App",
+                ),
+            ),
+            child,
+        )
+
+        assertTrue(applied)
+        val cached = AppInventoryStore(context).apps(childId)
+        assertTrue("the existing entry must survive", cached.any { it.packageName == "com.example.old" })
+        assertTrue(
+            "the newly installed app must now be offered too",
+            cached.any { it.packageName == "com.example.new" && it.label == "New App" },
+        )
+    }
+
+    /**
+     * The guard rememberNewApp's own doc comment describes: a lone install
+     * notice must never look like the whole inventory to a picker that has
+     * never asked for a full one yet, or the "request list" prompt that
+     * fixes an empty picker would disappear while the picker is still
+     * missing everything installed before this one notice.
+     */
+    @Test
+    fun `an app-install notice does not seed an inventory before a full sync ever happened`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+        val childId = Fingerprints.of(child.public.encoded)
+
+        val applied = deliver(
+            message(
+                child,
+                SyncMessageType.APP_INSTALLED,
+                SyncRole.CHILD,
+                fields = mapOf(FIELD_PACKAGE to "com.example.new", FIELD_TARGET_LABEL to "New App"),
+            ),
+            child,
+        )
+
+        assertTrue(applied)
+        assertTrue(AppInventoryStore(context).apps(childId).isEmpty())
+    }
+
+    @Test
+    fun `a second install notice for the same package replaces it rather than duplicating it`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+        val childId = Fingerprints.of(child.public.encoded)
+        AppInventoryStore(context).setApps(childId, listOf(AppInventoryEntry("com.example.app", "Old Label")))
+
+        deliver(
+            message(
+                child,
+                SyncMessageType.APP_INSTALLED,
+                SyncRole.CHILD,
+                fields = mapOf(FIELD_PACKAGE to "com.example.app", FIELD_TARGET_LABEL to "New Label"),
+            ),
+            child,
+        )
+
+        val cached = AppInventoryStore(context).apps(childId)
+        assertEquals(1, cached.count { it.packageName == "com.example.app" })
+        assertEquals("New Label", cached.single { it.packageName == "com.example.app" }.label)
     }
 }

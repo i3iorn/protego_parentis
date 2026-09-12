@@ -87,12 +87,17 @@ class AppPickerActivity : ParentGatedActivity() {
     }
 
     /**
-     * The managed phone's own list arrives only when asked for — nothing on this
-     * screen requests it automatically, since a parent opening a picker that
-     * already has a cached list should not re-trigger a sync every time. Before
-     * #85, nothing anywhere ever asked either, so a family that enrolled after
-     * this screen last ran a request saw a permanently empty list with no way
-     * to explain or fix it.
+     * The managed phone's *first* full list arrives only when asked for —
+     * nothing on this screen requests it automatically, since a parent
+     * opening a picker that already has a cached list should not re-trigger
+     * a sync every time. Before #85, nothing anywhere ever asked either, so
+     * a family that enrolled after this screen last ran a request saw a
+     * permanently empty list with no way to explain or fix it.
+     *
+     * Once that first list exists, it no longer goes stale on its own: an
+     * app the child installs afterwards arrives on its own, via the same
+     * new-app notice [dev.schrammel.protego_parentis.ui.AppControlActivity]'s
+     * "new arrivals" section shows — see [dev.schrammel.protego_parentis.sync.AppInventoryStore.upsert].
      */
     private fun requestAppListHint(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL

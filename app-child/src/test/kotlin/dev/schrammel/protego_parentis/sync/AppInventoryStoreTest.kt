@@ -49,4 +49,38 @@ class AppInventoryStoreTest {
         assertTrue(store().receivedAt(DeviceId("CHILD1")) != null)
         assertNull(store().receivedAt(DeviceId("CHILD2")))
     }
+
+    // ---------- upsert ----------
+
+    @Test
+    fun `upsert adds a new app alongside the existing list`() {
+        val child = DeviceId("CHILD1")
+        store().setApps(child, listOf(AppInventoryEntry("com.example.a", "A")))
+
+        store().upsert(child, AppInventoryEntry("com.example.b", "B"))
+
+        assertEquals(
+            setOf(AppInventoryEntry("com.example.a", "A"), AppInventoryEntry("com.example.b", "B")),
+            store().apps(child).toSet(),
+        )
+    }
+
+    @Test
+    fun `upsert replaces an existing entry for the same package rather than duplicating it`() {
+        val child = DeviceId("CHILD1")
+        store().setApps(child, listOf(AppInventoryEntry("com.example.a", "Old Label")))
+
+        store().upsert(child, AppInventoryEntry("com.example.a", "New Label"))
+
+        assertEquals(listOf(AppInventoryEntry("com.example.a", "New Label")), store().apps(child))
+    }
+
+    @Test
+    fun `upsert can start a list from nothing`() {
+        val child = DeviceId("CHILD1")
+
+        store().upsert(child, AppInventoryEntry("com.example.a", "A"))
+
+        assertEquals(listOf(AppInventoryEntry("com.example.a", "A")), store().apps(child))
+    }
 }
