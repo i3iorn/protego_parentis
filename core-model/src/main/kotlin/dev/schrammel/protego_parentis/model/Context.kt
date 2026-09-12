@@ -187,21 +187,29 @@ sealed interface Condition {
 /** What a contextual rule does while it applies. */
 sealed interface RuleEffect {
 
-    /** Blocks the target outright. */
-    data object Block : RuleEffect
+    /**
+     * Blocks the target outright.
+     *
+     * [hidden] chooses between `setPackagesSuspended` (icon greys out, data
+     * intact — the default) and `setApplicationHidden` (icon disappears), the
+     * same distinction `AppRule.Blocked.hidden` drew before per-app blocking
+     * became a rule like any other.
+     */
+    data class Block(val hidden: Boolean = false) : RuleEffect
 
     /**
-     * Exempts the target from every other contextual rule and from the device
-     * budget, as though it were always allowed. Weaker than [SafetyExempt]: it
-     * settles only what [ContextRule]s decide between themselves, so it has no
-     * bearing on network blocking, DNS filtering, or anything outside this
-     * resolution — see [SafetyExempt] for the stronger form.
+     * Exempts the target from every other contextual rule and from any budget
+     * that would otherwise apply to it, as though it were always allowed.
+     * Weaker than [SafetyExempt]: it settles only what [ContextRule]s decide
+     * between themselves, so it has no bearing on network blocking, DNS
+     * filtering, or anything outside this resolution — see [SafetyExempt] for
+     * the stronger form.
      */
     data object Allow : RuleEffect
 
     /**
      * Exempts the target from everything, at the same tier as the built-in
-     * safety allowlist (the dialer, and so on): the device budget, every other
+     * safety allowlist (the dialer, and so on): every budget, every other
      * contextual rule, network blocking, and DNS filtering. What
      * `exemptPackages`/`AppRule.AlwaysAllowed` used to mean before the rule
      * engine could express it directly — a parent-configured rule now, not a
@@ -211,10 +219,21 @@ sealed interface RuleEffect {
     data object SafetyExempt : RuleEffect
 
     /**
-     * Replaces the device's daily allowance. With several active, the smallest
-     * wins — a rule can always tighten, never loosen past another rule.
+     * Replaces the allowance for whatever [ContextRule.target] resolves to:
+     * the whole device under [RuleTarget.Everything], one or more apps under
+     * [RuleTarget.Apps] (or the app half of a [RuleTarget.Mixed]), one or more
+     * categories under [RuleTarget.Categories] (or its category half). With
+     * several active rules naming the same device, app, or category, the
+     * smallest wins for that one — a rule can always tighten, never loosen
+     * past another rule, independently for each.
+     *
+     * Generalised from a device-only effect: `AppRule.Budgeted` and
+     * `Category.budget` were their own dedicated fields with their own copy of
+     * this same "tightest wins" resolution before per-app and per-category
+     * limits became rules like any other, going through the one process that
+     * already decided the device-wide case.
      */
-    data class SetDeviceBudget(val budget: WeeklyBudget) : RuleEffect
+    data class SetBudget(val budget: WeeklyBudget) : RuleEffect
 }
 
 /** What a contextual rule acts on. */

@@ -254,7 +254,7 @@ class PolicyEngineTest {
         name = "Allowance rule",
         enabled = true,
         condition = Condition.AllowanceSpent(minutes),
-        effect = RuleEffect.Block,
+        effect = RuleEffect.Block(),
         target = RuleTarget.Everything,
     )
 
@@ -436,7 +436,13 @@ class PolicyEngineTest {
             now = at("2026-08-22", "02:00"),
         )
 
-        assertEquals(Reason.ManuallyBlocked, result.suspend[YOUTUBE])
+        // An always-on manual block has no known end, unlike the bedtime it
+        // outranks — that indefinite liftsAt is what makes it win, the same
+        // "the one that lifts last" resolution the reason below tests
+        // directly.
+        val reason = result.suspend[YOUTUBE]
+        assertTrue(reason is Reason.ContextRuleActive)
+        assertNull(reason?.liftsAt)
     }
 
     @Test
@@ -468,7 +474,7 @@ class PolicyEngineTest {
         )
 
         assertEquals(setOf(GAME), result.hide)
-        assertEquals(Reason.ManuallyBlocked, result.suspend[GAME])
+        assertTrue(result.suspend[GAME] is Reason.ContextRuleActive)
     }
 
     // ---------- deferral ----------

@@ -1,6 +1,5 @@
 package dev.schrammel.protego_parentis.policy
 
-import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.ChildId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
@@ -38,22 +37,30 @@ class EmergencyTest {
     /**
      * A policy that would suspend everything: the allowance is spent.
      *
-     * The device budget is a rule now (#105), not the [Policy.deviceBudget]
-     * field `PolicyEngine` no longer reads.
+     * The device budget and the hidden block on [game] are both rules now —
+     * `PolicyEngine` no longer reads `Policy.deviceBudget` or
+     * `AppRule.Budgeted`/`AppRule.Blocked`.
      */
     private val spent = Policy(
         version = 1L,
         childId = ChildId("test"),
         timeZone = zone,
-        appRules = mapOf(game to AppRule.Blocked(hidden = true)),
         contextRules = listOf(
             ContextRule(
                 id = "device-budget",
                 name = "Device budget",
                 enabled = true,
                 condition = Condition.Always,
-                effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(30.minutes)),
+                effect = RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)),
                 target = RuleTarget.Everything,
+            ),
+            ContextRule(
+                id = "game-block",
+                name = "Game block",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Block(hidden = true),
+                target = RuleTarget.Apps(setOf(game)),
             ),
         ),
         networkBlockedPackages = setOf(chat),

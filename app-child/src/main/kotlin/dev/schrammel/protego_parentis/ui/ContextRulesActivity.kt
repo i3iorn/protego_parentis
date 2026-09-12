@@ -153,7 +153,7 @@ class ContextRulesActivity : ParentGatedActivity() {
                             name = getString(R.string.rules_row_limits),
                             enabled = true,
                             condition = Condition.Always,
-                            effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(Defaults.DAILY_LIMIT)),
+                            effect = RuleEffect.SetBudget(WeeklyBudget.flat(Defaults.DAILY_LIMIT)),
                             target = RuleTarget.Everything,
                         ),
                     )
@@ -221,7 +221,7 @@ class ContextRulesActivity : ParentGatedActivity() {
             name = getString(starter.name),
             enabled = false,
             condition = Condition.DuringWindow(RecurringWindow(starter.days, starter.start, starter.end)),
-            effect = RuleEffect.Block,
+            effect = RuleEffect.Block(),
             // Blocks everything with nothing named as an exception — the same
             // shape the old schedules screen always gave a fresh starter.
             target = RuleTarget.EverythingExcept(emptySet()),
@@ -280,7 +280,7 @@ class ContextRulesActivity : ParentGatedActivity() {
             is RuleEffect.Block -> getString(R.string.context_effect_block)
             is RuleEffect.Allow -> getString(R.string.context_effect_allow)
             is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
-            is RuleEffect.SetDeviceBudget ->
+            is RuleEffect.SetBudget ->
                 getString(R.string.context_effect_budget, formatDuration(effect.budget.default))
         }
         val who = when (val ruleTarget = rule.target) {

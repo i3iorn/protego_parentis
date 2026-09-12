@@ -68,6 +68,12 @@ class RulesInventoryTest {
         // having run a one-time conversion, the same kind KEY_VERSION
         // already is — never itself a rule a parent sets.
         "KEY_RULES_MIGRATED=rules_migrated_v1" to NOT_A_RULE,
+        // Same bookkeeping, for the separate one-time conversion of app
+        // limits, blocks, hides, and category budgets into ContextRuleStore
+        // — see LocalPolicyStore.migrateAppRulesToUnifiedRules's own doc
+        // comment for why this is a second flag rather than reusing
+        // KEY_RULES_MIGRATED.
+        "KEY_APP_RULES_MIGRATED=app_rules_migrated_v1" to NOT_A_RULE,
     )
 
     private val schedules = mapOf(

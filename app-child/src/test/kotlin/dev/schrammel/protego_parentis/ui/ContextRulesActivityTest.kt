@@ -100,7 +100,7 @@ class ContextRulesActivityTest {
         assertNotNull("tapping the CTA should create the rule", created)
         assertEquals(Condition.Always, created?.condition)
         assertEquals(RuleTarget.Everything, created?.target)
-        assertTrue(created?.effect is RuleEffect.SetDeviceBudget)
+        assertTrue(created?.effect is RuleEffect.SetBudget)
         assertEquals(
             ContextRuleEditActivity::class.java.name,
             shadowOf(activity).nextStartedActivity?.component?.className,
@@ -115,7 +115,7 @@ class ContextRulesActivityTest {
                 name = "Daily limit",
                 enabled = true,
                 condition = Condition.Always,
-                effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(90.minutes)),
+                effect = RuleEffect.SetBudget(WeeklyBudget.flat(90.minutes)),
                 target = RuleTarget.Everything,
             ),
         )
@@ -152,7 +152,7 @@ class ContextRulesActivityTest {
         assertNotNull("bedtime should land at the well-known migrated-schedule id", created)
         assertFalseEnabled(created)
         assertTrue(created?.condition is Condition.DuringWindow)
-        assertEquals(RuleEffect.Block, created?.effect)
+        assertEquals(RuleEffect.Block(), created?.effect)
         assertEquals(RuleTarget.EverythingExcept(emptySet()), created?.target)
     }
 
@@ -167,7 +167,7 @@ class ContextRulesActivityTest {
                 name = "Custom",
                 enabled = true,
                 condition = Condition.Always,
-                effect = RuleEffect.Block,
+                effect = RuleEffect.Block(),
                 target = RuleTarget.Everything,
             ),
         )

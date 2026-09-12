@@ -36,7 +36,7 @@ class ContextRulesTest {
 
     private fun rule(
         condition: Condition,
-        effect: RuleEffect = RuleEffect.Block,
+        effect: RuleEffect = RuleEffect.Block(),
         target: RuleTarget = RuleTarget.Apps(setOf(GAME)),
         enabled: Boolean = true,
         name: String = "Rule",
@@ -482,7 +482,7 @@ class ContextRulesTest {
         // "Homework apps are fine at school" must survive "block everything at
         // school", or the rules become a puzzle rather than a tool.
         val rules = listOf(
-            rule(Condition.Always, RuleEffect.Block, RuleTarget.Everything, name = "block"),
+            rule(Condition.Always, RuleEffect.Block(), RuleTarget.Everything, name = "block"),
             rule(Condition.Always, RuleEffect.Allow, RuleTarget.Apps(setOf(HOMEWORK)), name = "allow"),
         )
 
@@ -496,7 +496,7 @@ class ContextRulesTest {
     @Test
     fun `a safety-exempt rule also beats a block, and is reported separately from allow`() {
         val rules = listOf(
-            rule(Condition.Always, RuleEffect.Block, RuleTarget.Everything, name = "block"),
+            rule(Condition.Always, RuleEffect.Block(), RuleTarget.Everything, name = "block"),
             rule(Condition.Always, RuleEffect.SafetyExempt, RuleTarget.Apps(setOf(HOMEWORK)), name = "exempt"),
         )
 
@@ -527,7 +527,7 @@ class ContextRulesTest {
         val rules = listOf(
             rule(
                 Condition.OnWifi(home),
-                RuleEffect.SetDeviceBudget(WeeklyBudget.flat(4.hours)),
+                RuleEffect.SetBudget(WeeklyBudget.flat(4.hours)),
                 RuleTarget.Everything,
             ),
         )
@@ -543,13 +543,13 @@ class ContextRulesTest {
         val rules = listOf(
             rule(
                 Condition.Always,
-                RuleEffect.SetDeviceBudget(WeeklyBudget.flat(4.hours)),
+                RuleEffect.SetBudget(WeeklyBudget.flat(4.hours)),
                 RuleTarget.Everything,
                 name = "generous",
             ),
             rule(
                 Condition.Always,
-                RuleEffect.SetDeviceBudget(WeeklyBudget.flat(30.minutes)),
+                RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)),
                 RuleTarget.Everything,
                 name = "strict",
             ),
@@ -570,13 +570,13 @@ class ContextRulesTest {
         val rules = listOf(
             rule(
                 Condition.Always,
-                RuleEffect.SetDeviceBudget(WeeklyBudget.flat(1.hours)),
+                RuleEffect.SetBudget(WeeklyBudget.flat(1.hours)),
                 RuleTarget.Everything,
                 name = "generous",
             ),
             rule(
                 Condition.Always,
-                RuleEffect.SetDeviceBudget(WeeklyBudget.schoolWeek(schoolNight = 30.minutes, weekend = 2.hours)),
+                RuleEffect.SetBudget(WeeklyBudget.schoolWeek(schoolNight = 30.minutes, weekend = 2.hours)),
                 RuleTarget.Everything,
                 name = "split",
             ),
@@ -586,6 +586,83 @@ class ContextRulesTest {
             WeeklyBudget.schoolWeek(schoolNight = 30.minutes, weekend = 2.hours),
             evaluate(rules, DeviceContext.UNKNOWN).deviceBudget,
         )
+    }
+
+    @Test
+    fun `a budget targeting one app sets that app's budget, not the device's`() {
+        val rules = listOf(
+            rule(Condition.Always, RuleEffect.SetBudget(WeeklyBudget.flat(20.minutes)), RuleTarget.Apps(setOf(GAME))),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertEquals(WeeklyBudget.flat(20.minutes), outcome.appBudgets[GAME])
+        assertNull(outcome.deviceBudget)
+    }
+
+    @Test
+    fun `a budget targeting a category sets that category's budget`() {
+        val rules = listOf(
+            rule(Condition.Always, RuleEffect.SetBudget(WeeklyBudget.flat(1.hours)), RuleTarget.Categories(setOf(games))),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertEquals(WeeklyBudget.flat(1.hours), outcome.categoryBudgets[games])
+        assertTrue(outcome.appBudgets.isEmpty())
+    }
+
+    @Test
+    fun `a mixed target sets both the named app's and the named category's budget`() {
+        val rules = listOf(
+            rule(
+                Condition.Always,
+                RuleEffect.SetBudget(WeeklyBudget.flat(15.minutes)),
+                RuleTarget.Mixed(packages = setOf(GAME), categories = setOf(games)),
+            ),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertEquals(WeeklyBudget.flat(15.minutes), outcome.appBudgets[GAME])
+        assertEquals(WeeklyBudget.flat(15.minutes), outcome.categoryBudgets[games])
+    }
+
+    @Test
+    fun `the tightest per-app budget wins independently of any category or device budget`() {
+        val rules = listOf(
+            rule(Condition.Always, RuleEffect.SetBudget(WeeklyBudget.flat(2.hours)), RuleTarget.Everything, name = "device"),
+            rule(Condition.Always, RuleEffect.SetBudget(WeeklyBudget.flat(1.hours)), RuleTarget.Categories(setOf(games)), name = "cat"),
+            rule(Condition.Always, RuleEffect.SetBudget(WeeklyBudget.flat(45.minutes)), RuleTarget.Apps(setOf(GAME)), name = "app-loose"),
+            rule(Condition.Always, RuleEffect.SetBudget(WeeklyBudget.flat(15.minutes)), RuleTarget.Apps(setOf(GAME)), name = "app-tight"),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertEquals(WeeklyBudget.flat(2.hours), outcome.deviceBudget)
+        assertEquals(WeeklyBudget.flat(1.hours), outcome.categoryBudgets[games])
+        assertEquals(WeeklyBudget.flat(15.minutes), outcome.appBudgets[GAME])
+    }
+
+    @Test
+    fun `an everything-except budget sets neither an app nor a category budget`() {
+        // No screen authors this combination today, and "each installed app
+        // but these gets its own allowance" is a different feature from the
+        // shared pools Everything and Apps/Categories resolve to — so it is
+        // simply inert rather than guessed at.
+        val rules = listOf(
+            rule(
+                Condition.Always,
+                RuleEffect.SetBudget(WeeklyBudget.flat(20.minutes)),
+                RuleTarget.EverythingExcept(setOf(GAME)),
+            ),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertNull(outcome.deviceBudget)
+        assertTrue(outcome.appBudgets.isEmpty())
+        assertTrue(outcome.categoryBudgets.isEmpty())
     }
 
     @Test

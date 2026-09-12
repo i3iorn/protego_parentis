@@ -91,8 +91,9 @@ internal object ContextRuleCodec {
             }
 
             // #102. Same minute unit and the same MAX_MINUTES clamp as
-            // RuleEffect.SetDeviceBudget's KEY_MINUTES, since both describe a
-            // duration within one day.
+            // RuleEffect.SetBudget's KEY_MINUTES (renamed from
+            // SetDeviceBudget once it stopped being device-only), since both
+            // describe a duration within one day.
             is Condition.AllowanceSpent -> {
                 put(KEY_KIND, ALLOWANCE_SPENT)
                 put(KEY_VALUE, condition.minutes.coerceIn(0, MAX_MINUTES.toInt()))
@@ -179,10 +180,17 @@ internal object ContextRuleCodec {
 
     fun encodeEffect(effect: RuleEffect): JSONObject = JSONObject().apply {
         when (effect) {
-            is RuleEffect.Block -> put(KEY_KIND, BLOCK)
+            is RuleEffect.Block -> {
+                put(KEY_KIND, BLOCK)
+                // Omitted rather than written false, so a rule saved before
+                // per-app blocking became a rule is byte-for-byte what it
+                // always was on the wire — only a rule that actually chose
+                // hiding gains a new field.
+                if (effect.hidden) put(KEY_HIDDEN, true)
+            }
             is RuleEffect.Allow -> put(KEY_KIND, ALLOW)
             is RuleEffect.SafetyExempt -> put(KEY_KIND, SAFETY_EXEMPT)
-            is RuleEffect.SetDeviceBudget -> {
+            is RuleEffect.SetBudget -> {
                 put(KEY_KIND, BUDGET)
                 // Clamped: an infinite duration is Long.MAX_VALUE minutes, which
                 // narrows to a negative Int on the way back in and would be
@@ -193,10 +201,10 @@ internal object ContextRuleCodec {
     }
 
     fun decodeEffect(json: JSONObject): RuleEffect? = when (json.optString(KEY_KIND)) {
-        BLOCK -> RuleEffect.Block
+        BLOCK -> RuleEffect.Block(hidden = json.optBoolean(KEY_HIDDEN, false))
         ALLOW -> RuleEffect.Allow
         SAFETY_EXEMPT -> RuleEffect.SafetyExempt
-        BUDGET -> RuleEffect.SetDeviceBudget(
+        BUDGET -> RuleEffect.SetBudget(
             WeeklyBudget.flat(json.optLong(KEY_MINUTES, 0L).coerceIn(0L, MAX_MINUTES).toInt().minutes),
         )
 
@@ -277,6 +285,7 @@ internal object ContextRuleCodec {
     private const val KEY_START = "startMinute"
     private const val KEY_END = "endMinute"
     private const val KEY_PARITY_ANCHOR = "parityAnchorEpochDay"
+    private const val KEY_HIDDEN = "hidden"
 
     private const val MINUTES_PER_DAY = 24 * 60
     private const val SECONDS_PER_MINUTE = 60

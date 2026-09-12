@@ -26,7 +26,7 @@ class ContextEnforcementTest {
     private fun rule(
         name: String,
         condition: Condition,
-        effect: RuleEffect = RuleEffect.Block,
+        effect: RuleEffect = RuleEffect.Block(),
         target: RuleTarget = RuleTarget.Apps(setOf(GAME)),
     ) = ContextRule(name, name, enabled = true, condition, effect, target)
 
@@ -193,7 +193,7 @@ class ContextEnforcementTest {
                 rule(
                     name = "Tight away from home",
                     condition = Condition.Not(Condition.OnWifi("Home")),
-                    effect = RuleEffect.SetDeviceBudget(WeeklyBudget.flat(30.minutes)),
+                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)),
                     target = RuleTarget.Everything,
                 ),
             ),
@@ -224,7 +224,7 @@ class ContextEnforcementTest {
     fun `the safety allowlist still beats a contextual block`() {
         val policy = policy().copy(
             contextRules = listOf(
-                rule("Block everything", Condition.Always, RuleEffect.Block, RuleTarget.Everything),
+                rule("Block everything", Condition.Always, RuleEffect.Block(), RuleTarget.Everything),
             ),
         )
 

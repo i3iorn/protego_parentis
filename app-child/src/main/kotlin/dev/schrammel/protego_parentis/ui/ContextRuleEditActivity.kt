@@ -81,7 +81,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     /** Whether [condition] plus [extraConditions] must all hold, or any one of them. */
     private var combineAll: Boolean = true
-    private var effect: RuleEffect = RuleEffect.Block
+    private var effect: RuleEffect = RuleEffect.Block()
     private var ruleTarget: RuleTarget = RuleTarget.Everything
 
     /**
@@ -116,7 +116,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         ruleId = existing?.id ?: UUID.randomUUID().toString()
         name = existing?.name.orEmpty()
         enabled = existing?.enabled ?: true
-        effect = existing?.effect ?: RuleEffect.Block
+        effect = existing?.effect ?: RuleEffect.Block()
         ruleTarget = existing?.target ?: RuleTarget.Everything
         // A negated condition is stored wrapped; unwrap so the toggle reflects it.
         // A combined one (#87) is stored as one AllOf/AnyOf; unwrap that too, into
@@ -468,7 +468,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         menu(
             R.string.context_do_header,
             listOf(
-                getString(R.string.context_effect_block) to { effect = RuleEffect.Block; render() },
+                getString(R.string.context_effect_block) to { effect = RuleEffect.Block(); render() },
                 getString(R.string.context_effect_allow) to { effect = RuleEffect.Allow; render() },
                 getString(R.string.context_choose_safety_exempt) to { effect = RuleEffect.SafetyExempt; render() },
                 getString(R.string.context_choose_budget) to { askForBudget(effect) },
@@ -477,7 +477,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     private fun askForBudget(current: RuleEffect?) {
-        val existingMinutes = (current as? RuleEffect.SetDeviceBudget)
+        val existingMinutes = (current as? RuleEffect.SetBudget)
             ?.budget?.default?.inWholeMinutes?.toInt()
         sliderDialog(
             title = R.string.context_choose_budget,
@@ -485,7 +485,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             initialProgress = LimitSlider.progressFor(existingMinutes ?: DEFAULT_BUDGET_MINUTES),
             format = { formatLimit(LimitSlider.minutesFor(it)) },
         ) { progress ->
-            effect = RuleEffect.SetDeviceBudget(
+            effect = RuleEffect.SetBudget(
                 WeeklyBudget.flat(LimitSlider.minutesFor(progress).minutes),
             )
             render()
@@ -672,7 +672,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         is RuleEffect.Block -> getString(R.string.context_effect_block)
         is RuleEffect.Allow -> getString(R.string.context_effect_allow)
         is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
-        is RuleEffect.SetDeviceBudget ->
+        is RuleEffect.SetBudget ->
             getString(R.string.context_effect_budget, formatDuration(current.budget.default))
     }
 
