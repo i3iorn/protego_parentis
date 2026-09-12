@@ -364,7 +364,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         // parents answering the same request twice.
         SyncMessageType.REQUEST_DECIDED -> settleRequest(message)
         SyncMessageType.HEARTBEAT -> rememberHeartbeat(message)
-        SyncMessageType.APP_INSTALLED -> rememberNewApp(message)
+        SyncMessageType.APP_INSTALLED -> rememberNewApp(message, senderId)
         SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
         SyncMessageType.DEVICE_REVOKED -> applyRevoke(message)
         SyncMessageType.FAMILY_DISBANDED -> applyDisband(message)
@@ -1076,7 +1076,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         return true
     }
 
-    private fun rememberNewApp(message: SyncMessage): Boolean {
+    private fun rememberNewApp(message: SyncMessage, senderId: DeviceId): Boolean {
         val packageName = message.field(FIELD_PACKAGE) ?: return false
         val app = NewApp(
             packageName = packageName.clip(),
@@ -1085,6 +1085,18 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         )
         newApps.remember(app)
         notifier.notifyNewApp(app)
+        // Keeps a rule editor's app picker (AppPickerActivity) from silently
+        // going stale between full syncs: without this, an app installed
+        // after the one time a parent requested the list stayed invisible to
+        // every "choose apps" screen indefinitely, with nothing to say the
+        // list was out of date. Only once a full inventory already exists —
+        // a lone install notice must never look like the whole inventory to
+        // a picker that has never asked for one yet, which would hide the
+        // one thing (the "request list" prompt) that fixes an empty picker.
+        val inventory = AppInventoryStore(appContext)
+        if (inventory.receivedAt(senderId) != null) {
+            inventory.upsert(senderId, AppInventoryEntry(app.packageName, app.label))
+        }
         return true
     }
 

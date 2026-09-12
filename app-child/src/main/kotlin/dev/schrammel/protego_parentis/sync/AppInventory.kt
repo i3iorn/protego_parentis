@@ -46,9 +46,11 @@ fun installedInventory(context: Context): List<AppInventoryEntry> =
  * (#43 — a family can hold more than one).
  *
  * Read-only from this phone's point of view — nothing here installs, removes or
- * renames anything, it only remembers the last answer to "what's on that phone"
- * so a rule screen has something to offer without waiting on the network every
- * time it opens.
+ * renames anything, it only remembers what the family's phones have said about
+ * "what's on that phone" so a rule screen has something to offer without
+ * waiting on the network every time it opens. Usually the last full answer to
+ * an [AppPickerActivity] request, kept current between those by [upsert]
+ * folding in each new-app notice as it arrives.
  */
 class AppInventoryStore(context: Context) {
 
@@ -62,6 +64,19 @@ class AppInventoryStore(context: Context) {
         putString(KEY_APPS_PREFIX + childId.value, AppInventoryCodec.encode(apps))
         putLong(KEY_RECEIVED_AT_PREFIX + childId.value, Instant.now().toEpochMilli())
     }
+
+    /**
+     * Adds or replaces one app in [childId]'s cached list, keeping the rest.
+     *
+     * For a new-app notice arriving between full syncs — see
+     * [dev.schrammel.protego_parentis.sync.SyncReceiver]'s own call site.
+     * Deliberately not exposed as a way to *build* the inventory from
+     * scratch: call only once [apps] has already returned something from a
+     * real full sync, or a single install notice would look like the whole
+     * inventory to a picker that has never asked for one yet.
+     */
+    fun upsert(childId: DeviceId, entry: AppInventoryEntry) =
+        setApps(childId, apps(childId).filterNot { it.packageName == entry.packageName } + entry)
 
     /** Null until this phone has ever heard back from [childId]. */
     fun receivedAt(childId: DeviceId): Instant? =
