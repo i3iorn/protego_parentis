@@ -19,7 +19,13 @@ import dev.schrammel.protego_parentis.model.Place
 
 /** Which of the context sources this phone is currently able to read. */
 data class ContextCapabilities(
-    val canReadWifi: Boolean,
+    /**
+     * Whether fine location is granted — the one permission that gates both
+     * the SSID (Android only discloses it to a location-holding app) and the
+     * saved-places check. One field rather than two identical ones: under the
+     * current permission model they can never disagree, and carrying them
+     * separately read as two independent capabilities when they aren't.
+     */
     val canReadLocation: Boolean,
     val canReadNearbyDevices: Boolean,
 )
@@ -41,7 +47,6 @@ class ContextProvider(context: Context) {
     private val appContext = context.applicationContext
 
     fun capabilities(): ContextCapabilities = ContextCapabilities(
-        canReadWifi = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION),
         canReadLocation = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION),
         canReadNearbyDevices = hasPermission(Manifest.permission.BLUETOOTH_CONNECT),
     )
