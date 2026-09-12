@@ -48,12 +48,14 @@ class KeystoreSigner(private val alias: String = DEFAULT_ALIAS) : Signer {
     /**
      * The keystore entry, created on first use.
      *
-     * Synchronised because the enforcement worker, the sync executor and the UI
-     * can all reach for the identity at once on a fresh install, and two
-     * simultaneous generations would leave half the app signing with a key the
-     * other half had already replaced.
+     * Synchronised per alias because the enforcement worker, the sync executor
+     * and the UI can all reach for the identity at once on a fresh install, and
+     * two simultaneous generations would leave half the app signing with a key
+     * the other half had already replaced. Keyed by alias rather than one lock
+     * shared by the whole class, so a second signer identity (a different
+     * alias) never contends with this one for no reason.
      */
-    private fun entry(): KeyStore.PrivateKeyEntry = synchronized(LOCK) {
+    private fun entry(): KeyStore.PrivateKeyEntry = synchronized(lockFor(alias)) {
         val keyStore = KeyStore.getInstance(PROVIDER).apply { load(null) }
         (keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry)?.let { return it }
 
@@ -84,6 +86,11 @@ class KeystoreSigner(private val alias: String = DEFAULT_ALIAS) : Signer {
         const val CURVE = "secp256r1"
         const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
 
-        val LOCK = Any()
+        private val locks = mutableMapOf<String, Any>()
+
+        /** One lock per alias, created once and reused — never replaced. */
+        fun lockFor(alias: String): Any = synchronized(locks) {
+            locks.getOrPut(alias) { Any() }
+        }
     }
 }
