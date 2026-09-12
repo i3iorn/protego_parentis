@@ -16,8 +16,13 @@ import kotlin.time.Duration.Companion.seconds
  * The curve is deliberately forgiving at first. A parent mistyping their own PIN
  * twice should notice nothing at all; only a sustained run of wrong answers starts
  * costing real time.
+ *
+ * Internal: [PinAttempts] is this module's PIN-lockout entry point and already
+ * exposes the curve's effect ([PinAttempts.lockoutRemaining]) as a plain
+ * [Duration] — a caller outside this module has no reason to reach the curve
+ * itself.
  */
-object PinBackoff {
+internal object PinBackoff {
 
     /** Failures allowed before any delay is imposed. */
     const val FREE_ATTEMPTS = 3

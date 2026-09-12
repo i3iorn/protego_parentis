@@ -12,8 +12,13 @@ import javax.crypto.spec.SecretKeySpec
 /** A key derived from the family's passphrase. Hold it, do not re-derive per message. */
 class SyncKey internal constructor(internal val bytes: ByteArray)
 
-/** Why a received message could not be opened. */
-enum class DecryptFailure {
+/**
+ * Why a received message could not be opened.
+ *
+ * Internal: a caller outside this module only ever needs to know that opening
+ * failed (`is DecryptResult.Failed`), not why — see [DecryptResult.Failed].
+ */
+internal enum class DecryptFailure {
     /** Not our format at all — someone else publishing to the same public topic. */
     MALFORMED,
 
@@ -26,7 +31,7 @@ enum class DecryptFailure {
 
 sealed interface DecryptResult {
     data class Opened(val plaintext: String) : DecryptResult
-    data class Failed(val reason: DecryptFailure) : DecryptResult
+    data class Failed(internal val reason: DecryptFailure) : DecryptResult
 }
 
 /**

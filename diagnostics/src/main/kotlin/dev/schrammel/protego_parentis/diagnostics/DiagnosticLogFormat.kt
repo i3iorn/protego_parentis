@@ -11,8 +11,12 @@ import java.time.format.DateTimeFormatter
  * rather than by remembering it: the shape of a rendered line is checked, so a
  * later change that interpolates a package name or a reason into the log fails
  * the build instead of quietly shipping.
+ *
+ * Internal: [Diagnostics] is this module's public entry point — a caller
+ * outside it wants [Diagnostics.record]/[Diagnostics.asText], never the raw
+ * encoding.
  */
-object DiagnosticLogFormat {
+internal object DiagnosticLogFormat {
 
     /** Kept small on purpose: enough to see a pattern, not enough to be a history. */
     const val MAX_ENTRIES = 300

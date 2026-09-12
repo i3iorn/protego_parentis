@@ -14,8 +14,14 @@ import java.time.ZonedDateTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
-/** What the active contextual rules add up to. */
-data class ContextOutcome(
+/**
+ * What the active contextual rules add up to.
+ *
+ * Internal: [PolicyEngine.evaluate] is this module's one public entry point,
+ * and it folds this into the [dev.schrammel.protego_parentis.model.Enforcement]
+ * it returns rather than handing the intermediate shape to callers.
+ */
+internal data class ContextOutcome(
     /** Blocked outright while their rule applies, with the rule that did it. */
     val blocked: Map<PackageName, ContextRule>,
     /** Exempt from every limit while their rule applies. */
@@ -46,8 +52,10 @@ data class ContextOutcome(
  *    this way, so the two behave alike.
  *  - **The tightest budget wins.** Several rules setting a device budget resolve
  *    to the smallest. A rule can tighten, never loosen past another rule.
+ *
+ * Internal: reached only through [PolicyEngine.evaluate].
  */
-object ContextRules {
+internal object ContextRules {
 
     /**
      * How deep a nested condition may go before it is treated as malformed.

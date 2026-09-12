@@ -1,7 +1,13 @@
 package dev.schrammel.protego_parentis.sync.core
 
-/** What a device may do about who else is in the family. */
-enum class EnrolmentAuthority {
+/**
+ * What a device may do about who else is in the family.
+ *
+ * Internal: [Enrolment.authorityOf] backs [Enrolment.mayApprove], which is the
+ * only thing a caller outside this module needs — nothing external inspects
+ * which of the three authority levels applies.
+ */
+internal enum class EnrolmentAuthority {
     /**
      * May approve devices, and tells the rest of the family when it does.
      *
@@ -49,7 +55,7 @@ enum class EnrolmentAuthority {
  */
 object Enrolment {
 
-    fun authorityOf(role: SyncRole, trustedParents: Int): EnrolmentAuthority = when {
+    internal fun authorityOf(role: SyncRole, trustedParents: Int): EnrolmentAuthority = when {
         role == SyncRole.PARENT -> EnrolmentAuthority.APPROVES
         trustedParents == 0 -> EnrolmentAuthority.BOOTSTRAPS
         else -> EnrolmentAuthority.ACCEPTS

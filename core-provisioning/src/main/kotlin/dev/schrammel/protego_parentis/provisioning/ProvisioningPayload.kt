@@ -111,8 +111,12 @@ data class ProvisioningPayload(
  * Android expects the SHA-256 of the signing certificate as URL-safe base64 with
  * the padding stripped. Getting this wrong is the single most common cause of a
  * QR that scans cleanly and then does nothing.
+ *
+ * Internal: [ProvisioningPayload] validates a checksum's shape against
+ * [isWellFormed] on construction; nothing outside this module currently
+ * generates one to validate.
  */
-object SignatureChecksum {
+internal object SignatureChecksum {
 
     private val WELL_FORMED = Regex("^[A-Za-z0-9_-]+$")
 

@@ -19,8 +19,12 @@ import java.time.ZonedDateTime
  * through exactly this arithmetic. #105 migrated every stored schedule into
  * that same rule shape and switched enforcement to read only rules, which is
  * why nothing here takes a `ScheduleBlock` any more either.
+ *
+ * Internal: consumed only by [ContextRules] and [PolicyEngine], both in this
+ * module — a caller outside it never needs window arithmetic directly, only
+ * the [dev.schrammel.protego_parentis.model.Enforcement] it feeds into.
  */
-object ScheduleResolver {
+internal object ScheduleResolver {
 
     /** The concrete start/end pair for a window starting on [date], or null if it does not run that day. */
     private fun windowStartingOn(window: RecurringWindow, date: LocalDate, now: ZonedDateTime): Window? {

@@ -99,8 +99,14 @@ enum class DiagnosticEvent {
     APP_CRASHED,
 }
 
-/** One line of the log. */
-data class DiagnosticEntry(
+/**
+ * One line of the log.
+ *
+ * Internal: [Diagnostics.asText] already turns these into the one thing a
+ * caller outside this module needs — a shareable [String] — so nothing
+ * external currently needs the structured line itself.
+ */
+internal data class DiagnosticEntry(
     val at: Instant,
     val event: DiagnosticEvent,
     /**
@@ -150,7 +156,7 @@ object Diagnostics {
         prefs.edit { putString(KEY_LOG, updated) }
     }
 
-    fun entries(context: Context): List<DiagnosticEntry> =
+    internal fun entries(context: Context): List<DiagnosticEntry> =
         DiagnosticLogFormat.decodeAll(prefs(context).getString(KEY_LOG, null))
 
     fun clear(context: Context) {
