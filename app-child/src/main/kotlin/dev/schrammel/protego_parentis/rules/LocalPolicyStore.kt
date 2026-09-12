@@ -168,8 +168,8 @@ class LocalPolicyStore(context: Context) {
      * Deliberately leaves [scheduleStore]'s own schedules, this store's
      * [dailyLimitMinutes], and [exemptPackages] exactly as they are, rather
      * than deleting them once migrated: #106 made their one remaining editor
-     * (`LimitsActivity`) unreachable rather than deleting it, and #107
-     * removed `ParentLimitActivity` and `SET_DAILY_LIMIT` outright, but a
+     * (`LimitsActivity`) unreachable, #107 removed `ParentLimitActivity` and
+     * `SET_DAILY_LIMIT` outright, and #162 deleted `LimitsActivity` too, but a
      * device mid-upgrade, or still replicating an old-format edit from a
      * sibling phone that has not upgraded yet, must not lose the rule
      * because the field it was read from vanished under it. This runs once,

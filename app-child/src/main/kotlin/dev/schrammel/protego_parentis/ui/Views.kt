@@ -516,16 +516,11 @@ internal fun Activity.sliderDialog(
  * A value label above a minutes slider, as a block inside a screen's own column
  * rather than a dialog — see [sliderDialog] for that version.
  *
- * [onChanged] fires only on a user drag (never on the initial layout pass), and
- * [onDragStart]/[onDragEnd] exist for the one caller ([dev.schrammel.protego_parentis.ui.SettingsScreens]'s
- * `LimitsActivity`) that writes on every tick and records one audit entry per
- * whole gesture rather than per tick — everyone else can ignore them.
+ * [onChanged] fires only on a user drag (never on the initial layout pass).
  */
 internal fun Activity.limitSliderBlock(
     initialMinutes: Int,
     onChanged: (Int) -> Unit = {},
-    onDragStart: () -> Unit = {},
-    onDragEnd: () -> Unit = {},
 ): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
 
@@ -545,8 +540,8 @@ internal fun Activity.limitSliderBlock(
                     if (fromUser) onChanged(minutes)
                 }
 
-                override fun onStartTrackingTouch(bar: SeekBar) = onDragStart()
-                override fun onStopTrackingTouch(bar: SeekBar) = onDragEnd()
+                override fun onStartTrackingTouch(bar: SeekBar) = Unit
+                override fun onStopTrackingTouch(bar: SeekBar) = Unit
             })
         },
     )
