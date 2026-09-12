@@ -145,11 +145,6 @@
             android:parentActivityName=".ui.RulesActivity" />
 
         <activity
-            android:name=".ui.ParentLimitActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
-
-        <activity
             android:name=".ui.RulesetPickerActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />

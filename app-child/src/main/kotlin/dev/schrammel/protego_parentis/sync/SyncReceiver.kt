@@ -326,7 +326,6 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.BONUS_GRANTED -> applyBonus(message)
         SyncMessageType.APP_DECIDED -> applyAppDecision(message)
         SyncMessageType.LOCK_NOW -> applyLockNow()
-        SyncMessageType.SET_DAILY_LIMIT -> applyDailyLimit(message)
         SyncMessageType.LOCATE_REQUEST -> applyLocateRequest()
         SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
         SyncMessageType.DEVICE_REVOKED -> applyRevoke(message)
@@ -388,7 +387,6 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.APP_DECIDED,
         SyncMessageType.DEVICE_ANNOUNCE,
         SyncMessageType.LOCK_NOW,
-        SyncMessageType.SET_DAILY_LIMIT,
         SyncMessageType.LOCATE_REQUEST,
         SyncMessageType.POLICY_REQUESTED,
         SyncMessageType.POLICY_UPDATED,
@@ -1125,32 +1123,6 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             action = AuditAction.BONUS_GRANTED,
             subject = TargetLabels.describe(appContext, target),
             after = Audit.minutes(minutes),
-        )
-        AppRegistry.ruleMutationSink.rulesChanged()
-        return true
-    }
-
-    /**
-     * Applies a daily limit set by a parent phone.
-     *
-     * The same `LocalPolicyStore` setter a parent standing at this phone would
-     * use — this message is simply another writer of it, arriving on the sync
-     * executor instead of the UI thread. Re-evaluating at once, same as
-     * [applyBonus], is what makes the change visible on the child's screen
-     * without waiting for the next scheduled tick.
-     */
-    private fun applyDailyLimit(message: SyncMessage): Boolean {
-        val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it >= 0 } ?: return false
-
-        val store = LocalPolicyStore(appContext)
-        val before = store.dailyLimitMinutes
-        store.dailyLimitMinutes = minutes
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.DAILY_LIMIT_CHANGED,
-            before = Audit.minutes(before),
-            after = Audit.minutes(store.dailyLimitMinutes),
         )
         AppRegistry.ruleMutationSink.rulesChanged()
         return true
