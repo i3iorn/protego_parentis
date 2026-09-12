@@ -5,6 +5,14 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.model.CategoryId
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
+import dev.schrammel.protego_parentis.model.Defaults
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
+import dev.schrammel.protego_parentis.model.WeeklyBudget
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.security.DeviceRole
@@ -21,10 +29,13 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * [CategoryEditActivity]'s create/edit/delete round trip through
- * [LocalPolicyStore.categories] — untested before #161.
+ * [LocalPolicyStore.categories] — untested before #161. The budget half of
+ * that round trip moved to [ContextRuleStore] afterwards; the tests below
+ * pin the new shape.
  */
 @RunWith(RobolectricTestRunner::class)
 class CategoryEditActivityTest {
@@ -32,6 +43,7 @@ class CategoryEditActivityTest {
     private val context get() = RuntimeEnvironment.getApplication()
 
     private fun store() = LocalPolicyStore(context)
+    private fun rules() = ContextRuleStore(context)
 
     @Before
     fun setUp() {
@@ -104,6 +116,80 @@ class CategoryEditActivityTest {
         val activity = activity()
 
         assertNull(findButton(activity, "Delete category"))
+    }
+
+    // ---------- the budget as a ContextRule ----------
+
+    @Test
+    fun `saving a category writes a SetBudget rule at its well-known id`() {
+        val activity = activity()
+        nameField(activity)?.setText("Games")
+
+        clickButton(activity, "Save")
+
+        val saved = store().categories.single()
+        val rule = rules().rules.singleOrNull { it.id == "migrated-category-budget-${saved.id}" }
+        assertEquals(Condition.Always, rule?.condition)
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(Defaults.CATEGORY_LIMIT)), rule?.effect)
+        assertEquals(RuleTarget.Categories(setOf(CategoryId(saved.id))), rule?.target)
+    }
+
+    @Test
+    fun `the stored category's own limitMinutes is no longer the source of truth`() {
+        val activity = activity()
+        nameField(activity)?.setText("Games")
+
+        clickButton(activity, "Save")
+
+        assertEquals(0, store().categories.single().limitMinutes)
+    }
+
+    @Test
+    fun `editing loads the limit from its rule rather than a stale stored field`() {
+        store().categories = listOf(
+            StoredCategory(id = "games-id", name = "Games", limitMinutes = 999, packages = emptySet()),
+        )
+        rules().upsert(
+            ContextRule(
+                id = "migrated-category-budget-games-id",
+                name = "Games",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)),
+                target = RuleTarget.Categories(setOf(CategoryId("games-id"))),
+            ),
+        )
+
+        // Re-saving without touching the slider preserves whatever onCreate
+        // loaded into it — the only way to observe that private state from
+        // outside without exposing it just for this test.
+        val activity = activity(id = "games-id")
+        clickButton(activity, "Save")
+
+        val rule = rules().rules.single { it.id == "migrated-category-budget-games-id" }
+        assertEquals(RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)), rule.effect)
+    }
+
+    @Test
+    fun `deleting a category also deletes its budget rule`() {
+        store().categories = listOf(
+            StoredCategory(id = "games-id", name = "Games", limitMinutes = 60, packages = emptySet()),
+        )
+        rules().upsert(
+            ContextRule(
+                id = "migrated-category-budget-games-id",
+                name = "Games",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.SetBudget(WeeklyBudget.flat(60.minutes)),
+                target = RuleTarget.Categories(setOf(CategoryId("games-id"))),
+            ),
+        )
+
+        val activity = activity(id = "games-id")
+        clickButton(activity, "Delete category")
+
+        assertTrue(rules().rules.none { it.id == "migrated-category-budget-games-id" })
     }
 
     private fun nameField(activity: CategoryEditActivity): EditText? =

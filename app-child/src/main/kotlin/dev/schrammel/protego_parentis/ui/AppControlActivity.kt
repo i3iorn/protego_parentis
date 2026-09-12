@@ -14,11 +14,20 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
+import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.rules.AppReviewStore
+import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
+import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
@@ -40,8 +49,12 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  * itself: [AppReviewStore]'s pending list is local bookkeeping tied to the
  * install broadcast on that one device, nothing a parent's phone has a
  * replicated copy of. Editing a remote child's rules from here still works —
- * the blocked/network-blocked switches are ordinary [PolicySnapshot] fields —
- * it just never has a "new" section to show.
+ * the network-blocked switch is an ordinary [PolicySnapshot] field, and the
+ * blocked switch an ordinary [ContextRule] (a shortcut over the same rule
+ * engine every other restriction goes through — see [AppLimitsActivity]'s own
+ * doc comment for why this screen writes at [LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX]'s
+ * well-known per-app id rather than a field of its own) — it just never has a
+ * "new" section to show.
  */
 class AppControlActivity : ParentGatedActivity() {
 
@@ -168,12 +181,13 @@ class AppControlActivity : ParentGatedActivity() {
         setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
 
         val snapshot = policyRuleStore(this@AppControlActivity, target).read()
+        val rules = contextRuleRuleStore(this@AppControlActivity, target).read()
 
         addView(identity(app, weighted = true))
         addView(
             CheckBox(context).apply {
                 setText(R.string.apps_blocked)
-                isChecked = app.pkg.value in snapshot?.blockedPackages.orEmpty()
+                isChecked = isBlocked(app.pkg, rules)
                 isEnabled = canEdit
                 setOnCheckedChangeListener { _, blocked ->
                     decide(app, blocked, wasNew = false)
@@ -233,11 +247,38 @@ class AppControlActivity : ParentGatedActivity() {
             )
         }
 
+    /**
+     * Whether [pkg] has a block rule at its well-known id, among [rules].
+     *
+     * A shortcut over the same rule engine every other restriction goes
+     * through: reads the [ContextRule] `LocalPolicyStore.migrateAppRulesToUnifiedRules`
+     * converts an old-format block into, the same one this screen writes.
+     * Takes the rule list rather than reading the store itself, and is
+     * internal rather than private, so [AppControlActivityTest] can pin the
+     * translation directly without a `target` to resolve a store against.
+     */
+    internal fun isBlocked(pkg: PackageName, rules: List<ContextRule>): Boolean =
+        rules.firstOrNull { it.id == blockRuleId(pkg) }?.effect is RuleEffect.Block
+
+    internal fun blockRuleId(pkg: PackageName) = LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX + pkg.value
+
     private fun decide(app: AppInfo, blocked: Boolean, wasNew: Boolean) {
-        val store = policyRuleStore(this, target)
-        val snapshot = store.read() ?: return
-        val updated = if (blocked) snapshot.blockedPackages + app.pkg.value else snapshot.blockedPackages - app.pkg.value
-        store.write(snapshot.copy(blockedPackages = updated))
+        val store = contextRuleRuleStore(this, target)
+        val id = blockRuleId(app.pkg)
+        if (blocked) {
+            store.upsert(
+                ContextRule(
+                    id = id,
+                    name = getString(R.string.apps_title),
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.Block(hidden = false),
+                    target = RuleTarget.Apps(setOf(app.pkg)),
+                ),
+            )
+        } else {
+            store.delete(id)
+        }
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
