@@ -73,19 +73,20 @@ object MessageCrypto {
      *
      * Affordable because the result is held, not recomputed: `SyncKeying` caches
      * the derived key per passphrase and topic, so a phone pays this once per
-     * process on a background executor, not once per message. Measured at roughly
-     * 580 ms on an x86 JVM against 265 ms at the old value; a handset from the
-     * minSdk era will be some multiple of that, and it is still a one-off.
+     * process on a background executor, not once per message.
      *
-     * **Re-measure on a real device before release.** If it proves too slow to
-     * live with, lower it deliberately and record the measurement here rather
-     * than leaving a number nobody can account for.
+     * Raised from 600,000 to this value on request; 600,000 measured at roughly
+     * 580 ms on an x86 JVM against 265 ms at the old value, but this number has
+     * **not** been re-measured on a real handset — nothing in this environment
+     * can run one. Re-measure before release; if it proves too slow to live
+     * with, lower it deliberately and record the measurement here rather than
+     * leaving a number nobody can account for.
      *
      * Changing this changes every derived key, so a phone on one value cannot
      * talk to a phone on another and the failure is indistinguishable from a
      * wrong passphrase. Free to change now, while nothing has shipped.
      */
-    internal const val PBKDF2_ITERATIONS = 600_000
+    internal const val PBKDF2_ITERATIONS = 900_000
 
     /** Shortest passphrase we will derive from. Shorter is not a secret. */
     const val MIN_PASSPHRASE_LENGTH = 12
