@@ -183,7 +183,7 @@ class ContextRulesActivity : ParentGatedActivity() {
                 container.addView(group(STARTERS.map(::starterRow)))
             }
         } else {
-            otherRules.forEach { container.addView(ruleRow(it, places)) }
+            addCollapsibleRows(container, otherRules.map { ruleRow(it, places) })
         }
 
         if (canEdit) {

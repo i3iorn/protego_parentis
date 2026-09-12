@@ -9,6 +9,12 @@
 -->
 <resources xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Raden "visa fler" på en lista med fler än ett fåtal rader. -->
+    <plurals name="show_more_rows">
+        <item quantity="one">Visa %d till</item>
+        <item quantity="other">Visa %d till</item>
+    </plurals>
+
     <!-- Notis som alltid syns. -->
     <string name="service_channel_name">Skärmtid</string>
     <string name="service_channel_description">Visar att skärmtidsreglerna är aktiva på den här telefonen.</string>

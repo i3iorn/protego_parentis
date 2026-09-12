@@ -210,7 +210,7 @@ class RequestsActivity : DementorActivity() {
             if (all.isEmpty()) {
                 container.addView(body(getString(R.string.requests_none)))
             } else {
-                all.forEach { container.addView(requestRow(it)) }
+                addCollapsibleRows(container, all.map(::requestRow))
             }
         }
     }

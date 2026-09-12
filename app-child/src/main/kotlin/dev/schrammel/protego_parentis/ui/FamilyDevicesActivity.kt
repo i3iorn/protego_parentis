@@ -119,7 +119,7 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         if (pending.isNotEmpty()) {
             column.addView(sectionHeader(getString(R.string.devices_waiting)))
             column.addView(captionText(getString(R.string.devices_waiting_hint)))
-            pending.forEach { column.addView(pendingCard(it)) }
+            addCollapsibleRows(column, pending.map(::pendingCard))
         }
 
         val refused = roster.refused

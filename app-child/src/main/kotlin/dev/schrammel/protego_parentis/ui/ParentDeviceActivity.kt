@@ -127,7 +127,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
         if (pending.isNotEmpty()) {
             column.addView(sectionHeader(getString(R.string.device_new_apps_header)))
             column.addView(captionText(getString(R.string.device_new_apps_hint)))
-            pending.forEach { column.addView(newAppCard(it)) }
+            addCollapsibleRows(column, pending.map(::newAppCard))
         }
     }
 
