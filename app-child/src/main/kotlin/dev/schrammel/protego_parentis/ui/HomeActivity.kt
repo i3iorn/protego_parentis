@@ -35,7 +35,6 @@ import dev.schrammel.protego_parentis.sync.ParentPollWorker
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.usage.UsageAccess
-import kotlin.time.Duration
 
 /**
  * The teen's dashboard (RPT-4).
@@ -546,11 +545,6 @@ class HomeActivity : DementorActivity() {
      */
     private fun tintText(view: TextView, level: BudgetLevel) {
         view.setTextColor(ContextCompat.getColor(this, colourFor(level)))
-    }
-
-    private fun percentUsed(used: Duration, total: Duration): Int {
-        if (total <= Duration.ZERO || total.isInfinite()) return 0
-        return ((used / total) * 100).toInt().coerceIn(0, 100)
     }
 
     private companion object {

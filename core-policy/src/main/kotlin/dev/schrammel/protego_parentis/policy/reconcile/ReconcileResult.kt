@@ -37,7 +37,9 @@ data class ReconcileResult(
         get() = applied &&
             suspended.isEmpty() && unsuspended.isEmpty() &&
             hidden.isEmpty() && unhidden.isEmpty() &&
-            restrictionsAdded.isEmpty() && restrictionsCleared.isEmpty()
+            restrictionsAdded.isEmpty() && restrictionsCleared.isEmpty() &&
+            failed.isEmpty() && invariantViolations.isEmpty() &&
+            !dnsChanged && !vpnChanged
 
     companion object {
         fun skipped(reason: String, policyVersion: Long) =

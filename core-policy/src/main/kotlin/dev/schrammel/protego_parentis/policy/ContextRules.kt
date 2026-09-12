@@ -108,7 +108,7 @@ object ContextRules {
                     safetyExempt += resolve(rule.target, hierarchy, installedPackages)
 
                 is RuleEffect.SetDeviceBudget ->
-                    budget = tightest(budget, effect.budget)
+                    budget = tightest(budget, effect.budget, now.dayOfWeek)
             }
         }
 
@@ -279,14 +279,19 @@ object ContextRules {
         is RuleTarget.EverythingExcept -> installedPackages - target.packages
     }
 
-    /** The smaller of two budgets, comparing the most permissive day of each. */
-    private fun tightest(existing: WeeklyBudget?, candidate: WeeklyBudget): WeeklyBudget {
+    /**
+     * The smaller of two budgets, comparing [today]'s value of each.
+     *
+     * Comparing weekly peaks would let a budget with a low peak but a high value
+     * on the day actually being evaluated win over one that is genuinely tighter
+     * today — violating "a rule can tighten, never loosen past another rule".
+     */
+    private fun tightest(
+        existing: WeeklyBudget?,
+        candidate: WeeklyBudget,
+        today: java.time.DayOfWeek,
+    ): WeeklyBudget {
         if (existing == null) return candidate
-        val existingPeak = peak(existing)
-        val candidatePeak = peak(candidate)
-        return if (candidatePeak < existingPeak) candidate else existing
+        return if (candidate.forDay(today) < existing.forDay(today)) candidate else existing
     }
-
-    private fun peak(budget: WeeklyBudget) =
-        java.time.DayOfWeek.entries.maxOf { budget.forDay(it) }
 }

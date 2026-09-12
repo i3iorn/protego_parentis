@@ -46,7 +46,8 @@ class InstalledApps(context: Context) {
             .map { resolved ->
                 AppInfo(
                     pkg = PackageName(resolved.activityInfo.packageName),
-                    label = resolved.loadLabel(packageManager).toString(),
+                    label = runCatching { resolved.loadLabel(packageManager).toString() }
+                        .getOrDefault(resolved.activityInfo.packageName),
                     icon = runCatching { resolved.loadIcon(packageManager) }.getOrNull(),
                 )
             }

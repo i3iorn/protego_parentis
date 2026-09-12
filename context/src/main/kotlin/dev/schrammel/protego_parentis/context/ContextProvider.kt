@@ -109,13 +109,18 @@ class ContextProvider(context: Context) {
     @SuppressLint("MissingPermission")
     private fun lastKnownLocation(): Location? = runCatching {
         val manager = appContext.getSystemService(LocationManager::class.java) ?: return null
-        // Network first: far cheaper, and accurate enough for a place with a
-        // seventy-five metre radius.
+        // Network first: far cheaper, and accurate enough for a place with the
+        // minimum radius the model enforces (100m).
         listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
             .mapNotNull { provider ->
                 runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
             }
             .maxByOrNull { it.time }
+            // A fix from before the staleness bound is worse than no fix at all: it
+            // would report "inside" or "outside" a place from a position that may no
+            // longer be true, which is a misfire rather than the lag this function's
+            // own doc comment promises.
+            ?.takeIf { System.currentTimeMillis() - it.time <= MAX_LOCATION_AGE_MILLIS }
     }.getOrElse {
         Log.d(TAG, "Could not read a location", it)
         null
@@ -130,9 +135,12 @@ class ContextProvider(context: Context) {
             place.longitude,
             results,
         )
-        // The fix's own accuracy is added to the radius, so a poor fix does not
-        // repeatedly drop the phone out of a place it has not left.
-        return results[0] <= place.radiusMetres + location.accuracy
+        // The fix's own accuracy is added to the radius, capped, so a poor fix does
+        // not repeatedly drop the phone out of a place it has not left — but an
+        // unbounded accuracy figure (common indoors/urban on a network fix) can no
+        // longer widen the radius without limit and report "inside" from far away.
+        val accuracy = location.accuracy.coerceAtMost(MAX_ACCURACY_METRES)
+        return results[0] <= place.radiusMetres + accuracy
     }
 
     // ---------- nearby devices ----------
@@ -177,5 +185,11 @@ class ContextProvider(context: Context) {
 
         /** What Android reports when it will not disclose the network name. */
         const val UNKNOWN_SSID = "<unknown ssid>"
+
+        /** Beyond this age a last-known fix is treated as no fix at all. */
+        const val MAX_LOCATION_AGE_MILLIS = 30 * 60 * 1000L
+
+        /** The most a fix's own accuracy may widen a place's radius by. */
+        const val MAX_ACCURACY_METRES = 150f
     }
 }

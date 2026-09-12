@@ -50,8 +50,14 @@ class RequestStore(context: Context) {
 
     fun find(id: RequestId, now: Instant): Request? = all(now).firstOrNull { it.id == id }
 
-    /** Requests belong to the child; they leave with them. */
-    fun clear() {
+    /**
+     * Requests belong to the child; they leave with them.
+     *
+     * Synchronized on [prefs] like every other mutator here: without the lock, a
+     * concurrent save() could interleave with this and either resurrect a request
+     * this call meant to wipe, or have its own write silently undone.
+     */
+    fun clear() = synchronized(prefs) {
         prefs.edit { remove(KEY_REQUESTS) }
     }
 

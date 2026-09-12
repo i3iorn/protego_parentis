@@ -562,6 +562,33 @@ class ContextRulesTest {
     }
 
     @Test
+    fun `the tightest budget is judged by today, not by the weaker rule's weekly peak`() {
+        // "generous" has the lower weekly peak (1 hour flat), but on the midweek
+        // day these are evaluated at, "split" actually allows less (30 minutes on
+        // a school night vs. 60). Picking by weekly peak alone would let
+        // "generous" win here even though it is not the tighter rule today.
+        val rules = listOf(
+            rule(
+                Condition.Always,
+                RuleEffect.SetDeviceBudget(WeeklyBudget.flat(1.hours)),
+                RuleTarget.Everything,
+                name = "generous",
+            ),
+            rule(
+                Condition.Always,
+                RuleEffect.SetDeviceBudget(WeeklyBudget.schoolWeek(schoolNight = 30.minutes, weekend = 2.hours)),
+                RuleTarget.Everything,
+                name = "split",
+            ),
+        )
+
+        assertEquals(
+            WeeklyBudget.schoolWeek(schoolNight = 30.minutes, weekend = 2.hours),
+            evaluate(rules, DeviceContext.UNKNOWN).deviceBudget,
+        )
+    }
+
+    @Test
     fun `an allowance rule blocks its target once usage reaches the limit`() {
         val rules = listOf(rule(Condition.AllowanceSpent(60)))
 
