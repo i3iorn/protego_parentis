@@ -67,10 +67,6 @@ class AppControlActivity : ParentGatedActivity() {
         render()
     }
 
-    override fun onGatedContentHidden() {
-        column.removeAllViews()
-    }
-
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.apps_title)))
