@@ -20,7 +20,7 @@ import dev.schrammel.protego_parentis.ui.rules.autoApprovalRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.upsert
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
@@ -38,7 +38,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 class AutoApprovalActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var column: LinearLayout
 
     override fun supportsReadOnly() = true
@@ -122,7 +122,7 @@ class AutoApprovalActivity : ParentGatedActivity() {
 /** Editing one standing answer, on whichever kind of phone edits [target]'s rules (#89). */
 class AutoApprovalEditActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var column: LinearLayout
     private lateinit var ruleId: String
     private lateinit var nameInput: EditText

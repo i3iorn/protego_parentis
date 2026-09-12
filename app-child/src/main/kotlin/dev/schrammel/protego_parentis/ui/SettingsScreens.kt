@@ -25,7 +25,7 @@ import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.InstalledApps
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.time.Instant
 import java.time.LocalTime
@@ -253,7 +253,7 @@ class LimitsActivity : ParentGatedActivity() {
 /** The list of categories, with their limits and how many apps each holds. */
 class CategoriesActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var column: LinearLayout
 
     override fun supportsReadOnly() = true

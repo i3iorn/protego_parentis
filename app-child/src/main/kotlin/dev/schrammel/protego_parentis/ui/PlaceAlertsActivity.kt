@@ -11,7 +11,7 @@ import dev.schrammel.protego_parentis.context.PlaceWatcher
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
@@ -38,7 +38,7 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  */
 class PlaceAlertsActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var settings: ContextRuleStore
     private lateinit var column: LinearLayout
 
