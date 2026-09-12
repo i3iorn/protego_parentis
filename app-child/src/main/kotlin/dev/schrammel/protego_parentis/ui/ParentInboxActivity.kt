@@ -96,36 +96,12 @@ class ParentInboxActivity : ParentRoleActivity() {
             ),
         )
         addView(
-            LinearLayout(this@ParentInboxActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dimen(R.dimen.space_sm) }
-
-                addView(
-                    Button(context).apply {
-                        setText(R.string.inbox_approve)
-                        layoutParams = LinearLayout.LayoutParams(
-                            0,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            1f,
-                        ).apply { marginEnd = dimen(R.dimen.space_xs) }
-                        setOnClickListener { decide(request, RequestState.APPROVED) }
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        setText(R.string.inbox_deny)
-                        layoutParams = LinearLayout.LayoutParams(
-                            0,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            1f,
-                        )
-                        setOnClickListener { decide(request, RequestState.DENIED) }
-                    },
-                )
-            },
+            twoButtonRow(
+                R.string.inbox_approve,
+                { decide(request, RequestState.APPROVED) },
+                R.string.inbox_deny,
+                { decide(request, RequestState.DENIED) },
+            ),
         )
     }
 

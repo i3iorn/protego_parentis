@@ -198,6 +198,40 @@ internal fun Activity.actionButton(): Button = Button(this).apply {
 }
 
 /**
+ * Two evenly-weighted buttons side by side — "approve this or deny it",
+ * "allow this or block it". Independently hand-built at three call sites
+ * before this existed; pulled in once that passed this project's own
+ * third-occurrence threshold.
+ */
+internal fun Activity.twoButtonRow(
+    @StringRes firstLabel: Int,
+    onFirst: () -> Unit,
+    @StringRes secondLabel: Int,
+    onSecond: () -> Unit,
+): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+        topMargin = dimen(R.dimen.space_sm)
+    }
+    addView(
+        Button(context).apply {
+            setText(firstLabel)
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
+                marginEnd = dimen(R.dimen.space_xs)
+            }
+            setOnClickListener { onFirst() }
+        },
+    )
+    addView(
+        Button(context).apply {
+            setText(secondLabel)
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            setOnClickListener { onSecond() }
+        },
+    )
+}
+
+/**
  * The card that says a family is not finished being set up.
  *
  * Null when there is nothing to say, which is the usual case — a family that works

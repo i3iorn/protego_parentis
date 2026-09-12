@@ -90,28 +90,12 @@ class RequestInboxActivity : ParentGatedActivity() {
         )
 
         addView(
-            LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
-                    topMargin = dimen(R.dimen.space_sm)
-                }
-                addView(
-                    Button(context).apply {
-                        setText(R.string.inbox_approve)
-                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
-                            marginEnd = dimen(R.dimen.space_xs)
-                        }
-                        setOnClickListener { decide(request.id, approve = true) }
-                    },
-                )
-                addView(
-                    Button(context).apply {
-                        setText(R.string.inbox_deny)
-                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
-                        setOnClickListener { decide(request.id, approve = false) }
-                    },
-                )
-            },
+            twoButtonRow(
+                R.string.inbox_approve,
+                { decide(request.id, approve = true) },
+                R.string.inbox_deny,
+                { decide(request.id, approve = false) },
+            ),
         )
     }
 
