@@ -209,7 +209,7 @@ fun LocalPolicyStore.snapshot(): PolicySnapshot {
  * alongside this on every policy change, the same way every other schedule
  * already did before bedtime joined them.
  */
-fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) {
+fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) = atomically {
     dailyLimitMinutes = snapshot.dailyLimitMinutes
     categories = snapshot.categories
     appLimits = snapshot.appLimits
@@ -220,6 +220,10 @@ fun LocalPolicyStore.applySnapshot(snapshot: PolicySnapshot) {
     installPolicy = runCatching { InstallPolicy.valueOf(snapshot.installPolicy) }
         .getOrDefault(InstallPolicy.NOTIFY)
     installWindowUntil = snapshot.installWindowUntil?.let(Instant::ofEpochMilli)
+    // Everything below lives in a separate SharedPreferences file of its own
+    // (webFilterStore/goalStore/featureFlags) and so cannot join this single
+    // commit — [LocalPolicyStore.atomically]'s guarantee covers this store's
+    // own file, which is also the only one `Policy.version` is read from.
     webFilterProfile = DnsProfile.parse(snapshot.webFilterProfile)
     webFilterCustomHost = snapshot.webFilterCustomHost
     browserPolicy = BrowserPolicy(
