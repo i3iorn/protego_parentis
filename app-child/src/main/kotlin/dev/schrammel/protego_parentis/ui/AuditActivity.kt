@@ -64,12 +64,16 @@ class AuditActivity : DementorActivity() {
         }
 
         val zone = ZoneId.systemDefault()
-        entries
+        val days = entries
             .groupBy { it.at.atZone(zone).toLocalDate() }
-            .forEach { (day, ofDay) ->
-                column.addView(sectionHeader(dayLabel(day)))
-                column.addView(group(ofDay.map(::entryRow)))
+            .map { (day, ofDay) ->
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(sectionHeader(dayLabel(day)))
+                    addView(group(ofDay.map(::entryRow)))
+                }
             }
+        addCollapsibleRows(column, days)
 
         column.addView(
             captionText(
