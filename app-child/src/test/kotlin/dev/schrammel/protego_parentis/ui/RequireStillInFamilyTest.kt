@@ -8,7 +8,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -43,7 +43,7 @@ class RequireStillInFamilyTest {
     fun `a target whose child is still in the family passes through`() {
         RoleStore(context).choose(DeviceRole.PARENT)
         enrolChild("CHILD1")
-        val target = RuleTarget(DeviceId("CHILD1"), isOwnDevice = false)
+        val target = RuleScope(DeviceId("CHILD1"), isOwnDevice = false)
         val activity = Robolectric.buildActivity(Activity::class.java, Intent()).setup().get()
 
         assertTrue(activity.requireStillInFamily(target))
@@ -54,7 +54,7 @@ class RequireStillInFamilyTest {
     fun `a target whose child was removed leaves the screen`() {
         RoleStore(context).choose(DeviceRole.PARENT)
         enrolChild("CHILD1")
-        val target = RuleTarget(DeviceId("CHILD1"), isOwnDevice = false)
+        val target = RuleScope(DeviceId("CHILD1"), isOwnDevice = false)
         RosterStore(context).revoke(DeviceId("CHILD1"))
         val activity = Robolectric.buildActivity(Activity::class.java, Intent()).setup().get()
 
@@ -64,7 +64,7 @@ class RequireStillInFamilyTest {
 
     @Test
     fun `this device's own target always passes, even off-roster`() {
-        val target = RuleTarget(DeviceId("NOBODY"), isOwnDevice = true)
+        val target = RuleScope(DeviceId("NOBODY"), isOwnDevice = true)
         val activity = Robolectric.buildActivity(Activity::class.java, Intent()).setup().get()
 
         assertTrue(activity.requireStillInFamily(target))

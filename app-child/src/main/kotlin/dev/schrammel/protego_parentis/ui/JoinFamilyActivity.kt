@@ -310,13 +310,6 @@ class JoinFamilyActivity : ParentGatedActivity() {
     }
 
     /**
-     * Reads a family code off another phone's screen.
-     *
-     * It fills the code field and stops there. The passphrase is still typed,
-     * because it is not in the code — see [FamilyQr] for why putting it there
-     * would trade the security model for a step of typing.
-     */
-    /**
      * Takes the token from a phone on the same network.
      *
      * Identical in effect to the scanner: it fills the code field and stops. The
@@ -333,6 +326,13 @@ class JoinFamilyActivity : ParentGatedActivity() {
         passphraseInput.requestFocus()
     }
 
+    /**
+     * Reads a family code off another phone's screen.
+     *
+     * It fills the code field and stops there. The passphrase is still typed,
+     * because it is not in the code — see [FamilyQr] for why putting it there
+     * would trade the security model for a step of typing.
+     */
     private val scan = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -354,13 +354,6 @@ class JoinFamilyActivity : ParentGatedActivity() {
     }
 
     /**
-     * Starts a new family on this phone.
-     *
-     * A random topic, because on a public server the topic name is the only thing
-     * between a stranger and a stream of encrypted family traffic — they still
-     * could not read it, but they could watch it move.
-     */
-    /**
      * Fills the passphrase field with something worth using.
      *
      * Put where a family is *starting* one rather than joining, because that is
@@ -379,6 +372,13 @@ class JoinFamilyActivity : ParentGatedActivity() {
         Toast.makeText(this, R.string.join_suggested_note, Toast.LENGTH_LONG).show()
     }
 
+    /**
+     * Starts a new family on this phone.
+     *
+     * A random topic, because on a public server the topic name is the only thing
+     * between a stranger and a stream of encrypted family traffic — they still
+     * could not read it, but they could watch it move.
+     */
     private fun startFamily() {
         // Only here, and deliberately not in connect(). A phone *joining* is
         // repeating a passphrase the family already chose, and refusing it there

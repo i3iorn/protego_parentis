@@ -180,11 +180,6 @@
             android:parentActivityName=".ui.HomeActivity" />
 
         <activity
-            android:name=".ui.LimitsActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
-
-        <activity
             android:name=".ui.CategoriesActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

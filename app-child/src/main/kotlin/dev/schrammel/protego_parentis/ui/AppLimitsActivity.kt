@@ -15,7 +15,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
@@ -28,7 +28,7 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  */
 class AppLimitsActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var container: LinearLayout
     private lateinit var rows: LinearLayout
     private var apps: List<AppInfo> = emptyList()

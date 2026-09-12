@@ -18,10 +18,10 @@ import dev.schrammel.protego_parentis.sync.RosterStore
  * store to construct in the first place — so it travels alongside the id
  * rather than being recomputed at every use.
  */
-data class RuleTarget(val childId: DeviceId, val isOwnDevice: Boolean)
+data class RuleScope(val childId: DeviceId, val isOwnDevice: Boolean)
 
 /**
- * Resolves and threads [RuleTarget] through the rule screens.
+ * Resolves and threads [RuleScope] through the rule screens.
  *
  * A managed phone always edits itself — the [Intent] extra is never even
  * read on that branch — which is also why a family with one managed phone
@@ -41,20 +41,20 @@ object RuleTargets {
      * than one managed phone and none was named — the caller's cue to show
      * [RulesetPickerActivity] instead of guessing.
      */
-    fun resolve(activity: Activity): RuleTarget? {
+    fun resolve(activity: Activity): RuleScope? {
         val requested = activity.intent.getStringExtra(EXTRA_CHILD_ID)?.let(::DeviceId)
         val ownId = LocalDeviceId.current()?.let(::DeviceId)
 
         if (RoleStore(activity).roleOrChild == DeviceRole.CHILD && ownId != null) {
-            return RuleTarget(ownId, isOwnDevice = true)
+            return RuleScope(ownId, isOwnDevice = true)
         }
         if (requested != null) {
-            return RuleTarget(requested, isOwnDevice = requested == ownId)
+            return RuleScope(requested, isOwnDevice = requested == ownId)
         }
-        return RosterStore(activity).children().singleOrNull()?.let { RuleTarget(it.id, isOwnDevice = false) }
+        return RosterStore(activity).children().singleOrNull()?.let { RuleScope(it.id, isOwnDevice = false) }
     }
 
     /** Whether [target] is still a device this phone's family actually has. */
-    fun stillInFamily(context: Context, target: RuleTarget): Boolean =
+    fun stillInFamily(context: Context, target: RuleScope): Boolean =
         target.isOwnDevice || RosterStore(context).children().any { it.id == target.childId }
 }

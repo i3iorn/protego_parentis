@@ -347,7 +347,7 @@ class HomeActivity : DementorActivity() {
     /**
      * #106: both facts below used to live in [LocalPolicyStore] fields
      * ([LocalPolicyStore.dailyLimitMinutes], [LocalPolicyStore.bedtime]) that
-     * only the now-unreachable `LimitsActivity`/`ParentLimitActivity` wrote.
+     * only the now-deleted `LimitsActivity`/`ParentLimitActivity` wrote.
      * The unified rules screen writes a [dev.schrammel.protego_parentis.model.ContextRule]
      * instead, at the same well-known ids that screen and #105's migration
      * both use, so this summary reads those rules directly rather than a

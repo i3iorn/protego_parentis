@@ -132,8 +132,9 @@ class ComplianceActivity : DementorActivity() {
  * Records that the teen was shown the monitoring disclosure and acknowledged it.
  *
  * Play's stalkerware policy requires the monitored person to be informed. Keep the
- * timestamp: it is the evidence, and it is also uploaded to the shared audit log
- * so the acknowledgement is visible to both sides.
+ * timestamp: it is the evidence. Local to this device's shared preferences only —
+ * not replicated to the shared audit log, so a parent cannot see this timestamp
+ * remotely today.
  */
 class DisclosureRecord(context: Context) {
 

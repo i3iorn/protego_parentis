@@ -13,7 +13,7 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.ui.rules.RuleTarget
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 
@@ -36,7 +36,7 @@ import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
  */
 class FeatureSettingsActivity : ParentGatedActivity() {
 
-    private lateinit var target: RuleTarget
+    private lateinit var target: RuleScope
     private lateinit var column: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
