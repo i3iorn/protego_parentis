@@ -29,6 +29,11 @@ import java.util.concurrent.TimeUnit
  * shortest period Android allows for periodic work, which is frequent enough to
  * stay within a request's expiry and cheap enough to run forever.
  *
+ * It also re-arms the stream itself (see the `RealtimeSyncService.start` call
+ * in [doWork]) — the one restart trigger that runs on a timer rather than
+ * waiting for a reboot or an opened screen, so a service the OS killed
+ * outright is never dead for longer than one of these intervals.
+ *
  * The child device does not use this. Its enforcement service already ticks, and
  * polling is folded into that tick.
  */
@@ -43,6 +48,12 @@ class ParentPollWorker(
 
         val sync = SyncCoordinator(context)
         if (!sync.settings().isUsable) return Result.success()
+
+        // Idempotent, and the cheapest re-arm available for a stream the OS
+        // killed outright between polls: it bounds how long the realtime
+        // service can stay dead to this worker's own interval instead of
+        // however long the phone goes without a reboot or an opened screen.
+        RealtimeSyncService.start(context)
 
         // pollNow hands its work to the sync executor and returns at once, while
         // a Worker must not return until the work is done or the process may be
