@@ -388,6 +388,95 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * A request lapsed with nobody answering it (see
+     * [dev.schrammel.protego_parentis.rules.RequestCoordinator.notifyLapsedRequests]).
+     *
+     * Its own notification kind rather than folded into [notifyDecision]: an
+     * expiry is not a decision anyone made, and reusing the same wording would
+     * tell the child somebody had actually said no.
+     */
+    fun notifyExpired(request: Request) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_DECISION,
+            kind = NotificationKind.REQUEST_EXPIRED,
+            title = appContext.getString(R.string.request_decision_title),
+            body = appContext.getString(R.string.request_decision_expired),
+            destination = AppRegistry.notificationUx.openRequests(NOTIFICATION_DECISION),
+        )
+    }
+
+    /** A parent granted extra time outright, without being asked. */
+    fun notifyBonusGranted(minutes: Int, target: String) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_BONUS,
+            kind = NotificationKind.BONUS_GRANTED,
+            title = appContext.getString(R.string.bonus_notification_title),
+            body = appContext.resources.getQuantityString(
+                R.plurals.bonus_notification_body,
+                minutes,
+                minutes,
+                target,
+            ),
+            destination = AppRegistry.notificationUx.openAudit(NOTIFICATION_BONUS),
+        )
+    }
+
+    /**
+     * A rule changed on this phone because another device edited it remotely.
+     *
+     * Deliberately says nothing about which rule or what changed — several can
+     * arrive folded into the one replicated write this responds to, and the
+     * shared history (which this opens) already says exactly what moved.
+     */
+    fun notifyRuleChanged() {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_RULE_CHANGED,
+            kind = NotificationKind.RULE_CHANGED,
+            title = appContext.getString(R.string.rule_changed_notification_title),
+            body = appContext.getString(R.string.rule_changed_notification_body),
+            destination = AppRegistry.notificationUx.openAudit(NOTIFICATION_RULE_CHANGED),
+        )
+    }
+
+    /** A newly-installed app has been allowed or blocked. */
+    fun notifyAppDecided(label: String, blocked: Boolean) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_APP_DECIDED,
+            kind = NotificationKind.APP_DECIDED,
+            title = appContext.getString(R.string.app_decided_notification_title),
+            body = appContext.getString(
+                if (blocked) R.string.app_decided_notification_blocked else R.string.app_decided_notification_allowed,
+                label,
+            ),
+            destination = AppRegistry.notificationUx.openAppControl(NOTIFICATION_APP_DECIDED),
+        )
+    }
+
+    /**
+     * Evidence that a device's shared history was rewritten, the moment it is
+     * first noticed.
+     *
+     * Never silenced — see [NotificationKind.AUDIT_TAMPER]'s own doc comment.
+     * Posted once, since the flag this responds to never clears once raised;
+     * [dev.schrammel.protego_parentis.sync.SyncReceiver] guards against posting
+     * it again on every later heartbeat.
+     */
+    fun notifyAuditTamper() {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_AUDIT_TAMPER,
+            kind = NotificationKind.AUDIT_TAMPER,
+            title = appContext.getString(R.string.audit_tamper_notification_title),
+            body = appContext.getString(R.string.audit_tamper_notification_body),
+            destination = AppRegistry.notificationUx.openAudit(NOTIFICATION_AUDIT_TAMPER),
+        )
+    }
+
     private fun post(
         channel: String,
         id: Int,
@@ -439,5 +528,9 @@ class RequestNotifier(context: Context) {
         const val NOTIFICATION_DEVICE_ADDED = 15
         const val NOTIFICATION_DEVICE_REMOVED = 16
         const val NOTIFICATION_FAMILY_DISBANDED = 17
+        const val NOTIFICATION_BONUS = 18
+        const val NOTIFICATION_RULE_CHANGED = 19
+        const val NOTIFICATION_APP_DECIDED = 20
+        const val NOTIFICATION_AUDIT_TAMPER = 21
     }
 }

@@ -2,6 +2,8 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import dev.schrammel.protego_parentis.sync.core.*
+import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import org.junit.After
@@ -77,5 +79,44 @@ class RosterReplicationTest {
 
         assertTrue(roster().children().isEmpty())
         assertFalse(roster().devices.any { it.id == otherChildId })
+    }
+
+    /**
+     * This path enrols with nobody watching — no screen open, no "Approve"
+     * tap — which is exactly the case the shared history and the
+     * DEVICE_ADDED notification exist for (see notifyDeviceAdded's own doc
+     * comment). Before this test, only the legacy DEVICE_VOUCHED message
+     * handler recorded that entry; this additive background path enrolled
+     * the device just as silently in the log as it did in the notification
+     * that used to be missing here too.
+     */
+    @Test
+    fun `enrolling a parent's device this way still writes it into the shared history`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        LocalDeviceId.useInTests("SELF-0000-0000")
+
+        val keys = KeyPairGenerator.getInstance("EC").apply {
+            initialize(ECGenParameterSpec("secp256r1"))
+        }.generateKeyPair()
+        val parentId = Fingerprints.of(keys.public.encoded)
+        state().writeAll(
+            mapOf(
+                "roster/${parentId.value}/name" to "A parent's phone",
+                "roster/${parentId.value}/role" to SyncRole.PARENT.name,
+                "roster/${parentId.value}/key" to Fingerprints.encodeKey(keys.public.encoded),
+            ),
+            origin = "ANOTHER-PARENT-DEVICE",
+            role = SyncRole.PARENT,
+        )
+
+        replication().pullIntoRoster()
+
+        assertTrue(roster().devices.any { it.id == parentId })
+        assertTrue(
+            "enrolling a device in the background must still be recorded",
+            Audit.entries(context).any {
+                it.action == AuditAction.DEVICE_APPROVED && it.subject == "A parent's phone"
+            },
+        )
     }
 }

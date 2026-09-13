@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.audit.ActivitySeenTracker
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
@@ -113,6 +114,16 @@ class ParentHomeActivity : ParentRoleActivity() {
         Background.load(this, { FamilyStatus.read(this) }) { snapshot ->
             familyBanner(snapshot) { startActivity(FamilyDevicesActivity.intent(this)) }
                 ?.let(banner::addView)
+        }
+
+        val activityBannerHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(activityBannerHolder)
+        Background.load(this, {
+            val entries = Audit.entries(this)
+            ActivitySeenTracker(this).unseen(entries).size
+        }) { count ->
+            activityBanner(count) { startActivity(AuditActivity.intent(this)) }
+                ?.let(activityBannerHolder::addView)
         }
 
         column.addView(sectionHeader(getString(R.string.parent_today_header)))

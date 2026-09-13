@@ -1,15 +1,22 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.model.AuditAction
+import dev.schrammel.protego_parentis.model.GrantTarget
+import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MINUTES
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET_LABEL
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_KEY
@@ -456,5 +463,92 @@ class SyncReceiverTest {
         val cached = AppInventoryStore(context).apps(childId)
         assertEquals(1, cached.count { it.packageName == "com.example.app" })
         assertEquals("New Label", cached.single { it.packageName == "com.example.app" }.label)
+    }
+
+    // ---------- applyBonus ----------
+
+    @Test
+    fun `bonus time from a parent is granted and recorded`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.BONUS_GRANTED,
+                SyncRole.PARENT,
+                fields = mapOf(
+                    FIELD_MINUTES to "15",
+                    FIELD_TARGET to SyncTargets.encode(GrantTarget.Device),
+                ),
+            ),
+            parent,
+        )
+
+        assertTrue(applied)
+        val granted = GrantStore(context).active(Instant.now())
+            .filter { it.target == GrantTarget.Device }
+            .sumOf { it.amount.inWholeMinutes }
+        assertTrue("the grant, and the notification alongside it, must not throw", granted >= 15)
+        assertTrue(Audit.entries(context).any { it.action == AuditAction.BONUS_GRANTED })
+    }
+
+    // ---------- applyAppDecision ----------
+
+    @Test
+    fun `a parent's decision on a new app is applied and recorded`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.APP_DECIDED,
+                SyncRole.PARENT,
+                fields = mapOf(FIELD_PACKAGE to "com.example.new", FIELD_BLOCKED to "true"),
+            ),
+            parent,
+        )
+
+        assertTrue(applied)
+        assertTrue("com.example.new" in LocalPolicyStore(context).blockedPackages)
+        assertTrue(Audit.entries(context).any { it.action == AuditAction.APP_BLOCK_CHANGED })
+    }
+
+    // ---------- onStateChanged: a remote policy write ----------
+
+    @Test
+    fun `a policy write arriving as state ops is pulled in without throwing`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        // Only that this reaches onStateChanged's POLICY branch (and the new
+        // notifyRuleChanged call inside it) without throwing — mayWrite lets
+        // a parent write anywhere under the section regardless of the exact
+        // suffix, so this need not be a real, recognised policy field to
+        // prove the dispatch path itself is sound.
+        val ops = listOf(
+            StateOp(
+                path = "${ReplicationRules.POLICY}${ReplicationRules.SEPARATOR}probe",
+                value = "1",
+                lamport = 1L,
+                origin = Fingerprints.of(parent.public.encoded).value,
+            ),
+        )
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.STATE_OPS,
+                SyncRole.PARENT,
+                fields = mapOf(FIELD_OPS to StateCodec.encodeOps(ops)),
+            ),
+            parent,
+        )
+
+        assertTrue(applied)
     }
 }

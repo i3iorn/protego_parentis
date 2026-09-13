@@ -280,6 +280,23 @@
     <string name="request_decision_title">Din förfrågan</string>
     <string name="request_decision_approved">Godkänd</string>
     <string name="request_decision_denied">Nekad</string>
+    <string name="request_decision_expired">Ingen svarade i tid — den har förfallit. Du kan fråga igen.</string>
+
+    <string name="bonus_notification_title">Extra tid</string>
+    <plurals name="bonus_notification_body">
+        <item quantity="one">%1$d extra minut för %2$s</item>
+        <item quantity="other">%1$d extra minuter för %2$s</item>
+    </plurals>
+
+    <string name="rule_changed_notification_title">En regel ändrades</string>
+    <string name="rule_changed_notification_body">Något i dina regler ändrades på distans. Se vad i din historik.</string>
+
+    <string name="app_decided_notification_title">App granskad</string>
+    <string name="app_decided_notification_allowed">%1$s tilläts.</string>
+    <string name="app_decided_notification_blocked">%1$s blockerades.</string>
+
+    <string name="audit_tamper_notification_title">Historiken går inte ihop</string>
+    <string name="audit_tamper_notification_body">Något i den delade historiken ser omskrivet ut. Kontrollera den i familjens historik.</string>
 
     <!-- Förfrågningar, barnets sida. -->
     <string name="requests_title">Förfrågningar</string>
@@ -514,6 +531,13 @@
     <string name="home_open_audit">Historik</string>
     <string name="home_open_audit_detail">Varje regeländring och varje svar, med vem som gjorde det</string>
     <string name="audit_title">Historik</string>
+
+    <plurals name="activity_banner_title">
+        <item quantity="one">1 ny sak hände</item>
+        <item quantity="other">%1$d nya saker hände</item>
+    </plurals>
+    <string name="activity_banner_detail">Sedan du senast öppnade historiken.</string>
+    <string name="activity_banner_open">Se vad som hänt</string>
     <string name="audit_intro">Allt som ändrats, på båda telefonerna. Dina föräldrar ser exakt den här listan — det finns ingen separat version.</string>
     <string name="audit_empty">Inget har hänt ännu.</string>
     <plurals name="audit_retention">
@@ -549,6 +573,7 @@
     <string name="audit_request_approved">Godkände %1$s mer på %2$s</string>
     <string name="audit_request_denied">Nekade %1$s mer på %2$s</string>
     <string name="audit_request_withdrawn">Drog tillbaka en förfrågan om %1$s på %2$s</string>
+    <string name="audit_request_expired">En förfrågan om %1$s på %2$s förföll utan svar</string>
     <string name="audit_bonus_granted">Gav %1$s extra på %2$s</string>
     <string name="audit_bonus_cleared">Tog bort dagens extratid</string>
     <string name="audit_pin_changed">PIN-koden ändrades</string>
@@ -984,11 +1009,21 @@
     <string name="notify_time_warning_detail">Tio minuter kvar, och sedan fem.</string>
     <string name="notify_request_answered">Svar på det du bett om</string>
     <string name="notify_request_answered_detail">När en förfrågan godkänns eller nekas.</string>
+    <string name="notify_request_expired">Förfallna förfrågningar</string>
+    <string name="notify_request_expired_detail">När ingen svarar på en förfrågan innan tiden går ut.</string>
+    <string name="notify_bonus_granted">Extra tid</string>
+    <string name="notify_bonus_granted_detail">När en förälder ger dig extra tid utan att bli tillfrågad.</string>
     <string name="notify_goal">Belöningar</string>
     <string name="notify_goal_detail">När du förtjänat något. Skärmen visas ändå.</string>
     <string name="notify_located">Någon frågade var du är</string>
     <string name="notify_located_reason">Du får veta varje gång, och det går inte att stänga av. Att få veta är skillnaden mellan det här och att bli spårad.</string>
     <string name="notify_locked">En förälder låste telefonen</string>
+    <string name="notify_rule_changed">Regler som ändras på distans</string>
+    <string name="notify_rule_changed_detail">När en regel på den här telefonen ändras för att en annan enhet redigerat den.</string>
+    <string name="notify_app_decided">Nya appar granskade</string>
+    <string name="notify_app_decided_detail">När en förälder tillåter eller blockerar en app du just installerat.</string>
+    <string name="notify_audit_tamper">Historiken går inte ihop</string>
+    <string name="notify_audit_tamper_reason">Bevis på att en enhets delade historik skrivits om är precis det en person med något att dölja helst velat bli av med, vilket avgör om det får gå.</string>
     <string name="notify_locked_reason">En telefon som låser sig utan förklaring ser trasig ut. Det här är förklaringen.</string>
     <string name="notify_device_added">En enhet gick med i familjen</string>
     <string name="notify_device_added_reason">De flesta av dessa sker utan att någon ser det — en enhet som redan litas på av en förälder läggs till överallt annars automatiskt. Ett tillägg som ingen fått veta om är inte uppenbart bara för att det syns om någon letar.</string>

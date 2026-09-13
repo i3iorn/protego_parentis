@@ -69,6 +69,17 @@
             android:orientation="vertical" />
 
         <!--
+          Shown only when something has happened since this phone last opened
+          the shared history — see ActivitySeenTracker. An empty placeholder
+          the same way family_banner above is, until the count arrives.
+        -->
+        <LinearLayout
+            android:id="@+id/activity_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <!--
           The one answer the screen exists to give.
 
           The explicit top margin matters specifically when the family banner

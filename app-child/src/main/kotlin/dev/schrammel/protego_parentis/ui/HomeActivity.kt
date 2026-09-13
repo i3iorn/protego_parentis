@@ -16,6 +16,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.audit.ActivitySeenTracker
+import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
@@ -175,11 +177,31 @@ class HomeActivity : DementorActivity() {
         super.onResume()
         if (routed) return
         renderFamilyBanner()
+        renderActivityBanner()
         showPendingCelebration()
         requestNotificationPermissionIfNeeded()
         render()
         // Safe to call repeatedly; the service ignores a duplicate start.
         if (coordinator.hasUsageAccess()) AppRegistry.ruleMutationSink.rulesChanged()
+    }
+
+    /**
+     * Whether anything has happened since this phone last opened the shared
+     * history — see [ActivitySeenTracker]. A pointer to [AuditActivity], not a
+     * second copy of what it shows: this app already has one place that lists
+     * everything that happened, and a screen that duplicated it would be two
+     * histories a family could disagree about.
+     */
+    private fun renderActivityBanner() {
+        val holder = findViewById<LinearLayout>(R.id.activity_banner)
+        holder.removeAllViews()
+        Background.load(this, {
+            val entries = Audit.entries(this)
+            ActivitySeenTracker(this).unseen(entries).size
+        }) { count ->
+            activityBanner(count) { startActivity(AuditActivity.intent(this)) }
+                ?.let(holder::addView)
+        }
     }
 
     /**

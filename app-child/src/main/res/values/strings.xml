@@ -278,6 +278,23 @@
     <string name="request_decision_title">Your request</string>
     <string name="request_decision_approved">Approved</string>
     <string name="request_decision_denied">Turned down</string>
+    <string name="request_decision_expired">Nobody answered in time — it has lapsed. You can ask again.</string>
+
+    <string name="bonus_notification_title">Extra time</string>
+    <plurals name="bonus_notification_body">
+        <item quantity="one">%1$d extra minute for %2$s</item>
+        <item quantity="other">%1$d extra minutes for %2$s</item>
+    </plurals>
+
+    <string name="rule_changed_notification_title">A rule changed</string>
+    <string name="rule_changed_notification_body">Something in your rules was changed remotely. See what in your history.</string>
+
+    <string name="app_decided_notification_title">App reviewed</string>
+    <string name="app_decided_notification_allowed">%1$s was allowed.</string>
+    <string name="app_decided_notification_blocked">%1$s was blocked.</string>
+
+    <string name="audit_tamper_notification_title">History does not add up</string>
+    <string name="audit_tamper_notification_body">Something about the shared history looks rewritten. Check it in your family’s history.</string>
 
     <!-- Requests, child side. -->
     <string name="requests_title">Requests</string>
@@ -521,6 +538,13 @@
     <string name="home_open_audit_detail">Every rule change and every answer, with who made it</string>
     <string name="audit_title">History</string>
     <string name="audit_intro">Everything that has changed, on both phones. Your parents see exactly this list — there is no separate version.</string>
+
+    <plurals name="activity_banner_title">
+        <item quantity="one">1 new thing happened</item>
+        <item quantity="other">%1$d new things happened</item>
+    </plurals>
+    <string name="activity_banner_detail">Since you last opened the history.</string>
+    <string name="activity_banner_open">See what happened</string>
     <string name="audit_empty">Nothing has happened yet.</string>
     <plurals name="audit_retention">
         <item quantity="one">The most recent entry is kept.</item>
@@ -555,6 +579,7 @@
     <string name="audit_request_approved">Approved %1$s more on %2$s</string>
     <string name="audit_request_denied">Denied %1$s more on %2$s</string>
     <string name="audit_request_withdrawn">Withdrew a request for %1$s on %2$s</string>
+    <string name="audit_request_expired">A request for %1$s on %2$s lapsed with no answer</string>
     <string name="audit_bonus_granted">Gave %1$s extra on %2$s</string>
     <string name="audit_bonus_cleared">Removed today\'s extra time</string>
     <string name="audit_pin_changed">The PIN was changed</string>
@@ -990,12 +1015,22 @@
     <string name="notify_time_warning_detail">Ten minutes left, and then five.</string>
     <string name="notify_request_answered">Answers to what you asked</string>
     <string name="notify_request_answered_detail">When a request is approved or turned down.</string>
+    <string name="notify_request_expired">Lapsed requests</string>
+    <string name="notify_request_expired_detail">When nobody answers a request before its deadline.</string>
+    <string name="notify_bonus_granted">Extra time</string>
+    <string name="notify_bonus_granted_detail">When a parent gives you extra time without being asked.</string>
     <string name="notify_goal">Prizes</string>
     <string name="notify_goal_detail">When you have earned something. The screen still appears either way.</string>
     <string name="notify_located">Somebody asked where you are</string>
     <string name="notify_located_reason">You are told every time, and it cannot be switched off. Being told is the difference between this and being tracked.</string>
     <string name="notify_locked">A parent locked this phone</string>
     <string name="notify_locked_reason">A phone that locks itself with no explanation looks broken. This is the explanation.</string>
+    <string name="notify_rule_changed">Rules changing remotely</string>
+    <string name="notify_rule_changed_detail">When a rule on this phone changes because another device edited it.</string>
+    <string name="notify_app_decided">New apps reviewed</string>
+    <string name="notify_app_decided_detail">When a parent allows or blocks an app you just installed.</string>
+    <string name="notify_audit_tamper">History does not add up</string>
+    <string name="notify_audit_tamper_reason">Evidence that a device\'s shared history was rewritten is exactly the kind of thing worth hiding, which is what settles whether this may be silenced.</string>
     <string name="notify_device_added">A device joined the family</string>
     <string name="notify_device_added_reason">Most of these happen with nobody watching — a device already trusted by one parent is added everywhere else automatically. An addition nobody was told about is not obvious just because it is visible if somebody goes looking.</string>
     <string name="notify_device_removed">A device left the family</string>

@@ -82,9 +82,13 @@ class NotificationSettingsActivity : DementorActivity() {
     private fun belongsHere(kind: NotificationKind, onChild: Boolean): Boolean = when (kind) {
         NotificationKind.TIME_WARNING,
         NotificationKind.REQUEST_ANSWERED,
+        NotificationKind.REQUEST_EXPIRED,
+        NotificationKind.BONUS_GRANTED,
         NotificationKind.GOAL_EARNED,
         NotificationKind.LOCATED,
         NotificationKind.LOCKED,
+        NotificationKind.RULE_CHANGED,
+        NotificationKind.APP_DECIDED,
         -> onChild
 
         NotificationKind.REQUEST_RECEIVED,
@@ -106,6 +110,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.DEVICE_HEALTH,
         NotificationKind.PLACE_TRANSITION,
         NotificationKind.EMERGENCY,
+        NotificationKind.AUDIT_TAMPER,
         -> !onChild
     }
 
@@ -168,15 +173,20 @@ class NotificationSettingsActivity : DementorActivity() {
     private fun titleOf(kind: NotificationKind): Int = when (kind) {
         NotificationKind.TIME_WARNING -> R.string.notify_time_warning
         NotificationKind.REQUEST_ANSWERED -> R.string.notify_request_answered
+        NotificationKind.REQUEST_EXPIRED -> R.string.notify_request_expired
+        NotificationKind.BONUS_GRANTED -> R.string.notify_bonus_granted
         NotificationKind.GOAL_EARNED -> R.string.notify_goal
         NotificationKind.LOCATED -> R.string.notify_located
         NotificationKind.LOCKED -> R.string.notify_locked
+        NotificationKind.RULE_CHANGED -> R.string.notify_rule_changed
+        NotificationKind.APP_DECIDED -> R.string.notify_app_decided
         NotificationKind.REQUEST_RECEIVED -> R.string.notify_request_received
         NotificationKind.AUTO_APPROVED -> R.string.notify_auto
         NotificationKind.NEW_APP -> R.string.notify_new_app
         NotificationKind.DEVICE_HEALTH -> R.string.notify_health
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place
         NotificationKind.EMERGENCY -> R.string.notify_emergency
+        NotificationKind.AUDIT_TAMPER -> R.string.notify_audit_tamper
         NotificationKind.CHAT_MESSAGE -> R.string.chat_title
         NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending
         NotificationKind.DEVICE_ADDED -> R.string.notify_device_added
@@ -187,7 +197,11 @@ class NotificationSettingsActivity : DementorActivity() {
     private fun detailOf(kind: NotificationKind): Int = when (kind) {
         NotificationKind.TIME_WARNING -> R.string.notify_time_warning_detail
         NotificationKind.REQUEST_ANSWERED -> R.string.notify_request_answered_detail
+        NotificationKind.REQUEST_EXPIRED -> R.string.notify_request_expired_detail
+        NotificationKind.BONUS_GRANTED -> R.string.notify_bonus_granted_detail
         NotificationKind.GOAL_EARNED -> R.string.notify_goal_detail
+        NotificationKind.RULE_CHANGED -> R.string.notify_rule_changed_detail
+        NotificationKind.APP_DECIDED -> R.string.notify_app_decided_detail
         NotificationKind.REQUEST_RECEIVED -> R.string.notify_request_received_detail
         NotificationKind.AUTO_APPROVED -> R.string.notify_auto_detail
         NotificationKind.NEW_APP -> R.string.notify_new_app_detail
@@ -195,10 +209,11 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place_detail
         NotificationKind.CHAT_MESSAGE -> R.string.notify_chat_detail
         NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending_detail
-        // Not reachable: these seven are never shown with a switch.
+        // Not reachable: these eight are never shown with a switch.
         NotificationKind.LOCATED,
         NotificationKind.LOCKED,
         NotificationKind.EMERGENCY,
+        NotificationKind.AUDIT_TAMPER,
         NotificationKind.DEVICE_ADDED,
         NotificationKind.DEVICE_REMOVED,
         NotificationKind.FAMILY_DISBANDED,
@@ -209,6 +224,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.LOCATED -> R.string.notify_located_reason
         NotificationKind.LOCKED -> R.string.notify_locked_reason
         NotificationKind.EMERGENCY -> R.string.notify_emergency_reason
+        NotificationKind.AUDIT_TAMPER -> R.string.notify_audit_tamper_reason
         NotificationKind.DEVICE_ADDED -> R.string.notify_device_added_reason
         NotificationKind.DEVICE_REMOVED -> R.string.notify_device_removed_reason
         NotificationKind.FAMILY_DISBANDED -> R.string.notify_family_disbanded_reason
