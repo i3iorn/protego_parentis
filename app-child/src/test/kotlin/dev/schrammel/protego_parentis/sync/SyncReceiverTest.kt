@@ -3,7 +3,11 @@ package dev.schrammel.protego_parentis.sync
 import android.content.Context
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
+import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.GrantTarget
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
+import dev.schrammel.protego_parentis.rules.ContextRuleCodec
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
@@ -764,5 +768,58 @@ class SyncReceiverTest {
         )
 
         assertTrue(applied)
+    }
+
+    /**
+     * Regression for the bug behind the "child shows different rules than the
+     * parent expects" report: [PolicyReplication.defaultChildId] used to be
+     * `RosterStore.child()?.id`, which only ever finds an*other* device — a
+     * managed phone is never enrolled into its own roster (see
+     * [RosterReplication.pullIntoRoster] and [dev.schrammel.protego_parentis.sync.core.Enrolment.shouldAccept],
+     * both of which refuse a roster entry naming the receiving device). So on
+     * a single-child family, [PolicyReplication.pullContextRulesIntoLocal]
+     * ran with a null childId and silently did nothing — the write above
+     * only proved `onStateChanged` didn't throw, never that the rule actually
+     * reached [ContextRuleStore]. This delivers a real contextual-rule write,
+     * addressed to this phone's own id exactly as a parent's app would
+     * address it, and checks it actually lands.
+     */
+    @Test
+    fun `a parent's contextual rule write actually reaches this phone's own rule store`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        val selfId = LocalDeviceId.current()!!
+        val ruleRoot = "${ReplicationRules.POLICY}${ReplicationRules.SEPARATOR}$selfId" +
+            "${ReplicationRules.SEPARATOR}contextRules${ReplicationRules.SEPARATOR}rule-1"
+        val origin = Fingerprints.of(parent.public.encoded).value
+        val fields = mapOf(
+            "name" to "No games after nine",
+            "enabled" to "true",
+            "condition" to ContextRuleCodec.encodeConditionToString(Condition.Always),
+            "effect" to ContextRuleCodec.encodeEffectToString(RuleEffect.Block()),
+            "target" to ContextRuleCodec.encodeTargetToString(RuleTarget.Everything),
+        )
+        val ops = fields.entries.mapIndexed { index, (suffix, value) ->
+            StateOp(path = "$ruleRoot/$suffix", value = value, lamport = index + 1L, origin = origin)
+        }
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.STATE_OPS,
+                SyncRole.PARENT,
+                fields = mapOf(FIELD_OPS to StateCodec.encodeOps(ops)),
+            ),
+            parent,
+        )
+
+        assertTrue(applied)
+        val rules = ContextRuleStore(context).rules
+        assertTrue(
+            "the parent's rule must reach this phone's own ContextRuleStore, not just avoid throwing",
+            rules.any { it.id == "rule-1" && it.name == "No games after nine" },
+        )
     }
 }
