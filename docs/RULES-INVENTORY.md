@@ -196,8 +196,9 @@ and leaves alone any place id it doesn't — there is no remote "move" at all,
 only what a coordinate-free `PlaceRef` can express.
 
 *Creating* one gained a single deliberate exception: `PLACE_CREATE_REQUESTED`
-lets a parent type coordinates for somewhere the managed phone is not
-standing and ask it to create the place — the coordinate travels parent to
+lets a parent provide a coordinate — typed by hand, or their own phone's
+current position — for somewhere the managed phone is not standing, and ask
+it to create the place — the coordinate travels parent to
 child exactly once, one-way, never through `PlaceRef`/`writePlaceRefs`, and
 the resulting place is from then on exactly as local as one saved by hand:
 never replicated back out as a coordinate, never remotely movable. `lat`/`lon`

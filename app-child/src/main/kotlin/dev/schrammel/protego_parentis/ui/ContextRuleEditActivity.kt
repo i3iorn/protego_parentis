@@ -793,12 +793,13 @@ class ContextRuleEditActivity : ParentGatedActivity() {
  * Names the places rules can refer to — on whichever kind of phone edits
  * [target]'s rules (#43). Renaming, resizing or deleting an existing place
  * flows the same way on both: [PlaceRuleStore] edits it in place, with no
- * coordinate ever involved. Creating one is the one asymmetry — a parent's
- * phone has no position of its own worth saving, so [renderRemote] only
- * offers coordinates typed by hand, published as
+ * coordinate ever involved. Creating one is the one asymmetry, and it is
+ * about who *holds* the new coordinate rather than who has one worth saving:
+ * [renderLocal] writes straight into [ContextRuleStore], while [renderRemote]
+ * — wherever the phone is standing right now, or typed by hand for somewhere
+ * neither phone is — always goes out as a
  * [dev.schrammel.protego_parentis.sync.core.SyncMessageType.PLACE_CREATE_REQUESTED]
- * for the managed phone to actually create, while [renderLocal] can also
- * save wherever the phone is standing right now.
+ * for the managed phone to actually create.
  */
 class PlacesActivity : ParentGatedActivity() {
 
@@ -887,7 +888,20 @@ class PlacesActivity : ParentGatedActivity() {
                     setText(R.string.places_add_here)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                         .apply { topMargin = dimen(R.dimen.space_lg) }
-                    setOnClickListener { addHere(store) }
+                    setOnClickListener {
+                        addMyPosition { name, latitude, longitude ->
+                            store.upsertPlace(
+                                Place(
+                                    id = PlaceId(UUID.randomUUID().toString()),
+                                    name = name,
+                                    latitude = latitude,
+                                    longitude = longitude,
+                                    radiusMetres = DEFAULT_RADIUS_METRES,
+                                ),
+                            )
+                            render()
+                        }
+                    }
                 },
             )
             container.addView(
@@ -914,8 +928,17 @@ class PlacesActivity : ParentGatedActivity() {
         }
     }
 
+    /**
+     * Names *this* phone's current position — the managed phone's own, in
+     * [renderLocal], or a parent's, in [addPositionRemotely]. Either way it is
+     * a fix taken on whichever phone is running this code right now, never
+     * one requested from, or sent to, another device: [onConfirmed] is what
+     * decides whether that becomes a local place or a
+     * [dev.schrammel.protego_parentis.sync.core.SyncMessageType.PLACE_CREATE_REQUESTED]
+     * asking the managed phone to create one from it.
+     */
     @SuppressLint("MissingPermission")
-    private fun addHere(store: ContextRuleStore) {
+    private fun addMyPosition(onConfirmed: (name: String, latitude: Double, longitude: Double) -> Unit) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -942,16 +965,7 @@ class PlacesActivity : ParentGatedActivity() {
             R.string.places_name_hint,
             positiveText = R.string.places_add_here,
         ) { name ->
-            store.upsertPlace(
-                Place(
-                    id = PlaceId(UUID.randomUUID().toString()),
-                    name = name,
-                    latitude = fix.latitude,
-                    longitude = fix.longitude,
-                    radiusMetres = DEFAULT_RADIUS_METRES,
-                ),
-            )
-            render()
+            onConfirmed(name, fix.latitude, fix.longitude)
         }
     }
 
@@ -1087,7 +1101,7 @@ class PlacesActivity : ParentGatedActivity() {
         }
     }
 
-    // ---------- a parent editing another device's places: rename/resize/delete, plus adding by coordinates ----------
+    // ---------- a parent editing another device's places: rename/resize/delete, plus creating one remotely ----------
 
     private fun renderRemote() {
         val store = placeRuleStore(this, target)
@@ -1116,9 +1130,17 @@ class PlacesActivity : ParentGatedActivity() {
         if (canEdit) {
             container.addView(
                 Button(this).apply {
-                    setText(R.string.places_add_by_coordinates)
+                    setText(R.string.places_add_my_position)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                         .apply { topMargin = dimen(R.dimen.space_lg) }
+                    setOnClickListener { addPositionRemotely() }
+                },
+            )
+            container.addView(
+                Button(this).apply {
+                    setText(R.string.places_add_by_coordinates)
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                        .apply { topMargin = dimen(R.dimen.space_sm) }
                     setOnClickListener { addPlaceRemotely() }
                 },
             )
@@ -1126,13 +1148,30 @@ class PlacesActivity : ParentGatedActivity() {
     }
 
     /**
+     * Asks the managed phone to create a place at *this* — the parent's own —
+     * current position, for the ordinary case of naming somewhere the parent
+     * is standing and the child is not, like a grandparent's house on a
+     * visit. [addMyPosition] takes the fix on whichever phone calls it, so
+     * this reaches the parent's own [LocationManager], never the managed
+     * phone's — that's [dev.schrammel.protego_parentis.enforcement.EnforcementService]'s
+     * territory, and unrelated to this button entirely.
+     */
+    private fun addPositionRemotely() {
+        addMyPosition { name, latitude, longitude ->
+            SyncCoordinator(this).publishPlaceCreateRequest(name, latitude, longitude, DEFAULT_RADIUS_METRES)
+            Toast.makeText(this, R.string.places_create_requested, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
      * Asks the managed phone to create a place at coordinates typed here,
-     * rather than writing one directly — this phone has no position of its
-     * own worth saving, and [PlaceRuleStore] has nothing between "read" and
-     * "rename/resize/delete" for exactly that reason. The new place will not
-     * appear in [renderRemote]'s list until the managed phone confirms it and
-     * that reaches this phone through the ordinary place-ref replication, so
-     * this only tells the parent the request was sent, not that it landed.
+     * for a place neither phone is currently standing in — [PlaceRuleStore]
+     * has nothing between "read" and "rename/resize/delete" for exactly that
+     * reason, and [addPositionRemotely] only ever offers wherever the parent
+     * already is. The new place will not appear in [renderRemote]'s list
+     * until the managed phone confirms it and that reaches this phone
+     * through the ordinary place-ref replication, so this only tells the
+     * parent the request was sent, not that it landed.
      */
     private fun addPlaceRemotely() {
         addByCoordinates { name, latitude, longitude, radiusMetres ->

@@ -74,8 +74,9 @@ data class Place(
  * turned into "inside" or "outside" for the rules engine — there is no
  * remote "move" operation at all, only rename/resize/delete on this
  * coordinate-free shape. *Creating* one has a single deliberate exception: a
- * parent can type coordinates for somewhere the managed phone is not
- * standing and ask it to create the place, over
+ * parent can provide a coordinate — typed by hand, or their own phone's
+ * current position — for somewhere the managed phone is not standing, and
+ * ask it to create the place, over
  * [dev.schrammel.protego_parentis.sync.core.SyncMessageType.PLACE_CREATE_REQUESTED]
  * rather than through this type — that message carries a coordinate exactly
  * once, one-way, parent to child, and the place it creates is from then on
