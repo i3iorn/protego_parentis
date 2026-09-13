@@ -216,6 +216,9 @@ object AuditText {
             AuditAction.PLACE_LEFT ->
                 context.getString(R.string.audit_place_left, subject)
 
+            AuditAction.PLACE_ADDED ->
+                context.getString(R.string.audit_place_added, subject)
+
             AuditAction.SOS_RAISED -> context.getString(R.string.audit_sos_raised)
 
             AuditAction.SOS_CLEARED -> context.getString(R.string.audit_sos_cleared)

@@ -109,10 +109,16 @@ class RulesInventoryTest {
         // the list and its radius are Parent — but not where it is.
         "KEY_PLACES=places" to PARENT,
         "KEY_RADIUS=radius" to PARENT,
-        // Deliberately never remote, not merely not-yet: see PlaceRef and
-        // the README's "coordinates never leave the device" privacy claim.
-        "KEY_LAT=lat" to LOCAL_ONLY,
-        "KEY_LON=lon" to LOCAL_ONLY,
+        // A parent can now set these once, at creation, by typing coordinates
+        // remotely (SyncMessageType.PLACE_CREATE_REQUESTED) — the one
+        // deliberate crack in "coordinates never leave the device": a
+        // coordinate can arrive here from a parent's phone, it just still
+        // never leaves this one. Never replicated back out (readPlaceRefs
+        // excludes both), and never editable remotely after creation — only
+        // rename/resize/delete exist for an existing place, and neither
+        // touches a coordinate. See PlaceRuleStore's own doc comment.
+        "KEY_LAT=lat" to PARENT,
+        "KEY_LON=lon" to PARENT,
     )
 
     // The condition/effect/target codec shared with PolicyReplication, split

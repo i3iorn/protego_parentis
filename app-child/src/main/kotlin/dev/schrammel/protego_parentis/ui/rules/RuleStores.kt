@@ -150,10 +150,16 @@ fun AutoApprovalRuleStore.delete(id: String) {
 /**
  * Places, edited as [PlaceRef] — id/name/radius, never a coordinate — on
  * whichever kind of phone. Creating a *new* place, or moving one, is
- * deliberately outside this interface: that still only ever happens on
- * whichever device holds the coordinate (see [PlaceRef]'s own doc comment),
- * so both implementations here only rename, resize or delete a place that
- * already exists.
+ * deliberately outside this interface, since every method here works on a
+ * place that already has a coordinate somewhere and this type never carries
+ * one (see [PlaceRef]'s own doc comment). A parent's phone can still bring a
+ * new place into existence — see
+ * [dev.schrammel.protego_parentis.ui.PlacesActivity.addPlaceRemotely]
+ * — just not through this interface: that path asks the managed phone to
+ * create it, over
+ * [dev.schrammel.protego_parentis.sync.core.SyncMessageType.PLACE_CREATE_REQUESTED],
+ * rather than writing a coordinate-free ref here that would have nowhere to
+ * get a coordinate from.
  */
 interface PlaceRuleStore {
     fun read(): List<PlaceRef>

@@ -136,6 +136,7 @@ object RosterRules {
         SyncMessageType.POLICY_REQUESTED -> SyncRole.PARENT
         SyncMessageType.POLICY_UPDATED -> SyncRole.PARENT
         SyncMessageType.APP_INVENTORY_REQUESTED -> SyncRole.PARENT
+        SyncMessageType.PLACE_CREATE_REQUESTED -> SyncRole.PARENT
 
         // Only a parent may let somebody in. A child device that obtained the
         // passphrase can sign this perfectly well and is refused, which is the

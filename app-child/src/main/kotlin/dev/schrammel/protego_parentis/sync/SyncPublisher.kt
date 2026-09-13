@@ -60,6 +60,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MINUTES
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_NOTE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REASON
@@ -320,6 +321,21 @@ class SyncPublisher(context: Context) {
         fields = mapOf(
             FIELD_PLACE to transition.place.name,
             FIELD_ARRIVED to transition.arrived.toString(),
+        ),
+    )
+
+    /**
+     * Parent: creates a place at coordinates typed on this phone rather than
+     * captured by standing in them — see [SyncMessageType.PLACE_CREATE_REQUESTED]
+     * for why this is the one place message that carries a coordinate at all.
+     */
+    fun publishPlaceCreateRequest(name: String, latitude: Double, longitude: Double, radiusMetres: Int) = publish(
+        type = SyncMessageType.PLACE_CREATE_REQUESTED,
+        fields = mapOf(
+            FIELD_PLACE to name,
+            FIELD_LATITUDE to latitude.toString(),
+            FIELD_LONGITUDE to longitude.toString(),
+            FIELD_RADIUS to radiusMetres.toString(),
         ),
     )
 

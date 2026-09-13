@@ -68,10 +68,19 @@ data class Place(
  * What [dev.schrammel.protego_parentis.sync.PolicyReplication] puts on the
  * wire for a [Place]: enough for a parent's own phone to see the places a
  * rule can reference, and to rename, resize or remove one, without that
- * phone ever receiving a coordinate. Creating a place, or moving it, still
- * only happens on whichever device holds its [Place.latitude]/
- * [Place.longitude] — ordinarily the managed phone, since that is where a
- * saved position is turned into "inside" or "outside" for the rules engine.
+ * phone ever receiving a coordinate back. *Moving* a place still only
+ * happens on whichever device holds its [Place.latitude]/[Place.longitude] —
+ * ordinarily the managed phone, since that is where a saved position is
+ * turned into "inside" or "outside" for the rules engine — there is no
+ * remote "move" operation at all, only rename/resize/delete on this
+ * coordinate-free shape. *Creating* one has a single deliberate exception: a
+ * parent can type coordinates for somewhere the managed phone is not
+ * standing and ask it to create the place, over
+ * [dev.schrammel.protego_parentis.sync.core.SyncMessageType.PLACE_CREATE_REQUESTED]
+ * rather than through this type — that message carries a coordinate exactly
+ * once, one-way, parent to child, and the place it creates is from then on
+ * exactly as local as one saved by hand on the managed phone: never
+ * replicated back out as a coordinate, and never movable remotely either.
  */
 data class PlaceRef(
     val id: PlaceId,
