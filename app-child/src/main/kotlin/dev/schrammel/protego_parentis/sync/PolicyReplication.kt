@@ -21,6 +21,7 @@ import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
+import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.ReplicationRules
@@ -97,8 +98,27 @@ class PolicyReplication(context: Context) {
      * claiming a CHILD role regardless of which role the receiving device
      * itself holds, the same as [Enrolment.shouldAccept] refuses a vouch for
      * one. A managed phone's own roster holds at most itself among children.
+     *
+     * That last sentence used to be aspirational rather than true: a device
+     * is never actually enrolled into its *own* roster — the same self-check
+     * that keeps a roster entry from ever claiming a different child also
+     * means the managed phone's own roster holds *zero* children, not one,
+     * since [RosterReplication.pullIntoRoster] and [Enrolment.shouldAccept]
+     * both refuse a roster entry or vouch naming the receiving device. On the
+     * managed phone, [RosterStore.child] was therefore always null, so every
+     * caller here silently no-opped on its own rules — the parent's write
+     * landed in [ReplicatedStateStore], correctly, but nothing ever pulled it
+     * back into [LocalPolicyStore]/[ContextRuleStore] for this phone to read
+     * or enforce, and a local edit here never made it out either. The managed
+     * phone's own id needs no roster lookup at all — it is simply who this
+     * phone already knows itself to be.
      */
-    private fun defaultChildId(): DeviceId? = roster.child()?.id
+    private fun defaultChildId(): DeviceId? =
+        if (RoleStore(appContext).roleOrChild == DeviceRole.CHILD) {
+            LocalDeviceId.current()?.let(::DeviceId)
+        } else {
+            roster.child()?.id
+        }
 
     /**
      * Records this phone's own rules as replicated writes.

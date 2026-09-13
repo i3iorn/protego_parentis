@@ -191,6 +191,13 @@ again short of uninstalling and re-provisioning it from scratch.
   for prior art). A parent's own, unmanaged phone downloads and verifies the
   same APK but has no such privilege, so it notifies instead and waits for a
   tap.
+- `PackageInstaller` replaces the APK on disk; it does nothing to the process
+  already running from the old one. `UpdateInstallReceiver` restarts it the
+  moment a silent install succeeds — the same clean-task-then-`killProcess`
+  sequence `CrashRecovery` already uses for an uncaught exception — because
+  the alternative is a phone that installed a newer version and kept right on
+  showing the old one until it happened to be rebooted for some unrelated
+  reason, possibly days later.
 - `.github/workflows/release.yml` is the publisher: every push of a tag
   matching `v*` builds the signed release APK (reusing the same
   `keystore.properties` mechanism as the Play path above, provided as CI
