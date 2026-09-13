@@ -167,6 +167,62 @@ class PolicyReplication(context: Context) {
     fun forgetPushed() = prefs.edit { remove(KEY_PUSHED_VERSION) }
 
     /**
+     * One-time recovery for a phone whose replica already held everything
+     * correctly, but never once materialised it locally.
+     *
+     * Before this existed, [defaultChildId] resolved via [RosterStore.child],
+     * which can never find this phone's own entry in its own roster — a
+     * managed phone with a single child (by far the common case) always had
+     * [defaultChildId] come back null there. Every `pull*IntoLocal` call
+     * this class offers no-ops on a null childId, so a rule set while that
+     * bug was live landed correctly in [ReplicatedStateStore] — which is
+     * why a parent's own screen, reading that same store, always showed it
+     * as expected — but was silently never pulled into this phone's own
+     * [LocalPolicyStore]/[ContextRuleStore], which is what actually
+     * enforces anything.
+     *
+     * Fixing [defaultChildId] only fixes what happens *next*: [onStateChanged]
+     * in [SyncReceiver] only re-pulls when a *new* op arrives, and a rule
+     * that has not changed since the bug was live generates no new op —
+     * the replica already agrees with the parent bit for bit, so nothing
+     * about it looks different to reconcile. Without a forced backfill, a
+     * family's existing rules would stay stuck exactly as they were even
+     * after every phone updated to the fix.
+     *
+     * Gated on a real identity being available, the same reason every
+     * `push*` above already is: a null [defaultChildId] here would mean
+     * every `pull*IntoLocal` below reads an empty subtree and overwrites
+     * this phone's own local stores with nothing, on a phone that may
+     * simply have a momentarily unavailable keystore rather than nothing
+     * left to pull. The flag stays unset in that case, so the next
+     * construction of [dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator]
+     * tries again rather than this being it forever.
+     *
+     * Also gated on the replica actually holding *something* for this id.
+     * A phone that has never once synced — freshly paired, or set up with
+     * local-only rules before its first successful poll — has an empty
+     * replica for a legitimate reason, not because a pull-worthy rule is
+     * stuck there; pulling anyway would silently replace those local rules
+     * with nothing, which is a worse bug than the one this recovers from.
+     * This check does *not* set the flag on its own: once the phone does
+     * sync for the first time, the very next construction sees something
+     * to pull and runs for real, which is the correct point for this to
+     * happen anyway.
+     */
+    fun backfillIfNeeded() {
+        if (RoleStore(appContext).roleOrChild != DeviceRole.CHILD) return
+        if (prefs.getBoolean(KEY_BACKFILLED_V1, false)) return
+        val id = LocalDeviceId.current() ?: return
+        if (state.idsUnder("$POLICY${ReplicationRules.SEPARATOR}$id").isEmpty()) return
+        pullIntoLocalPolicy()
+        pullSchedulesIntoLocal()
+        pullContextRulesIntoLocal()
+        pullPlaceRefsIntoLocal()
+        pullAutoApprovalsIntoLocal()
+        prefs.edit { putBoolean(KEY_BACKFILLED_V1, true) }
+    }
+
+    /**
      * Records an edit to [childId]'s rules.
      *
      * Called both from the managed phone, editing its own rules under its own
@@ -759,6 +815,9 @@ class PolicyReplication(context: Context) {
 
         const val FILE_NAME = "policy_replication"
         const val KEY_PUSHED_VERSION = "pushedVersion"
+
+        /** See [backfillIfNeeded]'s own doc comment for what this one-time flag recovers from. */
+        const val KEY_BACKFILLED_V1 = "remote_rules_backfilled_v1"
 
         /** No version has been pushed; [Policy.version] starts above this. */
         const val NEVER = -1L
