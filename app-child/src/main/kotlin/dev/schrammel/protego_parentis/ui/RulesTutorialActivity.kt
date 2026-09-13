@@ -74,14 +74,14 @@ class RulesTutorialActivity : DementorActivity() {
         }
 
     private data class Step(
-        @StringRes val condition: Int,
-        @StringRes val effect: Int,
-        @StringRes val target: Int,
+        @param:StringRes val condition: Int,
+        @param:StringRes val effect: Int,
+        @param:StringRes val target: Int,
     )
 
     private data class Example(
-        @StringRes val title: Int,
-        @StringRes val note: Int,
+        @param:StringRes val title: Int,
+        @param:StringRes val note: Int,
         val steps: List<Step>,
     )
 
