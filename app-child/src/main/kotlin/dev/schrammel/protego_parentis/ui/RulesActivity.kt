@@ -130,6 +130,8 @@ class RulesActivity : ParentGatedActivity() {
                     )
                 }
             },
+            infoTitle = R.string.rules_group_limits_info_title,
+            infoMessage = R.string.rules_group_limits_info_body,
         )
 
         addSection(
@@ -188,6 +190,8 @@ class RulesActivity : ParentGatedActivity() {
                     )
                 }
             },
+            infoTitle = R.string.rules_group_day_info_title,
+            infoMessage = R.string.rules_group_day_info_body,
         )
 
         // Answering a request only makes sense standing at the phone it came
@@ -217,7 +221,15 @@ class RulesActivity : ParentGatedActivity() {
                     )
                 }
             }
-            if (rows.isNotEmpty()) addSection(column, getString(R.string.rules_group_requests), rows)
+            if (rows.isNotEmpty()) {
+                addSection(
+                    column,
+                    getString(R.string.rules_group_requests),
+                    rows,
+                    infoTitle = R.string.rules_group_requests_info_title,
+                    infoMessage = R.string.rules_group_requests_info_body,
+                )
+            }
         }
     }
 

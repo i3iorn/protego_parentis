@@ -82,7 +82,13 @@ class AppControlActivity : ParentGatedActivity() {
 
     private fun render() {
         column.removeAllViews()
-        column.addView(screenTitle(getString(R.string.apps_title)))
+        column.addView(
+            headingWithInfo(
+                screenTitle(getString(R.string.apps_title)),
+                R.string.apps_info_title,
+                R.string.apps_info_body,
+            ),
+        )
         column.addView(captionText(getString(R.string.apps_hint)))
         column.addView(captionText(getString(R.string.apps_network_hint)))
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })

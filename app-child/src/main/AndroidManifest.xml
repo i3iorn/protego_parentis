@@ -275,6 +275,11 @@
             android:exported="false"
             android:parentActivityName=".ui.PrivacyActivity" />
 
+        <activity
+            android:name=".ui.RulesTutorialActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.ContextRulesActivity" />
+
         <!--
           Reachable top-level from either role's own home now (#78 part 2),
           not through Rules. There is no one manifest entry correct for both —

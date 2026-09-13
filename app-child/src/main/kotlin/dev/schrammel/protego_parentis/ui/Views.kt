@@ -160,6 +160,54 @@ private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextVie
 }
 
 /**
+ * Answers "what does this do", with nothing to confirm — a single "OK" is the
+ * whole affordance, unlike [confirmDialog], which exists to ask before an
+ * action rather than to explain one that already happened or that a control
+ * nearby is about to.
+ */
+internal fun Activity.infoDialog(@StringRes title: Int, @StringRes message: Int) {
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setMessage(message)
+        .setPositiveButton(android.R.string.ok, null)
+        .show()
+}
+
+/**
+ * The small "ⓘ" a heading carries when what it groups is not obvious from its
+ * label alone — plain text rather than a drawable, the same choice
+ * [navigationRow]'s chevron made, so it takes its colour from the theme with
+ * no second asset to keep in sync with it.
+ */
+internal fun Activity.infoButton(@StringRes title: Int, @StringRes message: Int): TextView =
+    TextView(this).apply {
+        text = "ⓘ"
+        styleAs(R.style.TextAppearance_Dementor_ListItem)
+        setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
+        val pad = dimen(R.dimen.space_sm)
+        setPadding(pad, 0, 0, 0)
+        contentDescription = getString(title)
+        withRipple()
+        setOnClickListener { infoDialog(title, message) }
+    }
+
+/**
+ * [heading] with an [infoButton] beside it. Takes the heading view itself
+ * rather than building one, since [sectionHeader] and [ContextRuleEditActivity]'s
+ * own differently-styled local heading both need this same pairing.
+ */
+internal fun Activity.headingWithInfo(
+    heading: TextView,
+    @StringRes infoTitle: Int,
+    @StringRes infoMessage: Int,
+): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
+    addView(heading.apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) })
+    addView(infoButton(infoTitle, infoMessage))
+}
+
+/**
  * A titled group of rows, added to [column] only if there are any.
  *
  * The empty case is the whole reason this exists. Rows are now conditional — a
@@ -178,9 +226,23 @@ private fun Activity.showMoreRow(hiddenCount: Int, onClick: () -> Unit): TextVie
  * A null [title] gives an unlabelled group, for the first block on a screen where
  * the screen title has already said what these are.
  */
-internal fun Activity.addSection(column: LinearLayout, title: String?, rows: List<View>) {
+internal fun Activity.addSection(
+    column: LinearLayout,
+    title: String?,
+    rows: List<View>,
+    @StringRes infoTitle: Int? = null,
+    @StringRes infoMessage: Int? = null,
+) {
     if (rows.isEmpty()) return
-    if (title != null) column.addView(sectionHeader(title))
+    if (title != null) {
+        column.addView(
+            if (infoTitle != null && infoMessage != null) {
+                headingWithInfo(sectionHeader(title), infoTitle, infoMessage)
+            } else {
+                sectionHeader(title)
+            },
+        )
+    }
     column.addView(group(rows))
 }
 

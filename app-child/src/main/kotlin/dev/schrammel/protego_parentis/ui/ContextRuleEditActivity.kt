@@ -154,6 +154,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun render() {
         container.removeAllViews()
         container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_tutorial_open)
+                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@ContextRuleEditActivity)) }
+            },
+        )
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         container.addView(
@@ -176,7 +182,13 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         )
 
         // ---- when ----
-        container.addView(heading(getString(R.string.context_when_header), R.style.TextAppearance_Dementor_Section))
+        container.addView(
+            headingWithInfo(
+                heading(getString(R.string.context_when_header), R.style.TextAppearance_Dementor_Section),
+                R.string.context_when_info_title,
+                R.string.context_when_info_body,
+            ),
+        )
         container.addView(
             choice(describeCondition(condition)) {
                 chooseCondition(condition) { picked -> condition = picked; render() }
@@ -236,11 +248,23 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         )
 
         // ---- do what ----
-        container.addView(heading(getString(R.string.context_do_header), R.style.TextAppearance_Dementor_Section))
+        container.addView(
+            headingWithInfo(
+                heading(getString(R.string.context_do_header), R.style.TextAppearance_Dementor_Section),
+                R.string.context_do_info_title,
+                R.string.context_do_info_body,
+            ),
+        )
         container.addView(choice(describeEffect()) { chooseEffect() })
 
         // ---- to whom ----
-        container.addView(heading(getString(R.string.context_to_header), R.style.TextAppearance_Dementor_Section))
+        container.addView(
+            headingWithInfo(
+                heading(getString(R.string.context_to_header), R.style.TextAppearance_Dementor_Section),
+                R.string.context_to_info_title,
+                R.string.context_to_info_body,
+            ),
+        )
         container.addView(choice(describeTarget()) { chooseTarget() })
 
         if (canEdit) {

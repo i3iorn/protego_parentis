@@ -106,10 +106,15 @@
     <string name="context_near_ready">Nearby devices: available.</string>
     <string name="context_near_blocked">Nearby devices: not available without Bluetooth permission. Rules about nearby devices will not apply.</string>
     <string name="context_manage_places">Manage places</string>
+    <string name="context_tutorial_open">How rules combine</string>
     <string name="context_daily_limit_header">Daily limit</string>
     <string name="context_daily_limit_add">Set a daily limit</string>
     <string name="context_daily_limit_add_detail">A number of minutes the phone allows every day</string>
+    <string name="context_daily_limit_info_title">About the daily limit</string>
+    <string name="context_daily_limit_info_body">The number of minutes the whole device allows every day, before any category or app limit below narrows it further. It is an ordinary rule under the hood — you can open it below and add conditions to it, like any other rule.</string>
     <string name="context_rules_header">Your rules</string>
+    <string name="context_rules_info_title">About rules</string>
+    <string name="context_rules_info_body">Every rule here is built the same way: a condition (when it applies), an effect (what it does), and a target (who it applies to). See “How rules combine” above for worked examples of combining several rules, or several conditions in one rule.</string>
     <string name="context_no_rules">No rules yet.</string>
     <string name="context_add_rule">Add a rule</string>
     <string name="context_rule_off">%1$s (off)</string>
@@ -142,6 +147,8 @@
     <string name="context_name_required">Give the rule a name.</string>
     <string name="context_enabled">Rule is on</string>
     <string name="context_when_header">When</string>
+    <string name="context_when_info_title">About “When”</string>
+    <string name="context_when_info_body">The condition that has to be true for this rule to apply — always, on a certain Wi-Fi network, near a paired device, at a saved place, below a battery level, during a time window, or once a set number of minutes are used today. “Apply when this is NOT true” flips it. Add another condition below to require several at once (“All of these”) or any one of them (“Any of these”).</string>
     <string name="context_invert">Apply when this is NOT true</string>
     <string name="context_add_condition">+ Add another condition</string>
     <string name="context_remove_condition">Remove</string>
@@ -149,7 +156,11 @@
     <string name="context_combine_all">All of these</string>
     <string name="context_combine_any">Any of these</string>
     <string name="context_do_header">Do this</string>
+    <string name="context_do_info_title">About “Do this”</string>
+    <string name="context_do_info_body">What the rule does while its condition holds. Block stops the target outright. Allow exempts it from every other rule and budget — an allow always beats a block from a different rule. Exempt entirely is stronger still: it also reaches network and DNS blocking, the same tier as the built-in safety allowlist. Set a limit replaces the target’s own daily allowance; when two rules set a limit for the same target, the tighter one wins.</string>
     <string name="context_to_header">To</string>
+    <string name="context_to_info_title">About “To”</string>
+    <string name="context_to_info_body">What this rule acts on: the whole device, one or more chosen apps, one or more categories, or everything except a short list you choose. Naming “everything except” is the strict way to write a lockdown — instead of listing what to block, you list the few things that should keep working.</string>
     <string name="context_choose_wifi">On a Wi-Fi network</string>
     <string name="context_wifi_hint">Network name</string>
     <string name="context_choose_device">Near a device</string>
@@ -229,6 +240,8 @@
 
     <!-- Nested categories. -->
     <string name="category_nested_header">Categories inside this one</string>
+    <string name="category_nested_info_title">About nested categories</string>
+    <string name="category_nested_info_body">A category’s limit covers its own apps plus every app in whatever is nested inside it, all the way down — nesting Games inside Fun means Fun’s one limit covers both without re-listing every app. An app counted through two different paths only spends the budget once. A loop (Fun inside Games, Games inside Fun) is detected and that one link is dropped rather than breaking the rest.</string>
     <string name="category_nested_hint">Their apps count towards this category too.</string>
     <string name="category_no_nested">None.</string>
     <string name="category_choose_nested">Choose categories</string>
@@ -316,8 +329,14 @@
 
     <string name="limits_title">Limits</string>
     <string name="rules_group_limits">How much</string>
+    <string name="rules_group_limits_info_title">About “How much”</string>
+    <string name="rules_group_limits_info_body">Categories group apps to share one daily limit. App limits set a cap for one app on its own. App control lets you allow or block specific apps outright, and shows apps that just arrived. The web filter and web activity list govern browsing on this device itself.</string>
     <string name="rules_group_day">How the day works</string>
+    <string name="rules_group_day_info_title">About “How the day works”</string>
+    <string name="rules_group_day_info_body">Rules combines the daily limit, time windows, and location- or Wi-Fi-based conditions into one rule engine, so you can say things like “block games after 9pm” or “nothing but the essentials at school.” Places holds the locations rules can refer to. Bonus time adds extra minutes for today only.</string>
     <string name="rules_group_requests">Requests</string>
+    <string name="rules_group_requests_info_title">About requests</string>
+    <string name="rules_group_requests_info_body">Requests holds what your child has asked to unlock. Auto-approve creates a standing yes for specific requests — a set amount, a set number of times per day or week — so you don’t have to answer each one by hand.</string>
     <string name="rules_row_limits">Daily limit and bedtime</string>
     <string name="rules_row_limits_detail">The allowance, quiet hours, and apps that ignore both</string>
     <string name="rules_row_categories">Categories</string>
@@ -411,6 +430,8 @@
 
     <!-- Category editor. -->
     <string name="category_title">Category</string>
+    <string name="category_info_title">About categories</string>
+    <string name="category_info_body">A category groups apps to share one daily limit — an hour of games in total, however it is split between them. An app can belong to more than one category; each one enforces its own limit independently.</string>
     <string name="category_name_hint">Name, for example Games</string>
     <string name="category_name_required">Give the category a name.</string>
     <string name="category_limit_header">Daily limit</string>
@@ -422,6 +443,8 @@
 
     <!-- Single app limits. -->
     <string name="app_limits_title">App limits</string>
+    <string name="app_limits_info_title">About app limits</string>
+    <string name="app_limits_info_body">A daily limit for one individual app on its own, separate from any category it belongs to. Both apply, and whichever runs out first is what blocks. For a limit that should only hold under a condition — “only on the school network” — use a rule in Rules instead; this screen is the quick one-tap version for the common case.</string>
     <string name="app_limits_hint">Tap an app to give it its own daily limit. Apps that already have one are listed first.</string>
     <string name="app_limits_none">No limit</string>
     <string name="app_limits_save">Save</string>
@@ -592,6 +615,8 @@
     <string name="rules_row_apps">Apps on this phone</string>
     <string name="rules_row_apps_detail">Review new arrivals and block anything that should not be here</string>
     <string name="apps_title">Apps</string>
+    <string name="apps_info_title">About app control</string>
+    <string name="apps_info_body">Block stops an app outright; nothing is deleted, and unblocking puts it straight back. Network-blocking an app leaves it open but cuts its internet access instead. A newly installed app shows here first, with an explicit Allow or Block, until one of the two is chosen.</string>
     <string name="apps_hint">Blocking an app greys out its icon. Nothing is deleted, and unblocking puts it straight back.</string>
     <string name="apps_new_header">New</string>
     <string name="apps_new_hint">These appeared since the last time anyone looked.</string>
@@ -786,6 +811,8 @@
     <string name="rules_row_auto">Automatic answers</string>
     <string name="rules_row_auto_detail">Say yes to small asks without being interrupted</string>
     <string name="auto_title">Automatic answers</string>
+    <string name="auto_info_title">About automatic answers</string>
+    <string name="auto_info_body">A standing yes for one kind of request: up to a set amount of extra time, up to a set number of times per day or week. A request bigger than the amount, or past the count for that window, still comes to you as normal — an automatic answer can only ever say yes, never no.</string>
     <string name="auto_intro">A standing yes to the asks you already know your answer to. Anything bigger than the cap, or past the count, still comes to you — a rule can only say yes, never no.</string>
     <string name="auto_empty">No automatic answers yet.</string>
     <string name="auto_add">Add an automatic answer</string>
@@ -990,6 +1017,8 @@
 
     <!-- Which parts of the app this family uses. -->
     <string name="features_title">Parts you use</string>
+    <string name="features_info_title">About parts you use</string>
+    <string name="features_info_body">Putting a part away hides its screens and, for some, what the child can see or reach — it does not undo anything already set up there. Three parts cannot be put away; they are listed below with the reason why.</string>
     <string name="features_row_detail">Put away the parts this family does not need</string>
     <string name="features_intro">The settings have grown past what any one family uses. Turn off what you do not want and its screens disappear.</string>
     <string name="features_still_apply">Putting something away hides its screens. Rules you have already made keep working — delete them first if you want them gone.</string>
@@ -1204,4 +1233,49 @@
     <string name="requests_not_sent">That did not send. Asking may have been switched off on this phone.</string>
 
     <string name="parent_not_connected_action">This phone is not connected to a family, so there is nowhere to send that.</string>
+
+    <!-- RulesTutorialActivity: worked examples of condition/effect/target combinations. -->
+    <string name="rules_tutorial_title">How rules combine</string>
+    <string name="rules_tutorial_intro">Every rule is built from the same three parts: a condition (when), an effect (what it does), and a target (who). These examples show what different combinations actually add up to.</string>
+    <string name="rules_tutorial_line">%1$s %2$s</string>
+    <string name="rules_tutorial_when_label">When:</string>
+    <string name="rules_tutorial_do_label">Do:</string>
+    <string name="rules_tutorial_to_label">To:</string>
+    <string name="rules_tutorial_step_label">Rule %1$d</string>
+
+    <string name="rules_tutorial_never_block_title">Make sure one app is never blocked</string>
+    <string name="rules_tutorial_never_block_note">An allow always beats a block from a different rule, so this app stays reachable even if a category it belongs to gets blocked elsewhere.</string>
+
+    <string name="rules_tutorial_block_except_title">Block a whole category, except one app</string>
+    <string name="rules_tutorial_block_except_note">Two rules working together: the category block and the app-specific allow. The excepted app may belong to the blocked category — the allow still wins.</string>
+
+    <string name="rules_tutorial_lockdown_title">Lock the phone down to just the essentials during school hours</string>
+    <string name="rules_tutorial_lockdown_note">“Everything except” is the strict version of a schedule: instead of naming what to block, you name the short list that should keep working, and everything else stops.</string>
+
+    <string name="rules_tutorial_weekend_budget_title">Give more time on weekends than school nights</string>
+    <string name="rules_tutorial_weekend_budget_note">One rule can carry a different number of minutes for different days — no separate weekday and weekend rules needed.</string>
+
+    <string name="rules_tutorial_allof_title">Block games only on the school Wi-Fi during school hours</string>
+    <string name="rules_tutorial_allof_note">“All of these” means every condition has to hold together — being on that Wi-Fi on a weekend evening would not be enough on its own.</string>
+
+    <string name="rules_tutorial_anyof_title">Relax the rules at Grandma’s, or whenever Dad’s phone is nearby</string>
+    <string name="rules_tutorial_anyof_note">“Any of these” means one condition holding is enough — the two situations do not need to happen at the same time.</string>
+
+    <string name="rules_tutorial_safety_title">Keep the emergency contact app reachable no matter what</string>
+    <string name="rules_tutorial_safety_note">Exempt entirely is the strongest tier: unlike a plain allow, it also holds against network and DNS blocking, not just other rules.</string>
+
+    <string name="rules_tutorial_cond_always">always</string>
+    <string name="rules_tutorial_cond_window">during a time window (for example, school days 8:30–15:00)</string>
+    <string name="rules_tutorial_cond_allof">on the school Wi-Fi AND during school hours (both required)</string>
+    <string name="rules_tutorial_cond_anyof">at a saved place OR near a paired device (either is enough)</string>
+
+    <string name="rules_tutorial_effect_block">block</string>
+    <string name="rules_tutorial_effect_allow">allow freely</string>
+    <string name="rules_tutorial_effect_safety_exempt">exempt entirely, like the dialer</string>
+    <string name="rules_tutorial_effect_budget_split">a limit of, for example, 1 hour on school nights and 3 hours Friday–Sunday</string>
+
+    <string name="rules_tutorial_target_one_app">one chosen app</string>
+    <string name="rules_tutorial_target_category">a category (for example, “Social” or “Games”)</string>
+    <string name="rules_tutorial_target_everything">everything</string>
+    <string name="rules_tutorial_target_everything_except">everything, except a few chosen apps</string>
 </resources>
