@@ -63,6 +63,9 @@ class RealNotificationUx(context: Context) : NotificationUx {
     override fun openCelebration(requestCode: Int) =
         pendingIntentFor(requestCode, CelebrationActivity.intent(appContext))
 
+    override fun openDiagnostics(requestCode: Int) =
+        pendingIntentFor(requestCode, DiagnosticsActivity.intent(appContext))
+
     override fun isChatVisible(): Boolean = ChatActivity.isVisible
 
     private fun isParent() = RoleStore(appContext).roleOrChild == DeviceRole.PARENT

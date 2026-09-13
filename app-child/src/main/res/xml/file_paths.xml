@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Exposes only where UpdateCheckWorker downloads an update APK
+  (context.cacheDir) — nothing else on this phone is ever handed a
+  content:// URI through FileProvider.
+-->
+<paths>
+    <cache-path name="update" path="." />
+</paths>

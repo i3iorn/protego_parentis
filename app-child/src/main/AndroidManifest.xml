@@ -48,6 +48,14 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!--
+      OTA updates only. The managed phone never needs this — it installs
+      unattended as device owner (see ApkInstaller) — but both roles share one
+      manifest, and a parent's own, unmanaged phone still has to ask before
+      the system installer will show its confirmation screen at all.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:name=".DementorApplication"
         android:allowBackup="false"
@@ -457,6 +465,28 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps the family's message stream open so requests and commands arrive in real time." />
         </service>
+
+        <!-- Hears back from the silent PackageInstaller session ApkInstaller commits. -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false" />
+
+        <!--
+          Exposes a downloaded update APK to the system installer for the
+          parent's-phone, tap-to-confirm path — see
+          ApkInstaller.installWithConfirmation. Not used at all on the
+          managed phone, which installs through PackageInstaller directly
+          and never needs a content:// URI for the file.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

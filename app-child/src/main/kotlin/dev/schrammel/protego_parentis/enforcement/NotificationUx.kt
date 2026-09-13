@@ -56,6 +56,9 @@ interface NotificationUx {
     /** The earned-prize celebration screen. */
     fun openCelebration(requestCode: Int): PendingIntent
 
+    /** The diagnostics screen — where a pending, not-yet-installed update lives. */
+    fun openDiagnostics(requestCode: Int): PendingIntent
+
     /** Whether the chat screen is the thing currently on screen. */
     fun isChatVisible(): Boolean
 }

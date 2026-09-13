@@ -12,6 +12,12 @@ import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.rules.WebFilterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.appVersionName
+import dev.schrammel.protego_parentis.update.ApkInstaller
+import dev.schrammel.protego_parentis.update.PendingUpdateStore
+import dev.schrammel.protego_parentis.update.UpdateChecker
+import dev.schrammel.protego_parentis.update.UpdateOutcome
+import java.io.File
 
 /**
  * "What leaves this phone" — the child's view of their own privacy.
@@ -128,6 +134,8 @@ class PrivacyActivity : DementorActivity() {
  */
 class DiagnosticsActivity : DementorActivity() {
 
+    private lateinit var updateCard: LinearLayout
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -137,8 +145,12 @@ class DiagnosticsActivity : DementorActivity() {
             setTextIsSelectable(true)
         }
 
+        updateCard = card { }
+
         val column = contentColumn().apply {
             addView(screenTitle(getString(R.string.diagnostics_title)))
+
+            addView(updateCard)
 
             // Side by side rather than two full-width bars down the screen. They
             // are a pair of small utilities, and stacking them gave them the
@@ -172,9 +184,70 @@ class DiagnosticsActivity : DementorActivity() {
             addView(card { addView(text) })
         }
 
+        renderUpdateCard()
         text.text = logText()
         showColumn(column)
     }
+
+    /**
+     * Either a "check for updates" button, or — once [UpdateChecker] has
+     * downloaded something this phone could not apply unattended (see
+     * [ApkInstaller]'s own doc comment) — an "install now" button in its
+     * place. Rebuilt rather than diffed, since there is at most a handful of
+     * views here and this screen is opened rarely enough that the cost never
+     * matters.
+     */
+    private fun renderUpdateCard() {
+        updateCard.removeAllViews()
+        updateCard.addView(
+            TextView(this).apply {
+                text = getString(R.string.update_version, appVersionName(this@DiagnosticsActivity))
+                styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            },
+        )
+
+        val pending = PendingUpdateStore(this).pending
+        if (pending != null) {
+            updateCard.addView(captionText(getString(R.string.update_ready, pending.versionName)))
+            updateCard.addView(
+                actionButton().apply {
+                    setText(R.string.update_install_now)
+                    setOnClickListener {
+                        ApkInstaller.installWithConfirmation(this@DiagnosticsActivity, File(pending.apkPath))
+                    }
+                },
+            )
+            return
+        }
+
+        val status = captionText("")
+        updateCard.addView(status)
+        updateCard.addView(
+            actionButton().apply {
+                setText(R.string.update_check_now)
+                setOnClickListener {
+                    status.setText(R.string.update_checking)
+                    Background.load(this@DiagnosticsActivity, { UpdateChecker.checkNow(applicationContext) }) { outcome ->
+                        if (outcome == UpdateOutcome.DOWNLOADED_PENDING_CONFIRMATION) {
+                            renderUpdateCard()
+                        } else {
+                            status.text = describeOutcome(outcome)
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    private fun describeOutcome(outcome: UpdateOutcome): String = getString(
+        when (outcome) {
+            UpdateOutcome.UP_TO_DATE -> R.string.update_up_to_date
+            UpdateOutcome.CHECK_FAILED -> R.string.update_check_failed
+            UpdateOutcome.DOWNLOAD_FAILED -> R.string.update_download_failed
+            UpdateOutcome.INSTALLED_SILENTLY -> R.string.update_installed_silently
+            UpdateOutcome.DOWNLOADED_PENDING_CONFIRMATION -> R.string.update_ready_generic
+        },
+    )
 
     private fun logText() = Diagnostics.asText(
         context = this,

@@ -162,3 +162,84 @@ the reason.
 repeat and there is no way to reuse one. `versionName` is what people see.
 
 Both live in `app-child/build.gradle.kts`.
+
+---
+
+## OTA updates, without Play
+
+Play App Signing is not involved here: Google re-signs an upload with a key it
+holds, so the *upload* key above can be rotated without breaking anyone's
+installed copy. Sideloaded from GitHub Releases, there is no such intermediary
+— the APK a phone downloads has to be signed with **the exact same key** as
+whatever it already has installed, forever, or Android's installer refuses it
+outright, silently or not. That makes the keystore from step 1 above
+irreplaceable the moment the first OTA release goes out, in a way it is not
+for a Play-only app: losing it does not just cost you a support ticket to
+Google, it means every phone already running this app can never be updated
+again short of uninstalling and re-provisioning it from scratch.
+
+### How it works
+
+- `app-child`'s `update` package (`UpdateManifest`, `UpdateClient`,
+  `UpdateChecker`, `ApkInstaller`) checks once a day
+  (`UpdateCheckWorker`), and on demand from the diagnostics screen, for a
+  newer release — see each class's own doc comment for the mechanics.
+- The managed phone applies it unattended, through the same device-owner
+  `PackageInstaller` privilege that already lets it suspend and restore apps
+  without asking (Android 6+, see the [F-Droid client's own device-owner
+  install work](https://gitlab.com/fdroid/fdroidclient/-/merge_requests/258)
+  for prior art). A parent's own, unmanaged phone downloads and verifies the
+  same APK but has no such privilege, so it notifies instead and waits for a
+  tap.
+- `.github/workflows/release.yml` is the publisher: every push of a tag
+  matching `v*` builds the signed release APK (reusing the same
+  `keystore.properties` mechanism as the Play path above, provided as CI
+  secrets instead of a local file), computes its SHA-256, and publishes both
+  the APK and a small `update.json` manifest as assets on a GitHub Release
+  for that tag. `UpdateClient` fetches both from GitHub's
+  `/releases/latest/download/<name>` URLs — plain static-file downloads, not
+  the REST API, so there is no rate limit regardless of how many family
+  phones check.
+
+### One-time setup
+
+1. Do step 1 above if you have not already — the same keystore signs both the
+   Play upload and every OTA release; there is only ever one.
+2. Base64-encode the keystore file and add four repository secrets under
+   **Settings → Secrets and variables → Actions**:
+
+   ```bash
+   base64 -w0 upload-keystore.jks
+   ```
+
+   | Secret | Value |
+   |---|---|
+   | `RELEASE_KEYSTORE_BASE64` | The output of the command above |
+   | `RELEASE_KEYSTORE_PASSWORD` | The keystore password from step 1 |
+   | `RELEASE_KEY_ALIAS` | `upload`, if you followed step 1 as written |
+   | `RELEASE_KEY_PASSWORD` | The key password from step 1 |
+
+3. Push a tag to cut the first OTA release:
+
+   ```bash
+   git tag v1.1.2
+   git push origin v1.1.2
+   ```
+
+   The workflow builds, signs, and publishes it. Nothing installed anywhere
+   updates itself until this has happened at least once — `UpdateClient`
+   fails closed (a failed check, logged and retried the next day) rather than
+   assuming a release exists.
+
+### What this does not do
+
+- **No rollback.** `UpdateClient` only ever compares against
+  `versionCode` and only ever moves forward; there is no path back to an
+  older release short of manually reinstalling one.
+- **No staged rollout.** Every phone checking after a tag is published sees
+  the same release at the same time — there is no percentage-based ramp the
+  way Play's own release tracks offer.
+- **Real device-owner silent installation has never been exercised on
+  hardware** — see the README's own "Current state" section for the same
+  caveat about every other `DevicePolicyManager` interaction. Test a real OTA
+  update on a provisioned handset before trusting it with a family's phone.

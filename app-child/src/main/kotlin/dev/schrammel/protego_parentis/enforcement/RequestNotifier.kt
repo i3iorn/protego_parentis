@@ -477,6 +477,21 @@ class RequestNotifier(context: Context) {
         )
     }
 
+    /**
+     * A newer release is downloaded and verified, but this phone had no
+     * silent-install privilege to apply it — see [NotificationKind.UPDATE_AVAILABLE].
+     */
+    fun notifyUpdateAvailable(versionName: String) {
+        post(
+            channel = CHANNEL_DECISION,
+            id = NOTIFICATION_UPDATE_AVAILABLE,
+            kind = NotificationKind.UPDATE_AVAILABLE,
+            title = appContext.getString(R.string.update_available_notification_title),
+            body = appContext.getString(R.string.update_available_notification_body, versionName),
+            destination = AppRegistry.notificationUx.openDiagnostics(NOTIFICATION_UPDATE_AVAILABLE),
+        )
+    }
+
     private fun post(
         channel: String,
         id: Int,
@@ -532,5 +547,6 @@ class RequestNotifier(context: Context) {
         const val NOTIFICATION_RULE_CHANGED = 19
         const val NOTIFICATION_APP_DECIDED = 20
         const val NOTIFICATION_AUDIT_TAMPER = 21
+        const val NOTIFICATION_UPDATE_AVAILABLE = 22
     }
 }

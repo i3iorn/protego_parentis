@@ -223,7 +223,12 @@ APK, in the parent role) can remotely view a linked child's status and edit
 most of their rules — schedules, categories, per-app limits and blocking,
 contextual rules, and auto-approval — over an end-to-end encrypted channel that
 never passes through infrastructure this project runs (see
-[Security model](#security-model) and [Privacy](#privacy)).
+[Security model](#security-model) and [Privacy](#privacy)), and OTA updates
+outside Play: the managed phone checks daily and applies a newer, signed
+release unattended (device owner's own silent-install privilege — see
+`docs/RELEASING.md`'s "OTA updates, without Play"), and a parent's own phone
+downloads and verifies the same release but asks for a tap, since it has no
+such privilege.
 
 Not built yet:
 

@@ -227,6 +227,21 @@
     <string name="diagnostics_clear">Clear the log</string>
     <string name="diagnostics_empty">Nothing recorded yet.</string>
 
+    <!-- OTA updates. -->
+    <string name="update_version">Version %1$s</string>
+    <string name="update_check_now">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">Already on the latest version.</string>
+    <string name="update_check_failed">Could not reach the update feed. Try again later.</string>
+    <string name="update_download_failed">A newer version was found, but the download failed to verify. Try again later.</string>
+    <string name="update_installed_silently">Updated. The new version takes effect the next time the app restarts.</string>
+    <string name="update_ready_generic">A newer version has been downloaded and verified.</string>
+    <string name="update_ready">Version %1$s is downloaded and verified.</string>
+    <string name="update_install_now">Install now</string>
+    <string name="update_available_notification_title">Update available</string>
+    <string name="update_available_notification_body">Version %1$s is ready. Open Diagnostics to install it.</string>
+    <string name="audit_app_updated">Updated itself to version %1$s</string>
+
     <string name="pin_enter_current">Enter your current PIN.</string>
 
     <!-- Language. -->
@@ -1267,6 +1282,8 @@
 
     <string name="notify_device_pending">Phones asking to join</string>
     <string name="notify_device_pending_detail">When a phone wants into the family and needs approving.</string>
+    <string name="notify_update_available">Update ready to install</string>
+    <string name="notify_update_available_detail">When a newer version has downloaded and is waiting on a tap to install — only ever on a phone that cannot install it unattended.</string>
 
     <string name="requests_not_sent">That did not send. Asking may have been switched off on this phone.</string>
 
