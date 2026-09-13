@@ -37,8 +37,18 @@ class RealtimeSseEnvelopeTest {
     }
 
     @Test
-    fun `ignores a line far longer than any real message`() {
-        val huge = "data: " + "x".repeat(20_000)
+    fun `a line the size of a large real app inventory is not dropped`() {
+        // Comfortably past the old 16,384-character bound this used to fail
+        // against — see RealtimeSseEnvelope.MAX_LINE_CHARS's doc comment.
+        val bigEnvelope = "x".repeat(40_000)
+        val line = """data: {"event":"message","message":"$bigEnvelope"}"""
+
+        assertEquals(bigEnvelope, RealtimeSseEnvelope.parse(line))
+    }
+
+    @Test
+    fun `ignores a line past the new bound rather than pulling it fully into memory`() {
+        val huge = "data: " + "x".repeat(RealtimeSseEnvelope.MAX_LINE_CHARS + 1)
         assertNull(RealtimeSseEnvelope.parse(huge))
     }
 }

@@ -19,8 +19,16 @@ object RealtimeSseEnvelope {
     private const val FIELD_MESSAGE = "message"
     private const val EVENT_MESSAGE = "message"
 
-    /** A bound, so one oversized line cannot be pulled into memory in full. */
-    private const val MAX_LINE_CHARS = 16_384
+    /**
+     * A bound, so one oversized line cannot be pulled into memory in full.
+     *
+     * Kept in step with [NtfyTransport.MAX_LINE_CHARS] — see that constant's
+     * doc comment for why 16,384 was too small: a full app inventory (#85)
+     * clears it on any phone with a realistic number of installed apps, and
+     * this is the near-instant delivery path most replies actually arrive
+     * through, so the same silent drop happened here too.
+     */
+    internal const val MAX_LINE_CHARS = 262_144
 
     /** Returns the envelope in [line], or null if the line carries none. */
     fun parse(line: String): String? {

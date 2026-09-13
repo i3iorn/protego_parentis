@@ -99,8 +99,12 @@ class NtfyTransport(
      * being parsed. The topic is public and anyone who learns its name can publish
      * to it — they can read nothing, but a single enormous line would otherwise be
      * pulled into memory in full before anything looked at its size.
+     *
+     * Internal rather than private so a test can drive it directly with a
+     * synthetic long line, without standing up a fake server for something
+     * that is otherwise pure string handling.
      */
-    private fun readEnvelopes(reader: BufferedReader): List<String> =
+    internal fun readEnvelopes(reader: BufferedReader): List<String> =
         reader.lineSequence()
             .filter { it.isNotBlank() && it.length <= MAX_LINE_CHARS }
             .mapNotNull { line -> runCatching { JSONObject(line) }.getOrNull() }
@@ -119,7 +123,9 @@ class NtfyTransport(
             instanceFollowRedirects = false
         }
 
-    private companion object {
+    // Internal rather than private so a test can reference MAX_LINE_CHARS
+    // directly instead of duplicating the number.
+    internal companion object {
         const val TAG = "DementorSync"
         val TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(15).toInt()
 
@@ -129,11 +135,20 @@ class NtfyTransport(
         /**
          * The longest line worth reading.
          *
-         * Comfortably above a real message — the largest this app sends is a
-         * daily summary with a handful of app names — and far below anything that
-         * would trouble the heap.
+         * The real ceiling is a full app inventory (#85): every launchable app on
+         * the phone, package name and label, one JSON object per app, nested
+         * inside a signed [dev.schrammel.protego_parentis.sync.core.SyncMessage]
+         * and then AES-GCM-sealed and base64'd — two layers of re-encoding on
+         * top of the raw list. A phone with a couple hundred apps was clearing
+         * the previous 16,384-character bound and having its reply silently
+         * dropped right here, with nothing in any log to say so: the picker's
+         * "request list" button looked wired up, the child's own Diagnostics
+         * showed a normal successful publish, and the list simply never arrived
+         * on the parent's side. 256 KiB comfortably covers a phone with several
+         * thousand installed apps and is still far below anything that would
+         * trouble the heap.
          */
-        const val MAX_LINE_CHARS = 16_384
+        const val MAX_LINE_CHARS = 262_144
 
         const val FIELD_EVENT = "event"
         const val FIELD_MESSAGE = "message"
