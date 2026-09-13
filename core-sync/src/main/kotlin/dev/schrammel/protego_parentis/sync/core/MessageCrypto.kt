@@ -31,6 +31,11 @@ internal enum class DecryptFailure {
 
 sealed interface DecryptResult {
     data class Opened(val plaintext: String) : DecryptResult
+
+    // Without this, the compiler warns (and -Werror fails the build) that the
+    // generated copy() stays public despite the internal constructor — see
+    // KT-11914. Nothing outside core-sync constructs or copies a Failed.
+    @ConsistentCopyVisibility
     data class Failed internal constructor(internal val reason: DecryptFailure) : DecryptResult
 }
 
