@@ -315,7 +315,11 @@ possible about them.
   and a position **only** when a parent explicitly asks or during an SOS —
   never a continuous stream, and never for a contextual "at school" style rule,
   which only ever learns which saved place the phone is inside, not a
-  coordinate (see [Contextual rules](#contextual-rules)).
+  coordinate (see [Contextual rules](#contextual-rules)). The one coordinate
+  that travels the other way is one a parent typed themselves, to name a place
+  for somewhere the managed phone is not currently standing — it becomes an
+  ordinary saved place on that phone and, like every other saved place, never
+  replicates back out as a coordinate afterward.
 - **The diagnostic log records what the app did, never what the child did.** Event
   names, counts and durations only: no package names, no reasons, no prize text,
   no session times. A test asserts the shape of every rendered line, so a later

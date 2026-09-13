@@ -50,6 +50,7 @@ internal object SyncWireFields {
     const val FIELD_EMERGENCY = "emergency"
     const val FIELD_PLACE = "place"
     const val FIELD_ARRIVED = "arrived"
+    const val FIELD_RADIUS = "radius"
     const val FIELD_BLOCKED_COUNT = "blockedCount"
     const val FIELD_DOMAIN_PREFIX = "domain"
     const val FIELD_TEXT = "text"

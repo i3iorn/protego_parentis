@@ -15,12 +15,15 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.Place
+import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RequestId
 import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.context.LocationSharing
 import dev.schrammel.protego_parentis.policy.IntegrityRules
 import dev.schrammel.protego_parentis.policy.request.RequestRules
 import dev.schrammel.protego_parentis.rules.AppReviewStore
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.rules.GrantStore
@@ -62,6 +65,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REASON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REMAINING
@@ -82,6 +86,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_SUMMARY_APPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_SUMMARY_DOMAINS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_WIRE_TEXT
 import java.time.Instant
+import java.util.UUID
 import dev.schrammel.protego_parentis.sync.core.Admission
 import dev.schrammel.protego_parentis.sync.core.Admittance
 import dev.schrammel.protego_parentis.sync.core.DecryptResult
@@ -344,6 +349,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.POLICY_REQUESTED -> { publisher.publishPolicySnapshot(); true }
         SyncMessageType.POLICY_UPDATED -> applyPolicyUpdate(message)
         SyncMessageType.APP_INVENTORY_REQUESTED -> { publisher.publishAppInventory(); true }
+        SyncMessageType.PLACE_CREATE_REQUESTED -> applyPlaceCreateRequest(message)
         SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
@@ -401,6 +407,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.POLICY_REQUESTED,
         SyncMessageType.POLICY_UPDATED,
         SyncMessageType.APP_INVENTORY_REQUESTED,
+        SyncMessageType.PLACE_CREATE_REQUESTED,
         -> false
     }
 
@@ -467,6 +474,48 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         publisher.publishLocation(position, forEmergency = false)
         telemetry.reportLocate(LocateOutcome.ANSWERED)
         publisher.publishPendingOps()
+        return true
+    }
+
+    /**
+     * Materialises a place a parent named from coordinates typed on their own
+     * phone, since nothing about
+     * [dev.schrammel.protego_parentis.ui.rules.PlaceRuleStore]'s
+     * rename/resize/delete ever hands it one to create with — see
+     * [SyncMessageType.PLACE_CREATE_REQUESTED]. Validated the same way
+     * [dev.schrammel.protego_parentis.ui.PlacesActivity]'s own "add by
+     * coordinates" dialog validates a locally-typed one, since a coordinate
+     * arriving over the wire deserves no more trust than one typed by a
+     * stranger.
+     */
+    private fun applyPlaceCreateRequest(message: SyncMessage): Boolean {
+        val name = message.field(FIELD_PLACE)?.clip()?.takeIf(String::isNotBlank) ?: return false
+        val latitude = message.field(FIELD_LATITUDE)?.toDoubleOrNull() ?: return false
+        val longitude = message.field(FIELD_LONGITUDE)?.toDoubleOrNull() ?: return false
+        val radiusMetres = message.longField(FIELD_RADIUS)?.toInt() ?: return false
+        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
+        if (radiusMetres < Place.MINIMUM_RADIUS_METRES) return false
+
+        ContextRuleStore(appContext).upsertPlace(
+            Place(
+                id = PlaceId(UUID.randomUUID().toString()),
+                name = name,
+                latitude = latitude,
+                longitude = longitude,
+                radiusMetres = radiusMetres,
+            ),
+        )
+        // So every parent phone sees it next time places replicate, the same
+        // path a place created by hand on this device already takes.
+        PolicyReplication(appContext).pushPlaceRefsFromLocal()
+        Audit.record(
+            context = appContext,
+            actor = AuditActor.PARENT,
+            action = AuditAction.PLACE_ADDED,
+            subject = name,
+        )
+        AppRegistry.ruleMutationSink.rulesChanged()
+        notifier.notifyRuleChanged()
         return true
     }
 

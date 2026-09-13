@@ -204,6 +204,7 @@
     <string name="places_rename">Byt namn</string>
     <string name="places_resize">Ändra radie</string>
     <string name="places_radius_value">%1$d m</string>
+    <string name="places_create_requested">Bad telefonen lägga till platsen. Den visas här när det är bekräftat.</string>
     <string name="home_context_active">Gäller nu: %1$s</string>
 
     <!-- Integritet och logg. -->
@@ -936,6 +937,7 @@
     <string name="audit_location_shared">Telefonen skickade sin position</string>
     <string name="audit_place_entered">Framme vid %1$s</string>
     <string name="audit_place_left">Lämnade %1$s</string>
+    <string name="audit_place_added">En förälder lade till platsen %1$s</string>
     <string name="audit_sos_raised">Ett nödläge utlöstes</string>
     <string name="audit_sos_cleared">Nödläget avslutades</string>
 

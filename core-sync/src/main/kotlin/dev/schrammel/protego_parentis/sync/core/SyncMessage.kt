@@ -188,6 +188,18 @@ enum class SyncMessageType {
      * is installed and reported through [APP_INSTALLED].
      */
     APP_INVENTORY,
+
+    /**
+     * Parent → child: create a new place at this coordinate.
+     *
+     * The one deliberate exception to a replicated place ref never carrying a
+     * coordinate: a parent naming a place for somewhere the managed phone is
+     * not currently standing has nothing else to give it one with. Every
+     * other place operation — rename, resize, delete — still flows through
+     * [STATE_OPS] as an ordinary coordinate-free write; only bringing a brand
+     * new place into existence remotely needs this one-shot exception.
+     */
+    PLACE_CREATE_REQUESTED,
 }
 
 /**

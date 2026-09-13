@@ -125,6 +125,9 @@ enum class AuditAction(val valueKind: ValueKind) {
     LOCATION_SHARED(ValueKind.NONE),
     PLACE_ENTERED(ValueKind.NONE),
     PLACE_LEFT(ValueKind.NONE),
+
+    /** A parent named a place from coordinates typed remotely, not stood in. */
+    PLACE_ADDED(ValueKind.NONE),
     SOS_RAISED(ValueKind.NONE),
     SOS_CLEARED(ValueKind.NONE),
     DEVICE_RELEASED(ValueKind.NONE),

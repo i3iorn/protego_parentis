@@ -4,6 +4,7 @@ import android.content.Context
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.GrantTarget
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.snapshot
@@ -12,10 +13,14 @@ import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LATITUDE
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LONGITUDE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MINUTES
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET_LABEL
@@ -566,6 +571,112 @@ class SyncReceiverTest {
 
         assertTrue(applied)
         assertEquals(apps, AppInventoryStore(context).apps(childId))
+    }
+
+    // ---------- applyPlaceCreateRequest ----------
+
+    @Test
+    fun `a parent's coordinates create a place on the managed phone`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.PLACE_CREATE_REQUESTED,
+                SyncRole.PARENT,
+                fields = mapOf(
+                    FIELD_PLACE to "Grandma's",
+                    FIELD_LATITUDE to "51.5074",
+                    FIELD_LONGITUDE to "-0.1278",
+                    FIELD_RADIUS to "150",
+                ),
+            ),
+            parent,
+        )
+
+        assertTrue(applied)
+        val created = ContextRuleStore(context).places.singleOrNull { it.name == "Grandma's" }
+        assertEquals(51.5074, created?.latitude)
+        assertEquals(-0.1278, created?.longitude)
+        assertEquals(150, created?.radiusMetres)
+        assertTrue(Audit.entries(context).any { it.action == AuditAction.PLACE_ADDED && it.subject == "Grandma's" })
+    }
+
+    @Test
+    fun `coordinates out of range are refused rather than saved`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.PLACE_CREATE_REQUESTED,
+                SyncRole.PARENT,
+                fields = mapOf(
+                    FIELD_PLACE to "Nowhere",
+                    FIELD_LATITUDE to "500",
+                    FIELD_LONGITUDE to "-0.1278",
+                    FIELD_RADIUS to "150",
+                ),
+            ),
+            parent,
+        )
+
+        assertFalse(applied)
+        assertTrue(ContextRuleStore(context).places.none { it.name == "Nowhere" })
+    }
+
+    @Test
+    fun `a radius under the privacy floor is refused rather than clamped`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val parent = keyPair()
+        enroll(parent, SyncRole.PARENT, "Mum's phone")
+
+        val applied = deliver(
+            message(
+                parent,
+                SyncMessageType.PLACE_CREATE_REQUESTED,
+                SyncRole.PARENT,
+                fields = mapOf(
+                    FIELD_PLACE to "Too precise",
+                    FIELD_LATITUDE to "51.5074",
+                    FIELD_LONGITUDE to "-0.1278",
+                    FIELD_RADIUS to "1",
+                ),
+            ),
+            parent,
+        )
+
+        assertFalse(applied)
+        assertTrue(ContextRuleStore(context).places.none { it.name == "Too precise" })
+    }
+
+    @Test
+    fun `only a parent may create a place remotely`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+
+        val applied = deliver(
+            message(
+                child,
+                SyncMessageType.PLACE_CREATE_REQUESTED,
+                SyncRole.CHILD,
+                fields = mapOf(
+                    FIELD_PLACE to "Forged",
+                    FIELD_LATITUDE to "51.5074",
+                    FIELD_LONGITUDE to "-0.1278",
+                    FIELD_RADIUS to "150",
+                ),
+            ),
+            child,
+        )
+
+        assertFalse(applied)
+        assertTrue(ContextRuleStore(context).places.none { it.name == "Forged" })
     }
 
     // ---------- applyBonus ----------

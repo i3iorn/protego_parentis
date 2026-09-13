@@ -139,6 +139,7 @@ class RosterRulesTest {
         assertEquals(null, RosterRules.expectedSender(SyncMessageType.DEVICE_ANNOUNCE))
         assertEquals(SyncRole.CHILD, RosterRules.expectedSender(SyncMessageType.HEARTBEAT))
         assertEquals(SyncRole.PARENT, RosterRules.expectedSender(SyncMessageType.BONUS_GRANTED))
+        assertEquals(SyncRole.PARENT, RosterRules.expectedSender(SyncMessageType.PLACE_CREATE_REQUESTED))
     }
 
     @Test

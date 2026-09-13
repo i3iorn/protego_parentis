@@ -202,6 +202,7 @@
     <string name="places_rename">Rename</string>
     <string name="places_resize">Change radius</string>
     <string name="places_radius_value">%1$d m</string>
+    <string name="places_create_requested">Asked the phone to add this place. It will appear here once confirmed.</string>
     <string name="home_context_active">Active now: %1$s</string>
 
     <!-- Privacy and diagnostics. -->
@@ -942,6 +943,7 @@
     <string name="audit_location_shared">The phone sent its position</string>
     <string name="audit_place_entered">Arrived at %1$s</string>
     <string name="audit_place_left">Left %1$s</string>
+    <string name="audit_place_added">A parent added the place %1$s</string>
     <string name="audit_sos_raised">An emergency was raised</string>
     <string name="audit_sos_cleared">The emergency was ended</string>
 

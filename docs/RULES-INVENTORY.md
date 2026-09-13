@@ -152,7 +152,7 @@ replicate it so a sibling phone on an older build keeps working. Still all 11
 fields Parent — a family can still reach a schedule this way, just not
 through any UI that writes it any more.
 
-## ContextRuleStore — `context_rules` · 9 Parent, 1 Pending, 2 Local only
+## ContextRuleStore — `context_rules` · 11 Parent, 1 Pending
 
 Contextual rules and the places they refer to, in one store — and, as of
 [#72](https://github.com/i3iorn/dementor_watch/issues/72)'s rule-engine
@@ -189,19 +189,29 @@ The places half closed the same way, via `writePlaceRefs`/`readPlaceRefs`/
 `PlaceRef(id, name, radiusMetres)` — deliberately not `Place` itself, since a
 `Place` carries a coordinate and a `PlaceRef` structurally cannot. A parent can
 now rename, resize or delete a place and re-point rules at it from any phone.
-Creating a place, or moving one, still only happens on whichever device holds
-its coordinate (ordinarily the managed phone): `pullPlaceRefsIntoLocal` merges
-a remote rename/resize/delete onto a place this device already has coordinates
-for, and leaves alone any place id it doesn't — there is nothing to
-materialise a brand-new place *with* on a device that never received a
-position for it.
+*Moving* a place still only happens on whichever device holds its coordinate
+(ordinarily the managed phone): `pullPlaceRefsIntoLocal` merges a remote
+rename/resize/delete onto a place this device already has coordinates for,
+and leaves alone any place id it doesn't — there is no remote "move" at all,
+only what a coordinate-free `PlaceRef` can express.
+
+*Creating* one gained a single deliberate exception: `PLACE_CREATE_REQUESTED`
+lets a parent type coordinates for somewhere the managed phone is not
+standing and ask it to create the place — the coordinate travels parent to
+child exactly once, one-way, never through `PlaceRef`/`writePlaceRefs`, and
+the resulting place is from then on exactly as local as one saved by hand:
+never replicated back out as a coordinate, never remotely movable. `lat`/`lon`
+are therefore reclassified Parent rather than Local only — a parent can set
+them once, at creation — see `PlaceRef`'s own doc comment for the shape of
+the exception and `RulesInventoryTest`'s `contextRules` map for the classification.
 
 Pending: `announce_arrivals`
 
-Local only: `lat`, `lon` — deliberately, not merely not yet. Replicating a
-coordinate would break an explicit invariant the README states twice
-("coordinates never leave the device"; "no location"), which #41's places
-slice was scoped around rather than around changing. See `PlaceRef`'s own doc
+Local only, historically: `lat`, `lon` were kept out of every replicated
+register to hold the README's "coordinates never leave the device" invariant
+in the direction that matters most — the managed phone never sends one out.
+`PLACE_CREATE_REQUESTED` is the one narrow, deliberate crack in the other
+direction, scoped to place creation alone; see `PlaceRef`'s own doc
 comment.
 
 ## ContextRuleCodec — `kind`/`value`/`parts`/`minutes`/`partsCategories`/`days`/`startMinute`/`endMinute`/`parityAnchorEpochDay` · 9 Parent
