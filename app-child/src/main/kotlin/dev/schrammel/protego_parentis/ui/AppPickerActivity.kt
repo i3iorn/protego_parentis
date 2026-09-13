@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.widget.CheckBox
 import android.widget.ImageView
@@ -57,11 +59,21 @@ class AppPickerActivity : ParentGatedActivity() {
         if (loaded) return
         loaded = true
         target = RuleTargets.resolve(this) ?: return finish()
-        // Loading every launchable app's label and icon is the slowest thing this
-        // screen does, so the list arrives after the frame rather than blocking it.
+        reloadCatalog()
+    }
+
+    /**
+     * Loading every launchable app's label and icon is the slowest thing this
+     * screen does, so the list arrives after the frame rather than blocking
+     * it. Shared between the ordinary first load and [pollForFreshInventory],
+     * which needs to know once a reload has actually landed rather than
+     * firing it and guessing.
+     */
+    private fun reloadCatalog(onLoaded: () -> Unit = {}) {
         Background.load(this, { appCatalog(this, target).launchable() }) { loadedApps ->
             apps = loadedApps
             renderRows()
+            onLoaded()
         }
     }
 
@@ -108,9 +120,32 @@ class AppPickerActivity : ParentGatedActivity() {
                 setOnClickListener {
                     SyncCoordinator(this@AppPickerActivity).publishAppInventoryRequest()
                     toast(getString(R.string.app_picker_request_list_sent))
+                    pollForFreshInventory()
                 }
             },
         )
+    }
+
+    /**
+     * Checks back for the answer to the request just sent, a few times over
+     * the next minute.
+     *
+     * The reply arrives asynchronously over sync with nothing to call back
+     * into this screen when it lands, and [onGatedContentVisible]'s [loaded]
+     * guard means an ordinary resume would not pick it up either — without
+     * this, a parent who tapped the button and sat on the screen watching it
+     * saw exactly the same empty hint no matter how long they waited, with
+     * the list only ever appearing if they happened to fully back out and
+     * reopen this exact picker afterwards.
+     */
+    private fun pollForFreshInventory(attempt: Int = 0) {
+        if (attempt >= MAX_INVENTORY_POLL_ATTEMPTS) return
+        handler.postDelayed({
+            if (isFinishing || isDestroyed) return@postDelayed
+            reloadCatalog {
+                if (apps.isEmpty()) pollForFreshInventory(attempt + 1)
+            }
+        }, INVENTORY_POLL_INTERVAL_MILLIS)
     }
 
     private lateinit var content: LinearLayout
@@ -122,6 +157,7 @@ class AppPickerActivity : ParentGatedActivity() {
     private var query = ""
     private var loaded = false
     private var authenticated = false
+    private val handler = Handler(Looper.getMainLooper())
 
     private fun row(
         pkg: String,
@@ -176,6 +212,12 @@ class AppPickerActivity : ParentGatedActivity() {
     companion object {
         const val EXTRA_SELECTED = "selected"
         private const val EXTRA_TITLE = "title"
+
+        /** How often [pollForFreshInventory] checks back after a request. */
+        private const val INVENTORY_POLL_INTERVAL_MILLIS = 5_000L
+
+        /** ~a minute of checking — long enough for realtime sync's usual case, not forever. */
+        private const val MAX_INVENTORY_POLL_ATTEMPTS = 12
 
         fun intent(context: Context, title: String, selected: Collection<String>, childId: DeviceId? = null): Intent =
             RuleTargets.putExtra(

@@ -32,6 +32,16 @@ import org.robolectric.Shadows.shadowOf
  * parent picking apps for a remote child's rules just saw an empty list,
  * forever, with no way to explain why or ask again.
  *
+ * A second, later gap in the same feature: tapping the request button sent
+ * the message, but nothing on this screen ever checked back for the reply —
+ * [AppPickerActivity.onGatedContentVisible]'s one-shot `loaded` guard meant
+ * even backgrounding and returning would not pick it up, so the list only
+ * ever appeared if a parent happened to fully back out and reopen this exact
+ * picker afterwards. From the outside this looked identical to the list
+ * being permanently empty. `pollForFreshInventory` is the fix; the test for
+ * it below drives the real polling path via the shadow looper rather than
+ * asserting the private method exists.
+ *
  * This screen fills its rows from [Background], on a real worker thread that
  * posts back to the main looper, so nothing is on screen when `setup()`
  * returns. [awaitRow] is what waits for that — no other test here has needed
@@ -75,6 +85,45 @@ class AppPickerActivityTest {
         // SyncPublisher rather than a network call — what this pins is that the
         // button is wired to something at all, which is the whole of #85.
         button.performClick()
+    }
+
+    @Test
+    fun `polls for a fresh list after the parent asks for one, and shows it once it lands`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        enrolChild("CHILD1")
+        ParentSession.unlock()
+        val activity = Robolectric.buildActivity(
+            AppPickerActivity::class.java,
+            AppPickerActivity.intent(context, "Pick apps", emptyList(), DeviceId("CHILD1")),
+        ).setup().get()
+
+        val button = awaitRow(activity) {
+            findButton(it, activity.getString(R.string.app_picker_request_list))
+        }
+        requireNotNull(button) { "the request-list button should be offered for an empty remote catalog" }
+        button.performClick()
+
+        // The real reply would arrive over sync, asynchronously and with
+        // nothing to call back into this screen — simulated here by writing
+        // straight to the store the same way SyncReceiver.rememberAppInventory
+        // does, so this exercises only AppPickerActivity's own polling for it,
+        // not the transport underneath.
+        AppInventoryStore(context).setApps(
+            DeviceId("CHILD1"),
+            listOf(AppInventoryEntry("com.example.games", "Games")),
+        )
+
+        // Past pollForFreshInventory's first delayed check-back, without
+        // this screen ever having been backgrounded or reopened. Robolectric's
+        // paused looper runs on a virtual clock that real Thread.sleep does not
+        // advance, so idle() alone (as awaitRow uses) would never reach a
+        // postDelayed callback still five seconds out — the clock itself has
+        // to be moved forward.
+        shadowOf(Looper.getMainLooper()).idleFor(6, java.util.concurrent.TimeUnit.SECONDS)
+
+        requireNotNull(awaitRow(activity) { findText(it, "Games") }) {
+            "the list that arrived after the request should appear without leaving this screen"
+        }
     }
 
     @Test
