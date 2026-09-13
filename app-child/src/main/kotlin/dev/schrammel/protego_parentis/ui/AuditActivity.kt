@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.audit.ActivitySeenTracker
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.audit.AuditLogFormat
 import dev.schrammel.protego_parentis.model.AuditEntry
@@ -52,6 +53,10 @@ class AuditActivity : DementorActivity() {
             entries to check
         }) { (entries, check) ->
             renderEntries(column, entries, check)
+            // Opening this screen is what "seen" means — a badge cleared by
+            // merely fetching the count in the background, before anyone had
+            // actually looked, would defeat the point of having one.
+            ActivitySeenTracker(this).markSeen(entries)
         }
     }
 

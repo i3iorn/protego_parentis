@@ -115,6 +115,9 @@ object AuditText {
             AuditAction.REQUEST_WITHDRAWN ->
                 context.getString(R.string.audit_request_withdrawn, after, subject)
 
+            AuditAction.REQUEST_EXPIRED ->
+                context.getString(R.string.audit_request_expired, after, subject)
+
             AuditAction.BONUS_GRANTED ->
                 context.getString(R.string.audit_bonus_granted, after, subject)
 

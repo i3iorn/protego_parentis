@@ -33,6 +33,12 @@ enum class NotificationKind(
     /** A request was answered, one way or the other. */
     REQUEST_ANSWERED(optional = true),
 
+    /** A request lapsed with nobody answering it in time. */
+    REQUEST_EXPIRED(optional = true),
+
+    /** A parent granted extra time outright, without being asked. */
+    BONUS_GRANTED(optional = true),
+
     /** A goal was met and there is a prize waiting. */
     GOAL_EARNED(optional = true),
 
@@ -41,6 +47,12 @@ enum class NotificationKind(
 
     /** A parent locked this phone. Never silenced. */
     LOCKED(optional = false),
+
+    /** A rule changed because another device edited it remotely. */
+    RULE_CHANGED(optional = true),
+
+    /** A newly-installed app was allowed or blocked by a parent. */
+    APP_DECIDED(optional = true),
 
     // ---------- on a parent's phone ----------
 
@@ -61,6 +73,15 @@ enum class NotificationKind(
 
     /** An emergency. Never silenced. */
     EMERGENCY(optional = false),
+
+    /**
+     * Evidence that a device's shared history was rewritten.
+     *
+     * Never silenced, for the same reason as the other six: this is exactly
+     * the kind of thing a family member with something to hide would most
+     * want gone, which is the one thing that settles whether it may be.
+     */
+    AUDIT_TAMPER(optional = false),
 
     // ---------- on either phone ----------
 

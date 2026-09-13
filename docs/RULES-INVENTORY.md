@@ -283,24 +283,25 @@ switch any of the 14 optional features off remotely, via
 were never really a Pending rule waiting to be reached; reclassified to Not a
 rule rather than left as backlog.
 
-## NotificationPreferences — `notifications` · 10 Local only, 6 not a rule
+## NotificationPreferences — `notifications` · 14 Local only, 7 not a rule
 
 Enum-backed on `NotificationKind`:
 
-`TIME_WARNING`, `REQUEST_ANSWERED`, `GOAL_EARNED`, `LOCATED`, `LOCKED`,
+`TIME_WARNING`, `REQUEST_ANSWERED`, `REQUEST_EXPIRED`, `BONUS_GRANTED`,
+`GOAL_EARNED`, `LOCATED`, `LOCKED`, `RULE_CHANGED`, `APP_DECIDED`,
 `REQUEST_RECEIVED`, `AUTO_APPROVED`, `NEW_APP`, `DEVICE_HEALTH`,
-`PLACE_TRANSITION`, `EMERGENCY`, `DEVICE_PENDING`, `DEVICE_ADDED`,
-`DEVICE_REMOVED`, `FAMILY_DISBANDED`, `CHAT_MESSAGE`
+`PLACE_TRANSITION`, `EMERGENCY`, `AUDIT_TAMPER`, `DEVICE_PENDING`,
+`DEVICE_ADDED`, `DEVICE_REMOVED`, `FAMILY_DISBANDED`, `CHAT_MESSAGE`
 
 These govern what the *child* is told. Decided alongside #42: **stays
 local-only.** A parent silencing what the other side of the family is told
 about, from a distance, was weighed against the product's stated position
 that the child can see everything that applies to them, and the answer was no
-— each phone keeps deciding what it itself notifies about. The six marked
-`optional = false` (`LOCATED`, `LOCKED`, `EMERGENCY`, `DEVICE_ADDED`,
-`DEVICE_REMOVED`, `FAMILY_DISBANDED`) were never a Pending rule either, for
-the same reason as `FeatureFlags`' three above: `setEnabled` always refuses
-them.
+— each phone keeps deciding what it itself notifies about. The seven marked
+`optional = false` (`LOCATED`, `LOCKED`, `EMERGENCY`, `AUDIT_TAMPER`,
+`DEVICE_ADDED`, `DEVICE_REMOVED`, `FAMILY_DISBANDED`) were never a Pending
+rule either, for the same reason as `FeatureFlags`' three above: `setEnabled`
+always refuses them.
 
 ## Adding a rule
 

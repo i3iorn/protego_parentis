@@ -581,16 +581,21 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         val packageName = message.field(FIELD_PACKAGE) ?: return false
         val blocked = message.field(FIELD_BLOCKED)?.toBoolean() ?: return false
 
+        val label = InstalledApps(appContext).labelFor(PackageName(packageName))
         LocalPolicyStore(appContext).setBlocked(packageName, blocked)
         AppReviewStore(appContext).markReviewed(packageName)
         Audit.record(
             context = appContext,
             actor = AuditActor.PARENT,
             action = AuditAction.APP_BLOCK_CHANGED,
-            subject = InstalledApps(appContext).labelFor(PackageName(packageName)),
+            subject = label,
             after = Audit.flag(blocked),
         )
         AppRegistry.ruleMutationSink.rulesChanged()
+        // The app sat in "new arrivals" waiting on this; without a notification
+        // the only way to learn it was reviewed is to notice it now works (or
+        // does not) and go looking for why.
+        notifier.notifyAppDecided(label, blocked)
         return true
     }
 
@@ -930,6 +935,12 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             PolicyReplication(appContext).pullPlaceRefsIntoLocal()
             PolicyReplication(appContext).pullAutoApprovalsIntoLocal()
             AppRegistry.ruleMutationSink.rulesChanged()
+            // A child's own local edit never reaches here: LocalPolicyRuleStore
+            // (and its schedule/context-rule/place/auto-approval equivalents)
+            // write straight to disk with no op pushed, so this branch only
+            // ever runs for a change that genuinely came from somewhere else —
+            // a parent's phone, editing remotely.
+            notifier.notifyRuleChanged()
         }
         // Additive only, and never for the managed phone: see the doc comment
         // on pullIntoRoster for why trust must fail closed here.
@@ -1066,8 +1077,13 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             AuditReplication(appContext).entries().count { it.by == message.sender }.toLong()
         }.getOrDefault(0L)
 
-        if (IntegrityRules.historyRewritten(heartbeats.latest, arrived, heldFromDevice)) {
+        if (!heartbeats.historySuspect && IntegrityRules.historyRewritten(heartbeats.latest, arrived, heldFromDevice)) {
             heartbeats.historySuspect = true
+            // The moment this is set is the only moment worth announcing —
+            // heartbeats arrive every 15-60 seconds and the flag never clears
+            // once raised (see the comment above), so without the guard this
+            // would fire on every single tick from here on.
+            notifier.notifyAuditTamper()
         }
 
         heartbeats.latest = arrived
@@ -1138,6 +1154,10 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             after = Audit.minutes(minutes),
         )
         AppRegistry.ruleMutationSink.rulesChanged()
+        // Otherwise the only way to notice extra time arrived is to stumble on
+        // it — the same "granted and re-evaluated at once" reasoning as this
+        // method's own doc comment, just for the person rather than the policy.
+        notifier.notifyBonusGranted(minutes, TargetLabels.describe(appContext, target))
         return true
     }
 

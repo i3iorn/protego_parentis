@@ -208,6 +208,35 @@ class RequestCoordinator(
     }
 
     /**
+     * Tells the child about any request that has lapsed unanswered since the
+     * last call, and records it in the shared history.
+     *
+     * [RequestStore.all] computes expiry lazily, on whichever read notices the
+     * deadline has passed — deliberately: a lapse is not an event anybody
+     * caused, so there is no single moment to hook a notification off of
+     * directly. This is the one caller for whom "noticed" is the point, so it
+     * keeps its own small record of which lapsed requests it has already
+     * announced, and only acts on ones that are not in it yet. Meant to be
+     * called periodically (the enforcement tick) rather than from a screen —
+     * a parent or child opening [RequestsActivity] and merely looking at an
+     * expired request must not, by itself, count as "announced".
+     */
+    fun notifyLapsedRequests(now: Instant = Instant.now()) {
+        val expired = requests.all(now).filter { it.state == RequestState.EXPIRED }
+        if (expired.isEmpty()) return
+
+        val announced = ExpiredRequestLog(appContext)
+        val newlyLapsed = expired.filterNot { announced.contains(it.id) }
+        if (newlyLapsed.isEmpty()) return
+
+        newlyLapsed.forEach { request ->
+            record(AuditActor.SYSTEM, AuditAction.REQUEST_EXPIRED, request)
+            notifier.notifyExpired(request)
+        }
+        announced.markAnnounced(newlyLapsed.map { it.id })
+    }
+
+    /**
      * Writes the request into the shared history.
      *
      * Both sides read the same list, which is the point: a denial the child cannot

@@ -210,7 +210,7 @@ class RulesInventoryTest {
      * Decided alongside #42: stays local-only. What a phone tells the person
      * holding it is not something the other side of the family should be
      * able to change from a distance — see `docs/RULES-INVENTORY.md`. As
-     * with [features], the 6 non-optional kinds were never really PENDING:
+     * with [features], the 7 non-optional kinds were never really PENDING:
      * `setEnabled` always refused them.
      */
     private val notifications: Map<String, RuleReach> =

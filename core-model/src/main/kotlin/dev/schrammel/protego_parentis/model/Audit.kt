@@ -79,6 +79,13 @@ enum class AuditAction(val valueKind: ValueKind) {
     REQUEST_APPROVED(ValueKind.MINUTES),
     REQUEST_DENIED(ValueKind.MINUTES),
     REQUEST_WITHDRAWN(ValueKind.MINUTES),
+
+    /**
+     * Nobody answered before the deadline. Recorded with [AuditActor.SYSTEM]
+     * for the same reason as [REQUEST_AUTO_APPROVED]: a lapse is something
+     * that happened, not something a parent or child did.
+     */
+    REQUEST_EXPIRED(ValueKind.MINUTES),
     BONUS_GRANTED(ValueKind.MINUTES),
     BONUS_CLEARED(ValueKind.NONE),
 

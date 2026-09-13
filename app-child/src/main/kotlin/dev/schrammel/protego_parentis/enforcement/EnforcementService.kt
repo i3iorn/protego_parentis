@@ -27,6 +27,7 @@ import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.rules.AppReviewStore
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
+import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.usage.InstalledApps
@@ -287,6 +288,12 @@ class EnforcementService : Service() {
         // the service was not running, which on a rebooting phone is a real window.
         runCatching { sweepForNewApps() }
             .onFailure { Log.w(TAG, "Could not check for new apps", it) }
+
+        // Nothing else calls this: a request expiring is not an event with a
+        // moment of its own to hook (see RequestCoordinator.notifyLapsedRequests),
+        // only something a periodic check can notice — this tick is that check.
+        runCatching { RequestCoordinator(this).notifyLapsedRequests(now) }
+            .onFailure { Log.w(TAG, "Could not check for lapsed requests", it) }
 
         // Throttled inside the coordinator: this tick can fire every fifteen
         // seconds when a limit is close, and a heartbeat that often is a battery bug.

@@ -342,6 +342,32 @@ internal fun Activity.familyBanner(snapshot: FamilySnapshot, onOpen: () -> Unit)
 }
 
 /**
+ * Something happened since this phone last opened the shared history.
+ *
+ * Null the same way [familyBanner] is: most opens have nothing to report, and a
+ * screen should not carry a permanent card saying so.
+ */
+internal fun Activity.activityBanner(unseenCount: Int, onOpen: () -> Unit): View? {
+    if (unseenCount == 0) return null
+
+    return card {
+        addView(
+            TextView(context).apply {
+                text = resources.getQuantityString(R.plurals.activity_banner_title, unseenCount, unseenCount)
+                styleAs(R.style.TextAppearance_Dementor_Subtitle)
+            },
+        )
+        addView(captionText(getString(R.string.activity_banner_detail)))
+        addView(
+            actionButton().apply {
+                setText(R.string.activity_banner_open)
+                setOnClickListener { onOpen() }
+            },
+        )
+    }
+}
+
+/**
  * Minimal text watcher, because only the final value is ever wanted.
  *
  * Shared rather than per-file: it was private to the rule editor until the app

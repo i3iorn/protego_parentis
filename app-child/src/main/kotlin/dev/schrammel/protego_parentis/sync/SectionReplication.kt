@@ -1,6 +1,10 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.enforcement.RequestNotifier
+import dev.schrammel.protego_parentis.model.AuditAction
+import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.security.RoleStore
@@ -284,6 +288,21 @@ class RosterReplication(context: Context) {
                 // refused here exactly as it was there.
                 if (self != null && Enrolment.shouldAccept(vouch, DeviceId(self))) {
                     roster.enrol(vouch)
+                    val name = vouch.name.ifBlank { vouch.id.value }
+                    Audit.record(
+                        context = appContext,
+                        actor = AuditActor.PARENT,
+                        action = AuditAction.DEVICE_APPROVED,
+                        subject = name,
+                        after = vouch.role.name,
+                    )
+                    // This enrolment happens with no screen open and nobody
+                    // watching — exactly the case notifyDeviceAdded's own doc
+                    // comment says must never go silent. The legacy
+                    // DEVICE_VOUCHED message path (SyncReceiver.applyVouch)
+                    // already does this; this additive, background path was
+                    // the one place it was missing.
+                    RequestNotifier(appContext).notifyDeviceAdded(name)
                 }
             }
     }
