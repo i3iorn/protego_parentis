@@ -97,6 +97,18 @@ enum class DiagnosticEvent {
      * restarts itself — see [dev.schrammel.protego_parentis.diagnostics.CrashRecovery].
      */
     APP_CRASHED,
+
+    /** Fetching `update.json` failed — offline, or the release feed unreachable. */
+    UPDATE_CHECK_FAILED,
+
+    /** A newer release's APK failed to download, or failed checksum verification. */
+    UPDATE_DOWNLOAD_FAILED,
+
+    /** A verified update APK was handed to the platform installer, but it refused it. */
+    UPDATE_INSTALL_FAILED,
+
+    /** A verified update finished installing. */
+    UPDATE_INSTALLED,
 }
 
 /**

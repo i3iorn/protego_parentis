@@ -226,3 +226,17 @@ if (releaseRequested) {
             "  storeFile=C:/Users/you/vault/upload.jks"
     }
 }
+
+/**
+ * Prints `versionCode` and `versionName` as `KEY=value` lines, for the release
+ * workflow to read when it builds `update.json` (see docs/RELEASING.md) —
+ * grepping this file's own Kotlin for two `val` assignments is exactly the
+ * kind of thing that silently breaks the moment somebody reformats it. This
+ * reads the values Gradle already parsed instead.
+ */
+tasks.register("printVersionInfo") {
+    doLast {
+        println("versionCode=${android.defaultConfig.versionCode}")
+        println("versionName=${android.defaultConfig.versionName}")
+    }
+}

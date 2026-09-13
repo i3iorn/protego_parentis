@@ -196,6 +196,8 @@ object AuditText {
                 subject,
             )
 
+            AuditAction.APP_UPDATED -> context.getString(R.string.audit_app_updated, after)
+
             AuditAction.WEB_LOGGING_CHANGED -> context.getString(
                 if (entry.after.toBoolean()) {
                     R.string.audit_web_logging_on

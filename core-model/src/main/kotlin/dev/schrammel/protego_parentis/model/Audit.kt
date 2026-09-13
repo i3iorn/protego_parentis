@@ -116,6 +116,17 @@ enum class AuditAction(val valueKind: ValueKind) {
     APP_NETWORK_CHANGED(ValueKind.FLAG),
     WEB_LOGGING_CHANGED(ValueKind.FLAG),
 
+    /**
+     * This phone installed a newer release of itself.
+     *
+     * Recorded with [AuditActor.SYSTEM]: an OTA update is something that
+     * happened to the phone, not a choice either side of the family made in
+     * the moment, the same reasoning [REQUEST_AUTO_APPROVED] and
+     * [REQUEST_EXPIRED] already use. [AuditEntry.after] carries the version
+     * string installed.
+     */
+    APP_UPDATED(ValueKind.TOKEN),
+
     // ---------- where the phone is ----------
 
     /** A parent asked where the phone was. Recorded whether or not it answered. */

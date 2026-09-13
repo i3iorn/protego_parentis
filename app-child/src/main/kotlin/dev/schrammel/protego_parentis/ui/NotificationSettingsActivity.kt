@@ -111,6 +111,9 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.PLACE_TRANSITION,
         NotificationKind.EMERGENCY,
         NotificationKind.AUDIT_TAMPER,
+        // Only ever posted on a phone without silent-install privilege —
+        // in practice a parent's, never the managed phone's own.
+        NotificationKind.UPDATE_AVAILABLE,
         -> !onChild
     }
 
@@ -192,6 +195,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.DEVICE_ADDED -> R.string.notify_device_added
         NotificationKind.DEVICE_REMOVED -> R.string.notify_device_removed
         NotificationKind.FAMILY_DISBANDED -> R.string.notify_family_disbanded
+        NotificationKind.UPDATE_AVAILABLE -> R.string.notify_update_available
     }
 
     private fun detailOf(kind: NotificationKind): Int = when (kind) {
@@ -209,6 +213,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.PLACE_TRANSITION -> R.string.notify_place_detail
         NotificationKind.CHAT_MESSAGE -> R.string.notify_chat_detail
         NotificationKind.DEVICE_PENDING -> R.string.notify_device_pending_detail
+        NotificationKind.UPDATE_AVAILABLE -> R.string.notify_update_available_detail
         // Not reachable: these eight are never shown with a switch.
         NotificationKind.LOCATED,
         NotificationKind.LOCKED,

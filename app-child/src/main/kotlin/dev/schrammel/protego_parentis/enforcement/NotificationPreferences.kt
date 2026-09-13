@@ -138,6 +138,16 @@ enum class NotificationKind(
      * the ordinary rules for a chat apply rather than the ones about monitoring.
      */
     CHAT_MESSAGE(optional = true),
+
+    /**
+     * A newer release exists and this phone could not apply it silently.
+     *
+     * Only ever fires on a phone that is not device owner — the managed
+     * phone's own update is silent and unattended by design (see
+     * `docs/RELEASING.md`), so there is nothing here to tell it about; a
+     * parent's phone has no such privilege and needs a tap to finish.
+     */
+    UPDATE_AVAILABLE(optional = true),
 }
 
 /**

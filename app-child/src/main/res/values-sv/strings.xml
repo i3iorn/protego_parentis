@@ -229,6 +229,21 @@
     <string name="diagnostics_clear">Rensa loggen</string>
     <string name="diagnostics_empty">Inget registrerat än.</string>
 
+    <!-- OTA-uppdateringar. -->
+    <string name="update_version">Version %1$s</string>
+    <string name="update_check_now">Sök efter uppdateringar</string>
+    <string name="update_checking">Söker…</string>
+    <string name="update_up_to_date">Redan senaste versionen.</string>
+    <string name="update_check_failed">Kunde inte nå uppdateringsflödet. Försök igen senare.</string>
+    <string name="update_download_failed">En nyare version hittades, men nedladdningen kunde inte verifieras. Försök igen senare.</string>
+    <string name="update_installed_silently">Uppdaterad. Den nya versionen börjar gälla nästa gång appen startas om.</string>
+    <string name="update_ready_generic">En nyare version har laddats ner och verifierats.</string>
+    <string name="update_ready">Version %1$s är nedladdad och verifierad.</string>
+    <string name="update_install_now">Installera nu</string>
+    <string name="update_available_notification_title">Uppdatering tillgänglig</string>
+    <string name="update_available_notification_body">Version %1$s är klar. Öppna Diagnostik för att installera.</string>
+    <string name="audit_app_updated">Uppdaterade sig själv till version %1$s</string>
+
     <string name="pin_enter_current">Ange din nuvarande PIN-kod.</string>
 
     <!-- Språk. -->
@@ -1247,6 +1262,8 @@
 
     <string name="notify_device_pending">Telefoner som vill gå med</string>
     <string name="notify_device_pending_detail">När en telefon vill in i familjen och behöver godkännas.</string>
+    <string name="notify_update_available">Uppdatering redo att installera</string>
+    <string name="notify_update_available_detail">När en nyare version har laddats ner och väntar på en knapptryckning för att installeras — bara på en telefon som inte kan installera den obevakat.</string>
 
     <string name="requests_not_sent">Det skickades inte. Att fråga kan ha stängts av på den här telefonen.</string>
 

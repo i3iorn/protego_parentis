@@ -1,0 +1,114 @@
+# Builds a signed release APK and publishes it, together with the small
+# update.json manifest that describes it, as GitHub Release assets whenever a
+# version tag is pushed.
+#
+# This is the entire OTA update channel: UpdateClient (app-child's `update`
+# package) reads exactly these two files, from GitHub's own
+# `/releases/latest/download/<name>` aliases rather than the REST API, so
+# checking for updates costs nothing and hits no rate limit regardless of how
+# many family phones do it. See docs/RELEASING.md for the one-time setup this
+# workflow depends on — a release signing key that does not yet exist until
+# somebody creates it, and the four repository secrets built from it.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Needs to create a release and upload assets to it, unlike build.yml's
+# read-only token.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up the JDK
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # Written fresh on every run from repository secrets, never committed
+      # anywhere — .gitignore already refuses *.jks and keystore.properties
+      # (see docs/RELEASING.md), and this keeps the same rule in CI: the only
+      # copy of the actual keystore lives wherever you generated it.
+      - name: Write the release keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.jks
+          cat > keystore.properties <<KEYSTORE_PROPERTIES
+          storeFile=release.jks
+          storePassword=$RELEASE_KEYSTORE_PASSWORD
+          keyAlias=$RELEASE_KEY_ALIAS
+          keyPassword=$RELEASE_KEY_PASSWORD
+          KEYSTORE_PROPERTIES
+
+      # `build`, not just `assembleRelease`: every unit test and Android lint
+      # run first, the same order docs/RELEASING.md's manual instructions
+      # use, so a tag that reaches this workflow is held to the same bar as a
+      # release built by hand. With keystore.properties present this already
+      # produces the signed app-child-release.apk, not the "-unsigned" one
+      # build.yml's own run of this same task settles for.
+      - name: Build, test and assemble the signed release APK
+        run: ./gradlew build --stacktrace
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f release.jks keystore.properties
+
+      # A small, self-contained manifest, computed from the APK this same job
+      # just built — see UpdateManifest's own doc comment for the shape and
+      # why nothing here depends on the GitHub REST API.
+      - name: Build update.json
+        run: |
+          set -euo pipefail
+          apk=app-child/build/outputs/apk/release/app-child-release.apk
+          if [ ! -f "$apk" ]; then
+            echo "::error::$apk was not produced — check the signing step above."
+            exit 1
+          fi
+
+          info=$(./gradlew -q :app-child:printVersionInfo)
+          versionCode=$(echo "$info" | grep '^versionCode=' | cut -d= -f2)
+          versionName=$(echo "$info" | grep '^versionName=' | cut -d= -f2)
+          sha256=$(sha256sum "$apk" | cut -d' ' -f1)
+          size=$(stat -c%s "$apk")
+
+          cp "$apk" app-child-release.apk
+          cat > update.json <<MANIFEST
+          {
+            "versionCode": $versionCode,
+            "versionName": "$versionName",
+            "apkSha256": "$sha256",
+            "apkSize": $size
+          }
+          MANIFEST
+          cat update.json
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ github.ref_name }}" \
+            app-child-release.apk update.json \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
