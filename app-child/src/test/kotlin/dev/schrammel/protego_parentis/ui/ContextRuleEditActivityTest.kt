@@ -245,6 +245,39 @@ class ContextRuleEditActivityTest {
         )
     }
 
+    @Test
+    fun `the when, do and to headings each carry a working info button`() {
+        store().upsert(
+            ContextRule(
+                id = "plain-rule",
+                name = "Plain",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "plain-rule"),
+        ).setup().get()
+
+        listOf(
+            R.string.context_when_info_title,
+            R.string.context_do_info_title,
+            R.string.context_to_info_title,
+        ).forEach { titleRes ->
+            val label = context.getString(titleRes)
+            val button = findAll(activity.window.decorView) { it.contentDescription == label }.firstOrNull()
+            requireNotNull(button) { "no info button described \"$label\" was rendered" }
+            // Tapping it must not crash the screen — the dialog itself is
+            // AlertDialog.Builder, the same toolkit every other picker here
+            // already uses.
+            button.performClick()
+        }
+    }
+
     private fun renameField(activity: ContextRuleEditActivity): android.widget.EditText? =
         findAll(activity.window.decorView) { it is android.widget.EditText }
             .filterIsInstance<android.widget.EditText>()

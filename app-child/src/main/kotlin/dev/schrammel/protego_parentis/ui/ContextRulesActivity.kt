@@ -134,10 +134,23 @@ class ContextRulesActivity : ParentGatedActivity() {
             },
         )
 
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_tutorial_open)
+                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@ContextRulesActivity)) }
+            },
+        )
+
         // #106: the daily limit is a rule like any other now, but it keeps a
         // fixed spot rather than being buried in the list below — see this
         // class's own doc comment for why.
-        container.addView(title(getString(R.string.context_daily_limit_header), R.style.TextAppearance_Dementor_Section))
+        container.addView(
+            headingWithInfo(
+                title(getString(R.string.context_daily_limit_header), R.style.TextAppearance_Dementor_Section),
+                R.string.context_daily_limit_info_title,
+                R.string.context_daily_limit_info_body,
+            ),
+        )
         val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
         if (dailyLimit != null) {
             container.addView(ruleRow(dailyLimit, places))
@@ -169,7 +182,13 @@ class ContextRulesActivity : ParentGatedActivity() {
         }
 
         val otherRules = rules.filterNot { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
-        container.addView(title(getString(R.string.context_rules_header), R.style.TextAppearance_Dementor_Section))
+        container.addView(
+            headingWithInfo(
+                title(getString(R.string.context_rules_header), R.style.TextAppearance_Dementor_Section),
+                R.string.context_rules_info_title,
+                R.string.context_rules_info_body,
+            ),
+        )
         if (otherRules.isEmpty()) {
             container.addView(caption(getString(R.string.context_no_rules)))
             if (canEdit) {

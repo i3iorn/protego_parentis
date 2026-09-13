@@ -110,10 +110,15 @@
     <string name="context_near_ready">Enheter i närheten: tillgängliga.</string>
     <string name="context_near_blocked">Enheter i närheten: inte tillgängliga utan Bluetooth-behörighet. Regler om enheter i närheten kommer inte att gälla.</string>
     <string name="context_manage_places">Hantera platser</string>
+    <string name="context_tutorial_open">Så kombineras regler</string>
     <string name="context_daily_limit_header">Daglig gräns</string>
     <string name="context_daily_limit_add">Sätt en daglig gräns</string>
     <string name="context_daily_limit_add_detail">Antal minuter telefonen tillåter varje dag</string>
+    <string name="context_daily_limit_info_title">Om den dagliga gränsen</string>
+    <string name="context_daily_limit_info_body">Antalet minuter som hela enheten tillåter varje dag, innan en kategori- eller appgräns nedan begränsar det ytterligare. Det är en vanlig regel under ytan — du kan öppna den nedan och lägga till villkor, precis som vilken annan regel som helst.</string>
     <string name="context_rules_header">Dina regler</string>
+    <string name="context_rules_info_title">Om regler</string>
+    <string name="context_rules_info_body">Varje regel här byggs på samma sätt: ett villkor (när den gäller), en effekt (vad den gör) och ett mål (vem den gäller). Se “Så kombineras regler” ovan för exempel på att kombinera flera regler, eller flera villkor i en och samma regel.</string>
     <string name="context_no_rules">Inga regler än.</string>
     <string name="context_add_rule">Lägg till en regel</string>
     <string name="context_rule_off">%1$s (av)</string>
@@ -146,6 +151,8 @@
     <string name="context_name_required">Ge regeln ett namn.</string>
     <string name="context_enabled">Regeln är på</string>
     <string name="context_when_header">När</string>
+    <string name="context_when_info_title">Om “När”</string>
+    <string name="context_when_info_body">Villkoret som måste stämma för att regeln ska gälla — alltid, på ett visst Wi-Fi, nära en parkopplad enhet, vid en sparad plats, under en batterinivå, under ett tidsfönster, eller när ett visst antal minuter använts idag. “Gäller när detta INTE stämmer” vänder på det. Lägg till ett villkor till nedan för att kräva flera samtidigt (“Alla dessa”) eller något av dem (“Någon av dessa”).</string>
     <string name="context_invert">Gäller när detta INTE stämmer</string>
     <string name="context_add_condition">+ Lägg till ett villkor till</string>
     <string name="context_remove_condition">Ta bort</string>
@@ -153,7 +160,11 @@
     <string name="context_combine_all">Alla dessa</string>
     <string name="context_combine_any">Någon av dessa</string>
     <string name="context_do_header">Gör detta</string>
+    <string name="context_do_info_title">Om “Gör detta”</string>
+    <string name="context_do_info_body">Vad regeln gör medan villkoret gäller. Blockera stoppar målet helt. Tillåt fritt undantar det från alla andra regler och gränser — tillåt fritt vinner alltid över en blockering från en annan regel. Undanta helt är starkare: det når även nätverks- och DNS-blockering, samma nivå som den inbyggda säkerhetslistan. Sätt en gräns ersätter målets egen dagliga gräns; sätter två regler en gräns för samma mål vinner den snävaste.</string>
     <string name="context_to_header">Med</string>
+    <string name="context_to_info_title">Om “Med”</string>
+    <string name="context_to_info_body">Vad regeln gäller för: hela enheten, en eller flera valda appar, en eller flera kategorier, eller allt utom en kort lista du väljer. Att ange “allt utom” är det strikta sättet att skriva en nedstängning — istället för att lista vad som ska blockeras listar du de få saker som ska fortsätta fungera.</string>
     <string name="context_choose_wifi">På ett Wi-Fi-nätverk</string>
     <string name="context_wifi_hint">Nätverkets namn</string>
     <string name="context_choose_device">Nära en enhet</string>
@@ -231,6 +242,8 @@
 
     <!-- Kategorier i kategorier. -->
     <string name="category_nested_header">Kategorier inuti den här</string>
+    <string name="category_nested_info_title">Om nästlade kategorier</string>
+    <string name="category_nested_info_body">En kategoris gräns täcker dess egna appar plus alla appar i det som är nästlat inuti den, hela vägen ner — att lägga Spel inuti Nöje gör att Nöjes enda gräns täcker båda utan att behöva lista om varje app. En app som räknas via två olika vägar förbrukar bara budgeten en gång. En loop (Nöje inuti Spel, Spel inuti Nöje) upptäcks och just den länken tas bort utan att resten av hierarkin går sönder.</string>
     <string name="category_nested_hint">Deras appar räknas mot den här kategorin också.</string>
     <string name="category_no_nested">Inga.</string>
     <string name="category_choose_nested">Välj kategorier</string>
@@ -318,8 +331,14 @@
 
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>
+    <string name="rules_group_limits_info_title">Om “Hur mycket”</string>
+    <string name="rules_group_limits_info_body">Kategorier grupperar appar för att dela en daglig gräns. Appgränser sätter ett tak för en enskild app. Appkontroll låter dig tillåta eller blockera specifika appar helt, och visar appar som just kommit. Webbfiltret och webbaktiviteten styr surfning på den här enheten.</string>
     <string name="rules_group_day">Hur dagen fungerar</string>
+    <string name="rules_group_day_info_title">Om “Hur dagen fungerar”</string>
+    <string name="rules_group_day_info_body">Regler slår ihop den dagliga gränsen, tidsfönster och plats- eller Wi-Fi-baserade villkor till en och samma regelmotor, så du kan säga saker som “blockera spel efter 21” eller “bara det nödvändigaste i skolan.” Platser håller de platser regler kan hänvisa till. Bonustid lägger till extra minuter bara för idag.</string>
     <string name="rules_group_requests">Förfrågningar</string>
+    <string name="rules_group_requests_info_title">Om förfrågningar</string>
+    <string name="rules_group_requests_info_body">Förfrågningar visar vad ditt barn har bett om att låsa upp. Automatiska svar skapar ett stående ja för specifika förfrågningar — en viss mängd, ett visst antal gånger per dag eller vecka — så du slipper svara på varje en för sig.</string>
     <string name="rules_row_limits">Daglig gräns och läggdags</string>
     <string name="rules_row_limits_detail">Tiden, lugna timmar och appar som struntar i båda</string>
     <string name="rules_row_categories">Kategorier</string>
@@ -405,6 +424,8 @@
 
     <!-- Kategorier. -->
     <string name="category_title">Kategori</string>
+    <string name="category_info_title">Om kategorier</string>
+    <string name="category_info_body">En kategori grupperar appar för att dela en daglig gräns — en timme spel totalt, oavsett hur den fördelas mellan dem. En app kan tillhöra fler än en kategori; var och en håller sin egen gräns oberoende av de andra.</string>
     <string name="category_name_hint">Namn, till exempel Spel</string>
     <string name="category_name_required">Ge kategorin ett namn.</string>
     <string name="category_limit_header">Daglig gräns</string>
@@ -416,6 +437,8 @@
 
     <!-- Gränser för enskilda appar. -->
     <string name="app_limits_title">Appgränser</string>
+    <string name="app_limits_info_title">Om appgränser</string>
+    <string name="app_limits_info_body">En daglig gräns för en enskild app för sig, separat från en kategori den tillhör. Båda gäller, och den som tar slut först är den som blockerar. För en gräns som bara ska gälla under ett villkor — “bara på skolans nätverk” — använd en regel under Regler istället; den här skärmen är den snabba varianten för det vanliga fallet.</string>
     <string name="app_limits_hint">Tryck på en app för att ge den en egen daglig gräns. Appar som redan har en visas först.</string>
     <string name="app_limits_none">Ingen gräns</string>
     <string name="app_limits_save">Spara</string>
@@ -586,6 +609,8 @@
     <string name="rules_row_apps">Appar på den här telefonen</string>
     <string name="rules_row_apps_detail">Granska nya appar och blockera det som inte hör hemma här</string>
     <string name="apps_title">Appar</string>
+    <string name="apps_info_title">Om appkontroll</string>
+    <string name="apps_info_body">Blockera stoppar en app helt; ingenting raderas, och att avblockera sätter tillbaka den direkt. Att nätverksblockera en app lämnar den öppen men stänger av dess internetåtkomst istället. En nyinstallerad app visas här först, med ett tydligt Tillåt eller Blockera, tills ett av de två väljs.</string>
     <string name="apps_hint">Att blockera en app gör ikonen grå. Ingenting raderas, och att avblockera sätter tillbaka den direkt.</string>
     <string name="apps_new_header">Nya</string>
     <string name="apps_new_hint">De här dök upp sedan någon senast tittade.</string>
@@ -780,6 +805,8 @@
     <string name="rules_row_auto">Automatiska svar</string>
     <string name="rules_row_auto_detail">Säg ja till små önskemål utan att bli störd</string>
     <string name="auto_title">Automatiska svar</string>
+    <string name="auto_info_title">Om automatiska svar</string>
+    <string name="auto_info_body">Ett stående ja för ett slags önskemål: upp till en viss mängd extra tid, upp till ett visst antal gånger per dag eller vecka. En förfrågan större än mängden, eller utöver antalet för det fönstret, kommer ändå till dig som vanligt — ett automatiskt svar kan bara säga ja, aldrig nej.</string>
     <string name="auto_intro">Ett stående ja till de önskemål du redan vet ditt svar på. Allt större än gränsen, eller utöver antalet, kommer fortfarande till dig — en regel kan bara säga ja, aldrig nej.</string>
     <string name="auto_empty">Inga automatiska svar ännu.</string>
     <string name="auto_add">Lägg till ett automatiskt svar</string>
@@ -984,6 +1011,8 @@
 
     <!-- Vilka delar av appen familjen använder. -->
     <string name="features_title">Delar ni använder</string>
+    <string name="features_info_title">Om delar ni använder</string>
+    <string name="features_info_body">Att lägga undan en del döljer dess skärmar och, för vissa, vad barnet kan se eller nå — det ångrar inte något som redan är inställt där. Tre delar kan inte läggas undan; de listas nedan med anledningen varför.</string>
     <string name="features_row_detail">Lägg undan det den här familjen inte behöver</string>
     <string name="features_intro">Inställningarna har vuxit förbi vad någon enskild familj använder. Stäng av det du inte vill ha, så försvinner dess skärmar.</string>
     <string name="features_still_apply">Att lägga undan något döljer dess skärmar. Regler du redan skapat fortsätter gälla — ta bort dem först om du vill bli av med dem.</string>
@@ -1184,4 +1213,49 @@
     <string name="requests_not_sent">Det skickades inte. Att fråga kan ha stängts av på den här telefonen.</string>
 
     <string name="parent_not_connected_action">Telefonen är inte ansluten till någon familj, så det finns ingenstans att skicka det.</string>
+
+    <!-- RulesTutorialActivity: exempel på kombinationer av villkor/effekt/mål. -->
+    <string name="rules_tutorial_title">Så kombineras regler</string>
+    <string name="rules_tutorial_intro">Varje regel byggs av samma tre delar: ett villkor (när), en effekt (vad den gör) och ett mål (vem). De här exemplen visar vad olika kombinationer faktiskt innebär.</string>
+    <string name="rules_tutorial_line">%1$s %2$s</string>
+    <string name="rules_tutorial_when_label">När:</string>
+    <string name="rules_tutorial_do_label">Gör:</string>
+    <string name="rules_tutorial_to_label">Med:</string>
+    <string name="rules_tutorial_step_label">Regel %1$d</string>
+
+    <string name="rules_tutorial_never_block_title">Se till att en app aldrig blockeras</string>
+    <string name="rules_tutorial_never_block_note">Tillåt fritt vinner alltid över en blockering från en annan regel, så appen förblir nåbar även om en kategori den tillhör blockeras någon annanstans.</string>
+
+    <string name="rules_tutorial_block_except_title">Blockera en hel kategori, utom en app</string>
+    <string name="rules_tutorial_block_except_note">Två regler som samverkar: kategoriblockeringen och undantaget för just den appen. Den undantagna appen kan tillhöra den blockerade kategorin — tillåt fritt vinner ändå.</string>
+
+    <string name="rules_tutorial_lockdown_title">Lås ner telefonen till bara det nödvändigaste under skoltid</string>
+    <string name="rules_tutorial_lockdown_note">“Allt utom” är den strikta varianten av ett schema: istället för att lista vad som ska blockeras listar du den korta listan som ska fortsätta fungera, och allt annat stoppas.</string>
+
+    <string name="rules_tutorial_weekend_budget_title">Ge mer tid på helger än skolkvällar</string>
+    <string name="rules_tutorial_weekend_budget_note">En regel kan ha olika antal minuter för olika dagar — inga separata vardags- och helgregler behövs.</string>
+
+    <string name="rules_tutorial_allof_title">Blockera spel bara på skolans Wi-Fi under skoltid</string>
+    <string name="rules_tutorial_allof_note">“Alla dessa” betyder att varje villkor måste stämma samtidigt — att vara på det Wi-Fi:et en helgkväll skulle inte räcka på egen hand.</string>
+
+    <string name="rules_tutorial_anyof_title">Lätta på reglerna hos mormor, eller närhelst pappas telefon är i närheten</string>
+    <string name="rules_tutorial_anyof_note">“Någon av dessa” betyder att ett villkor räcker — de två situationerna behöver inte inträffa samtidigt.</string>
+
+    <string name="rules_tutorial_safety_title">Håll appen för nödkontakt nåbar oavsett vad</string>
+    <string name="rules_tutorial_safety_note">Undanta helt är den starkaste nivån: till skillnad från ett vanligt tillåt håller den även mot nätverks- och DNS-blockering, inte bara mot andra regler.</string>
+
+    <string name="rules_tutorial_cond_always">alltid</string>
+    <string name="rules_tutorial_cond_window">under ett tidsfönster (till exempel skoldagar 8:30–15:00)</string>
+    <string name="rules_tutorial_cond_allof">på skolans Wi-Fi OCH under skoltid (båda krävs)</string>
+    <string name="rules_tutorial_cond_anyof">vid en sparad plats ELLER nära en parkopplad enhet (endera räcker)</string>
+
+    <string name="rules_tutorial_effect_block">blockera</string>
+    <string name="rules_tutorial_effect_allow">tillåt fritt</string>
+    <string name="rules_tutorial_effect_safety_exempt">undanta helt, som uppringaren</string>
+    <string name="rules_tutorial_effect_budget_split">en gräns på till exempel 1 timme på skolkvällar och 3 timmar fredag–söndag</string>
+
+    <string name="rules_tutorial_target_one_app">en vald app</string>
+    <string name="rules_tutorial_target_category">en kategori (till exempel “Sociala medier” eller “Spel”)</string>
+    <string name="rules_tutorial_target_everything">allt</string>
+    <string name="rules_tutorial_target_everything_except">allt, utom några få valda appar</string>
 </resources>

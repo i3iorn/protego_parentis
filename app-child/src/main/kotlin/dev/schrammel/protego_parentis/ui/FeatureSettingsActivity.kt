@@ -69,7 +69,13 @@ class FeatureSettingsActivity : ParentGatedActivity() {
 
     private fun render() {
         column.removeAllViews()
-        column.addView(screenTitle(getString(R.string.features_title)))
+        column.addView(
+            headingWithInfo(
+                screenTitle(getString(R.string.features_title)),
+                R.string.features_info_title,
+                R.string.features_info_body,
+            ),
+        )
         column.addView(bodyText(getString(R.string.features_intro)))
         if (!target.isOwnDevice) {
             val name = RosterStore(this).children().firstOrNull { it.id == target.childId }?.name

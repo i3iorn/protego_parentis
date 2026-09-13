@@ -120,7 +120,13 @@ class CategoryEditActivity : ParentGatedActivity() {
     private fun buildLayout(existing: StoredCategory?): LinearLayout {
         val content = contentColumn()
 
-        content.addView(screenTitle(getString(R.string.category_title)))
+        content.addView(
+            headingWithInfo(
+                screenTitle(getString(R.string.category_title)),
+                R.string.category_info_title,
+                R.string.category_info_body,
+            ),
+        )
         if (!canEdit) content.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         nameInput = EditText(this).apply {
@@ -165,7 +171,13 @@ class CategoryEditActivity : ParentGatedActivity() {
             )
         }
 
-        content.addView(heading(getString(R.string.category_nested_header), 20f))
+        content.addView(
+            headingWithInfo(
+                heading(getString(R.string.category_nested_header), 20f),
+                R.string.category_nested_info_title,
+                R.string.category_nested_info_body,
+            ),
+        )
         content.addView(
             TextView(this).apply {
                 setText(R.string.category_nested_hint)

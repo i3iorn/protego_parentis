@@ -161,7 +161,13 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
 
     private fun render() {
         column.removeAllViews()
-        column.addView(screenTitle(getString(R.string.auto_title)))
+        column.addView(
+            headingWithInfo(
+                screenTitle(getString(R.string.auto_title)),
+                R.string.auto_info_title,
+                R.string.auto_info_body,
+            ),
+        )
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         column.addView(sectionHeader(getString(R.string.auto_name_header)))
