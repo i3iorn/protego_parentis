@@ -3,10 +3,18 @@ package dev.schrammel.protego_parentis.sync
 import android.content.Context
 import dev.schrammel.protego_parentis.sync.core.*
 import dev.schrammel.protego_parentis.model.BrowserPolicy
+import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DailyGoal
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
+import dev.schrammel.protego_parentis.rules.ContextRuleCodec
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.DnsProfile
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.security.RoleStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -66,6 +74,18 @@ class PolicyReplicationTest {
     private fun rules() = LocalPolicyStore(context)
 
     private fun push() = PolicyReplication(context).pushFromLocalPolicy(thisChildId)
+
+    /** A fully decodable [ContextRule], flattened the way a parent's write would replicate it. */
+    private fun remoteRuleOps(ruleId: String, name: String): Map<String, String?> = mapOf(
+        "policy/THISPHONE/contextRules/$ruleId/name" to name,
+        "policy/THISPHONE/contextRules/$ruleId/enabled" to "true",
+        "policy/THISPHONE/contextRules/$ruleId/condition" to
+            ContextRuleCodec.encodeConditionToString(Condition.Always),
+        "policy/THISPHONE/contextRules/$ruleId/effect" to
+            ContextRuleCodec.encodeEffectToString(RuleEffect.Block()),
+        "policy/THISPHONE/contextRules/$ruleId/target" to
+            ContextRuleCodec.encodeTargetToString(RuleTarget.Everything),
+    )
 
     // ---------- the gate ----------
 
@@ -238,5 +258,84 @@ class PolicyReplicationTest {
 
             assertEquals("45", PolicyReplication(context).read(thisChildId)?.dailyLimitMinutes.toString())
         }
+    }
+
+    // ---------- recovering from defaultChildId()'s old null-on-the-managed-phone bug ----------
+
+    /**
+     * Regression for the same underlying bug [SyncReceiverTest] pins from the
+     * sync-delivery side: before [PolicyReplication.defaultChildId] learned to
+     * resolve its own id directly, a managed phone's replica could hold a
+     * rule bit for bit correctly and still never materialise it locally,
+     * because every `pull*IntoLocal` no-opped on the null childId that
+     * lookup always returned there. [PolicyReplication.backfillIfNeeded]
+     * exists to recover a family that was already stuck that way by the
+     * time the phone updated, since a delta-triggered re-pull never revisits
+     * state that has not changed since.
+     */
+    @Test
+    fun `backfillIfNeeded pulls already-replicated state into local storage`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        ReplicatedStateStore(context).writeAll(
+            remoteRuleOps("rule-1", "No games after nine"),
+            origin = "A-PARENT-DEVICE",
+            role = SyncRole.PARENT,
+        )
+
+        PolicyReplication(context).backfillIfNeeded()
+
+        val rules = ContextRuleStore(context).rules
+        assertTrue(rules.any { it.id == "rule-1" && it.name == "No games after nine" })
+    }
+
+    @Test
+    fun `backfillIfNeeded only ever runs once`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        ReplicatedStateStore(context).writeAll(remoteRuleOps("rule-1", "First backfill"), origin = "A-PARENT-DEVICE", role = SyncRole.PARENT)
+        PolicyReplication(context).backfillIfNeeded()
+        assertTrue(ContextRuleStore(context).rules.any { it.id == "rule-1" })
+
+        // A local edit made after the one-time backfill must survive a second
+        // call to it — otherwise every later app start would clobber whatever
+        // the family had changed since with whatever the replica held at the
+        // moment of the very first backfill.
+        ContextRuleStore(context).upsert(
+            ContextRule(
+                id = "local-only",
+                name = "Added after backfill",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Everything,
+            ),
+        )
+        // Something new arrives in the replica too, so a re-run (if it
+        // happened) would have something fresh to pull rather than the
+        // test passing by coincidence.
+        ReplicatedStateStore(context).writeAll(
+            remoteRuleOps("rule-2", "Set after the flag was already recorded"),
+            origin = "A-PARENT-DEVICE",
+            role = SyncRole.PARENT,
+        )
+
+        PolicyReplication(context).backfillIfNeeded()
+
+        val rules = ContextRuleStore(context).rules
+        assertTrue("the local edit must survive", rules.any { it.id == "local-only" })
+        assertTrue("a second run must not have happened", rules.none { it.id == "rule-2" })
+    }
+
+    @Test
+    fun `backfillIfNeeded does nothing on a parent's own phone`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        ReplicatedStateStore(context).writeAll(
+            mapOf("policy/THISPHONE/contextRules/rule-1/name" to "Should not land here"),
+            origin = "A-PARENT-DEVICE",
+            role = SyncRole.PARENT,
+        )
+
+        PolicyReplication(context).backfillIfNeeded()
+
+        assertTrue(ContextRuleStore(context).rules.isEmpty())
     }
 }

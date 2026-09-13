@@ -28,6 +28,7 @@ import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.SosStore
 import dev.schrammel.protego_parentis.rules.WebFilterStore
+import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.usage.UsageAccess
@@ -78,6 +79,11 @@ class EnforcementCoordinator(context: Context) {
         // why the two are separate calls rather than one.
         store.migrateToUnifiedRules()
         store.migrateAppRulesToUnifiedRules()
+        // Recovers a family whose rules were set while PolicyReplication's
+        // defaultChildId() bug was live — see backfillIfNeeded's own doc
+        // comment. Same shape as the two migrations above: a flag-gated
+        // one-time correction, safe to call on every construction.
+        PolicyReplication(appContext).backfillIfNeeded()
     }
 
     fun hasUsageAccess(): Boolean = UsageAccess.isGranted(appContext)
