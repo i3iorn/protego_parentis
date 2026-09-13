@@ -181,6 +181,8 @@
     <string name="context_choose_everything_except">Allt utom vissa appar</string>
     <string name="context_save">Spara regeln</string>
     <string name="context_delete">Ta bort regeln</string>
+    <string name="context_save_sent_remote">Skickat — gäller när barnets telefon synkroniserar.</string>
+    <string name="context_delete_sent_remote">Skickat — barnets telefon tar bort regeln när den synkroniserar.</string>
 
     <string name="places_title">Platser</string>
     <string name="places_explainer">En plats sparas där du står. Koordinaterna stannar på telefonen: de skickas aldrig någonstans och syns aldrig i loggen.</string>
@@ -752,6 +754,8 @@
     <string name="devices_manage_body">Fingeravtryck %1$s, betrodd som %2$s.</string>
     <string name="devices_revoke">Ta bort</string>
     <string name="devices_revoke_body">%1$s slutar vara betrodd. Den kan fråga igen, och du kan titta på den igen.</string>
+    <string name="devices_revoked_told_family">Borttagen. Resten av familjen får veta när detta synkroniseras.</string>
+    <string name="devices_revoked_local_only">Borttagen här. Detta meddelas inte till resten av familjen.</string>
 
     <string name="audit_intact">Historiken stämmer</string>
     <string name="audit_intact_hint">Varje rad följer på den föregående, på alla telefoner i familjen, och den här telefonens egna rader är signerade med en nyckel den inte kan exportera. Det upptäcker skador, rader som gått förlorade och filer som ändrats utanför appen — det är inget bevis mot någon som kör appens egen kod.</string>

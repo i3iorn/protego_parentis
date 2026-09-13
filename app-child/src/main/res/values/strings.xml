@@ -177,6 +177,8 @@
     <string name="context_choose_everything_except">Everything except some apps</string>
     <string name="context_save">Save rule</string>
     <string name="context_delete">Delete rule</string>
+    <string name="context_save_sent_remote">Sent — takes effect once the child\'s phone syncs.</string>
+    <string name="context_delete_sent_remote">Sent — the child\'s phone drops the rule once it syncs.</string>
 
     <string name="places_title">Places</string>
     <string name="places_explainer">A place is saved from where you are standing. Coordinates stay on this phone: they are never sent anywhere and never appear in the log.</string>
@@ -758,6 +760,8 @@
     <string name="devices_manage_body">Fingerprint %1$s, trusted as %2$s.</string>
     <string name="devices_revoke">Remove</string>
     <string name="devices_revoke_body">%1$s will stop being trusted. It can ask again, and you can look at it again.</string>
+    <string name="devices_revoked_told_family">Removed. The rest of the family will be told once this syncs.</string>
+    <string name="devices_revoked_local_only">Removed here. This isn\'t announced to the rest of the family.</string>
 
     <string name="audit_intact">History adds up</string>
     <string name="audit_intact_hint">Every entry follows from the one before it, on every phone in the family, and this phone\'s own entries are signed with a key it cannot export. That catches damage, accidental loss, and a file edited outside the app — it is not proof against someone running this app\'s own code.</string>

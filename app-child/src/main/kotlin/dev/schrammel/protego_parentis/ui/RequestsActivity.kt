@@ -35,6 +35,7 @@ class RequestsActivity : DementorActivity() {
     private lateinit var installedApps: InstalledApps
     private lateinit var container: LinearLayout
 
+    /** Given `R.id.reason_input` so rotation doesn't silently discard whatever was typed. */
     private lateinit var reasonInput: EditText
     private var target: GrantTarget = GrantTarget.Device
 
@@ -83,6 +84,7 @@ class RequestsActivity : DementorActivity() {
         container.addView(targetPicker())
 
         reasonInput = EditText(this).apply {
+            id = R.id.reason_input
             hint = getString(R.string.requests_reason_hint)
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         }

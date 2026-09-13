@@ -292,6 +292,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                                 action = AuditAction.CONTEXT_RULE_DELETED,
                                 subject = deleted,
                             )
+                            if (!target.isOwnDevice) toast(getString(R.string.context_delete_sent_remote))
                             finish()
                         }
                     },
@@ -602,6 +603,11 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             action = AuditAction.CONTEXT_RULE_SAVED,
             subject = name.trim(),
         )
+        // A local save takes effect the instant this returns — the enforcement
+        // service already read the same store. A remote one only reaches the
+        // child's own store once sync carries it there, which without this
+        // would look identical from here: same button, same instant finish().
+        if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
         finish()
     }
 

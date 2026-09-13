@@ -1,5 +1,6 @@
 package dev.schrammel.protego_parentis.ui
 
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -18,7 +19,9 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 /** [BonusTimeActivity]'s device/category grant buttons and its "clear" action. */
 @RunWith(RobolectricTestRunner::class)
@@ -96,6 +99,33 @@ class BonusTimeActivityTest {
             "the grant should target the category, not the whole device",
             active.single().target is dev.schrammel.protego_parentis.model.GrantTarget.Category,
         )
+    }
+
+    @Test
+    fun `a fast double-tap on the same amount grants it only once`() {
+        val activity = activity()
+        val button = findAll(activity.window.decorView) { it is Button && it.text.toString() == "+10 min" }
+            .filterIsInstance<Button>()
+            .first()
+
+        button.performClick()
+        button.performClick()
+
+        assertEquals(1, grants().active(Instant.now()).size)
+    }
+
+    @Test
+    fun `a second tap after the debounce window still grants again`() {
+        val activity = activity()
+        val button = findAll(activity.window.decorView) { it is Button && it.text.toString() == "+10 min" }
+            .filterIsInstance<Button>()
+            .first()
+
+        button.performClick()
+        shadowOf(Looper.getMainLooper()).idleFor(1, TimeUnit.SECONDS)
+        button.performClick()
+
+        assertEquals(2, grants().active(Instant.now()).size)
     }
 
     @Test
