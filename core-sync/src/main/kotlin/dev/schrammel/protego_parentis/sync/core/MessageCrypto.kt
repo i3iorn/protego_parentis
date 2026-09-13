@@ -31,7 +31,7 @@ internal enum class DecryptFailure {
 
 sealed interface DecryptResult {
     data class Opened(val plaintext: String) : DecryptResult
-    data class Failed(internal val reason: DecryptFailure) : DecryptResult
+    data class Failed internal constructor(internal val reason: DecryptFailure) : DecryptResult
 }
 
 /**

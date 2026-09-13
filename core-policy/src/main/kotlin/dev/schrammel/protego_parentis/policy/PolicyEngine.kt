@@ -14,6 +14,7 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.model.RestrictionValue
+import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import dev.schrammel.protego_parentis.model.WarningThresholds
 import dev.schrammel.protego_parentis.model.WeeklyBudget
