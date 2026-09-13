@@ -10,6 +10,7 @@ import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MINUTES
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
@@ -24,6 +25,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ROLE
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.Fingerprints
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
+import dev.schrammel.protego_parentis.sync.core.MessageFragments
 import dev.schrammel.protego_parentis.sync.core.MessageSignatures
 import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.core.Signer
@@ -148,6 +150,25 @@ class SyncReceiverTest {
         val plaintext = MessageSignatures.sign(RawSigner(keys), body)
         val envelope = MessageCrypto.seal(key, plaintext)
         return receiver().receiveEnvelope(key, envelope)
+    }
+
+    /**
+     * As [deliver], but split the way [SyncPublisher] would for a payload too
+     * big for one wire message — every piece but the last must be ignored,
+     * and only the last completes the group.
+     */
+    private fun deliverChunked(
+        message: SyncMessage,
+        keys: KeyPair,
+        maxWireChars: Int,
+        order: (List<String>) -> List<String> = { it },
+        receiver: SyncReceiver = receiver(),
+    ): Boolean {
+        val body = SyncCodec.encode(message)
+        val plaintext = MessageSignatures.sign(RawSigner(keys), body)
+        val envelope = MessageCrypto.seal(key, plaintext)
+        val chunks = MessageFragments.split(message.id, envelope, maxWireChars)
+        return order(chunks).map { receiver.receiveEnvelope(key, it) }.any { it }
     }
 
     // ---------- applyVouch ----------
@@ -463,6 +484,88 @@ class SyncReceiverTest {
         val cached = AppInventoryStore(context).apps(childId)
         assertEquals(1, cached.count { it.packageName == "com.example.app" })
         assertEquals("New Label", cached.single { it.packageName == "com.example.app" }.label)
+    }
+
+    // ---------- a reply too big for one wire message (#85 resurfacing after PR #195) ----------
+
+    /**
+     * PR #195 raised the client-side line-length bound, but a full inventory
+     * still clears ntfy's own `message-size-limit` (4,096 bytes by default) —
+     * a server-side ceiling this app never controlled, and one ntfy enforces
+     * by silently turning an over-limit publish into a download attachment
+     * instead of delivering it as a message, which nothing here fetches. This
+     * exercises the actual fix: [MessageFragments] splits the sealed envelope
+     * the way [SyncPublisher] now does, and [SyncReceiver] must reassemble it
+     * before a large [SyncMessageType.APP_INVENTORY] reply can be applied.
+     */
+    @Test
+    fun `a large app inventory split across several wire messages is reassembled and applied`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+        val childId = Fingerprints.of(child.public.encoded)
+
+        val apps = (1..300).map { AppInventoryEntry("com.example.app$it", "App $it") }
+        val applied = deliverChunked(
+            message(
+                child,
+                SyncMessageType.APP_INVENTORY,
+                SyncRole.CHILD,
+                fields = mapOf(FIELD_APPS_JSON to AppInventoryCodec.encode(apps)),
+            ),
+            child,
+            maxWireChars = 500,
+        )
+
+        assertTrue(applied)
+        assertEquals(apps.toSet(), AppInventoryStore(context).apps(childId).toSet())
+    }
+
+    @Test
+    fun `pieces of a large inventory arriving out of order still reassemble`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+        val childId = Fingerprints.of(child.public.encoded)
+
+        val apps = (1..300).map { AppInventoryEntry("com.example.app$it", "App $it") }
+        val applied = deliverChunked(
+            message(
+                child,
+                SyncMessageType.APP_INVENTORY,
+                SyncRole.CHILD,
+                fields = mapOf(FIELD_APPS_JSON to AppInventoryCodec.encode(apps)),
+            ),
+            child,
+            maxWireChars = 500,
+            order = { it.shuffled(kotlin.random.Random(7)) },
+        )
+
+        assertTrue(applied)
+        assertEquals(apps.toSet(), AppInventoryStore(context).apps(childId).toSet())
+    }
+
+    @Test
+    fun `a small inventory that already fits is delivered as a single wire message, unchanged`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD)
+        val childId = Fingerprints.of(child.public.encoded)
+
+        val apps = listOf(AppInventoryEntry("com.example.one", "One"))
+        val applied = deliverChunked(
+            message(
+                child,
+                SyncMessageType.APP_INVENTORY,
+                SyncRole.CHILD,
+                fields = mapOf(FIELD_APPS_JSON to AppInventoryCodec.encode(apps)),
+            ),
+            child,
+            maxWireChars = NtfyTransport.MAX_ENVELOPE_CHARS,
+        )
+
+        assertTrue(applied)
+        assertEquals(apps, AppInventoryStore(context).apps(childId))
     }
 
     // ---------- applyBonus ----------

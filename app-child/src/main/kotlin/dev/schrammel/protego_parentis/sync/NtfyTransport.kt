@@ -36,6 +36,8 @@ class NtfyTransport(
 
     override val kind: TransportKind = TransportKind.NTFY
 
+    override val maxEnvelopeChars: Int = MAX_ENVELOPE_CHARS
+
     /** Publishes one already-encrypted envelope. */
     override fun publish(envelope: String): TransportResult<Unit> = try {
         val connection = open("$serverUrl/$topic", method = "POST")
@@ -149,6 +151,24 @@ class NtfyTransport(
          * trouble the heap.
          */
         const val MAX_LINE_CHARS = 262_144
+
+        /**
+         * The budget [dev.schrammel.protego_parentis.sync.core.MessageFragments]
+         * is told to keep every published wire message under.
+         *
+         * ntfy's own default `message-size-limit` is 4,096 bytes; a message
+         * over that is not rejected but silently turned into a downloadable
+         * attachment instead, which nothing on the reading side of this app
+         * ever fetches — the real reason #85 kept resurfacing even after
+         * [MAX_LINE_CHARS] was raised, since that only ever guarded how much
+         * of an already-delivered message this app was willing to read, not
+         * whether the relay delivered it as a message at all. Kept well under
+         * 4,096 rather than flush against it: the family's own relay may not
+         * be the public server, ntfy's docs call anything near that ceiling
+         * "largely untested", and there is still the fragment header itself
+         * to leave room for.
+         */
+        const val MAX_ENVELOPE_CHARS = 3_800
 
         const val FIELD_EVENT = "event"
         const val FIELD_MESSAGE = "message"

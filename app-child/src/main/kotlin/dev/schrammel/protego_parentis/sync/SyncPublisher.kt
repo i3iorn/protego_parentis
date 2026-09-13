@@ -23,6 +23,7 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.KnownDevice
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
+import dev.schrammel.protego_parentis.sync.core.MessageFragments
 import dev.schrammel.protego_parentis.sync.core.MessageSignatures
 import dev.schrammel.protego_parentis.sync.core.StateCodec
 import dev.schrammel.protego_parentis.sync.core.StateOp
@@ -580,7 +581,20 @@ class SyncPublisher(context: Context) {
                 return@execute
             }
 
-            val sent = Transports.of(settings).publish(MessageCrypto.seal(key, signed))
+            val transport = Transports.of(settings)
+            val sealed = MessageCrypto.seal(key, signed)
+            val chunks = MessageFragments.split(id, sealed, transport.maxEnvelopeChars)
+
+            // One failure stops the rest: a partial group the receiver can
+            // never complete is no different from the message never having
+            // been sent, so there is nothing to gain from spending the
+            // remaining chunks' worth of quota on a group already lost.
+            var sent: TransportResult<Unit> = TransportResult.Ok(Unit)
+            for (chunk in chunks) {
+                sent = transport.publish(chunk)
+                if (sent is TransportResult.Failed) break
+            }
+
             if (sent is TransportResult.Ok) onSent()
             Diagnostics.record(
                 appContext,
@@ -591,6 +605,7 @@ class SyncPublisher(context: Context) {
                 },
                 buildMap {
                     put("type", type.ordinal.toLong())
+                    if (chunks.size > 1) put("chunks", chunks.size.toLong())
                     if (sent is TransportResult.Failed) {
                         put("kind", sent.kind.ordinal.toLong())
                         sent.httpStatus?.let { put("httpStatus", it.toLong()) }
