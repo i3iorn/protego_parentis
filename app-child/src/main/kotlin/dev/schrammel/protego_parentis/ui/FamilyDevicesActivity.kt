@@ -480,8 +480,14 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                 action = AuditAction.DEVICE_REVOKED,
                 subject = device.name,
             )
+            // Removing it here is immediate and local; telling the rest of the
+            // family still has to reach them over sync, and until this toast
+            // existed there was nothing here to say which one just happened.
             if (Enrolment.shouldAcceptRevoke(device.role)) {
                 sync.publishRevoke(device)
+                toast(getString(R.string.devices_revoked_told_family))
+            } else {
+                toast(getString(R.string.devices_revoked_local_only))
             }
             render()
         }

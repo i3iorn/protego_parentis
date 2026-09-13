@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Every screen in this app builds its views in Kotlin rather than XML layouts
+        (see ui/Views.kt), so none of them get an id for free the way an XML-declared
+        view does. Android's automatic save/restore of view state on rotation or
+        process death (View.onSaveInstanceState, keyed by id) silently does nothing
+        for a view whose id is View.NO_ID — which every programmatically-built
+        EditText was, until this file existed.
+
+        These have to be real resource ids, not View.generateViewId() calls made in
+        onCreate: a generated id is only stable within one process, and Android's
+        "kill the backgrounded process but keep the saved Bundle, then recreate it
+        later" path recreates the process too, so a freshly generated id would never
+        match the one the saved state was keyed under. A compiled resource id is
+        stable across that recreation the same way any XML-declared id already is.
+    -->
+    <item name="reason_input" type="id" />
+    <item name="chat_composer_input" type="id" />
+</resources>

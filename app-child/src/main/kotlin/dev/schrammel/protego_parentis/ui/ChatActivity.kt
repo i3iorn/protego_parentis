@@ -69,6 +69,7 @@ class ChatActivity : DementorActivity() {
     private lateinit var roster: RosterStore
     private lateinit var conversation: LinearLayout
     private lateinit var scroll: ScrollView
+    /** Given `R.id.chat_composer_input` so rotation doesn't silently discard an unsent draft. */
     private lateinit var input: EditText
     private lateinit var composer: View
     private lateinit var status: TextView
@@ -201,6 +202,7 @@ class ChatActivity : DementorActivity() {
         setPadding(pad, dimen(R.dimen.space_sm), pad, dimen(R.dimen.space_md))
 
         input = EditText(context).apply {
+            id = R.id.chat_composer_input
             layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
             hint = getString(R.string.chat_hint)
             // TYPE_TEXT_FLAG_MULTI_LINE, and nothing that invites anything else.

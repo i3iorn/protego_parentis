@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
@@ -30,6 +31,18 @@ class BonusTimeActivity : ParentGatedActivity() {
 
     private lateinit var store: LocalPolicyStore
     private lateinit var grants: GrantStore
+
+    /**
+     * Nothing here disables the tapped button — the row can hold several
+     * amounts, and disabling only one still leaves the others tappable. A
+     * short debounce catches the actual failure mode instead: none of these
+     * buttons round-trips through a server that could reject a duplicate, so
+     * a double-tap from a slow screen or a fast thumb becomes two real
+     * grants, two audit entries, and double the minutes — silently, since
+     * [GrantStore.add] has no reason to refuse a second grant that looks
+     * exactly like a deliberate one.
+     */
+    private var lastGrantAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,6 +120,10 @@ class BonusTimeActivity : ParentGatedActivity() {
         }
 
     private fun grant(target: GrantTarget, minutes: Int) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastGrantAt < GRANT_DEBOUNCE_MS) return
+        lastGrantAt = now
+
         val policy = store.load()
         grants.add(
             target = target,
@@ -139,5 +156,8 @@ class BonusTimeActivity : ParentGatedActivity() {
 
     companion object {
         fun intent(context: Context) = Intent(context, BonusTimeActivity::class.java)
+
+        /** Comfortably longer than any accidental double-tap, short enough no real second tap ever waits on it. */
+        private const val GRANT_DEBOUNCE_MS = 750L
     }
 }
