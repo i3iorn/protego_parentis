@@ -478,15 +478,14 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     }
 
     /**
-     * Materialises a place a parent named from coordinates typed on their own
-     * phone, since nothing about
-     * [dev.schrammel.protego_parentis.ui.rules.PlaceRuleStore]'s
+     * Materialises a place a parent named from a coordinate their own phone
+     * supplied — typed by hand, or that phone's own position — since nothing
+     * about [dev.schrammel.protego_parentis.ui.rules.PlaceRuleStore]'s
      * rename/resize/delete ever hands it one to create with — see
      * [SyncMessageType.PLACE_CREATE_REQUESTED]. Validated the same way
-     * [dev.schrammel.protego_parentis.ui.PlacesActivity]'s own "add by
-     * coordinates" dialog validates a locally-typed one, since a coordinate
-     * arriving over the wire deserves no more trust than one typed by a
-     * stranger.
+     * [dev.schrammel.protego_parentis.ui.PlacesActivity]'s own dialogs
+     * validate one typed or captured locally, since a coordinate arriving
+     * over the wire deserves no more trust than one typed by a stranger.
      */
     private fun applyPlaceCreateRequest(message: SyncMessage): Boolean {
         val name = message.field(FIELD_PLACE)?.clip()?.takeIf(String::isNotBlank) ?: return false

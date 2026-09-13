@@ -154,9 +154,10 @@ fun AutoApprovalRuleStore.delete(id: String) {
  * place that already has a coordinate somewhere and this type never carries
  * one (see [PlaceRef]'s own doc comment). A parent's phone can still bring a
  * new place into existence — see
- * [dev.schrammel.protego_parentis.ui.PlacesActivity.addPlaceRemotely]
- * — just not through this interface: that path asks the managed phone to
- * create it, over
+ * [dev.schrammel.protego_parentis.ui.PlacesActivity.addPositionRemotely] and
+ * [dev.schrammel.protego_parentis.ui.PlacesActivity.addPlaceRemotely] — just
+ * not through this interface: both paths ask the managed phone to create it,
+ * over
  * [dev.schrammel.protego_parentis.sync.core.SyncMessageType.PLACE_CREATE_REQUESTED],
  * rather than writing a coordinate-free ref here that would have nowhere to
  * get a coordinate from.

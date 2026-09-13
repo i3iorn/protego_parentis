@@ -325,9 +325,10 @@ class SyncPublisher(context: Context) {
     )
 
     /**
-     * Parent: creates a place at coordinates typed on this phone rather than
-     * captured by standing in them — see [SyncMessageType.PLACE_CREATE_REQUESTED]
-     * for why this is the one place message that carries a coordinate at all.
+     * Parent: creates a place at a coordinate this phone supplies — typed by
+     * hand, or this phone's own current position — for somewhere the managed
+     * phone is not standing. See [SyncMessageType.PLACE_CREATE_REQUESTED] for
+     * why this is the one place message that carries a coordinate at all.
      */
     fun publishPlaceCreateRequest(name: String, latitude: Double, longitude: Double, radiusMetres: Int) = publish(
         type = SyncMessageType.PLACE_CREATE_REQUESTED,

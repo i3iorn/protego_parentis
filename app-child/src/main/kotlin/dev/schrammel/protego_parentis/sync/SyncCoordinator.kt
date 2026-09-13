@@ -128,7 +128,7 @@ class SyncCoordinator(context: Context) {
     fun publishPlaceTransition(transition: PlaceTransition) =
         publisher.publishPlaceTransition(transition)
 
-    /** Parent: creates a place on the managed phone at coordinates typed on this phone. */
+    /** Parent: creates a place on the managed phone at a coordinate this phone supplies. */
     fun publishPlaceCreateRequest(name: String, latitude: Double, longitude: Double, radiusMetres: Int) =
         publisher.publishPlaceCreateRequest(name, latitude, longitude, radiusMetres)
 
