@@ -87,6 +87,7 @@ import dev.schrammel.protego_parentis.sync.core.Admittance
 import dev.schrammel.protego_parentis.sync.core.DecryptResult
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.FragmentAssembler
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
 import dev.schrammel.protego_parentis.sync.core.MessageSignatures
 import dev.schrammel.protego_parentis.sync.core.ReplayGuard
@@ -135,6 +136,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private val chat by lazy { ChatStore(appContext) }
     private val notifier by lazy { RequestNotifier(appContext) }
     private val state by lazy { ReplicatedStateStore(appContext) }
+    private val fragments = FragmentAssembler()
 
     /**
      * Fetches and applies anything the other phones have sent.
@@ -227,7 +229,14 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
      * guard is logged, because that is either a clock problem or an attack.
      */
     private fun apply(key: SyncKey, envelope: String): Boolean {
-        val plaintext = when (val opened = MessageCrypto.open(key, envelope)) {
+        // A whole envelope, or one piece of one MessageFragments split apart —
+        // either way, fragments.accept hands back an opaque sealed string once
+        // (and only once) there is a complete one to open, and both a poll
+        // batch and the realtime stream feed every wire message through here,
+        // so this is the one place reassembly needs to happen.
+        val whole = fragments.accept(envelope) ?: return false
+
+        val plaintext = when (val opened = MessageCrypto.open(key, whole)) {
             is DecryptResult.Opened -> opened.plaintext
             is DecryptResult.Failed -> return false
         }

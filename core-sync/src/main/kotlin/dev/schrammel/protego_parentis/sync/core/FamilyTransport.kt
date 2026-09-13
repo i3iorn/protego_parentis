@@ -76,6 +76,17 @@ interface FamilyTransport {
     /** Which backend this is, for showing and for storing. */
     val kind: TransportKind
 
+    /**
+     * The longest wire message this backend is safe to send in one piece.
+     *
+     * Not a hard protocol limit — a guess, conservative on purpose. A backend
+     * that knows its relay will silently mangle or drop anything past a
+     * certain size reports it here, so [MessageFragments] can split a large
+     * envelope before it ever reaches [publish] rather than after it has
+     * already failed to arrive.
+     */
+    val maxEnvelopeChars: Int
+
     fun publish(envelope: String): TransportResult<Unit>
 
     /** Everything published since [since]. */
