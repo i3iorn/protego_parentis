@@ -83,7 +83,22 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
             // Opportunistic rather than off: encrypted DNS where the network
             // offers it is strictly better than plain text, and it is what the
             // device would have done without us.
-            val result = dpm.setGlobalPrivateDnsModeOpportunistic(admin)
+            //
+            // Any global DevicePolicyManager call can throw SecurityException
+            // "operation not allowed when device has unaffiliated users" — a
+            // platform restriction that fires for the device's whole lifetime
+            // once any additional, unaffiliated user or profile exists on it,
+            // regardless of anything this app does. Wrapped the same way
+            // setGlobalPrivateDnsModeSpecifiedHost already is just below: the
+            // caller already treats "false" as "could not apply DNS filtering"
+            // and reports it as a loud, parent-visible violation rather than
+            // silently doing nothing — which is what should happen here too,
+            // instead of this exception taking every other rule down with it.
+            val result = runCatching { dpm.setGlobalPrivateDnsModeOpportunistic(admin) }
+                .getOrElse { error ->
+                    Log.w(TAG, "Could not set opportunistic private DNS", error)
+                    DevicePolicyManager.PRIVATE_DNS_SET_ERROR_FAILURE_SETTING
+                }
             return result == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR
         }
 
