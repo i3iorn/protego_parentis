@@ -228,6 +228,8 @@
     <string name="diagnostics_share">Share the log</string>
     <string name="diagnostics_clear">Clear the log</string>
     <string name="diagnostics_empty">Nothing recorded yet.</string>
+    <string name="diagnostics_crash_header">Last error</string>
+    <string name="diagnostics_crash_body">Enforcement failed to run and is retrying on its own. This is the technical detail behind that — it can mention a rule, category or place name, unlike the log above. Only shown here, and included if you share the log.</string>
 
     <!-- OTA updates. -->
     <string name="update_version">Version %1$s</string>

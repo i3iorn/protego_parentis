@@ -17,6 +17,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.diagnostics.CrashCapture
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.audit.Audit
@@ -137,6 +138,11 @@ class EnforcementService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "Evaluation failed; retrying", e)
                 Diagnostics.record(this@EnforcementService, DiagnosticEvent.EVALUATION_FAILED)
+                // Log.e only reaches a computer plugged in with USB debugging
+                // on, which a device owner can switch off — see CrashCapture's
+                // own doc comment. This is the only other place the actual
+                // exception survives.
+                CrashCapture.recordEvaluationFailure(this@EnforcementService, e)
                 RETRY_INTERVAL_MILLIS
             }
             handler.postDelayed(this, nextIn)
