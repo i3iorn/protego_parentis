@@ -184,7 +184,7 @@ class DiagnosticsActivity : DementorActivity() {
             )
 
             addView(card { addView(text) })
-            renderCrashCard()
+            renderCrashCard(this)
         }
 
         renderUpdateCard()
@@ -200,7 +200,7 @@ class DiagnosticsActivity : DementorActivity() {
      * design promise is "nothing free-form", and a raw stack trace is
      * exactly that.
      */
-    private fun renderCrashCard() {
+    private fun renderCrashCard(column: LinearLayout) {
         val trace = CrashCapture.lastEvaluationFailure(this) ?: return
         column.addView(
             card {
