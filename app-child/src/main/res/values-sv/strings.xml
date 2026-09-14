@@ -230,6 +230,8 @@
     <string name="diagnostics_share">Dela loggen</string>
     <string name="diagnostics_clear">Rensa loggen</string>
     <string name="diagnostics_empty">Inget registrerat än.</string>
+    <string name="diagnostics_crash_header">Senaste felet</string>
+    <string name="diagnostics_crash_body">Regeltillämpningen misslyckades och försöker igen på egen hand. Det här är den tekniska detaljen bakom det — den kan nämna namnet på en regel, kategori eller plats, till skillnad från loggen ovan. Visas bara här, och skickas med om du delar loggen.</string>
 
     <!-- OTA-uppdateringar. -->
     <string name="update_version">Version %1$s</string>

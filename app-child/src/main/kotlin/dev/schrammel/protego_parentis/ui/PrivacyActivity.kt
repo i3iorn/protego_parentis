@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.diagnostics.CrashCapture
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.FeatureFlags
@@ -174,6 +175,7 @@ class DiagnosticsActivity : DementorActivity() {
                                 dimen(R.dimen.space_sm)
                             setOnClickListener {
                                 Diagnostics.clear(this@DiagnosticsActivity)
+                                CrashCapture.clear(this@DiagnosticsActivity)
                                 text.text = logText()
                             }
                         },
@@ -182,11 +184,49 @@ class DiagnosticsActivity : DementorActivity() {
             )
 
             addView(card { addView(text) })
+            renderCrashCard()
         }
 
         renderUpdateCard()
         text.text = logText()
         showColumn(column)
+    }
+
+    /**
+     * The one thing [Diagnostics]' own closed-set log cannot say: what an
+     * evaluation failure actually threw. See [CrashCapture]'s own doc
+     * comment for why this exists as a separate, clearly-labelled card
+     * rather than folded into the shareable log above — the log's whole
+     * design promise is "nothing free-form", and a raw stack trace is
+     * exactly that.
+     */
+    private fun renderCrashCard() {
+        val trace = CrashCapture.lastEvaluationFailure(this) ?: return
+        column.addView(
+            card {
+                addView(
+                    TextView(this@DiagnosticsActivity).apply {
+                        setText(R.string.diagnostics_crash_header)
+                        styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                    },
+                )
+                addView(
+                    TextView(this@DiagnosticsActivity).apply {
+                        setText(R.string.diagnostics_crash_body)
+                        styleAs(R.style.TextAppearance_Dementor_Caption)
+                        setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
+                    },
+                )
+                addView(
+                    TextView(this@DiagnosticsActivity).apply {
+                        text = trace
+                        typeface = android.graphics.Typeface.MONOSPACE
+                        setTextIsSelectable(true)
+                        styleAs(R.style.TextAppearance_Dementor_Caption)
+                    },
+                )
+            },
+        )
     }
 
     /**
@@ -258,9 +298,15 @@ class DiagnosticsActivity : DementorActivity() {
     private fun share() {
         // Plain text in the intent rather than a file: nothing is written to
         // shared storage, and the user picks the destination themselves.
+        val crash = CrashCapture.lastEvaluationFailure(this)
+        val text = if (crash == null) {
+            logText()
+        } else {
+            logText() + "\n\n" + getString(R.string.diagnostics_crash_header) + "\n" + crash
+        }
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, logText())
+            putExtra(Intent.EXTRA_TEXT, text)
         }
         startActivity(Intent.createChooser(send, getString(R.string.diagnostics_share)))
     }
