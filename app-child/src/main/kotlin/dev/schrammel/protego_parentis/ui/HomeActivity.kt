@@ -334,7 +334,14 @@ class HomeActivity : DementorActivity() {
 
             budget.level == BudgetLevel.EXHAUSTED -> {
                 headline.text = getString(R.string.home_used_up)
-                subline.text = getString(R.string.home_resets)
+                // Says what was used up, not just that it was: the headline is the
+                // one thing read from across the room, and "time's up" with no
+                // cause sends a reader hunting through the rules list below for
+                // the number that already explains it.
+                subline.text = getString(
+                    R.string.home_used_up_detail,
+                    formatDuration(budget.allowed + budget.bonus),
+                )
                 bar.visibility = View.VISIBLE
                 bar.progress = 100
                 tint(bar, BudgetLevel.EXHAUSTED)
@@ -421,7 +428,7 @@ class HomeActivity : DementorActivity() {
         // Cap the list: with a device-wide limit hit, every installed app is in
         // here, and a wall of two hundred rows tells the reader nothing.
         blocked.entries.take(maxRows).forEach { (pkg, reason) ->
-            container.addView(row(pkg, describe(reason)))
+            container.addView(row(pkg, describe(reason), trailingColor = R.color.state_critical))
         }
         if (blocked.size > maxRows) {
             val extra = blocked.size - maxRows
@@ -484,7 +491,12 @@ class HomeActivity : DementorActivity() {
         setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_xxs))
     }
 
-    private fun row(pkg: PackageName, trailing: String, openable: Boolean = false): View {
+    private fun row(
+        pkg: PackageName,
+        trailing: String,
+        openable: Boolean = false,
+        trailingColor: Int? = null,
+    ): View {
         val app = installedApps
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -503,6 +515,10 @@ class HomeActivity : DementorActivity() {
                             packageManager.getApplicationIcon(pkg.value)
                         }.getOrNull(),
                     )
+                    // Decorative: the label text right beside it already says the
+                    // same thing, so a screen reader announcing "unlabeled image"
+                    // on every single row is noise rather than information.
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 },
             )
             addView(
@@ -516,6 +532,7 @@ class HomeActivity : DementorActivity() {
                 TextView(context).apply {
                     text = trailing
                     styleAs(R.style.TextAppearance_Dementor_Body)
+                    trailingColor?.let { setTextColor(ContextCompat.getColor(context, it)) }
                 },
             )
         }

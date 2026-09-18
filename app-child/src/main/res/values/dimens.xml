@@ -45,6 +45,6 @@
     <!-- Progress and charts -->
     <dimen name="budget_bar_height">10dp</dimen>
     <dimen name="week_bar_height">16dp</dimen>
-    <dimen name="week_day_label_width">44dp</dimen>
+    <dimen name="week_day_label_width">56dp</dimen>
 
 </resources>
