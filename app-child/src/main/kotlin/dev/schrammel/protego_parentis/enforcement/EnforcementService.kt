@@ -151,9 +151,24 @@ class EnforcementService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /**
+     * Builds the collaborator that owns "read the rules, measure usage, ask
+     * the engine, apply the answer" — see [EnforcementCoordinator]'s own doc
+     * comment for why its constructor now takes each of *its* collaborators
+     * as parameters with production defaults. A `Service` cannot itself be
+     * constructor-injected (Android instantiates it with a no-arg
+     * constructor, the same reason [dev.schrammel.protego_parentis.diagnostics.CrashRecovery.install]
+     * takes a supplier rather than a plain value), so this is the seam
+     * instead: a settable factory a test can replace, before [onCreate]
+     * runs, with one built against a fake
+     * [dev.schrammel.protego_parentis.policy.reconcile.DevicePolicyPort],
+     * without needing a real device to reach that branch.
+     */
+    internal var coordinatorFactory: (Context) -> EnforcementCoordinator = { EnforcementCoordinator(it) }
+
     override fun onCreate() {
         super.onCreate()
-        coordinator = EnforcementCoordinator(this)
+        coordinator = coordinatorFactory(this)
         review = AppReviewStore(this)
         installedApps = InstalledApps(this)
         requestNotifier = RequestNotifier(this)
