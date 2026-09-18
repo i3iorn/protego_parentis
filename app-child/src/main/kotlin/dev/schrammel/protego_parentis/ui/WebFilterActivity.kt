@@ -138,21 +138,62 @@ class WebFilterActivity : ParentGatedActivity() {
         orientation = LinearLayout.VERTICAL
         val policy = store.browserPolicy
 
+        fun commit(labelRes: Int, value: Boolean, apply: (Boolean) -> Unit) {
+            apply(value)
+            Audit.record(
+                context = this@WebFilterActivity,
+                actor = AuditActor.PARENT,
+                action = AuditAction.BROWSER_POLICY_CHANGED,
+                subject = getString(labelRes),
+                after = Audit.flag(value),
+            )
+            AppRegistry.ruleMutationSink.rulesChanged()
+        }
+
         fun switch(labelRes: Int, checked: Boolean, apply: (Boolean) -> Unit) {
             addView(
                 CheckBox(context).apply {
                     setText(labelRes)
                     isChecked = checked
-                    setOnCheckedChangeListener { _, value ->
-                        apply(value)
-                        Audit.record(
-                            context = this@WebFilterActivity,
-                            actor = AuditActor.PARENT,
-                            action = AuditAction.BROWSER_POLICY_CHANGED,
-                            subject = getString(labelRes),
-                            after = Audit.flag(value),
-                        )
-                        AppRegistry.ruleMutationSink.rulesChanged()
+                    setOnCheckedChangeListener { _, value -> commit(labelRes, value, apply) }
+                },
+            )
+        }
+
+        /**
+         * As [switch], but checking it on suspends every unmanaged browser on
+         * the phone the instant it's checked — a real, visible, disruptive
+         * change, the same kind of stakes [FamilyDevicesActivity] already
+         * gates behind a restated-fact confirmation before approving a
+         * device. Unchecking needs no confirmation: nothing is lost by
+         * turning suspension back off.
+         */
+        fun confirmedSwitch(labelRes: Int, checked: Boolean, apply: (Boolean) -> Unit) {
+            addView(
+                CheckBox(context).apply {
+                    setText(labelRes)
+                    isChecked = checked
+                    var reverting = false
+                    setOnCheckedChangeListener { box, value ->
+                        if (reverting) {
+                            reverting = false
+                            return@setOnCheckedChangeListener
+                        }
+                        if (!value) {
+                            commit(labelRes, false, apply)
+                            return@setOnCheckedChangeListener
+                        }
+                        reverting = true
+                        box.isChecked = false
+                        confirmDialog(
+                            R.string.web_suspend_browsers,
+                            R.string.web_suspend_browsers_confirm,
+                            R.string.web_suspend_browsers,
+                        ) {
+                            reverting = true
+                            box.isChecked = true
+                            commit(labelRes, true, apply)
+                        }
                     }
                 },
             )
@@ -167,7 +208,7 @@ class WebFilterActivity : ParentGatedActivity() {
         switch(R.string.web_incognito, policy.blockIncognito) {
             store.browserPolicy = store.browserPolicy.copy(blockIncognito = it)
         }
-        switch(R.string.web_suspend_browsers, policy.suspendUnmanagedBrowsers) {
+        confirmedSwitch(R.string.web_suspend_browsers, policy.suspendUnmanagedBrowsers) {
             store.browserPolicy = store.browserPolicy.copy(suspendUnmanagedBrowsers = it)
         }
         addView(captionText(getString(R.string.web_suspend_browsers_hint)))

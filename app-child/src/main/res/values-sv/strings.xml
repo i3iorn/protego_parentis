@@ -226,12 +226,14 @@
     <string name="privacy_log_header">Appens egen logg</string>
     <string name="privacy_log_body">En kort anteckning om vad appen gjorde — att den kollade din tid, att den startade, att något gick fel. Den innehåller inga appnamn, inga anledningar du skrivit och inga tider då du använde något. Du får läsa hela.</string>
     <string name="privacy_view_log">Läs loggen</string>
+    <string name="privacy_view_history">Se vad som faktiskt ändrats</string>
     <string name="home_open_privacy">Vad som lämnar telefonen</string>
 
     <string name="diagnostics_title">Applogg</string>
     <string name="diagnostics_header">Dementor Watch-logg. Innehåller bara vad appen gjorde: händelsenamn, antal och tider. Inga appnamn, inga meddelanden, inga anledningar, inga lösenord.</string>
     <string name="diagnostics_share">Dela loggen</string>
     <string name="diagnostics_clear">Rensa loggen</string>
+    <string name="diagnostics_clear_confirm">Detta raderar allt som hittills registrerats, inklusive senaste felet nedan om det finns ett. Det kan inte ångras.</string>
     <string name="diagnostics_empty">Inget registrerat än.</string>
     <string name="diagnostics_crash_header">Senaste felet</string>
     <string name="diagnostics_crash_body">Regeltillämpningen misslyckades och försöker igen på egen hand. Det här är den tekniska detaljen bakom det — den kan nämna namnet på en regel, kategori eller plats, till skillnad från loggen ovan. Visas bara här, och skickas med om du delar loggen.</string>
@@ -805,6 +807,7 @@
     <string name="web_incognito">Stäng av inkognito</string>
     <string name="web_suspend_browsers">Pausa webbläsare som inte kan filtreras</string>
     <string name="web_suspend_browsers_hint">Andra webbläsare struntar i de här inställningarna, så en installerad sådan är en väg rakt förbi dem. Att pausa tar bort webbläsaren i stället för att filtrera den, vilket behöver förklaras för den som håller i telefonen.</string>
+    <string name="web_suspend_browsers_confirm">Detta pausar varje webbläsare på telefonen som filtren inte kan tillämpas på, så fort du slår på det. Den som håller i telefonen märker det direkt.</string>
     <string name="web_limits_note">Ingendera filtrerar det som händer inuti en app. En video som föreslås i ett flöde är inte en webbsida, och ingenting här rör den.</string>
     <string name="rules_dns_failed">Telefonen nekade den filtrerande servern. Ingenting filtreras — kontrollera namnet och spara igen.</string>
 
@@ -898,6 +901,9 @@
     <string name="web_activity_intro">Sajter som nåtts i dag, och hur ofta. Inga adresser, inga klockslag, och ingenting om vad som fanns på dem. Dina föräldrar ser exakt den här listan.</string>
     <string name="web_activity_enable">Räkna sajterna telefonen når</string>
     <string name="web_activity_enable_hint">Android visar en permanent notis på telefonen medan det är på. Den notisen är poängen: ingenting här sker i tysthet.</string>
+    <string name="web_activity_clear_title">Stäng av och radera?</string>
+    <string name="web_activity_clear_body">Att stänga av det här pausar inte bara det — allt som räknats hittills raderas och kan inte återställas.</string>
+    <string name="web_activity_clear_confirm">Stäng av och radera</string>
     <string name="web_activity_empty">Inget räknat i dag.</string>
     <string name="web_activity_off">Räknar inte.</string>
     <plurals name="web_activity_blocked">

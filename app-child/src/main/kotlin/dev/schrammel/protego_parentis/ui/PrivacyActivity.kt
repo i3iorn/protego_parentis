@@ -97,6 +97,17 @@ class PrivacyActivity : DementorActivity() {
                 setOnClickListener { startActivity(DiagnosticsActivity.intent(context)) }
             },
         )
+        // The technical log above says what the app did; this is the
+        // human-readable record of what actually changed — every rule edit,
+        // approval and setting — which is this app's real transparency
+        // mechanism (TR-3). A screen about what leaves the phone with no path
+        // to it was a gap, not a choice.
+        column.addView(
+            actionButton().apply {
+                setText(R.string.privacy_view_history)
+                setOnClickListener { startActivity(AuditActivity.intent(context)) }
+            },
+        )
     }
 
     /** One statement about what this app does, on its own surface. */
@@ -174,9 +185,21 @@ class DiagnosticsActivity : DementorActivity() {
                             (layoutParams as LinearLayout.LayoutParams).marginStart =
                                 dimen(R.dimen.space_sm)
                             setOnClickListener {
-                                Diagnostics.clear(this@DiagnosticsActivity)
-                                CrashCapture.clear(this@DiagnosticsActivity)
-                                text.text = logText()
+                                // Erases the phone's own evidence trail — used to
+                                // diagnose tampering or a crash — with no undo.
+                                // Given the same weight as "Share" one tap ago,
+                                // it deserves the same confirm-first treatment
+                                // every other consequential action in this app
+                                // already gets.
+                                confirmDialog(
+                                    R.string.diagnostics_clear,
+                                    R.string.diagnostics_clear_confirm,
+                                    R.string.diagnostics_clear,
+                                ) {
+                                    Diagnostics.clear(this@DiagnosticsActivity)
+                                    CrashCapture.clear(this@DiagnosticsActivity)
+                                    text.text = logText()
+                                }
                             }
                         },
                     )
