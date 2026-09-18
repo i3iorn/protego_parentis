@@ -481,6 +481,18 @@ internal fun Activity.captionText(text: String): TextView = TextView(this).apply
     setPadding(0, dimen(R.dimen.space_hairline), 0, dimen(R.dimen.space_xs))
 }
 
+/** Role, PIN, join — first-time setup's fixed sequence, for [stepIndicator]. */
+internal const val ONBOARDING_STEPS = 3
+
+/**
+ * "Step 2 of 3," for the handful of screens that only ever run back-to-back
+ * during first-time setup (role, PIN, join). Each of those screens otherwise
+ * looks like a complete, self-contained thing, and backing out of the middle
+ * one gives no sense of whether that abandons one step or the whole setup.
+ */
+internal fun Activity.stepIndicator(current: Int, total: Int = ONBOARDING_STEPS): TextView =
+    captionText(getString(R.string.onboarding_step, current, total))
+
 /** A grouped surface, for a summary that should read as one thing. */
 internal fun Activity.card(build: LinearLayout.() -> Unit): LinearLayout =
     LinearLayout(this).apply {

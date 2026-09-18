@@ -66,6 +66,9 @@ class PinActivity : DementorActivity() {
     private var step = Step.UNLOCK
     private var chosen: String? = null
 
+    /** True only when launched as step 2 of first-time setup, from RoleSetupActivity. */
+    private val onboarding: Boolean by lazy { intent.getBooleanExtra(EXTRA_ONBOARDING, false) }
+
     /** Null until the layout is built; absent entirely when nothing is on offer. */
     private var biometricButton: Button? = null
 
@@ -175,6 +178,7 @@ class PinActivity : DementorActivity() {
             val pad = dimen(R.dimen.screen_padding)
             setPadding(pad, pad, pad, pad)
 
+            if (onboarding) addView(stepIndicator(2))
             addView(
                 TextView(context).apply {
                     setText(R.string.pin_title)
@@ -296,9 +300,10 @@ class PinActivity : DementorActivity() {
 
     private fun confirmNew(entered: String) {
         if (entered != chosen) {
-            chosen = null
-            step = Step.CHOOSE_NEW
-            updatePrompt()
+            // Stays on CONFIRM_NEW rather than discarding chosen and starting over:
+            // a typo on this second, still-masked entry is common, and re-typing
+            // the whole PIN twice to fix one mistyped confirmation is friction with
+            // no purpose.
             toast(getString(R.string.pin_mismatch))
             return
         }
@@ -326,8 +331,11 @@ class PinActivity : DementorActivity() {
 
     companion object {
         private const val EXTRA_CHANGE = "change"
+        private const val EXTRA_ONBOARDING = "onboarding"
 
-        fun intent(context: Context, change: Boolean = false): Intent =
-            Intent(context, PinActivity::class.java).putExtra(EXTRA_CHANGE, change)
+        fun intent(context: Context, change: Boolean = false, onboarding: Boolean = false): Intent =
+            Intent(context, PinActivity::class.java)
+                .putExtra(EXTRA_CHANGE, change)
+                .putExtra(EXTRA_ONBOARDING, onboarding)
     }
 }
