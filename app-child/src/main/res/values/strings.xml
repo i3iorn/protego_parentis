@@ -225,12 +225,14 @@
     <string name="privacy_log_header">The app\'s own log</string>
     <string name="privacy_log_body">A short record of what the app did — that it checked your time, that it started, that something failed. It holds no app names, no reasons you wrote and no times you were using anything. You can read all of it.</string>
     <string name="privacy_view_log">Read the log</string>
+    <string name="privacy_view_history">See what actually changed</string>
     <string name="home_open_privacy">What leaves this phone</string>
 
     <string name="diagnostics_title">App log</string>
     <string name="diagnostics_header">Dementor Watch log. Contains only what the app did: event names, counts and times. No app names, no messages, no reasons, no passwords.</string>
     <string name="diagnostics_share">Share the log</string>
     <string name="diagnostics_clear">Clear the log</string>
+    <string name="diagnostics_clear_confirm">This erases everything recorded so far, including the last error below if there is one. It cannot be undone.</string>
     <string name="diagnostics_empty">Nothing recorded yet.</string>
     <string name="diagnostics_crash_header">Last error</string>
     <string name="diagnostics_crash_body">Enforcement failed to run and is retrying on its own. This is the technical detail behind that — it can mention a rule, category or place name, unlike the log above. Only shown here, and included if you share the log.</string>
@@ -812,6 +814,7 @@
     <string name="web_incognito">Turn off incognito</string>
     <string name="web_suspend_browsers">Pause browsers that cannot be filtered</string>
     <string name="web_suspend_browsers_hint">Other browsers ignore these settings, so leaving one installed is a way straight round them. Pausing takes the browser away rather than filtering it, which needs explaining to whoever holds the phone.</string>
+    <string name="web_suspend_browsers_confirm">This suspends every browser on the phone that these filters cannot apply to, the moment you turn it on. Whoever is holding the phone will notice at once.</string>
     <string name="web_limits_note">Neither of these filters what happens inside an app. A video suggested in a feed is not a web page, and nothing here will touch it.</string>
     <string name="rules_dns_failed">The phone refused the filtering server. Nothing is being filtered — check the name and save again.</string>
 
@@ -905,6 +908,9 @@
     <string name="web_activity_intro">Sites reached today, and how often. No addresses, no times, and nothing about what was on them. Your parents see exactly this list.</string>
     <string name="web_activity_enable">Count the sites this phone reaches</string>
     <string name="web_activity_enable_hint">Android shows a permanent notice on this phone while it is on. That notice is the point: nothing here happens quietly.</string>
+    <string name="web_activity_clear_title">Turn off and erase?</string>
+    <string name="web_activity_clear_body">Turning this off doesn\'t just pause it — everything counted so far is erased and cannot be brought back.</string>
+    <string name="web_activity_clear_confirm">Turn off and erase</string>
     <string name="web_activity_empty">Nothing counted today.</string>
     <string name="web_activity_off">Not counting.</string>
     <plurals name="web_activity_blocked">

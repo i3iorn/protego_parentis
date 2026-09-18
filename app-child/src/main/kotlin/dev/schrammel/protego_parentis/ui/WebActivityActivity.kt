@@ -53,16 +53,37 @@ class WebActivityActivity : DementorActivity() {
             CheckBox(this).apply {
                 setText(R.string.web_activity_enable)
                 isChecked = settings.countVisits
-                setOnCheckedChangeListener { _, wanted ->
-                    settings.countVisits = wanted
-                    if (!wanted) store.clear()
-                    Audit.record(
-                        context = this@WebActivityActivity,
-                        actor = AuditActor.PARENT,
-                        action = AuditAction.WEB_LOGGING_CHANGED,
-                        after = Audit.flag(wanted),
-                    )
-                    AppRegistry.ruleMutationSink.rulesChanged()
+                // Guards against the programmatic isChecked = true below
+                // re-entering this same listener while putting the box back.
+                var reverting = false
+                setOnCheckedChangeListener { box, wanted ->
+                    if (reverting) {
+                        reverting = false
+                        return@setOnCheckedChangeListener
+                    }
+                    if (!wanted) {
+                        // Unchecking this reads as "pause logging for now," but it
+                        // also permanently erases every visit recorded so far —
+                        // a bigger, more silent failure mode than the confirmed
+                        // actions elsewhere in this app (e.g. revoking a device).
+                        // Put the box back until the parent actually confirms.
+                        reverting = true
+                        box.isChecked = true
+                        confirmDialog(
+                            R.string.web_activity_clear_title,
+                            R.string.web_activity_clear_body,
+                            R.string.web_activity_clear_confirm,
+                        ) {
+                            settings.countVisits = false
+                            store.clear()
+                            recordLoggingChange(false)
+                            reverting = true
+                            box.isChecked = false
+                        }
+                        return@setOnCheckedChangeListener
+                    }
+                    settings.countVisits = true
+                    recordLoggingChange(true)
                 }
             },
         )
@@ -113,6 +134,16 @@ class WebActivityActivity : DementorActivity() {
         Background.load(this, { EnforcementCoordinator(this).isDeviceOwner() }) { owner ->
             if (!owner) column.addView(captionText(getString(R.string.rules_device_status_monitor)))
         }
+    }
+
+    private fun recordLoggingChange(enabled: Boolean) {
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.WEB_LOGGING_CHANGED,
+            after = Audit.flag(enabled),
+        )
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 
     companion object {
