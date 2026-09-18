@@ -74,3 +74,14 @@ internal object SyncWireFields {
     /** Longer than any real app name or reason, short enough to render. */
     const val MAX_WIRE_TEXT = 200
 }
+
+/**
+ * Bounds a string that arrived over the wire and is about to be shown.
+ *
+ * Shared by every inbound-message handler in this package: the sender holds
+ * the family key, so this is not a defence against a stranger — it is a
+ * defence against a buggy or malicious phone inside the family pushing a
+ * megabyte of text into a notification or a card that then cannot be
+ * dismissed past.
+ */
+internal fun String.clip(): String = take(SyncWireFields.MAX_WIRE_TEXT)
