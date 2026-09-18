@@ -10,15 +10,11 @@ import dev.schrammel.protego_parentis.model.BrowserPolicy
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.ChildId
-import dev.schrammel.protego_parentis.model.Condition
-import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DailyGoal
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
-import dev.schrammel.protego_parentis.model.RuleEffect
-import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.json.JSONObject
@@ -180,55 +176,15 @@ class LocalPolicyStore(context: Context) {
     fun migrateToUnifiedRules() {
         if (prefs.getBoolean(KEY_RULES_MIGRATED, false)) return
 
-        scheduleStore.schedules.forEach { stored ->
-            val block = stored.toDomain() ?: return@forEach
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = "$MIGRATED_SCHEDULE_ID_PREFIX${stored.id}",
-                    name = stored.name,
-                    enabled = stored.enabled,
-                    condition = Condition.DuringWindow(block.window),
-                    effect = RuleEffect.Block(),
-                    target = when (stored.mode) {
-                        ScheduleBlock.Mode.INCLUSIVE -> RuleTarget.Apps(block.packages)
-                        ScheduleBlock.Mode.EXCLUSIVE -> RuleTarget.EverythingExcept(block.packages)
-                    },
-                ),
-            )
-        }
-
-        val limit = dailyLimitMinutes
-        if (limit > 0) {
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = MIGRATED_DAILY_LIMIT_ID,
-                    name = appContext.getString(R.string.rules_row_limits),
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(limit.minutes)),
-                    target = RuleTarget.Everything,
-                ),
-            )
-        }
-
+        RuleMigration.scheduleRules(scheduleStore.schedules).forEach(contextRuleStore::upsert)
+        RuleMigration.dailyLimitRule(appContext, dailyLimitMinutes)?.let(contextRuleStore::upsert)
         // AppRule.AlwaysAllowed was the only thing exemptPackages ever meant —
         // the same safety-allowlist tier a rule can now name for itself via
         // RuleEffect.SafetyExempt, so each exempt package becomes one rule
         // rather than a fixed field the rule engine cannot see. Left as
         // AppRule.AlwaysAllowed too (see appRules below), for the same
         // mid-upgrade reason the schedule/limit stores are left alone above.
-        exemptPackages.forEach { pkg ->
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = "$MIGRATED_EXEMPT_ID_PREFIX$pkg",
-                    name = appContext.getString(R.string.rules_exempt_header),
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.SafetyExempt,
-                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
-                ),
-            )
-        }
+        RuleMigration.exemptRules(appContext, exemptPackages).forEach(contextRuleStore::upsert)
 
         prefs.edit { putBoolean(KEY_RULES_MIGRATED, true) }
     }
@@ -255,62 +211,9 @@ class LocalPolicyStore(context: Context) {
     fun migrateAppRulesToUnifiedRules() {
         if (prefs.getBoolean(KEY_APP_RULES_MIGRATED, false)) return
 
-        appLimits.forEach { (pkg, minutes) ->
-            if (minutes <= 0) return@forEach
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = "$MIGRATED_APP_BUDGET_ID_PREFIX$pkg",
-                    name = appContext.getString(R.string.app_limits_title),
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(minutes.minutes)),
-                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
-                ),
-            )
-        }
-
-        // Hidden first, so a package in both sets — which no screen can
-        // produce today, but a hand-edited or replicated-from-an-older-build
-        // preference file might — migrates to the stricter of the two rather
-        // than to whichever loop happened to run last.
-        blockedPackages.forEach { pkg ->
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = "$MIGRATED_APP_BLOCK_ID_PREFIX$pkg",
-                    name = appContext.getString(R.string.apps_title),
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.Block(hidden = false),
-                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
-                ),
-            )
-        }
-        hiddenPackages.forEach { pkg ->
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = "$MIGRATED_APP_BLOCK_ID_PREFIX$pkg",
-                    name = appContext.getString(R.string.apps_title),
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.Block(hidden = true),
-                    target = RuleTarget.Apps(setOf(PackageName(pkg))),
-                ),
-            )
-        }
-
-        categories.forEach { stored ->
-            if (stored.limitMinutes <= 0) return@forEach
-            contextRuleStore.upsert(
-                ContextRule(
-                    id = "$MIGRATED_CATEGORY_BUDGET_ID_PREFIX${stored.id}",
-                    name = stored.name,
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.SetBudget(WeeklyBudget.flat(stored.limitMinutes.minutes)),
-                    target = RuleTarget.Categories(setOf(CategoryId(stored.id))),
-                ),
-            )
-        }
+        RuleMigration.appBudgetRules(appContext, appLimits).forEach(contextRuleStore::upsert)
+        RuleMigration.appBlockRules(appContext, blockedPackages, hiddenPackages).forEach(contextRuleStore::upsert)
+        RuleMigration.categoryBudgetRules(categories).forEach(contextRuleStore::upsert)
 
         prefs.edit { putBoolean(KEY_APP_RULES_MIGRATED, true) }
     }
