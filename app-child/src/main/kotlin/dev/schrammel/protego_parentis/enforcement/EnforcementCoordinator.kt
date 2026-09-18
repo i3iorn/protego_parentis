@@ -17,6 +17,7 @@ import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import dev.schrammel.protego_parentis.policy.PolicyClock
 import dev.schrammel.protego_parentis.policy.PolicyEngine
+import dev.schrammel.protego_parentis.policy.reconcile.DevicePolicyPort
 import dev.schrammel.protego_parentis.policy.reconcile.DeviceLocker
 import dev.schrammel.protego_parentis.policy.reconcile.LockResult
 import dev.schrammel.protego_parentis.policy.reconcile.DeviceReleaser
@@ -57,19 +58,27 @@ data class EnforcementSnapshot(
  * Everything interesting has already been decided by [PolicyEngine] and
  * [PolicyReconciler]. This class exists to sequence them and to be the one place
  * the UI and the service both call, so they can never disagree about the state.
+ *
+ * Every collaborator below is a constructor parameter with a production
+ * default, not a hardcoded `new`, so [evaluate]'s sequencing — in particular
+ * the branches gated on [DevicePolicyPort.isDeviceOwner], which nothing on a
+ * test device can make true — can be exercised against a fake [DevicePolicyPort]
+ * instead of only ever running for real on a provisioned phone.
  */
-class EnforcementCoordinator(context: Context) {
+class EnforcementCoordinator(
+    context: Context,
+    private val port: DevicePolicyPort = AndroidDevicePolicyPort(context.applicationContext),
+    private val collector: UsageCollector = UsageCollector(context.applicationContext),
+    private val store: LocalPolicyStore = LocalPolicyStore(context.applicationContext),
+    private val grants: GrantStore = GrantStore(context.applicationContext),
+    private val history: UsageHistoryStore = UsageHistoryStore(context.applicationContext),
+    private val installedApps: InstalledApps = InstalledApps(context.applicationContext),
+    private val contextProvider: ContextProvider = ContextProvider(context.applicationContext),
+    private val contextRules: ContextRuleStore = ContextRuleStore(context.applicationContext),
+    private val recorder: UsageHistoryRecorder = UsageHistoryRecorder(collector, history),
+) {
 
     private val appContext = context.applicationContext
-    private val collector = UsageCollector(appContext)
-    private val store = LocalPolicyStore(appContext)
-    private val grants = GrantStore(appContext)
-    private val history = UsageHistoryStore(appContext)
-    private val recorder = UsageHistoryRecorder(collector, history)
-    private val installedApps = InstalledApps(appContext)
-    private val contextProvider = ContextProvider(appContext)
-    private val contextRules = ContextRuleStore(appContext)
-    private val port = AndroidDevicePolicyPort(appContext)
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
 
     init {
