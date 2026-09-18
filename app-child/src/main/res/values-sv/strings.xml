@@ -184,6 +184,8 @@
     <string name="context_delete">Ta bort regeln</string>
     <string name="context_save_sent_remote">Skickat — gäller när barnets telefon synkroniserar.</string>
     <string name="context_delete_sent_remote">Skickat — barnets telefon tar bort regeln när den synkroniserar.</string>
+    <string name="context_blackout_title">Blockera allt, utan undantag?</string>
+    <string name="context_blackout_body">Den här regeln blockerar alla appar, alltid, och inget annat i regelsamlingen släpper igenom någon app. Inget kommer att köras förrän regeln stängs av, tas bort eller ändras. Om du menade att släppa igenom några appar, lägg till en tillåt-regel för dem först.</string>
 
     <string name="places_title">Platser</string>
     <string name="places_explainer">En plats sparas där du står. Koordinaterna stannar på telefonen: de skickas aldrig någonstans och syns aldrig i loggen.</string>

@@ -79,6 +79,18 @@ class AppLimitsActivity : ParentGatedActivity() {
                 setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_md))
             },
         )
+        // A limit set here is an ordinary ContextRule under the hood (see this
+        // class's own doc comment), governed by the same precedence a category
+        // block or an Allow elsewhere can override — worth the same pointer to
+        // the explanation ContextRulesActivity and ContextRuleEditActivity give,
+        // since a parent who only ever uses this screen would otherwise never
+        // see it.
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_tutorial_open)
+                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@AppLimitsActivity)) }
+            },
+        )
         // Built once and never rebuilt. Recreating the field on each keystroke
         // would take the cursor and the typed text with it.
         container.addView(searchField { query = it; renderRows() })
@@ -207,6 +219,11 @@ class AppLimitsActivity : ParentGatedActivity() {
                 before = Audit.minutes(current),
                 after = Audit.minutes(minutes),
             )
+            // Same acknowledgement ContextRuleEditActivity gives for the identical
+            // situation: this writes to the same remotely-synced store, and a
+            // parent editing a limit for a child's device deserves to know the
+            // change is pending sync rather than already live.
+            if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
             onGatedContentVisible()
         }
     }

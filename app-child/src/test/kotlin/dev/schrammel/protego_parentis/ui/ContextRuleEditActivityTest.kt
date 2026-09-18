@@ -1,5 +1,6 @@
 package dev.schrammel.protego_parentis.ui
 
+import android.app.AlertDialog
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -24,6 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.shadows.ShadowAlertDialog
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -276,6 +278,51 @@ class ContextRuleEditActivityTest {
             // already uses.
             button.performClick()
         }
+    }
+
+    @Test
+    fun `saving a new rule that blocks everything with no exception asks for confirmation first`() {
+        // A brand-new rule's defaults are exactly this shape (Always, Everything,
+        // Block) — the accidental case #226 worried about, not a contrived one.
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context),
+        ).setup().get()
+
+        renameField(activity)?.setText("Lockdown")
+        clickButton(activity, "Save rule")
+
+        // Not written yet — the confirmation dialog has to be answered first.
+        assertTrue(store().rules.none { it.name == "Lockdown" })
+
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        requireNotNull(dialog) { "expected a confirmation dialog before saving a total blackout rule" }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+
+        assertTrue(store().rules.any { it.name == "Lockdown" })
+    }
+
+    @Test
+    fun `saving a total-block rule does not ask again once an Allow rule exists`() {
+        store().upsert(
+            ContextRule(
+                id = "an-allow-rule",
+                name = "Except homework app",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Allow,
+                target = RuleTarget.Apps(setOf(PackageName("com.example.homework"))),
+            ),
+        )
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context),
+        ).setup().get()
+
+        renameField(activity)?.setText("Lockdown except homework")
+        clickButton(activity, "Save rule")
+
+        assertTrue(store().rules.any { it.name == "Lockdown except homework" })
     }
 
     private fun renameField(activity: ContextRuleEditActivity): android.widget.EditText? =

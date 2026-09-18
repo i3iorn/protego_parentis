@@ -149,6 +149,16 @@ class CategoryEditActivity : ParentGatedActivity() {
         )
         if (!canEdit) content.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
+        // The limit below is an ordinary ContextRule under the hood (see this
+        // class's own doc comment), governed by the same precedence a nested
+        // category or a per-app rule elsewhere can override.
+        content.addView(
+            actionButton().apply {
+                setText(R.string.context_tutorial_open)
+                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@CategoryEditActivity)) }
+            },
+        )
+
         nameInput = EditText(this).apply {
             hint = getString(R.string.category_name_hint)
             setText(existing?.name.orEmpty())
@@ -300,6 +310,11 @@ class CategoryEditActivity : ParentGatedActivity() {
             subject = name,
             after = Audit.minutes(minutes),
         )
+        // Same acknowledgement ContextRuleEditActivity gives for the identical
+        // situation: this writes to the same remotely-synced stores, and "same
+        // button, same instant finish()" would otherwise look identical to a
+        // local save that already took effect.
+        if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
         finish()
     }
 
