@@ -370,14 +370,27 @@ class EnforcementService : Service() {
         // reconciler has to be told to push it again rather than diff it away.
         coordinator.forgetAppliedRestrictions()
 
-        val installed = installedApps.launchable()
-        val fresh = review.noticeInstalled(installed.map { it.pkg.value }.toSet())
-        if (fresh.isEmpty()) return
+        val installedPackages = installedApps.launchable().map { it.pkg.value }.toSet()
+        val fresh = review.noticeInstalled(installedPackages)
+        fresh.forEach { pkg -> requestNotifier.notifyNewAppLocally(installedApps.labelFor(PackageName(pkg))) }
 
-        fresh.forEach { pkg ->
-            val label = installedApps.labelFor(PackageName(pkg))
-            requestNotifier.notifyNewAppLocally(label)
-            AppRegistry.realtimeSync.publishAppInstalled(pkg, label)
+        // An uninstall never reaches noticeInstalled — it only ever compares
+        // what is newly present — so a pending app that disappeared before a
+        // parent answered would otherwise sit forever, and now be repeated by
+        // the retry below on every tick.
+        (review.pending - installedPackages).forEach(review::forgetPending)
+
+        // Announces every app still waiting on a parent's decision, not only
+        // what is fresh this sweep. AppRegistry.realtimeSync.publishAppInstalled
+        // is a single, non-durable publish (see SyncPublisher.publish) with no
+        // queue behind it, so a phone that was offline or mid-handshake the one
+        // time an app was noticed would otherwise never tell a parent about it
+        // again — review.pending only clears once a parent actually answers, so
+        // this keeps retrying until one does. NewAppStore.remember on the
+        // receiving end already ignores a package it is already holding, so
+        // repeating this once the first attempt did land costs nothing.
+        review.pending.forEach { pkg ->
+            AppRegistry.realtimeSync.publishAppInstalled(pkg, installedApps.labelFor(PackageName(pkg)))
         }
     }
 
