@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.GrantTarget
@@ -162,7 +163,7 @@ class RequestsActivity : DementorActivity() {
                     // the selected row not just readable but findable.
                     if (selected) {
                         setTypeface(typeface, android.graphics.Typeface.BOLD)
-                        setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.brand))
+                        setTextColor(ContextCompat.getColor(context, R.color.brand))
                     }
                     setOnClickListener {
                         target = option
