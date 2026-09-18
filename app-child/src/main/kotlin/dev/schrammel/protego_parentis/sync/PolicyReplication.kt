@@ -231,12 +231,8 @@ class PolicyReplication(context: Context) {
      * device's role and identity do not permit — a child device passing another
      * child's id here simply produces no ops.
      */
-    fun write(snapshot: PolicySnapshot, childId: DeviceId? = defaultChildId()): List<StateOp> {
-        val id = childId ?: return emptyList()
-        val origin = LocalDeviceId.current() ?: return emptyList()
-        val role = RoleStore(appContext).roleOrChild.toSyncRole()
-        return state.writeAll(flatten(snapshot, id), origin, role)
-    }
+    fun write(snapshot: PolicySnapshot, childId: DeviceId? = defaultChildId()): List<StateOp> =
+        writeRecords(childId) { id -> flatten(snapshot, id) }
 
     /**
      * Writes the replicated rules back onto this phone.
@@ -321,12 +317,7 @@ class PolicyReplication(context: Context) {
         schedules: List<StoredSchedule>,
         childId: DeviceId? = defaultChildId(),
         now: Instant = Instant.now(),
-    ): List<StateOp> {
-        val id = childId ?: return emptyList()
-        val origin = LocalDeviceId.current() ?: return emptyList()
-        val role = RoleStore(appContext).roleOrChild.toSyncRole()
-        return state.writeAll(flattenSchedules(schedules, id, now), origin, role)
-    }
+    ): List<StateOp> = writeRecords(childId) { id -> flattenSchedules(schedules, id, now) }
 
     /**
      * [childId]'s replicated schedules — every one this replica holds that is
@@ -439,11 +430,7 @@ class PolicyReplication(context: Context) {
             putMembers("$scheduleRoot/$FIELD_SCHEDULE_PACKAGES", schedule.packages)
         }
 
-        val live = schedules.map { it.id }.toSet()
-        state.idsUnder(root)
-            .filterNot { it in live }
-            .filterNot { FIELD_SCHEDULE_DELETED in state.children("$root/$it") }
-            .forEach { gone -> put("$root/$gone/$FIELD_SCHEDULE_DELETED", now.epochSecond.toString()) }
+        tombstoneGone(root, schedules.map { it.id }.toSet(), FIELD_SCHEDULE_DELETED, now)
     }
 
     /**
@@ -460,12 +447,7 @@ class PolicyReplication(context: Context) {
         rules: List<ContextRule>,
         childId: DeviceId? = defaultChildId(),
         now: Instant = Instant.now(),
-    ): List<StateOp> {
-        val id = childId ?: return emptyList()
-        val origin = LocalDeviceId.current() ?: return emptyList()
-        val role = RoleStore(appContext).roleOrChild.toSyncRole()
-        return state.writeAll(flattenContextRules(rules, id, now), origin, role)
-    }
+    ): List<StateOp> = writeRecords(childId) { id -> flattenContextRules(rules, id, now) }
 
     /**
      * [childId]'s replicated contextual rules, excluding any this replica has
@@ -538,11 +520,7 @@ class PolicyReplication(context: Context) {
             put("$ruleRoot/$FIELD_RULE_TARGET", ContextRuleCodec.encodeTargetToString(rule.target))
         }
 
-        val live = rules.map { it.id }.toSet()
-        state.idsUnder(root)
-            .filterNot { it in live }
-            .filterNot { FIELD_RULE_DELETED in state.children("$root/$it") }
-            .forEach { gone -> put("$root/$gone/$FIELD_RULE_DELETED", now.epochSecond.toString()) }
+        tombstoneGone(root, rules.map { it.id }.toSet(), FIELD_RULE_DELETED, now)
     }
 
     /**
@@ -555,12 +533,7 @@ class PolicyReplication(context: Context) {
         refs: List<PlaceRef>,
         childId: DeviceId? = defaultChildId(),
         now: Instant = Instant.now(),
-    ): List<StateOp> {
-        val id = childId ?: return emptyList()
-        val origin = LocalDeviceId.current() ?: return emptyList()
-        val role = RoleStore(appContext).roleOrChild.toSyncRole()
-        return state.writeAll(flattenPlaceRefs(refs, id, now), origin, role)
-    }
+    ): List<StateOp> = writeRecords(childId) { id -> flattenPlaceRefs(refs, id, now) }
 
     /**
      * [childId]'s replicated places, excluding any this replica has been
@@ -642,11 +615,7 @@ class PolicyReplication(context: Context) {
             put("$placeRoot/$FIELD_PLACE_RADIUS", ref.radiusMetres.toString())
         }
 
-        val live = refs.map { it.id.value }.toSet()
-        state.idsUnder(root)
-            .filterNot { it in live }
-            .filterNot { FIELD_PLACE_DELETED in state.children("$root/$it") }
-            .forEach { gone -> put("$root/$gone/$FIELD_PLACE_DELETED", now.epochSecond.toString()) }
+        tombstoneGone(root, refs.map { it.id.value }.toSet(), FIELD_PLACE_DELETED, now)
     }
 
     /**
@@ -663,12 +632,7 @@ class PolicyReplication(context: Context) {
         rules: List<AutoApproval>,
         childId: DeviceId? = defaultChildId(),
         now: Instant = Instant.now(),
-    ): List<StateOp> {
-        val id = childId ?: return emptyList()
-        val origin = LocalDeviceId.current() ?: return emptyList()
-        val role = RoleStore(appContext).roleOrChild.toSyncRole()
-        return state.writeAll(flattenAutoApprovals(rules, id, now), origin, role)
-    }
+    ): List<StateOp> = writeRecords(childId) { id -> flattenAutoApprovals(rules, id, now) }
 
     /**
      * [childId]'s replicated auto-approval rules, excluding any this replica
@@ -732,14 +696,43 @@ class PolicyReplication(context: Context) {
             put("$ruleRoot/$FIELD_AUTO_WINDOW", rule.window.name)
         }
 
-        val live = rules.map { it.id }.toSet()
-        state.idsUnder(root)
-            .filterNot { it in live }
-            .filterNot { FIELD_AUTO_DELETED in state.children("$root/$it") }
-            .forEach { gone -> put("$root/$gone/$FIELD_AUTO_DELETED", now.epochSecond.toString()) }
+        tombstoneGone(root, rules.map { it.id }.toSet(), FIELD_AUTO_DELETED, now)
     }
 
     private fun members(root: String): Set<String> = state.children(root).keys
+
+    /**
+     * The shared wiring behind every `write*` method above: refuse an
+     * unresolved child or an unavailable identity, otherwise flatten and
+     * write under this device's own role. [flatten] is the one thing that
+     * differs per record type — everything else here was copy-pasted once
+     * per type before this existed.
+     */
+    private fun writeRecords(childId: DeviceId?, flatten: (DeviceId) -> Map<String, String?>): List<StateOp> {
+        val id = childId ?: return emptyList()
+        val origin = LocalDeviceId.current() ?: return emptyList()
+        val role = RoleStore(appContext).roleOrChild.toSyncRole()
+        return state.writeAll(flatten(id), origin, role)
+    }
+
+    /**
+     * Tombstones an id under [root] this replica already knows about that is
+     * not in [liveIds] and does not already carry [deletedField] — the
+     * shared tail every `flatten*` method below ends with, once its own
+     * per-item fields are written. See [flattenSchedules] for why a marker
+     * rather than nulling every field.
+     */
+    private fun MutableMap<String, String?>.tombstoneGone(
+        root: String,
+        liveIds: Set<String>,
+        deletedField: String,
+        now: Instant,
+    ) {
+        state.idsUnder(root)
+            .filterNot { it in liveIds }
+            .filterNot { deletedField in state.children("$root/$it") }
+            .forEach { gone -> put("$root/$gone/$deletedField", now.epochSecond.toString()) }
+    }
 
     /**
      * Every rule as a path, including the ones that should now be absent.
