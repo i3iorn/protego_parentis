@@ -148,13 +148,13 @@
     <string name="context_enabled">Rule is on</string>
     <string name="context_when_header">When</string>
     <string name="context_when_info_title">About “When”</string>
-    <string name="context_when_info_body">The condition that has to be true for this rule to apply — always, on a certain Wi-Fi network, near a paired device, at a saved place, below a battery level, during a time window, or once a set number of minutes are used today. “Apply when this is NOT true” flips it. Add another condition below to require several at once (“All of these”) or any one of them (“Any of these”).</string>
-    <string name="context_invert">Apply when this is NOT true</string>
+    <string name="context_when_info_body">The condition that has to be true for this rule to apply — always, on a certain Wi-Fi network, near a paired device, at a saved place, below a battery level, during a time window, or once a set number of minutes are used today. Add another condition below to require several at once (“All of these”) or any one of them (“Any of these”) — that choice covers every condition listed, the first one included. “Apply when the above is NOT true” flips the result of all of them together, not just the last one you touched.</string>
     <string name="context_add_condition">+ Add another condition</string>
     <string name="context_remove_condition">Remove</string>
     <string name="context_combine_header">Match</string>
     <string name="context_combine_all">All of these</string>
     <string name="context_combine_any">Any of these</string>
+    <string name="context_invert">Apply when the above is NOT true</string>
     <string name="context_do_header">Do this</string>
     <string name="context_do_info_title">About “Do this”</string>
     <string name="context_do_info_body">What the rule does while its condition holds. Block stops the target outright. Allow exempts it from every other rule and budget — an allow always beats a block from a different rule. Exempt entirely is stronger still: it also reaches network and DNS blocking, the same tier as the built-in safety allowlist. Set a limit replaces the target’s own daily allowance; when two rules set a limit for the same target, the tighter one wins.</string>

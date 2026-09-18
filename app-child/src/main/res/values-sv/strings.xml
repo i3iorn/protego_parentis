@@ -152,13 +152,13 @@
     <string name="context_enabled">Regeln är på</string>
     <string name="context_when_header">När</string>
     <string name="context_when_info_title">Om “När”</string>
-    <string name="context_when_info_body">Villkoret som måste stämma för att regeln ska gälla — alltid, på ett visst Wi-Fi, nära en parkopplad enhet, vid en sparad plats, under en batterinivå, under ett tidsfönster, eller när ett visst antal minuter använts idag. “Gäller när detta INTE stämmer” vänder på det. Lägg till ett villkor till nedan för att kräva flera samtidigt (“Alla dessa”) eller något av dem (“Någon av dessa”).</string>
-    <string name="context_invert">Gäller när detta INTE stämmer</string>
+    <string name="context_when_info_body">Villkoret som måste stämma för att regeln ska gälla — alltid, på ett visst Wi-Fi, nära en parkopplad enhet, vid en sparad plats, under en batterinivå, under ett tidsfönster, eller när ett visst antal minuter använts idag. Lägg till ett villkor till nedan för att kräva flera samtidigt (“Alla dessa”) eller något av dem (“Någon av dessa”) — det valet gäller alla villkor i listan, det första inräknat. “Gäller när ovanstående INTE stämmer” vänder på resultatet av alla tillsammans, inte bara det du senast ändrade.</string>
     <string name="context_add_condition">+ Lägg till ett villkor till</string>
     <string name="context_remove_condition">Ta bort</string>
     <string name="context_combine_header">Matcha</string>
     <string name="context_combine_all">Alla dessa</string>
     <string name="context_combine_any">Någon av dessa</string>
+    <string name="context_invert">Gäller när ovanstående INTE stämmer</string>
     <string name="context_do_header">Gör detta</string>
     <string name="context_do_info_title">Om “Gör detta”</string>
     <string name="context_do_info_body">Vad regeln gör medan villkoret gäller. Blockera stoppar målet helt. Tillåt fritt undantar det från alla andra regler och gränser — tillåt fritt vinner alltid över en blockering från en annan regel. Undanta helt är starkare: det når även nätverks- och DNS-blockering, samma nivå som den inbyggda säkerhetslistan. Sätt en gräns ersätter målets egen dagliga gräns; sätter två regler en gräns för samma mål vinner den snävaste.</string>
