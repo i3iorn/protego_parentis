@@ -69,6 +69,7 @@ class RoleSetupActivity : DementorActivity() {
             ?.let { stored -> DeviceRole.entries.firstOrNull { it.name == stored } }
 
         val column = contentColumn()
+        column.addView(stepIndicator(1))
         column.addView(screenTitle(getString(R.string.role_title)))
         column.addView(bodyText(getString(R.string.role_intro)))
 
@@ -121,7 +122,7 @@ class RoleSetupActivity : DementorActivity() {
      */
     private fun choose(role: DeviceRole) {
         pendingRole = role
-        setPin.launch(PinActivity.intent(this))
+        setPin.launch(PinActivity.intent(this, onboarding = true))
     }
 
     private fun commit(role: DeviceRole) {

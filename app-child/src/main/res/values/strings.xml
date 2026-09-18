@@ -507,6 +507,7 @@
     <string name="home_category_no_limit">%1$s: no limit</string>
 
     <!-- Choosing which side of the family this install is. -->
+    <string name="onboarding_step">Step %1$d of %2$d</string>
     <string name="role_title">Whose phone is this?</string>
     <string name="role_intro">Dementor Watch is one app doing two jobs. Pick the one that matches this phone.</string>
     <string name="role_child_header">The phone with the limits</string>
@@ -983,6 +984,7 @@
     <string name="join_action">Join</string>
     <string name="join_bad_token">That code was not recognised. Check it against the phone you copied it from.</string>
     <string name="join_done">Joined. A parent has to approve this phone before it can do anything.</string>
+    <string name="join_unreachable_warning">This phone could not reach the server just now (%1$s). If this doesn\'t clear up on its own, check the address on the Relay screen below — a family that can\'t reach its server looks exactly like a quiet week.</string>
     <string name="join_start_header">Or start a new family</string>
     <string name="join_start_hint">Pick a passphrase above first. Everyone who joins will need it, and it is the only thing keeping the family\'s messages private — choose something long.</string>
     <string name="join_start_server_hint">Leave this as ntfy.sh unless the family runs its own relay. Whoever joins with the code below gets this address automatically — there is no separate step to move them onto it.</string>
@@ -1152,6 +1154,7 @@
     <string name="scan_not_a_family_code">That is a code, but not a family code. Still looking.</string>
     <string name="scan_no_permission">Without the camera this phone cannot scan. Type the code in instead, or allow the camera in Android settings.</string>
     <string name="scan_no_camera">This phone would not open its camera. Type the code in instead.</string>
+    <string name="scan_open_settings">Open camera settings</string>
     <string name="scan_type_instead">Type it in instead</string>
 
     <!--
@@ -1215,6 +1218,7 @@
     <string name="perms_owner_warning">Worth deciding together rather than springing on somebody. Without it the app still measures honestly and reports honestly — it just cannot block.</string>
 
     <string name="join_suggest_passphrase">Suggest a strong one</string>
+    <string name="join_suggest_overwrite_confirm">This will replace what\'s already typed in the passphrase field above. If that\'s a code you were given to join a family, it will be lost.</string>
     <string name="passphrase_refused_short">That is too short to protect anything. Use the suggestion, or a phrase of several words.</string>
     <string name="passphrase_refused_few">That is long but built from only a few characters, which is not the same thing.</string>
     <string name="passphrase_refused_repeated">That is one thing repeated. Use the suggestion, or a phrase of several words.</string>

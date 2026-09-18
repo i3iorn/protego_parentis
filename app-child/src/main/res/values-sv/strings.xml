@@ -501,6 +501,7 @@
     <string name="home_category_no_limit">%1$s: ingen gräns</string>
 
     <!-- Vilken sida av familjen den här installationen är. -->
+    <string name="onboarding_step">Steg %1$d av %2$d</string>
     <string name="role_title">Vems telefon är det här?</string>
     <string name="role_intro">Dementor Watch är en app med två uppgifter. Välj den som passar den här telefonen.</string>
     <string name="role_child_header">Telefonen med gränserna</string>
@@ -977,6 +978,7 @@
     <string name="join_action">Gå med</string>
     <string name="join_bad_token">Koden känns inte igen. Kontrollera den mot telefonen du kopierade den från.</string>
     <string name="join_done">Med i familjen. En förälder måste godkänna telefonen innan den kan göra något.</string>
+    <string name="join_unreachable_warning">Telefonen nådde inte servern just nu (%1$s). Om det inte rättar till sig själv, kontrollera adressen under Relä nedan — en familj som inte når sin server ser exakt ut som en tyst vecka.</string>
     <string name="join_start_header">Eller starta en ny familj</string>
     <string name="join_start_hint">Välj en lösenfras ovan först. Alla som går med behöver den, och den är det enda som håller familjens meddelanden privata — välj något långt.</string>
     <string name="join_start_server_hint">Lämna som ntfy.sh om inte familjen kör sin egen relä. Den som går med via koden nedan får den här adressen automatiskt — det finns inget separat steg för att flytta dem dit.</string>
@@ -1146,6 +1148,7 @@
     <string name="scan_not_a_family_code">Det är en kod, men inte en familjekod. Letar vidare.</string>
     <string name="scan_no_permission">Utan kameran kan telefonen inte skanna. Skriv in koden i stället, eller tillåt kameran i Androids inställningar.</string>
     <string name="scan_no_camera">Telefonen ville inte öppna kameran. Skriv in koden i stället.</string>
+    <string name="scan_open_settings">Öppna kamerainställningar</string>
     <string name="scan_type_instead">Skriv in den i stället</string>
 
     <!-- Att sätta upp de behörigheter Android inte delar ut med en dialogruta. -->
@@ -1204,6 +1207,7 @@
     <string name="perms_owner_warning">Värt att bestämma tillsammans i stället för att överrumpla någon med. Utan det mäter appen ärligt och rapporterar ärligt — den kan bara inte blockera.</string>
 
     <string name="join_suggest_passphrase">Föreslå en stark</string>
+    <string name="join_suggest_overwrite_confirm">Detta ersätter det som redan är skrivet i lösenordsfältet ovan. Om det är en kod du fått för att gå med i en familj försvinner den.</string>
     <string name="passphrase_refused_short">Det är för kort för att skydda något. Använd förslaget, eller en fras med flera ord.</string>
     <string name="passphrase_refused_few">Det är långt men byggt av bara några få tecken, vilket inte är samma sak.</string>
     <string name="passphrase_refused_repeated">Det är en sak som upprepas. Använd förslaget, eller en fras med flera ord.</string>

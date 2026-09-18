@@ -11,7 +11,6 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
@@ -181,7 +180,10 @@ class SyncBackendActivity : ParentGatedActivity() {
 
         return runCatching { FamilyToken(chosen, server, settings.topic) }
             .getOrElse {
-                toast(R.string.backend_bad_server, Toast.LENGTH_LONG)
+                // Persistent like testResult below it, rather than a toast that is
+                // gone by the time someone looks back at the screen.
+                testResult = getString(R.string.backend_bad_server)
+                render()
                 null
             }
     }

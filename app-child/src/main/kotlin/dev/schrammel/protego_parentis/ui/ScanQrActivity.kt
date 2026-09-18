@@ -4,9 +4,12 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -46,6 +49,7 @@ class ScanQrActivity : DementorActivity() {
 
     private lateinit var status: TextView
     private lateinit var preview: PreviewView
+    private lateinit var openSettings: Button
 
     /** One frame at a time, off the main thread. Shut down in [onDestroy]. */
     private val decoding = Executors.newSingleThreadExecutor()
@@ -103,6 +107,23 @@ class ScanQrActivity : DementorActivity() {
                 addView(status)
                 addView(
                     Button(context).apply {
+                        setText(R.string.scan_open_settings)
+                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                            val pad = dimen(R.dimen.screen_padding)
+                            setMargins(pad, 0, pad, dimen(R.dimen.space_sm))
+                        }
+                        visibility = View.GONE
+                        setOnClickListener {
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    .setData(Uri.fromParts("package", packageName, null)),
+                            )
+                        }
+                        openSettings = this
+                    },
+                )
+                addView(
+                    Button(context).apply {
                         setText(R.string.scan_type_instead)
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
                             val pad = dimen(R.dimen.screen_padding)
@@ -121,6 +142,7 @@ class ScanQrActivity : DementorActivity() {
 
     private fun refuse() {
         status.setText(R.string.scan_no_permission)
+        openSettings.visibility = View.VISIBLE
     }
 
     private fun start() {

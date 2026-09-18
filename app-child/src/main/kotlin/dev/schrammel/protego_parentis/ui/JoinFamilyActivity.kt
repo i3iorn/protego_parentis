@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -12,6 +13,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
@@ -62,6 +64,10 @@ class JoinFamilyActivity : ParentGatedActivity() {
     private lateinit var passphraseInput: EditText
     private lateinit var strengthNote: TextView
     private lateinit var startServerInput: EditText
+    private lateinit var formError: TextView
+
+    /** Set once a post-join reachability check comes back unreachable; null otherwise. */
+    private var reachabilityWarning: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +85,13 @@ class JoinFamilyActivity : ParentGatedActivity() {
         }
         passphraseInput = field()
         strengthNote = captionText("")
+        // A toast for a form error is gone by the time someone looks back at the
+        // screen — this is the persistent version, sitting under the button that
+        // triggers each error and staying put until the next attempt.
+        formError = captionText("").apply {
+            setTextColor(ContextCompat.getColor(this@JoinFamilyActivity, R.color.state_critical))
+            visibility = View.GONE
+        }
         // Pre-filled with the default rather than left blank: leaving it exactly
         // as shown is the common case, and a blank field would make "unset" and
         // "delete the default on purpose" look the same.
@@ -132,6 +145,13 @@ class JoinFamilyActivity : ParentGatedActivity() {
         if (settings.isUsable) {
             column.addView(screenTitle(getString(R.string.join_connected_title)))
             column.addView(connectedCard())
+            reachabilityWarning?.let { warning ->
+                column.addView(
+                    captionText(warning).apply {
+                        setTextColor(ContextCompat.getColor(this@JoinFamilyActivity, R.color.state_critical))
+                    },
+                )
+            }
             column.addView(
                 actionButton().apply {
                     setText(R.string.join_leave)
@@ -168,6 +188,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
             return
         }
 
+        if (onboarding) column.addView(stepIndicator(3))
         column.addView(screenTitle(getString(R.string.join_title)))
         column.addView(bodyText(getString(R.string.join_intro)))
         if (onboarding) column.addView(captionText(getString(R.string.join_onboarding_hint)))
@@ -190,6 +211,9 @@ class JoinFamilyActivity : ParentGatedActivity() {
         column.addView(passphraseInput)
         column.addView(strengthNote)
         passphraseInput.addTextChangedListener(PassphraseWatcher { showStrength(it) })
+        formError.visibility = View.GONE
+        (formError.parent as? ViewGroup)?.removeView(formError)
+        column.addView(formError)
 
         column.addView(
             actionButton().apply {
@@ -347,10 +371,16 @@ class JoinFamilyActivity : ParentGatedActivity() {
     private fun join() {
         val token = FamilyTokens.decode(tokenInput.text.toString())
         if (token == null) {
-            Toast.makeText(this, R.string.join_bad_token, Toast.LENGTH_LONG).show()
+            showFormError(getString(R.string.join_bad_token))
             return
         }
         connect(token, passphraseInput.text.toString())
+    }
+
+    /** Sets a form error that stays on screen, unlike a toast that is gone by the time someone looks. */
+    private fun showFormError(text: String) {
+        formError.text = text
+        formError.visibility = View.VISIBLE
     }
 
     /**
@@ -364,8 +394,25 @@ class JoinFamilyActivity : ParentGatedActivity() {
      * Shown rather than hidden, and the field is made visible at the same time.
      * This has to be read aloud to a second phone, so a suggestion behind dots
      * would be a suggestion nobody could use.
+     *
+     * The field itself is still the one above, shared with "join" on this same
+     * scrolling screen — confirmed first when it already holds something, since
+     * whatever is there could just as easily be a code someone typed to join a
+     * family rather than a suggestion of this button's own making.
      */
     private fun suggestPassphrase() {
+        if (passphraseInput.text.isNotEmpty()) {
+            confirmDialog(
+                R.string.join_suggest_passphrase,
+                R.string.join_suggest_overwrite_confirm,
+                R.string.join_suggest_passphrase,
+            ) { fillSuggestion() }
+            return
+        }
+        fillSuggestion()
+    }
+
+    private fun fillSuggestion() {
         passphraseInput.transformationMethod = null
         passphraseInput.setText(Passphrases.suggest())
         passphraseInput.setSelection(passphraseInput.text.length)
@@ -386,7 +433,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
         // secret they cannot change without re-pairing everything.
         val verdict = PassphraseStrength.assess(passphraseInput.text.toString())
         if (verdict is PassphraseVerdict.Unusable) {
-            Toast.makeText(this, refusalText(verdict.why), Toast.LENGTH_LONG).show()
+            showFormError(refusalText(verdict.why))
             return
         }
 
@@ -434,15 +481,13 @@ class JoinFamilyActivity : ParentGatedActivity() {
 
     private fun connect(token: FamilyToken, passphrase: String) {
         if (passphrase.length < MessageCrypto.MIN_PASSPHRASE_LENGTH) {
-            Toast.makeText(
-                this,
+            showFormError(
                 resources.getQuantityString(
                     R.plurals.sync_passphrase_too_short,
                     MessageCrypto.MIN_PASSPHRASE_LENGTH,
                     MessageCrypto.MIN_PASSPHRASE_LENGTH,
                 ),
-                Toast.LENGTH_LONG,
-            ).show()
+            )
             return
         }
 
@@ -451,10 +496,11 @@ class JoinFamilyActivity : ParentGatedActivity() {
         // falling back to plain text. Without this the screen would say "joined"
         // and the family would appear unconfigured a moment later.
         if (!config.canKeepSecrets()) {
-            Toast.makeText(this, R.string.join_no_keystore, Toast.LENGTH_LONG).show()
+            showFormError(getString(R.string.join_no_keystore))
             return
         }
 
+        formError.visibility = View.GONE
         sync.join(token, passphrase)
         Audit.record(
             context = this,
@@ -468,7 +514,23 @@ class JoinFamilyActivity : ParentGatedActivity() {
         // Start streaming so messages land as soon as they are published.
         RealtimeSyncService.start(this)
         Toast.makeText(this, R.string.join_done, Toast.LENGTH_LONG).show()
+        reachabilityWarning = null
         render()
+
+        // "Joined" only means the config was accepted and stored — a mistyped
+        // server or dead relay looks identical at this point and would otherwise
+        // surface days later as "the family has been quiet," exactly the failure
+        // SyncBackendActivity's own test button exists to catch before a move.
+        // Checked here too, since this is the other place a family's address is
+        // set for the first time, and asynchronously so a slow or unreachable
+        // server doesn't hold up the screen that just said "joined."
+        sync.testReachable(token) { result ->
+            runOnUiThread {
+                if (isFinishing || isDestroyed || result == "reachable") return@runOnUiThread
+                reachabilityWarning = getString(R.string.join_unreachable_warning, result)
+                render()
+            }
+        }
     }
 
     private fun confirmLeave() {
