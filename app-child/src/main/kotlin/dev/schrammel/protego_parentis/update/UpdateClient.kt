@@ -18,9 +18,9 @@ import java.util.concurrent.TimeUnit
  * follows on its own — see `docs/RELEASING.md` for why that did not need a
  * manual redirect handler.
  */
-class UpdateClient(private val repoUrl: String = DEFAULT_REPO_URL) {
+class UpdateClient(private val repoUrl: String = DEFAULT_REPO_URL) : UpdateSource {
 
-    fun fetchManifest(): UpdateManifest? {
+    override fun fetchManifest(): UpdateManifest? {
         val raw = get("$repoUrl/releases/latest/download/update.json") ?: return null
         return UpdateManifest.parse(raw)
     }
@@ -35,7 +35,7 @@ class UpdateClient(private val repoUrl: String = DEFAULT_REPO_URL) {
      * substituted download is treated exactly as seriously as one that failed
      * outright: not installed, not left around for a later retry to trust.
      */
-    fun downloadApk(manifest: UpdateManifest, destination: File): Boolean {
+    override fun downloadApk(manifest: UpdateManifest, destination: File): Boolean {
         val ok = runCatching {
             val connection = open("$repoUrl/releases/latest/download/app-child-release.apk")
             try {
