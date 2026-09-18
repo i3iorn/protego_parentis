@@ -84,11 +84,22 @@ class TelemetryReplication(context: Context) {
                 }
                 // An app that has dropped out of the top few is cleared, or a
                 // parent's dashboard would keep showing yesterday's list padded
-                // with whatever used to be on it.
+                // with whatever used to be on it — this is also what makes a day
+                // roll over cleanly: an empty list here clears every app that was
+                // in yesterday's.
+                //
+                // Read via [state.entries] rather than [ReplicatedStateStore.children],
+                // which only sees one path segment past the prefix — every app
+                // register lives two past it ("apps/<label>/m"), so `children`
+                // never matched one and this clearing never actually ran.
                 val live = apps.take(MAX_APPS).map { key(it.label) }.toSet()
-                state.children(path(APPS)).keys.forEach { gone ->
-                    if (gone.substringBefore('/') !in live) put("${path(APPS)}${ReplicationRules.SEPARATOR}$gone", null)
-                }
+                val root = "${path(APPS)}${ReplicationRules.SEPARATOR}"
+                state.entries.keys
+                    .filter { it.startsWith(root) && it.endsWith("/m") }
+                    .forEach { existing ->
+                        val label = existing.removePrefix(root).removeSuffix("/m")
+                        if (label !in live) put(existing, null)
+                    }
             }
         }
         return state.writeAll(values, origin, RoleStore(appContext).roleOrChild.toSyncRole())

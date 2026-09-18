@@ -215,10 +215,28 @@ fun placeRuleStore(context: Context, target: RuleScope): PlaceRuleStore =
  */
 interface AppCatalog {
     fun launchable(): List<AppInfo>
+
+    /**
+     * A package's label, or the package name itself if this catalog has
+     * never heard of it. Default implementation only — see [LocalAppCatalog]
+     * for why the real device's own catalog does not use it.
+     */
+    fun labelFor(pkg: PackageName): String = launchable().firstOrNull { it.pkg == pkg }?.label ?: pkg.value
 }
 
 class LocalAppCatalog(private val context: Context) : AppCatalog {
-    override fun launchable(): List<AppInfo> = InstalledApps(context).launchable()
+    private val installed = InstalledApps(context)
+
+    override fun launchable(): List<AppInfo> = installed.launchable()
+
+    // The default implementation's launchable().firstOrNull { ... } means a
+    // full PackageManager scan of every installed app just to find the label
+    // of one — cheap once launchable() is already cached for this list, but
+    // this is called once per app in a category (or a rule's target), each
+    // one paying for the whole scan again the first time it runs cold.
+    // InstalledApps.labelFor is the same lookup this app already keeps
+    // cached per package for exactly this reason.
+    override fun labelFor(pkg: PackageName): String = installed.labelFor(pkg)
 }
 
 class RemoteAppCatalog(private val context: Context, private val childId: DeviceId) : AppCatalog {
@@ -228,7 +246,3 @@ class RemoteAppCatalog(private val context: Context, private val childId: Device
 
 fun appCatalog(context: Context, target: RuleScope): AppCatalog =
     if (target.isOwnDevice) LocalAppCatalog(context) else RemoteAppCatalog(context, target.childId)
-
-/** A package's label, or the package name itself if this catalog has never heard of it. */
-fun AppCatalog.labelFor(pkg: PackageName): String =
-    launchable().firstOrNull { it.pkg == pkg }?.label ?: pkg.value

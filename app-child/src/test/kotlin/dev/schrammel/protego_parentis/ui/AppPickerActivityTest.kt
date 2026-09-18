@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.security.DeviceRole
@@ -148,6 +149,47 @@ class AppPickerActivityTest {
         assertNull(findButton(activity.window.decorView, activity.getString(R.string.app_picker_request_list)))
     }
 
+    @Test
+    fun `search field waits for a pause in typing before rebuilding the rows`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        enrolChild("CHILD1")
+        ParentSession.unlock()
+        AppInventoryStore(context).setApps(
+            DeviceId("CHILD1"),
+            listOf(
+                AppInventoryEntry("com.example.games", "Games"),
+                AppInventoryEntry("com.example.photos", "Photos"),
+            ),
+        )
+        val activity = Robolectric.buildActivity(
+            AppPickerActivity::class.java,
+            AppPickerActivity.intent(context, "Pick apps", emptyList(), DeviceId("CHILD1")),
+        ).setup().get()
+
+        requireNotNull(awaitRow(activity) { findText(it, "Photos") }) {
+            "both cached apps should be listed before any search is typed"
+        }
+
+        val field = requireNotNull(findEditText(activity.window.decorView)) {
+            "the search field should be on screen"
+        }
+        field.setText("pho")
+
+        // Right after typing, still both rows: searchField debounces, so this
+        // must not have rebuilt yet.
+        requireNotNull(findText(activity.window.decorView, "Games")) {
+            "typing should not rebuild the rows immediately"
+        }
+
+        // Past searchField's debounce window.
+        shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+
+        requireNotNull(awaitRow(activity) { findText(it, "Photos") }) {
+            "the matching app should still be shown once the debounce fires"
+        }
+        assertNull(findText(activity.window.decorView, "Games"))
+    }
+
     /**
      * Drains the main looper until [find] produces something, or gives up.
      *
@@ -171,6 +213,16 @@ class AppPickerActivityTest {
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
                 findButton(view.getChildAt(i), text)?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun findEditText(view: View): EditText? {
+        if (view is EditText) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findEditText(view.getChildAt(i))?.let { return it }
             }
         }
         return null
