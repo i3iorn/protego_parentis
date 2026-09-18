@@ -380,14 +380,25 @@ internal class SimpleWatcher(private val onChanged: (String) -> Unit) : TextWatc
     override fun afterTextChanged(s: Editable?) = onChanged(s?.toString().orEmpty())
 }
 
+/** How long typing has to pause before [searchField] actually re-renders. */
+private const val SEARCH_DEBOUNCE_MILLIS = 150L
+
 /**
  * The filter row above a list of apps.
  *
  * One row, used by every screen that lists apps, so the same job feels the same
- * everywhere. [onQuery] fires on each keystroke and is expected to re-render from
- * a list already in memory — see [AppSearch]; re-reading `PackageManager` per
- * character would undo the background load these screens do precisely to stay
- * responsive.
+ * everywhere. [onQuery] is expected to re-render from a list already in
+ * memory — see [AppSearch]; re-reading `PackageManager` per character would
+ * undo the background load these screens do precisely to stay responsive.
+ *
+ * Debounced rather than fired on every keystroke: re-rendering here means
+ * tearing down and rebuilding one row per matching app, and on a phone with a
+ * couple hundred installed apps that is real layout work — doing it on every
+ * single character typed is close enough to the ANR watchdog's threshold to
+ * be the actual cause of "the app hangs while I'm typing" rather than a
+ * theoretical one. The field itself never waits: the character the parent
+ * just typed shows immediately, because that is the platform's own
+ * `EditText` rendering, not this callback.
  */
 internal fun Activity.searchField(
     prefill: String = "",
@@ -409,7 +420,16 @@ internal fun Activity.searchField(
     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
         bottomMargin = dimen(R.dimen.space_sm)
     }
-    addTextChangedListener(SimpleWatcher(onQuery))
+    // Reads the field itself when it fires rather than closing over the
+    // keystroke's own string, so a burst of typing always ends in exactly one
+    // render of the latest query — never one queued render per character.
+    val renderLatest = Runnable { onQuery(text?.toString().orEmpty()) }
+    addTextChangedListener(
+        SimpleWatcher {
+            removeCallbacks(renderLatest)
+            postDelayed(renderLatest, SEARCH_DEBOUNCE_MILLIS)
+        },
+    )
 }
 
 /**

@@ -83,22 +83,12 @@ class CategoryEditActivity : ParentGatedActivity() {
 
     override fun supportsReadOnly() = true
 
+    private var loaded = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
-
-        val store = policyRuleStore(this, target)
-        val found = intent.getStringExtra(EXTRA_ID)?.let { id -> store.categories().firstOrNull { it.id == id } }
-        existing = found
-        categoryId = found?.id ?: UUID.randomUUID().toString()
-        packages = LinkedHashSet(found?.packages.orEmpty())
-        nested = LinkedHashSet(found?.subcategories.orEmpty())
-        // The rule is the live source now; the stored field is a fallback for
-        // a category not yet migrated (or a device mid-upgrade) rather than
-        // the everyday path.
-        val rules = contextRuleRuleStore(this, target).read()
-        limitMinutes = minutesFrom(rules, categoryId) ?: found?.limitMinutes ?: defaultLimitMinutes
     }
 
     /** [categoryId]'s budget as this screen's [ContextRule] says it, or null if there is none. */
@@ -110,11 +100,41 @@ class CategoryEditActivity : ParentGatedActivity() {
 
     private fun ruleId(categoryId: String) = LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX + categoryId
 
+    /**
+     * Loaded once. A read-only viewer who unlocks mid-visit calls this again
+     * (see [readOnlyBanner] below) and must see the same category and id it
+     * already resolved — not a second [store] read racing whatever [save] or
+     * [pickApps] have since done to the in-memory state.
+     */
     override fun onGatedContentVisible() {
         if (!requireStillInFamily(target)) return
-        showColumn(buildLayout(existing))
-        refreshAppsSummary()
-        refreshNestedSummary()
+        if (loaded) {
+            showColumn(buildLayout(existing))
+            refreshAppsSummary()
+            refreshNestedSummary()
+            return
+        }
+
+        Background.load(this, {
+            val store = policyRuleStore(this, target)
+            val found = intent.getStringExtra(EXTRA_ID)?.let { id -> store.categories().firstOrNull { it.id == id } }
+            // The rule is the live source now; the stored field is a fallback
+            // for a category not yet migrated (or a device mid-upgrade)
+            // rather than the everyday path.
+            val rules = contextRuleRuleStore(this, target).read()
+            found to rules
+        }) { (found, rules) ->
+            loaded = true
+            existing = found
+            categoryId = found?.id ?: UUID.randomUUID().toString()
+            packages = LinkedHashSet(found?.packages.orEmpty())
+            nested = LinkedHashSet(found?.subcategories.orEmpty())
+            limitMinutes = minutesFrom(rules, categoryId) ?: found?.limitMinutes ?: defaultLimitMinutes
+
+            showColumn(buildLayout(existing))
+            refreshAppsSummary()
+            refreshNestedSummary()
+        }
     }
 
     private fun buildLayout(existing: StoredCategory?): LinearLayout {
