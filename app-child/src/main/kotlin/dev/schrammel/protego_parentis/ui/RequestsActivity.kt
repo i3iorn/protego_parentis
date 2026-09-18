@@ -151,11 +151,19 @@ class RequestsActivity : DementorActivity() {
         }
 
         options.forEach { (label, option) ->
+            val selected = option == target
             group.addView(
                 TextView(this).apply {
-                    text = if (option == target) getString(R.string.requests_target_selected, label) else label
+                    text = if (selected) getString(R.string.requests_target_selected, label) else label
                     styleAs(R.style.TextAppearance_Dementor_ListItem)
                     setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
+                    // The trailing checkmark alone is easy to miss scanning a
+                    // longer list of categories quickly; bold and coloured makes
+                    // the selected row not just readable but findable.
+                    if (selected) {
+                        setTypeface(typeface, android.graphics.Typeface.BOLD)
+                        setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.brand))
+                    }
                     setOnClickListener {
                         target = option
                         render()
@@ -232,6 +240,13 @@ class RequestsActivity : DementorActivity() {
         )
         addView(bodyText(getString(R.string.requests_row_reason, request.reason)))
         addView(bodyText(statusLine(request)))
+        // The same deadline the parent's own inbox already shows for this
+        // request — without it, a child watching a pending row has no way to
+        // tell "still has time" from "about to lapse," and the eventual
+        // silent flip to "no answer in time" reads as if nobody looked.
+        if (request.state == RequestState.PENDING) {
+            addView(captionText(getString(R.string.inbox_expires_at, formatTime(request.expiresAt))))
+        }
 
         if (request.state.isOpen) {
             addView(

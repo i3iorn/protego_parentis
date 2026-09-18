@@ -1137,7 +1137,7 @@
 
     <string name="chat_no_family">This phone is not connected to a family yet, so there is nobody to write to.</string>
     <string name="chat_status_never">%1$s · hasn\'t connected yet</string>
-    <string name="chat_status_online">%1$s · online</string>
+    <string name="chat_status_online">%1$s · active just now</string>
     <string name="chat_status_minutes_ago">%1$s · %2$d min ago</string>
     <string name="chat_status_hours_ago">%1$s · %2$d h ago</string>
     <string name="chat_status_days_ago">%1$s · %2$d d ago</string>

@@ -59,7 +59,10 @@ class ParentInboxActivity : ParentRoleActivity() {
 
         val now = Instant.now()
         val all = inbox.all(now)
-        val pending = all.filter { it.isOpenAt(now) }
+        // Soonest to expire first: a request two minutes from lapsing sitting
+        // below one just submitted is easy to miss on a longer list, and a
+        // missed one reads to the child as having been ignored.
+        val pending = all.filter { it.isOpenAt(now) }.sortedBy { it.expiresAt }
 
         if (pending.isEmpty()) {
             column.addView(bodyText(getString(R.string.inbox_empty)))
