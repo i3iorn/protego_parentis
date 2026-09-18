@@ -25,8 +25,10 @@ import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.ui.rules.blockRuleIdFor
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
+import dev.schrammel.protego_parentis.ui.rules.isAppBlocked
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.usage.AppInfo
@@ -291,11 +293,13 @@ class AppControlActivity : ParentGatedActivity() {
      * Takes the rule list rather than reading the store itself, and is
      * internal rather than private, so [AppControlActivityTest] can pin the
      * translation directly without a `target` to resolve a store against.
+     * Delegates to [dev.schrammel.protego_parentis.ui.rules.isAppBlocked] —
+     * shared with every other screen that edits a migrated rule by its
+     * well-known id, so the id scheme has one place to change.
      */
-    internal fun isBlocked(pkg: PackageName, rules: List<ContextRule>): Boolean =
-        rules.firstOrNull { it.id == blockRuleId(pkg) }?.effect is RuleEffect.Block
+    internal fun isBlocked(pkg: PackageName, rules: List<ContextRule>): Boolean = isAppBlocked(pkg, rules)
 
-    internal fun blockRuleId(pkg: PackageName) = LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX + pkg.value
+    internal fun blockRuleId(pkg: PackageName) = blockRuleIdFor(pkg)
 
     private fun decide(app: AppInfo, blocked: Boolean, wasNew: Boolean) {
         val store = contextRuleRuleStore(this, target)

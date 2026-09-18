@@ -8,6 +8,8 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.PlaceRef
+import dev.schrammel.protego_parentis.model.RuleEffect
+import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.rules.AutoApprovalStore
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
@@ -246,3 +248,42 @@ class RemoteAppCatalog(private val context: Context, private val childId: Device
 
 fun appCatalog(context: Context, target: RuleScope): AppCatalog =
     if (target.isOwnDevice) LocalAppCatalog(context) else RemoteAppCatalog(context, target.childId)
+
+// ---------- legacy-field-to-rule-id translation ----------
+//
+// AppControlActivity, CategoryEditActivity and AppLimitsActivity each edit
+// one specific migrated ContextRule — the well-known id
+// LocalPolicyStore.migrateAppRulesToUnifiedRules/migrateToUnifiedRules gives
+// a legacy per-app block, per-category budget, or per-app budget. The id
+// scheme and the "find it in this rule list" lookup used to be hand-rolled
+// once per screen; centralised here so a change to either only has one place
+// to happen, not three that can quietly drift apart.
+
+/** The well-known [ContextRule] id [pkg]'s migrated block rule uses. */
+fun blockRuleIdFor(pkg: PackageName): String = LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX + pkg.value
+
+/** Whether [pkg] has a block rule at [blockRuleIdFor], among [rules]. */
+fun isAppBlocked(pkg: PackageName, rules: List<ContextRule>): Boolean =
+    rules.firstOrNull { it.id == blockRuleIdFor(pkg) }?.effect is RuleEffect.Block
+
+/** The well-known [ContextRule] id [categoryId]'s migrated budget rule uses. */
+fun categoryBudgetRuleIdFor(categoryId: String): String =
+    LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX + categoryId
+
+/** [categoryId]'s budget as its migrated [ContextRule] says it, among [rules], or null if there is none. */
+fun categoryBudgetMinutes(rules: List<ContextRule>, categoryId: String): Int? {
+    val rule = rules.firstOrNull { it.id == categoryBudgetRuleIdFor(categoryId) } ?: return null
+    val effect = rule.effect as? RuleEffect.SetBudget ?: return null
+    return effect.budget.default.inWholeMinutes.toInt()
+}
+
+/** The well-known [ContextRule] id [pkg]'s migrated per-app budget rule uses. */
+fun appBudgetRuleIdFor(pkg: PackageName): String = LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX + pkg.value
+
+/** Every migrated per-app budget among [rules], as the plain package-to-minutes map the UI wants. */
+fun appBudgetLimits(rules: List<ContextRule>): Map<String, Int> = rules.mapNotNull { rule ->
+    val effect = rule.effect as? RuleEffect.SetBudget ?: return@mapNotNull null
+    val onlyTarget = (rule.target as? RuleTarget.Apps)?.packages?.singleOrNull() ?: return@mapNotNull null
+    if (rule.id != appBudgetRuleIdFor(onlyTarget)) return@mapNotNull null
+    onlyTarget.value to effect.budget.default.inWholeMinutes.toInt()
+}.toMap()
