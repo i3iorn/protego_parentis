@@ -56,7 +56,7 @@ class RequestInboxActivity : ParentGatedActivity() {
             },
         )
 
-        Background.load(this, { coordinator.pending() }) { pending ->
+        Background.load(this, { coordinator.pending().sortedBy { it.expiresAt } }) { pending ->
             if (pending.isEmpty()) {
                 container.addView(bodyText(getString(R.string.inbox_empty)))
             } else {

@@ -284,6 +284,9 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
             subject = name,
             after = Audit.minutes(minutes),
         )
+        // Same acknowledgement ContextRuleEditActivity gives for the identical
+        // situation: this writes to the same remotely-synced store.
+        if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
         finish()
     }
 
@@ -296,6 +299,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
             action = AuditAction.AUTO_RULE_DELETED,
             subject = name,
         )
+        if (!target.isOwnDevice) toast(getString(R.string.context_delete_sent_remote))
         finish()
     }
 

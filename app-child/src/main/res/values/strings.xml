@@ -181,6 +181,8 @@
     <string name="context_delete">Delete rule</string>
     <string name="context_save_sent_remote">Sent — takes effect once the child\'s phone syncs.</string>
     <string name="context_delete_sent_remote">Sent — the child\'s phone drops the rule once it syncs.</string>
+    <string name="context_blackout_title">Block everything, with no exception?</string>
+    <string name="context_blackout_body">This rule blocks every app, always, and nothing else in this ruleset lets any app through. Nothing will run until this rule is turned off, deleted, or changed. If you meant to allow a few apps through, add an Allow rule for them first.</string>
 
     <string name="places_title">Places</string>
     <string name="places_explainer">A place is saved from where you are standing. Coordinates stay on this phone: they are never sent anywhere and never appear in the log.</string>
@@ -1135,7 +1137,7 @@
 
     <string name="chat_no_family">This phone is not connected to a family yet, so there is nobody to write to.</string>
     <string name="chat_status_never">%1$s · hasn\'t connected yet</string>
-    <string name="chat_status_online">%1$s · online</string>
+    <string name="chat_status_online">%1$s · active just now</string>
     <string name="chat_status_minutes_ago">%1$s · %2$d min ago</string>
     <string name="chat_status_hours_ago">%1$s · %2$d h ago</string>
     <string name="chat_status_days_ago">%1$s · %2$d d ago</string>

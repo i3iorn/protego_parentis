@@ -594,16 +594,45 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             toast(getString(R.string.context_name_required))
             return
         }
-        contextRuleRuleStore(this, target).upsert(
-            ContextRule(
-                id = ruleId,
-                name = name.trim(),
-                enabled = enabled,
-                condition = combinedCondition(),
-                effect = effect,
-                target = ruleTarget,
-            ),
+        val rule = ContextRule(
+            id = ruleId,
+            name = name.trim(),
+            enabled = enabled,
+            condition = combinedCondition(),
+            effect = effect,
+            target = ruleTarget,
         )
+        if (looksLikeTotalBlackout(rule)) {
+            confirmDialog(
+                R.string.context_blackout_title,
+                R.string.context_blackout_body,
+                R.string.context_save,
+            ) { commit(rule) }
+            return
+        }
+        commit(rule)
+    }
+
+    /**
+     * The one contradiction the tutorial itself warns about, made hard to miss
+     * at the moment it's easy to create: an unconditioned block of literally
+     * everything, with nothing anywhere in this ruleset carved back out. Not a
+     * general contradiction checker — AllOf/AnyOf combinations and overlapping
+     * budgets are still on the parent to notice — just this one well-known
+     * shape, which #87's combine/invert controls make easy to build by
+     * accident.
+     */
+    private fun looksLikeTotalBlackout(rule: ContextRule): Boolean {
+        if (!rule.enabled) return false
+        if (rule.effect !is RuleEffect.Block) return false
+        if (rule.target != RuleTarget.Everything) return false
+        if (rule.condition != Condition.Always) return false
+        val others = contextRuleRuleStore(this, target).read().filterNot { it.id == rule.id }
+        return others.none { it.enabled && it.effect is RuleEffect.Allow }
+    }
+
+    private fun commit(rule: ContextRule) {
+        contextRuleRuleStore(this, target).upsert(rule)
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,

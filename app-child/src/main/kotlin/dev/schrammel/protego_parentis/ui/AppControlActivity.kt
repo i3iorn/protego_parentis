@@ -92,6 +92,15 @@ class AppControlActivity : ParentGatedActivity() {
         )
         column.addView(captionText(getString(R.string.apps_hint)))
         column.addView(captionText(getString(R.string.apps_network_hint)))
+        // A block set here is an ordinary ContextRule under the hood (see this
+        // class's own doc comment), governed by the same precedence a category
+        // rule or an Allow elsewhere can override.
+        column.addView(
+            actionButton().apply {
+                setText(R.string.context_tutorial_open)
+                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@AppControlActivity)) }
+            },
+        )
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
         // Outside the part that gets rebuilt on each keystroke, which would take
         // the cursor and the typed text with it. Prefilled because render() runs
@@ -327,6 +336,10 @@ class AppControlActivity : ParentGatedActivity() {
             // waiting for an answer that has already been given here.
             SyncCoordinator(this).publishAppDecision(app.pkg.value, blocked)
             render()
+        } else if (!target.isOwnDevice) {
+            // Same acknowledgement ContextRuleEditActivity gives for the identical
+            // situation: this writes to the same remotely-synced store.
+            toast(getString(R.string.context_save_sent_remote))
         }
     }
 
