@@ -3,90 +3,20 @@ package dev.schrammel.protego_parentis.sync
 import android.content.Context
 import android.util.Log
 import dev.schrammel.protego_parentis.AppRegistry
-import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.audit.AuditReplication
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
-import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.enforcement.RequestNotifier
-import dev.schrammel.protego_parentis.model.AuditAction
-import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.model.ChatText
-import dev.schrammel.protego_parentis.model.Heartbeat
-import dev.schrammel.protego_parentis.model.PackageName
-import dev.schrammel.protego_parentis.model.Place
-import dev.schrammel.protego_parentis.model.PlaceId
-import dev.schrammel.protego_parentis.model.RequestId
-import dev.schrammel.protego_parentis.model.RequestState
-import dev.schrammel.protego_parentis.context.LocationSharing
-import dev.schrammel.protego_parentis.policy.IntegrityRules
-import dev.schrammel.protego_parentis.policy.request.RequestRules
-import dev.schrammel.protego_parentis.rules.AppReviewStore
-import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
-import dev.schrammel.protego_parentis.rules.GrantStore
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.RequestCoordinator
-import dev.schrammel.protego_parentis.rules.applySnapshot
-import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.KeystoreSigner
-import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.usage.InstalledApps
-import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ACCURACY
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ALLOWED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_PREFIX
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ARRIVED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BATTERY
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BUCKETS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIGEST
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED_COUNT
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BONUS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DOMAIN_PREFIX
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_EMERGENCY
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_EXPIRES_AT
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_HISTORY_COUNT
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_HISTORY_HEAD
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LATITUDE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LEVEL
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LONGITUDE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MANAGED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MINUTES
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_NOTE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_VERSION
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REASON
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REMAINING
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REQUEST_ID
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RULE_NAME
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_STATE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_SUSPENDED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET_LABEL
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TEXT
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_USAGE_ACCESS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_USED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ID
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_KEY
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ROLE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_SUMMARY_APPS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_SUMMARY_DOMAINS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.MAX_WIRE_TEXT
 import java.time.Instant
-import java.util.UUID
 import dev.schrammel.protego_parentis.sync.core.Admission
 import dev.schrammel.protego_parentis.sync.core.Admittance
 import dev.schrammel.protego_parentis.sync.core.DecryptResult
@@ -107,7 +37,6 @@ import dev.schrammel.protego_parentis.sync.core.SyncMessage
 import dev.schrammel.protego_parentis.sync.core.SyncMessageType
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.TransportResult
-import dev.schrammel.protego_parentis.sync.core.Vouch
 
 /**
  * Everything a phone *receives*: opening an envelope, deciding whether to
@@ -115,6 +44,15 @@ import dev.schrammel.protego_parentis.sync.core.Vouch
  * differently depending on which side is reading it. A child phone acts on
  * answers; a parent phone collects questions. Each ignores the messages meant
  * for the other rather than trying to be useful with them.
+ *
+ * What happens once a message is believed is not this class's job beyond
+ * choosing which of five collaborators does it — [DeviceTrustHandler],
+ * [ChildCommandHandler], [RequestSyncHandler], [TelemetryInboundHandler], and
+ * [ChatInboundHandler], one per message family. This class keeps only what
+ * every message shares regardless of what it is: envelope reassembly,
+ * decryption, replay admission, roster admission, dispatch, and the
+ * replicated-state machinery ([applyStateOps] through [onStateChanged]) that
+ * runs whether or not anything arrived at all.
  *
  * [publisher] exists here only because a small number of inbound messages
  * produce an outbound one in response — a locate request answered with a
@@ -128,7 +66,6 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private val config = SyncConfigStore(appContext)
     private val roles = RoleStore(appContext)
     private val roster = RosterStore(appContext)
-    private val signer = KeystoreSigner()
 
     // Only one side of a phone ever touches most of these, so neither store is
     // built on a phone that has no business holding it.
@@ -138,10 +75,18 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private val heartbeats by lazy { HeartbeatStore(appContext) }
     private val summaries by lazy { DailySummaryStore(appContext) }
     private val family by lazy { FamilyEventStore(appContext) }
-    private val chat by lazy { ChatStore(appContext) }
     private val notifier by lazy { RequestNotifier(appContext) }
     private val state by lazy { ReplicatedStateStore(appContext) }
     private val fragments = FragmentAssembler()
+
+    // One collaborator per message family — see the class doc comment. Lazy
+    // for the same reason the stores above are: a phone that never needs a
+    // family's handler never builds the stores behind it either.
+    private val deviceTrust by lazy { DeviceTrustHandler(appContext, roster, roles, config, publisher, notifier) }
+    private val childCommand by lazy { ChildCommandHandler(appContext, publisher, notifier) }
+    private val requestSync by lazy { RequestSyncHandler(appContext, requests, inbox, notifier) }
+    private val telemetry by lazy { TelemetryInboundHandler(appContext, heartbeats, newApps, summaries, family, notifier) }
+    private val chat by lazy { ChatInboundHandler(appContext, roster, notifier, KeystoreSigner()) }
 
     /**
      * Fetches and applies anything the other phones have sent.
@@ -337,19 +282,19 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private fun syncRole(): SyncRole = roles.roleOrChild.toSyncRole()
 
     private fun applyAsChild(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean = when (message.type) {
-        SyncMessageType.REQUEST_DECIDED -> applyDecision(message)
-        SyncMessageType.BONUS_GRANTED -> applyBonus(message)
-        SyncMessageType.APP_DECIDED -> applyAppDecision(message)
-        SyncMessageType.LOCK_NOW -> applyLockNow()
-        SyncMessageType.LOCATE_REQUEST -> applyLocateRequest()
-        SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
-        SyncMessageType.DEVICE_REVOKED -> applyRevoke(message)
-        SyncMessageType.FAMILY_DISBANDED -> applyDisband(message)
-        SyncMessageType.CHAT_MESSAGE -> rememberChat(message)
+        SyncMessageType.REQUEST_DECIDED -> requestSync.applyDecision(message)
+        SyncMessageType.BONUS_GRANTED -> childCommand.applyBonus(message)
+        SyncMessageType.APP_DECIDED -> childCommand.applyAppDecision(message)
+        SyncMessageType.LOCK_NOW -> childCommand.applyLockNow()
+        SyncMessageType.LOCATE_REQUEST -> childCommand.applyLocateRequest()
+        SyncMessageType.DEVICE_VOUCHED -> deviceTrust.applyVouch(message)
+        SyncMessageType.DEVICE_REVOKED -> deviceTrust.applyRevoke(message)
+        SyncMessageType.FAMILY_DISBANDED -> deviceTrust.applyDisband(message)
+        SyncMessageType.CHAT_MESSAGE -> chat.rememberChat(message)
         SyncMessageType.POLICY_REQUESTED -> { publisher.publishPolicySnapshot(); true }
-        SyncMessageType.POLICY_UPDATED -> applyPolicyUpdate(message)
+        SyncMessageType.POLICY_UPDATED -> childCommand.applyPolicyUpdate(message)
         SyncMessageType.APP_INVENTORY_REQUESTED -> { publisher.publishAppInventory(); true }
-        SyncMessageType.PLACE_CREATE_REQUESTED -> applyPlaceCreateRequest(message)
+        SyncMessageType.PLACE_CREATE_REQUESTED -> childCommand.applyPlaceCreateRequest(message)
         SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
@@ -374,26 +319,26 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     }
 
     private fun applyAsParent(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean = when (message.type) {
-        SyncMessageType.REQUEST_RAISED -> rememberRequest(message)
+        SyncMessageType.REQUEST_RAISED -> requestSync.rememberRequest(message)
         // Another parent answered first. Recording that here is what stops two
         // parents answering the same request twice.
-        SyncMessageType.REQUEST_DECIDED -> settleRequest(message)
-        SyncMessageType.HEARTBEAT -> rememberHeartbeat(message)
-        SyncMessageType.APP_INSTALLED -> rememberNewApp(message, senderId)
-        SyncMessageType.DEVICE_VOUCHED -> applyVouch(message)
-        SyncMessageType.DEVICE_REVOKED -> applyRevoke(message)
-        SyncMessageType.FAMILY_DISBANDED -> applyDisband(message)
-        SyncMessageType.DAILY_SUMMARY -> rememberSummary(message)
-        SyncMessageType.DEVICE_STOPPING -> rememberStopping(message)
-        SyncMessageType.REQUEST_AUTO_APPROVED -> settleAutoApproved(message)
-        SyncMessageType.LOCATION_REPORT -> rememberLocation(message)
-        SyncMessageType.PLACE_TRANSITION -> rememberTransition(message)
-        SyncMessageType.SOS_RAISED -> rememberSos(message, raised = true)
-        SyncMessageType.SOS_CLEARED -> rememberSos(message, raised = false)
-        SyncMessageType.WEB_SUMMARY -> rememberWebSummary(message)
-        SyncMessageType.CHAT_MESSAGE -> rememberChat(message)
+        SyncMessageType.REQUEST_DECIDED -> requestSync.settleRequest(message)
+        SyncMessageType.HEARTBEAT -> telemetry.rememberHeartbeat(message)
+        SyncMessageType.APP_INSTALLED -> telemetry.rememberNewApp(message, senderId)
+        SyncMessageType.DEVICE_VOUCHED -> deviceTrust.applyVouch(message)
+        SyncMessageType.DEVICE_REVOKED -> deviceTrust.applyRevoke(message)
+        SyncMessageType.FAMILY_DISBANDED -> deviceTrust.applyDisband(message)
+        SyncMessageType.DAILY_SUMMARY -> telemetry.rememberSummary(message)
+        SyncMessageType.DEVICE_STOPPING -> telemetry.rememberStopping(message)
+        SyncMessageType.REQUEST_AUTO_APPROVED -> requestSync.settleAutoApproved(message)
+        SyncMessageType.LOCATION_REPORT -> telemetry.rememberLocation(message)
+        SyncMessageType.PLACE_TRANSITION -> telemetry.rememberTransition(message)
+        SyncMessageType.SOS_RAISED -> telemetry.rememberSos(message, raised = true)
+        SyncMessageType.SOS_CLEARED -> telemetry.rememberSos(message, raised = false)
+        SyncMessageType.WEB_SUMMARY -> telemetry.rememberWebSummary(message)
+        SyncMessageType.CHAT_MESSAGE -> chat.rememberChat(message)
         SyncMessageType.POLICY_SNAPSHOT -> rememberPolicySnapshot(message)
-        SyncMessageType.APP_INVENTORY -> rememberAppInventory(message, senderId)
+        SyncMessageType.APP_INVENTORY -> telemetry.rememberAppInventory(message, senderId)
         SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
@@ -409,390 +354,6 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.APP_INVENTORY_REQUESTED,
         SyncMessageType.PLACE_CREATE_REQUESTED,
         -> false
-    }
-
-    // ---------- what the child does when asked ----------
-
-    /**
-     * Locks the screen, and says who did it.
-     *
-     * The notification is posted first so it lands on the lock screen the child is
-     * about to see. A phone that locks itself with no explanation is a phone that
-     * looks broken, and the answer to "why did that happen" should not require
-     * unlocking it again to find out.
-     */
-    private fun applyLockNow(): Boolean {
-        notifier.notifyLocked()
-        Audit.record(appContext, AuditActor.PARENT, AuditAction.DEVICE_LOCKED)
-        // Handed to the service rather than done here, and not through a callback
-        // either: any screen can be the one that happens to be polling when this
-        // arrives, and a lock that only worked when the service polled would fail
-        // exactly when a parent was watching the app on their own phone.
-        EnforcementService.lockNow(appContext)
-        return true
-    }
-
-    /**
-     * Answers a locate, and tells the child it was asked.
-     *
-     * The telling is not conditional on the answering. A locate that failed
-     * because the phone was indoors still happened, and a child who is told only
-     * about the successful ones has been told something misleading about how often
-     * they are looked for.
-     */
-    private fun applyLocateRequest(): Boolean {
-        // Told either way. A locate that was refused still happened, and a child
-        // who hears only about the answered ones has been told something
-        // misleading about how often they are looked for.
-        notifier.notifyLocated()
-        Audit.record(appContext, AuditActor.PARENT, AuditAction.LOCATE_REQUESTED)
-
-        // Turned off means turned off, not hidden. A parent who put this away and
-        // found their old phone still answering would be right to feel misled.
-        // Every branch below answers. A locate that produced nothing used to
-        // write a line to logcat and stop there, so the parent saw "Sent" and
-        // then waited on something that was never coming — indistinguishable
-        // from an answer still in flight.
-        val telemetry = TelemetryReplication(appContext)
-
-        if (!FeatureFlags(appContext).isEnabled(Feature.LOCATION)) {
-            Log.i(TAG, "Asked for a position while locating is switched off")
-            telemetry.reportLocate(LocateOutcome.SWITCHED_OFF)
-            publisher.publishPendingOps()
-            return true
-        }
-
-        val position = LocationSharing(appContext).locate()
-        if (position == null) {
-            Log.i(TAG, "Asked for a position, could not get one")
-            telemetry.reportLocate(LocateOutcome.UNAVAILABLE)
-            publisher.publishPendingOps()
-            return true
-        }
-
-        Audit.record(appContext, AuditActor.CHILD, AuditAction.LOCATION_SHARED)
-        publisher.publishLocation(position, forEmergency = false)
-        telemetry.reportLocate(LocateOutcome.ANSWERED)
-        publisher.publishPendingOps()
-        return true
-    }
-
-    /**
-     * Materialises a place a parent named from a coordinate their own phone
-     * supplied — typed by hand, or that phone's own position — since nothing
-     * about [dev.schrammel.protego_parentis.ui.rules.PlaceRuleStore]'s
-     * rename/resize/delete ever hands it one to create with — see
-     * [SyncMessageType.PLACE_CREATE_REQUESTED]. Validated the same way
-     * [dev.schrammel.protego_parentis.ui.PlacesActivity]'s own dialogs
-     * validate one typed or captured locally, since a coordinate arriving
-     * over the wire deserves no more trust than one typed by a stranger.
-     */
-    private fun applyPlaceCreateRequest(message: SyncMessage): Boolean {
-        val name = message.field(FIELD_PLACE)?.clip()?.takeIf(String::isNotBlank) ?: return false
-        val latitude = message.field(FIELD_LATITUDE)?.toDoubleOrNull() ?: return false
-        val longitude = message.field(FIELD_LONGITUDE)?.toDoubleOrNull() ?: return false
-        val radiusMetres = message.longField(FIELD_RADIUS)?.toInt() ?: return false
-        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
-        if (radiusMetres < Place.MINIMUM_RADIUS_METRES) return false
-
-        ContextRuleStore(appContext).upsertPlace(
-            Place(
-                id = PlaceId(UUID.randomUUID().toString()),
-                name = name,
-                latitude = latitude,
-                longitude = longitude,
-                radiusMetres = radiusMetres,
-            ),
-        )
-        // So every parent phone sees it next time places replicate, the same
-        // path a place created by hand on this device already takes.
-        PolicyReplication(appContext).pushPlaceRefsFromLocal()
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.PLACE_ADDED,
-            subject = name,
-        )
-        AppRegistry.ruleMutationSink.rulesChanged()
-        notifier.notifyRuleChanged()
-        return true
-    }
-
-    // ---------- what a parent does with what arrives ----------
-
-    private fun settleAutoApproved(message: SyncMessage): Boolean {
-        val id = message.field(FIELD_REQUEST_ID) ?: return false
-        val rule = message.field(FIELD_RULE_NAME)?.clip()
-
-        // A request answered by a standing rule never sat pending, so no parent
-        // phone has heard of it. Settling it works when this phone did see the
-        // request; when it did not, there is nothing to attach the answer to and
-        // the auto-approval is simply noted in the history instead. The old code
-        // invented a synthetic request here, which under replication would be a
-        // second copy of one the child had already published.
-        if (!inbox.settle(id, RequestState.APPROVED, rule, decidedBy = AUTOMATIC)) {
-            Audit.record(
-                context = appContext,
-                actor = AuditActor.PARENT,
-                action = AuditAction.REQUEST_APPROVED,
-                subject = message.field(FIELD_TARGET_LABEL)?.clip(),
-                after = rule,
-            )
-        }
-        return true
-    }
-
-    private fun rememberLocation(message: SyncMessage): Boolean {
-        val latitude = message.field(FIELD_LATITUDE)?.toDoubleOrNull() ?: return false
-        val longitude = message.field(FIELD_LONGITUDE)?.toDoubleOrNull() ?: return false
-        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
-
-        family.recordLocation(
-            latitude = latitude,
-            longitude = longitude,
-            accuracyMetres = message.longField(FIELD_ACCURACY)?.toInt() ?: 0,
-            at = message.sentAt,
-        )
-        if (message.field(FIELD_EMERGENCY).toBoolean()) notifier.notifySos(moved = true)
-        return true
-    }
-
-    private fun rememberTransition(message: SyncMessage): Boolean {
-        val place = message.field(FIELD_PLACE)?.clip() ?: return false
-        val arrived = message.field(FIELD_ARRIVED).toBoolean()
-
-        family.recordTransition(place, arrived, message.sentAt)
-        notifier.notifyPlaceTransition(place, arrived)
-        return true
-    }
-
-    private fun rememberSos(message: SyncMessage, raised: Boolean): Boolean {
-        family.recordSos(raised, message.sentAt)
-        if (raised) notifier.notifySos(moved = false) else notifier.notifySosCleared()
-        return true
-    }
-
-    /**
-     * Files a message that arrived, and says so once.
-     *
-     * Three things happen in order and the order matters. The text is sanitised
-     * again — the sender did it too, but the sender is another phone and that is
-     * precisely the thing this device cannot take on trust. The store then refuses
-     * a message it already holds, which is what stops the same message being
-     * announced on every poll for as long as the relay keeps it. Only a message
-     * that was genuinely new gets a notification.
-     *
-     * The sender's name goes through the sanitiser as well. It is chosen on the
-     * sending device, so it is attacker-controlled text in exactly the way the
-     * message body is, and it is shown right next to it — a name carrying a
-     * direction override could make one person's words appear to be another's.
-     */
-    private fun rememberChat(message: SyncMessage): Boolean {
-        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return false
-
-        val text = ChatText.sanitise(message.field(FIELD_TEXT).orEmpty()) ?: return false
-        // The roster's name, not the one the message carries. A device chooses
-        // its own name and may send a different one with every message; the roster
-        // holds what the family agreed to when it was let in.
-        val claimed = roster.devices.firstOrNull { it.id.value == message.sender }?.name
-        val sender = claimed?.let(ChatText::sanitise)
-            ?: appContext.getString(R.string.chat_unknown_sender)
-
-        // From a phone still on the older protocol. Folded into the replica so a
-        // part-updated family still shares one conversation rather than two.
-        val added = ChatReplication(appContext).send(text, sender) != null
-        if (added) notifier.notifyChat(sender, text)
-        return added
-    }
-
-    private fun rememberWebSummary(message: SyncMessage): Boolean {
-        val domains = message.fields
-            .filterKeys { it.startsWith(FIELD_DOMAIN_PREFIX) }
-            .toSortedMap(compareBy { it.removePrefix(FIELD_DOMAIN_PREFIX).toIntOrNull() ?: 0 })
-            .values
-            .mapNotNull(::parseDomain)
-            .take(MAX_SUMMARY_DOMAINS)
-
-        family.recordWebSummary(
-            domains = domains,
-            blocked = message.longField(FIELD_BLOCKED_COUNT)?.toInt() ?: 0,
-            at = message.sentAt,
-        )
-        return true
-    }
-
-    private fun parseDomain(raw: String): Pair<String, Int>? {
-        val at = raw.indexOf(APP_SEPARATOR)
-        if (at <= 0 || at == raw.lastIndex) return null
-        val count = raw.substring(0, at).toIntOrNull() ?: return null
-        return raw.substring(at + 1).clip() to count
-    }
-
-    /**
-     * Applies a parent's answer about a new app.
-     *
-     * Marking it reviewed either way is the point: an allowed app has to stop
-     * showing up as new, or the parent is asked the same question forever.
-     */
-    private fun applyAppDecision(message: SyncMessage): Boolean {
-        val packageName = message.field(FIELD_PACKAGE) ?: return false
-        val blocked = message.field(FIELD_BLOCKED)?.toBoolean() ?: return false
-
-        val label = InstalledApps(appContext).labelFor(PackageName(packageName))
-        LocalPolicyStore(appContext).setBlocked(packageName, blocked)
-        AppReviewStore(appContext).markReviewed(packageName)
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.APP_BLOCK_CHANGED,
-            subject = label,
-            after = Audit.flag(blocked),
-        )
-        AppRegistry.ruleMutationSink.rulesChanged()
-        // The app sat in "new arrivals" waiting on this; without a notification
-        // the only way to learn it was reviewed is to notice it now works (or
-        // does not) and go looking for why.
-        notifier.notifyAppDecided(label, blocked)
-        return true
-    }
-
-    /**
-     * Enrols a device an already-trusted parent has vouched for.
-     *
-     * Reaching here means the sender was accepted by the roster, which for this
-     * message type means an enrolled parent. What is left to check is the vouch
-     * itself — see [Enrolment.shouldAccept]: nothing human looks at one, so the
-     * fingerprint check a person would have made happens in code instead.
-     */
-    private fun applyVouch(message: SyncMessage): Boolean {
-        val vouch = Vouch(
-            id = DeviceId(message.field(FIELD_VOUCHED_ID) ?: return false),
-            name = message.field(FIELD_TARGET_LABEL).orEmpty().clip(),
-            role = SyncRole.parse(message.field(FIELD_VOUCHED_ROLE)) ?: return false,
-            publicKey = message.field(FIELD_VOUCHED_KEY) ?: return false,
-        )
-
-        val self = LocalDeviceId.current()?.let(::DeviceId) ?: return false
-        if (!Enrolment.shouldAccept(vouch, self)) {
-            Diagnostics.record(appContext, DiagnosticEvent.SYNC_SENDER_REFUSED)
-            return false
-        }
-        if (roster.devices.any { it.id == vouch.id }) return false
-
-        roster.enrol(vouch)
-        val name = vouch.name.ifBlank { vouch.id.value }
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.DEVICE_APPROVED,
-            subject = name,
-            after = vouch.role.name,
-        )
-        // The enrolment above happens with no screen open and nobody watching —
-        // this is the "regardless of how" half of making a new device obvious;
-        // an approval a person taps through already has its own confirmation.
-        notifier.notifyDeviceAdded(name)
-        return true
-    }
-
-    /**
-     * Drops one device's trust, propagated from whichever parent revoked it.
-     *
-     * [Enrolment.shouldAcceptRevoke] is the whole security boundary here: a
-     * revoke naming the child is refused outright, on every phone including the
-     * child's own, because that removal is never something a message may cause
-     * — it stays a local, PIN-gated tap on the child's own device.
-     */
-    private fun applyRevoke(message: SyncMessage): Boolean {
-        val revokedId = DeviceId(message.field(FIELD_REVOKED_ID) ?: return false)
-        val self = LocalDeviceId.current()?.let(::DeviceId) ?: return false
-
-        if (revokedId == self) {
-            if (!Enrolment.shouldAcceptRevoke(syncRole())) return false
-            Audit.record(
-                context = appContext,
-                actor = AuditActor.PARENT,
-                action = AuditAction.DEVICE_REVOKED,
-                subject = config.deviceName,
-            )
-            publisher.leave()
-            return true
-        }
-
-        val target = roster.devices.firstOrNull { it.id == revokedId } ?: return false
-        if (!Enrolment.shouldAcceptRevoke(target.role)) return false
-
-        roster.revoke(revokedId)
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.DEVICE_REVOKED,
-            subject = target.name,
-        )
-        notifier.notifyDeviceRemoved(target.name)
-        return true
-    }
-
-    /**
-     * Ends the family, for every phone the founding parent's revoke would have
-     * reached anyway.
-     *
-     * A parent's phone leaves outright, the same as tapping "leave" itself. The
-     * child's phone only hears about it: wiping a child's family membership by
-     * remote message is exactly the thing [Enrolment.shouldAcceptRevoke] exists
-     * to rule out, so ending it for real stays a local, PIN-gated action on that
-     * phone even though the news travels immediately.
-     */
-    private fun applyDisband(message: SyncMessage): Boolean {
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.FAMILY_DISBANDED,
-        )
-        return when (roles.roleOrChild) {
-            DeviceRole.CHILD -> {
-                notifier.notifyFamilyDisbanded()
-                true
-            }
-
-            DeviceRole.PARENT -> {
-                notifier.notifyFamilyDisbanded()
-                publisher.leave()
-                true
-            }
-        }
-    }
-
-    /**
-     * A summary from a phone still on the older protocol.
-     *
-     * Folded into replicated telemetry, so a parent's dashboard has one source
-     * whichever build the child is on. A newer child writes the same registers
-     * itself and this path is never reached for it.
-     */
-    private fun rememberSummary(message: SyncMessage): Boolean {
-        val allowed = message.longField(FIELD_ALLOWED)?.toInt() ?: 0
-        val bonus = message.longField(FIELD_BONUS)?.toInt() ?: 0
-        val used = message.longField(FIELD_USED)?.toInt() ?: 0
-
-        TelemetryReplication(appContext).report(
-            usedMinutes = used,
-            allowedMinutes = allowed,
-            bonusMinutes = bonus,
-            // Older senders didn't send this; fall back to the old (slightly
-            // lossy) computation rather than dropping the message.
-            remainingMinutes = message.longField(FIELD_REMAINING)?.toInt()
-                ?: (allowed + bonus - used).coerceAtLeast(0),
-            level = message.longField(FIELD_LEVEL)?.toInt() ?: 0,
-            topApps = message.fields
-                .filterKeys { it.startsWith(FIELD_APP_PREFIX) }
-                .toSortedMap(compareBy { it.removePrefix(FIELD_APP_PREFIX).toIntOrNull() ?: 0 })
-                .values
-                .mapNotNull(::parseAppTime)
-                .take(MAX_SUMMARY_APPS),
-        )
-        summaries.markHeard(message.sentAt)
-        return true
     }
 
     // ---------- replicated state ----------
@@ -1005,71 +566,16 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             RosterReplication(appContext).pullIntoRoster()
         }
         if (ReplicationRules.CHAT in sections) {
-            announceNewChat(applied)
+            chat.announceNewChat(applied)
         }
         if (ReplicationRules.REQUESTS in sections && roles.roleOrChild == DeviceRole.CHILD) {
-            applyAnsweredRequests()
+            requestSync.applyAnsweredRequests()
         }
         // "As of" on a parent's dashboard means "when I last heard", and this is
         // that moment. Recorded here rather than derived from the ops, which
         // carry a logical clock and no wall-clock time at all.
         if (ReplicationRules.TELEMETRY in sections && roles.roleOrChild == DeviceRole.PARENT) {
-            summaries.markHeard()
-        }
-    }
-
-    /**
-     * Grants time for any of this phone's requests that a parent has answered.
-     *
-     * Matched by the local id the request was raised with, because the replica
-     * knows it by an id of its own. Answers are applied through the ordinary
-     * [RequestCoordinator], which is what actually issues the grant and refuses
-     * a second answer — so an approval seen again on the next poll is harmless.
-     */
-    private fun applyAnsweredRequests() {
-        RequestReplication(appContext).all().forEach { replicated ->
-            val local = replicated.localId?.let(::RequestId) ?: return@forEach
-            when (replicated.state) {
-                RequestState.APPROVED -> requests.approve(local, replicated.note)
-                RequestState.DENIED -> requests.deny(local, replicated.note)
-                else -> Unit
-            }
-        }
-    }
-
-    /**
-     * Buzzes once for a conversation that moved, not once per register.
-     *
-     * A message is several ops — text, sender, author — so notifying per op
-     * would buzz three times for one line. Only the text register is counted,
-     * and only for messages this phone did not itself write.
-     */
-    private fun announceNewChat(applied: List<StateOp>) {
-        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return
-        val self = runCatching { signer.deviceId.value }.getOrNull()
-
-        val arrived = applied.filter {
-            it.origin != self &&
-                it.value != null &&
-                it.path.startsWith("${ReplicationRules.CHAT}${ReplicationRules.SEPARATOR}") &&
-                it.path.endsWith("${ReplicationRules.SEPARATOR}text")
-        }
-        if (arrived.isEmpty()) return
-
-        val newest = arrived.maxByOrNull { it.lamport } ?: return
-        val id = newest.path
-            .removePrefix("${ReplicationRules.CHAT}${ReplicationRules.SEPARATOR}")
-            .substringBefore(ReplicationRules.SEPARATOR)
-
-        // The roster's name for the sender, not one carried in the message: a
-        // device chooses its own name and could send a different one every
-        // time, and it is shown right beside the words.
-        val sender = roster.devices.firstOrNull { it.id.value == newest.origin }?.name
-            ?.let(ChatText::sanitise)
-            ?: appContext.getString(R.string.chat_unknown_sender)
-
-        ChatReplication(appContext).messages().firstOrNull { it.id == id }?.let { line ->
-            notifier.notifyChat(sender, line.text)
+            telemetry.markSummaryHeard()
         }
     }
 
@@ -1086,234 +592,11 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         return PolicyReplication(appContext).write(snapshot).isNotEmpty()
     }
 
-    /** Caches which apps [senderId]'s phone can launch, for a rule editor to offer. */
-    private fun rememberAppInventory(message: SyncMessage, senderId: DeviceId): Boolean {
-        AppInventoryStore(appContext).setApps(senderId, AppInventoryCodec.decode(message.field(FIELD_APPS_JSON)))
-        return true
-    }
-
-    private fun parseAppTime(raw: String): AppTime? {
-        val at = raw.indexOf(APP_SEPARATOR)
-        if (at <= 0 || at == raw.lastIndex) return null
-        val minutes = raw.substring(0, at).toIntOrNull() ?: return null
-        return AppTime(label = raw.substring(at + 1).take(MAX_WIRE_TEXT), minutes = minutes)
-    }
-
-    /**
-     * The child's phone said it was switching off.
-     *
-     * Recorded as a very old heartbeat rather than as its own state: the parent's
-     * screen already knows how to say "we have not heard from this phone", and a
-     * shutdown is exactly that with a reason attached.
-     */
-    private fun rememberStopping(message: SyncMessage): Boolean {
-        heartbeats.recordStopped(message.sentAt)
-        return true
-    }
-
-    private fun rememberHeartbeat(message: SyncMessage): Boolean {
-        val arrived = Heartbeat(
-            sentAt = message.sentAt,
-            policyVersion = message.longField(FIELD_POLICY_VERSION) ?: 0L,
-            batteryPercent = message.longField(FIELD_BATTERY)?.toInt() ?: -1,
-            managed = message.field(FIELD_MANAGED).toBoolean(),
-            usageAccessGranted = message.field(FIELD_USAGE_ACCESS).toBoolean(),
-            suspendedCount = message.longField(FIELD_SUSPENDED)?.toInt() ?: 0,
-            historyHead = message.field(FIELD_HISTORY_HEAD).orEmpty().take(MAX_WIRE_TEXT),
-            historyCount = message.longField(FIELD_HISTORY_COUNT) ?: 0L,
-        )
-
-        // Checked before the new heartbeat replaces the old, because the judgement
-        // is about the pair. Once noticed it stays noticed: a rewritten history is
-        // not undone by the next honest entry, and clearing it silently would
-        // hand back exactly what the check was for.
-        // The third argument is evidence this phone holds rather than something
-        // the reporting phone said: entries it wrote that arrived here through
-        // the append-only audit section, which it cannot revise from over there.
-        val heldFromDevice = runCatching {
-            AuditReplication(appContext).entries().count { it.by == message.sender }.toLong()
-        }.getOrDefault(0L)
-
-        if (!heartbeats.historySuspect && IntegrityRules.historyRewritten(heartbeats.latest, arrived, heldFromDevice)) {
-            heartbeats.historySuspect = true
-            // The moment this is set is the only moment worth announcing —
-            // heartbeats arrive every 15-60 seconds and the flag never clears
-            // once raised (see the comment above), so without the guard this
-            // would fire on every single tick from here on.
-            notifier.notifyAuditTamper()
-        }
-
-        heartbeats.latest = arrived
-        // The device has spoken, so the next stretch of silence gets its own alert.
-        heartbeats.silenceAlerted = false
-        return true
-    }
-
-    private fun rememberNewApp(message: SyncMessage, senderId: DeviceId): Boolean {
-        val packageName = message.field(FIELD_PACKAGE) ?: return false
-        val app = NewApp(
-            packageName = packageName.clip(),
-            label = (message.field(FIELD_TARGET_LABEL) ?: packageName).clip(),
-            noticedAt = message.sentAt,
-        )
-        newApps.remember(app)
-        notifier.notifyNewApp(app)
-        // Keeps a rule editor's app picker (AppPickerActivity) from silently
-        // going stale between full syncs: without this, an app installed
-        // after the one time a parent requested the list stayed invisible to
-        // every "choose apps" screen indefinitely, with nothing to say the
-        // list was out of date. Only once a full inventory already exists —
-        // a lone install notice must never look like the whole inventory to
-        // a picker that has never asked for one yet, which would hide the
-        // one thing (the "request list" prompt) that fixes an empty picker.
-        val inventory = AppInventoryStore(appContext)
-        if (inventory.receivedAt(senderId) != null) {
-            inventory.upsert(senderId, AppInventoryEntry(app.packageName, app.label))
-        }
-        return true
-    }
-
-    private fun applyDecision(message: SyncMessage): Boolean {
-        val id = RequestId(message.field(FIELD_REQUEST_ID) ?: return false)
-        val note = message.field(FIELD_NOTE)
-
-        return when (message.field(FIELD_STATE)) {
-            RequestState.APPROVED.name -> requests.approve(id, note)
-            RequestState.DENIED.name -> requests.deny(id, note)
-            else -> false
-        }
-    }
-
-    /**
-     * Applies bonus time sent by a parent phone.
-     *
-     * Granting and re-evaluating at once is the point: a parent who taps
-     * "+15 minutes" and sees nothing change on the child's phone stops trusting
-     * the feature within a day.
-     */
-    private fun applyBonus(message: SyncMessage): Boolean {
-        val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it > 0 } ?: return false
-        val target = SyncTargets.decode(message.field(FIELD_TARGET)) ?: return false
-
-        val policy = LocalPolicyStore(appContext).load()
-        GrantStore(appContext).add(
-            target = target,
-            minutes = minutes,
-            now = Instant.now(),
-            zone = policy.timeZone,
-            dayBoundaryHour = policy.dayBoundaryHour,
-        )
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.BONUS_GRANTED,
-            subject = TargetLabels.describe(appContext, target),
-            after = Audit.minutes(minutes),
-        )
-        AppRegistry.ruleMutationSink.rulesChanged()
-        // Otherwise the only way to notice extra time arrived is to stumble on
-        // it — the same "granted and re-evaluated at once" reasoning as this
-        // method's own doc comment, just for the person rather than the policy.
-        notifier.notifyBonusGranted(minutes, TargetLabels.describe(appContext, target))
-        return true
-    }
-
-    /**
-     * Replaces every remotely-editable rule at once.
-     *
-     * Refused if [PolicySnapshot.version] does not match this phone's current
-     * one: the parent's copy was taken at that version, and applying a push
-     * based on stale rules would silently discard whatever changed here since
-     * — a schedule added, a limit lifted, anything at all — without either side
-     * knowing it happened.
-     */
-    private fun applyPolicyUpdate(message: SyncMessage): Boolean {
-        val incoming = PolicySnapshot.decode(message.field(FIELD_POLICY_JSON)) ?: return false
-        val store = LocalPolicyStore(appContext)
-
-        if (store.load().version != incoming.version) {
-            Diagnostics.record(appContext, DiagnosticEvent.POLICY_UPDATE_CONFLICT)
-            return false
-        }
-
-        store.applySnapshot(incoming)
-        // Also recorded as ops, so the change reaches every device on the newer
-        // protocol rather than only the two ends of this legacy exchange.
-        PolicyReplication(appContext).pushFromLocalPolicy()
-        Audit.record(
-            context = appContext,
-            actor = AuditActor.PARENT,
-            action = AuditAction.RULES_REPLACED,
-        )
-        AppRegistry.ruleMutationSink.rulesChanged()
-        return true
-    }
-
-    /**
-     * A request from a phone still on the older protocol.
-     *
-     * Folded into the replica rather than a separate inbox, so a part-updated
-     * family sees one list. A newer child publishes the same request as ops and
-     * this path is never reached for it.
-     */
-    private fun rememberRequest(message: SyncMessage): Boolean {
-        val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it > 0 } ?: return false
-        val id = message.field(FIELD_REQUEST_ID) ?: return false
-        if (inbox.all().any { it.id == id }) return false
-
-        val expiresAt = message.longField(FIELD_EXPIRES_AT)
-            ?.let(Instant::ofEpochMilli)
-            ?: message.sentAt.plusMillis(RequestRules.DEFAULT_LIFETIME.inWholeMilliseconds)
-
-        RequestReplication(appContext).raise(
-            minutes = minutes,
-            reason = message.field(FIELD_REASON).orEmpty().clip(),
-            target = message.field(FIELD_TARGET).orEmpty(),
-            targetLabel = message.field(FIELD_TARGET_LABEL).orEmpty().clip(),
-            expiresAt = expiresAt,
-        ) ?: return false
-
-        notifier.notifyIncomingRequest(
-            IncomingRequest(
-                id = id,
-                label = message.field(FIELD_TARGET_LABEL).orEmpty().clip(),
-                minutes = minutes,
-                reason = message.field(FIELD_REASON).orEmpty().clip(),
-                raisedAt = message.sentAt,
-                expiresAt = expiresAt,
-                state = RequestState.PENDING,
-            ),
-        )
-        return true
-    }
-
-    private fun settleRequest(message: SyncMessage): Boolean {
-        val id = message.field(FIELD_REQUEST_ID) ?: return false
-        val state = RequestState.entries.firstOrNull { it.name == message.field(FIELD_STATE) }
-            ?: return false
-        if (!state.isDecided) return false
-
-        return inbox.settle(id, state, message.field(FIELD_NOTE), decidedBy = message.sender)
-    }
-
-    /**
-     * Bounds a string that arrived over the wire and is about to be shown.
-     *
-     * The sender holds the family key, so this is not a defence against a stranger
-     * — it is a defence against a buggy or malicious phone inside the family
-     * pushing a megabyte of text into a notification and a card that then cannot
-     * be dismissed past.
-     */
-    private fun String.clip(): String = take(MAX_WIRE_TEXT)
-
     companion object {
         const val RESULT_NOT_CONFIGURED = "not configured"
         const val RESULT_BAD_PASSPHRASE = "passphrase too short"
 
         private const val TAG = "DementorSync"
         private const val POLL_OVERLAP_SECONDS = 5L
-
-        /** Recorded as the decider when a standing rule answered, not a person. */
-        private const val AUTOMATIC = "rule"
     }
 }
