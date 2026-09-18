@@ -195,20 +195,13 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 chooseCondition(condition) { picked -> condition = picked; render() }
             },
         )
-        container.addView(
-            CheckBox(this).apply {
-                setText(R.string.context_invert)
-                isChecked = negate
-                isEnabled = canEdit
-                setOnCheckedChangeListener { _, checked ->
-                    negate = checked
-                    render()
-                }
-            },
-        )
 
-        // #87: a second condition and beyond, combined with the first by
-        // either needing every one of them or just one — AllOf/AnyOf, exposed.
+        // #87: a second condition and beyond, combined with this first one —
+        // not just with each other — by either needing every one of them or
+        // just one. Placed directly under the conditions rather than between
+        // the first one and "invert" below: this picker and that condition
+        // row are not two separate settings, one governs how all the rows
+        // above it are combined, first one included.
         if (extraConditions.isNotEmpty()) {
             container.addView(
                 choice(getString(if (combineAll) R.string.context_combine_all else R.string.context_combine_any)) {
@@ -245,6 +238,20 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         container.addView(
             choice(getString(R.string.context_add_condition)) {
                 chooseCondition(null) { picked -> extraConditions.add(picked); render() }
+            },
+        )
+        // Below every condition row rather than under the first one: this
+        // negates the combined result of all of them (see [combinedCondition]),
+        // not just the row directly above it.
+        container.addView(
+            CheckBox(this).apply {
+                setText(R.string.context_invert)
+                isChecked = negate
+                isEnabled = canEdit
+                setOnCheckedChangeListener { _, checked ->
+                    negate = checked
+                    render()
+                }
             },
         )
 
