@@ -86,7 +86,7 @@ class WeekActivity : DementorActivity() {
         container.addView(deltaLine(UsageAggregates.delta(thisWeek, lastWeek), lastWeek))
 
         container.addView(title(getString(R.string.week_by_day), 20f))
-        renderBars(thisWeek)
+        renderBars(thisWeek, today)
 
         container.addView(title(getString(R.string.week_top_apps), 20f))
         if (summary.topApps.isEmpty()) {
@@ -107,7 +107,7 @@ class WeekActivity : DementorActivity() {
      * A bar per day, sized against the busiest day rather than against the limit —
      * the question this answers is "which days were heavy", not "did I comply".
      */
-    private fun renderBars(days: List<UsageSnapshot>) {
+    private fun renderBars(days: List<UsageSnapshot>, today: LocalDate) {
         val busiest = days.maxOfOrNull { it.deviceTotal } ?: Duration.ZERO
 
         days.forEach { day ->
@@ -116,6 +116,7 @@ class WeekActivity : DementorActivity() {
             } else {
                 0f
             }
+            val isToday = day.policyDay == today
 
             container.addView(
                 LinearLayout(this).apply {
@@ -125,9 +126,14 @@ class WeekActivity : DementorActivity() {
 
                     addView(
                         TextView(context).apply {
-                            text = shortDayName(day.policyDay)
+                            // The weekday name alone repeats every seven rows —
+                            // without a date next to it, a reader has no way to
+                            // tell this "Mon" from the "Mon" a week further down,
+                            // or to know which one is actually today.
+                            text = dayLabel(day.policyDay)
                             styleAs(R.style.TextAppearance_Dementor_Caption)
                             layoutParams = LinearLayout.LayoutParams(dimen(R.dimen.week_day_label_width), WRAP)
+                            if (isToday) setTypeface(typeface, android.graphics.Typeface.BOLD)
                         },
                     )
                     // A track holding a proportionally sized fill, so the bar
@@ -191,8 +197,11 @@ class WeekActivity : DementorActivity() {
         return bodyText(text)
     }
 
-    private fun shortDayName(date: LocalDate): String =
-        date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+    private fun dayLabel(date: LocalDate): String = getString(
+        R.string.week_day_label,
+        date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+        date.dayOfMonth,
+    )
 
     private fun title(text: String, size: Float) = TextView(this).apply {
         this.text = text

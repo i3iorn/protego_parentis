@@ -79,6 +79,12 @@ class ParentHomeActivity : ParentRoleActivity() {
 
         val configured = sync.settings().isUsable
         val pending = inbox.pending().size
+        // A quiet inbox and a quiet connection look identical here unless this is
+        // checked separately — "nothing waiting" is also what a family whose sync
+        // broke a week ago sees, forever, until someone happens to notice the
+        // small "last checked" caption underneath a headline that keeps saying
+        // everything is fine.
+        val stale = configured && pending == 0 && isCheckInStale()
 
         column.addView(
             card {
@@ -86,6 +92,7 @@ class ParentHomeActivity : ParentRoleActivity() {
                     TextView(this@ParentHomeActivity).apply {
                         text = when {
                             !configured -> getString(R.string.parent_not_connected)
+                            stale -> getString(R.string.parent_stale_checkin)
                             pending == 0 -> getString(R.string.parent_nothing_waiting)
                             else -> resources.getQuantityString(
                                 R.plurals.parent_waiting,
@@ -94,6 +101,7 @@ class ParentHomeActivity : ParentRoleActivity() {
                             )
                         }
                         styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                        if (stale) setTextColor(ContextCompat.getColor(context, R.color.state_warning))
                     },
                 )
                 addView(
@@ -326,6 +334,20 @@ class ParentHomeActivity : ParentRoleActivity() {
         return false
     }
 
+    /**
+     * True once the managed phone was heard from at all, but not recently.
+     *
+     * [DailySummary.receivedAt] is this phone's own clock, stamped the moment
+     * fresh telemetry last landed — see [DailySummaryStore.latest]'s own doc
+     * comment — so it survives this activity being recreated, unlike
+     * [lastCheckedAt] above, which only knows about a poll made in this
+     * session.
+     */
+    private fun isCheckInStale(): Boolean {
+        val heardAt = summaries.latest?.receivedAt ?: return false
+        return java.time.Duration.between(heardAt, Instant.now()) > STALE_CHECKIN_THRESHOLD
+    }
+
     private fun statusLine(configured: Boolean): String = when {
         !configured -> getString(R.string.parent_not_connected_hint)
         lastCheckedAt == null -> getString(R.string.parent_checking)
@@ -353,6 +375,8 @@ class ParentHomeActivity : ParentRoleActivity() {
     }
 
     companion object {
+        /** How long since the last telemetry before a quiet inbox stops looking like good news. */
+        private val STALE_CHECKIN_THRESHOLD: java.time.Duration = java.time.Duration.ofHours(24)
 
         fun intent(context: Context) = Intent(context, ParentHomeActivity::class.java)
     }

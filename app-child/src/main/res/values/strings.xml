@@ -58,7 +58,7 @@
     <string name="home_used_no_limit">%1$s used today</string>
     <string name="home_no_limit_headline">No limit set</string>
     <string name="home_used_up">Time\'s up for today</string>
-    <string name="home_resets">Resets at 4:00am</string>
+    <string name="home_used_up_detail">All %1$s of today\'s screen time allowance is used. Resets at 4:00am.</string>
     <string name="home_monitor_only">Watching only. This phone is not set up for blocking, so nothing gets blocked — the rules below are being checked but not applied.</string>
     <string name="home_managed">This phone is managed. Rules below are being enforced.</string>
     <string name="home_rules_header">My rules</string>
@@ -89,6 +89,8 @@
     <string name="week_same_as_last">The same as the week before</string>
     <string name="week_no_comparison">Not enough history yet to compare weeks.</string>
     <string name="week_by_day">Day by day</string>
+    <!-- e.g. "Mon 12" — a bare weekday name repeats every seven rows in this list. -->
+    <string name="week_day_label">%1$s %2$d</string>
     <string name="week_none">none</string>
     <string name="week_top_apps">Where the time went</string>
     <string name="week_no_apps">No app time recorded.</string>
@@ -275,7 +277,7 @@
     <string name="celebration_headline">Nice one</string>
     <string name="celebration_summary">You used %1$s on %3$s, under your goal of %2$s.</string>
     <string name="celebration_prize_label">YOUR PRIZE</string>
-    <string name="celebration_prize_missing">Your parent has not written a prize yet.</string>
+    <string name="celebration_prize_missing">No prize set for this one yet — ask what\'s next!</string>
     <string name="celebration_dismiss">Thanks</string>
 
     <string name="rules_goal_header">Goal and prize</string>
@@ -524,6 +526,7 @@
     <string name="parent_not_connected">Not connected yet</string>
     <string name="parent_not_connected_hint">Set up the family connection to start receiving requests.</string>
     <string name="parent_nothing_waiting">Nothing waiting for you</string>
+    <string name="parent_stale_checkin">Hasn\'t checked in for a while</string>
     <plurals name="parent_waiting">
         <item quantity="one">%1$d request waiting</item>
         <item quantity="other">%1$d requests waiting</item>

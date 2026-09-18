@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -150,6 +151,8 @@ class AppLimitsActivity : ParentGatedActivity() {
                     layoutParams = LinearLayout.LayoutParams(dimen(R.dimen.row_icon), dimen(R.dimen.row_icon))
                         .apply { marginEnd = dimen(R.dimen.space_md) }
                     setImageDrawable(app.icon)
+                    // Decorative: the label beside it already says the same thing.
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 },
             )
             addView(

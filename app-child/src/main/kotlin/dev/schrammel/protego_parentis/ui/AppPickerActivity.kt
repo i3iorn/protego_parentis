@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.View
 import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -173,6 +174,8 @@ class AppPickerActivity : ParentGatedActivity() {
                 layoutParams = LinearLayout.LayoutParams(dimen(R.dimen.row_icon), dimen(R.dimen.row_icon))
                     .apply { marginEnd = dimen(R.dimen.space_md) }
                 setImageDrawable(icon)
+                // Decorative: the label beside it already says the same thing.
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             },
         )
         addView(

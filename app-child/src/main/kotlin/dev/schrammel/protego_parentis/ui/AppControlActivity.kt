@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageView
@@ -189,13 +190,16 @@ class AppControlActivity : ParentGatedActivity() {
         val snapshot = policyRuleStore(this@AppControlActivity, target).read()
         val rules = contextRuleRuleStore(this@AppControlActivity, target).read()
 
-        addView(identity(app, weighted = true))
+        val blockedNow = isBlocked(app.pkg, rules)
+        val identityRow = identity(app, weighted = true, blocked = blockedNow)
+        addView(identityRow)
         addView(
             CheckBox(context).apply {
                 setText(R.string.apps_blocked)
-                isChecked = isBlocked(app.pkg, rules)
+                isChecked = blockedNow
                 isEnabled = canEdit
                 setOnCheckedChangeListener { _, blocked ->
+                    setBlockedAlpha(identityRow, blocked)
                     decide(app, blocked, wasNew = false)
                 }
             },
@@ -226,7 +230,7 @@ class AppControlActivity : ParentGatedActivity() {
         )
     }
 
-    private fun identity(app: AppInfo, weighted: Boolean = false): View =
+    private fun identity(app: AppInfo, weighted: Boolean = false, blocked: Boolean = false): View =
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -243,6 +247,9 @@ class AppControlActivity : ParentGatedActivity() {
                         dimen(R.dimen.row_icon),
                         dimen(R.dimen.row_icon),
                     ).apply { marginEnd = dimen(R.dimen.space_md) }
+                    // Decorative: the label right beside it already says the same
+                    // thing.
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 },
             )
             addView(
@@ -251,7 +258,20 @@ class AppControlActivity : ParentGatedActivity() {
                     styleAs(R.style.TextAppearance_Dementor_ListItem)
                 },
             )
+            setBlockedAlpha(this, blocked)
         }
+
+    /**
+     * The glanceable cue [R.string.apps_hint] promises: a blocked app's icon (and
+     * name, so this reads on greyscale displays too) dims rather than looking
+     * identical to one that still runs.
+     */
+    private fun setBlockedAlpha(identityRow: View, blocked: Boolean) {
+        val alpha = if (blocked) BLOCKED_ALPHA else 1f
+        (identityRow as? ViewGroup)?.let { row ->
+            for (i in 0 until row.childCount) row.getChildAt(i).alpha = alpha
+        }
+    }
 
     /**
      * Whether [pkg] has a block rule at its well-known id, among [rules].
@@ -311,6 +331,9 @@ class AppControlActivity : ParentGatedActivity() {
     }
 
     companion object {
+        /** Dimmed rather than hidden — [R.string.apps_hint] promises the icon greys out, not that it vanishes. */
+        private const val BLOCKED_ALPHA = 0.4f
+
         fun intent(context: Context, childId: DeviceId? = null) =
             RuleTargets.putExtra(Intent(context, AppControlActivity::class.java), childId)
     }

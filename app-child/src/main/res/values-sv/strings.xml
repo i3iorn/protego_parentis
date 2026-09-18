@@ -62,7 +62,7 @@
     <string name="home_used_no_limit">%1$s använt i dag</string>
     <string name="home_no_limit_headline">Ingen gräns satt</string>
     <string name="home_used_up">Tiden är slut för i dag</string>
-    <string name="home_resets">Nollställs klockan 04:00</string>
+    <string name="home_used_up_detail">Hela dagens skärmtidsgräns på %1$s är förbrukad. Nollställs klockan 04:00.</string>
     <string name="home_monitor_only">Bara mätning. Den här telefonen är inte inställd för blockering, så inget blockeras — reglerna nedan kontrolleras men tillämpas inte.</string>
     <string name="home_managed">Den här telefonen sköts av appen. Reglerna nedan tillämpas.</string>
     <string name="home_rules_header">Mina regler</string>
@@ -93,6 +93,7 @@
     <string name="week_same_as_last">Lika mycket som veckan innan</string>
     <string name="week_no_comparison">Ännu inte tillräckligt med historik för att jämföra veckor.</string>
     <string name="week_by_day">Dag för dag</string>
+    <string name="week_day_label">%1$s %2$d</string>
     <string name="week_none">ingen</string>
     <string name="week_top_apps">Vart tiden tog vägen</string>
     <string name="week_no_apps">Ingen apptid registrerad.</string>
@@ -277,7 +278,7 @@
     <string name="celebration_headline">Snyggt jobbat</string>
     <string name="celebration_summary">Du använde %1$s den %3$s, under ditt mål på %2$s.</string>
     <string name="celebration_prize_label">DIN BELÖNING</string>
-    <string name="celebration_prize_missing">Din förälder har inte skrivit någon belöning än.</string>
+    <string name="celebration_prize_missing">Ingen belöning satt för den här än — fråga vad som gäller!</string>
     <string name="celebration_dismiss">Tack</string>
 
     <string name="rules_goal_header">Mål och belöning</string>
@@ -518,6 +519,7 @@
     <string name="parent_not_connected">Inte ansluten ännu</string>
     <string name="parent_not_connected_hint">Ställ in familjeanslutningen för att börja ta emot förfrågningar.</string>
     <string name="parent_nothing_waiting">Inget väntar på dig</string>
+    <string name="parent_stale_checkin">Har inte hört av sig på ett tag</string>
     <plurals name="parent_waiting">
         <item quantity="one">%1$d förfrågan väntar</item>
         <item quantity="other">%1$d förfrågningar väntar</item>
