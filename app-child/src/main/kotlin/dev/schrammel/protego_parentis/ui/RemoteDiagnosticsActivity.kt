@@ -28,12 +28,15 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
  */
 class RemoteDiagnosticsActivity : ParentGatedActivity() {
 
-    private lateinit var childId: DeviceId
+    // DeviceId is a value class — lateinit is not allowed on one, since it
+    // has no null-representable backing field the way a plain reference
+    // type does. Lazy sidesteps that by wrapping it in an ordinary Lazy<DeviceId>
+    // instead of a raw field, and reads no earlier than onCreate did anyway.
+    private val childId: DeviceId by lazy { DeviceId(intent.getStringExtra(EXTRA_DEVICE_ID).orEmpty()) }
     private lateinit var column: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        childId = DeviceId(intent.getStringExtra(EXTRA_DEVICE_ID).orEmpty())
         column = contentColumn()
         showColumn(column)
     }
