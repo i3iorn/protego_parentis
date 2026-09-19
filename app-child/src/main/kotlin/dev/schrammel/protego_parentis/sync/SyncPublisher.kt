@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.Heartbeat
@@ -33,6 +34,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ARRIVED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BUCKETS
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIAGNOSTICS_LOG
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIGEST
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BATTERY
@@ -506,6 +508,15 @@ class SyncPublisher(context: Context) {
     fun publishAppInventory() = publish(
         type = SyncMessageType.APP_INVENTORY,
         fields = mapOf(FIELD_APPS_JSON to AppInventoryCodec.encode(installedInventory(appContext))),
+    )
+
+    /** Parent: asks the child phone for its diagnostic log. */
+    fun publishDiagnosticsRequest() = publish(SyncMessageType.DIAGNOSTICS_REQUESTED, emptyMap())
+
+    /** Child: answers with its own diagnostic log, unchanged from how it stores it. */
+    fun publishDiagnosticsReport() = publish(
+        type = SyncMessageType.DIAGNOSTICS_REPORT,
+        fields = mapOf(FIELD_DIAGNOSTICS_LOG to Diagnostics.raw(appContext)),
     )
 
     /** A parent's answer about a new app. */

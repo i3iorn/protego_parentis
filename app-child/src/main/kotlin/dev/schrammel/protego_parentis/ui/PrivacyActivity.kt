@@ -91,6 +91,11 @@ class PrivacyActivity : DementorActivity() {
         }
 
         claim(R.string.privacy_log_header, R.string.privacy_log_body)
+        // Only true once sync is configured at all — see the same guard above
+        // this claim's own header comment.
+        if (settings.isUsable) {
+            claim(R.string.privacy_log_remote_header, R.string.privacy_log_remote_body)
+        }
         column.addView(
             actionButton().apply {
                 setText(R.string.privacy_view_log)

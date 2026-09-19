@@ -200,6 +200,33 @@ enum class SyncMessageType {
      * new place into existence remotely needs this one-shot exception.
      */
     PLACE_CREATE_REQUESTED,
+
+    /**
+     * Parent → child: send the diagnostic log.
+     *
+     * The same request/answer shape as [APP_INVENTORY_REQUESTED] — a parent's
+     * phone has never had a way to see this without holding the managed
+     * phone, which meant asking about a crash meant asking somebody else to
+     * plug it in and read a screen to them.
+     */
+    DIAGNOSTICS_REQUESTED,
+
+    /**
+     * Child → parents: the same content-free log
+     * `dev.schrammel.protego_parentis.diagnostics.Diagnostics` already shows
+     * on this phone's own Privacy screen — event names, counts and times,
+     * never what was used or said. Sent only in reply to
+     * [DIAGNOSTICS_REQUESTED], the same as [APP_INVENTORY] only answers
+     * [APP_INVENTORY_REQUESTED].
+     *
+     * Deliberately excludes the raw crash stack trace
+     * `dev.schrammel.protego_parentis.diagnostics.CrashCapture` holds — that
+     * one can name a rule, a category or a place, and this app's local
+     * "diagnostics" screen already keeps it out of the shareable log for
+     * exactly that reason. Carrying it here too is a real, separate feature
+     * with its own privacy trade-off, not an oversight.
+     */
+    DIAGNOSTICS_REPORT,
 }
 
 /**

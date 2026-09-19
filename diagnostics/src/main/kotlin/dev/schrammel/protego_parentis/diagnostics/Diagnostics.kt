@@ -184,6 +184,24 @@ object Diagnostics {
     fun asText(context: Context, header: String, empty: String): String =
         DiagnosticLogFormat.render(entries(context), header, empty)
 
+    /**
+     * This phone's own log, in its wire encoding — for carrying a copy
+     * elsewhere (a parent's phone, over sync) rather than reading it here.
+     * Exactly [prefs]' own stored value: nothing is re-derived, so a copy
+     * taken this way and one read back with [asText] can never disagree.
+     */
+    fun raw(context: Context): String = prefs(context).getString(KEY_LOG, null).orEmpty()
+
+    /**
+     * Renders a copy of the log carried in from elsewhere — see [raw] — the
+     * same way [asText] renders this phone's own. A malformed or truncated
+     * [raw] decodes whatever lines it can rather than failing outright, the
+     * same fail-soft [DiagnosticLogFormat.decodeAll] already gives this
+     * phone's own storage.
+     */
+    fun asText(raw: String, header: String, empty: String): String =
+        DiagnosticLogFormat.render(DiagnosticLogFormat.decodeAll(raw), header, empty)
+
     private fun prefs(context: Context) = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 }
