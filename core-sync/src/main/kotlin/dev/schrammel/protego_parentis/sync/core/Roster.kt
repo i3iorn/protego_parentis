@@ -127,6 +127,7 @@ object RosterRules {
         SyncMessageType.WEB_SUMMARY -> SyncRole.CHILD
         SyncMessageType.POLICY_SNAPSHOT -> SyncRole.CHILD
         SyncMessageType.APP_INVENTORY -> SyncRole.CHILD
+        SyncMessageType.DIAGNOSTICS_REPORT -> SyncRole.CHILD
 
         SyncMessageType.REQUEST_DECIDED -> SyncRole.PARENT
         SyncMessageType.BONUS_GRANTED -> SyncRole.PARENT
@@ -137,6 +138,7 @@ object RosterRules {
         SyncMessageType.POLICY_UPDATED -> SyncRole.PARENT
         SyncMessageType.APP_INVENTORY_REQUESTED -> SyncRole.PARENT
         SyncMessageType.PLACE_CREATE_REQUESTED -> SyncRole.PARENT
+        SyncMessageType.DIAGNOSTICS_REQUESTED -> SyncRole.PARENT
 
         // Only a parent may let somebody in. A child device that obtained the
         // passphrase can sign this perfectly well and is refused, which is the

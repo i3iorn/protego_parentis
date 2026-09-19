@@ -227,6 +227,8 @@
     <string name="privacy_log_header">The app\'s own log</string>
     <string name="privacy_log_body">A short record of what the app did — that it checked your time, that it started, that something failed. It holds no app names, no reasons you wrote and no times you were using anything. You can read all of it.</string>
     <string name="privacy_view_log">Read the log</string>
+    <string name="privacy_log_remote_header">Sharing it with a parent</string>
+    <string name="privacy_log_remote_body">A parent can ask this phone to send a copy of the log above, so they can check on a problem without holding this phone. It only happens when asked for, never automatically, and it is exactly the log shown here — nothing more.</string>
     <string name="privacy_view_history">See what actually changed</string>
     <string name="home_open_privacy">What leaves this phone</string>
 
@@ -1192,6 +1194,13 @@
     <string name="perms_usage_action">Open usage access settings</string>
     <string name="devices_version_mixed">Not every phone is on the same version. This one is on %1$s. Rules still apply, but a phone on an older version may not understand newer ones.</string>
     <string name="devices_version_other">On version %1$s</string>
+    <string name="devices_view_diagnostics">View diagnostic log</string>
+
+    <string name="remote_diagnostics_title">Diagnostic log</string>
+    <string name="remote_diagnostics_hint">The same content-free record this phone already shows its own holder under Privacy — event names, counts and times, nothing about what was used or said.</string>
+    <string name="remote_diagnostics_request">Request diagnostic log</string>
+    <string name="remote_diagnostics_requested">Asked. The log will appear once that phone answers.</string>
+    <string name="remote_diagnostics_empty">No diagnostic log has come back from that phone yet.</string>
 
     <string name="app_search_hint">Search apps</string>
     <string name="app_search_none">No app matches that.</string>

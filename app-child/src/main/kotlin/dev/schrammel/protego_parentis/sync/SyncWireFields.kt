@@ -59,6 +59,9 @@ internal object SyncWireFields {
     const val FIELD_POLICY_JSON = "policyJson"
     const val FIELD_APPS_JSON = "appsJson"
 
+    /** [dev.schrammel.protego_parentis.diagnostics.Diagnostics.raw]'s own wire encoding, carried unchanged. */
+    const val FIELD_DIAGNOSTICS_LOG = "diagnosticsLog"
+
     /** A batch of replicated-state writes, encoded by [StateCodec]. */
     const val FIELD_OPS = "ops"
 

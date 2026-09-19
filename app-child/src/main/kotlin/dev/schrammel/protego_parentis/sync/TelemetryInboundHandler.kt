@@ -8,6 +8,7 @@ import dev.schrammel.protego_parentis.policy.IntegrityRules
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ALLOWED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIAGNOSTICS_LOG
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_PREFIX
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ARRIVED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BATTERY
@@ -209,6 +210,12 @@ internal class TelemetryInboundHandler(
     /** Caches which apps [senderId]'s phone can launch, for a rule editor to offer. */
     fun rememberAppInventory(message: SyncMessage, senderId: DeviceId): Boolean {
         AppInventoryStore(appContext).setApps(senderId, AppInventoryCodec.decode(message.field(FIELD_APPS_JSON)))
+        return true
+    }
+
+    /** Caches [senderId]'s diagnostic log, for a parent to read without holding that phone. */
+    fun rememberDiagnosticsReport(message: SyncMessage, senderId: DeviceId): Boolean {
+        RemoteDiagnosticsStore(appContext).setLog(senderId, message.field(FIELD_DIAGNOSTICS_LOG).orEmpty())
         return true
     }
 

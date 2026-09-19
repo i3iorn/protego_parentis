@@ -223,6 +223,9 @@ class SyncCoordinator(context: Context) {
     /** Parent: asks the child phone for the apps it has installed. */
     fun publishAppInventoryRequest() = publisher.publishAppInventoryRequest()
 
+    /** Parent: asks the child phone for its diagnostic log. */
+    fun publishDiagnosticsRequest() = publisher.publishDiagnosticsRequest()
+
     /** A parent's answer about a new app. */
     fun publishAppDecision(packageName: String, blocked: Boolean) =
         publisher.publishAppDecision(packageName, blocked)

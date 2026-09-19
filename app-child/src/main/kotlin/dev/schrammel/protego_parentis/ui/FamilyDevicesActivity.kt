@@ -309,6 +309,22 @@ class FamilyDevicesActivity : ParentGatedActivity() {
                 },
             )
         }
+        // Only the managed phone keeps the kind of log a crash would show up
+        // in — a parent's own phone has never had a way to ask a family
+        // member's phone what it has been doing without holding it.
+        if (device.role == SyncRole.CHILD) {
+            addView(
+                Button(context).apply {
+                    setText(R.string.devices_view_diagnostics)
+                    layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
+                        topMargin = dimen(R.dimen.space_xs)
+                    }
+                    // Its own click, not the row's — the row's own listener
+                    // above still opens rename/remove for a tap elsewhere on it.
+                    setOnClickListener { startActivity(RemoteDiagnosticsActivity.intent(context, device.id)) }
+                },
+            )
+        }
     }
 
     /** Read once per render; it cannot change while the screen is open. */

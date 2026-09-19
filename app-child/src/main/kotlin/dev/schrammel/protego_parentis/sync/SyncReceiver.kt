@@ -295,6 +295,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.POLICY_UPDATED -> childCommand.applyPolicyUpdate(message)
         SyncMessageType.APP_INVENTORY_REQUESTED -> { publisher.publishAppInventory(); true }
         SyncMessageType.PLACE_CREATE_REQUESTED -> childCommand.applyPlaceCreateRequest(message)
+        SyncMessageType.DIAGNOSTICS_REQUESTED -> { publisher.publishDiagnosticsReport(); true }
         SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
@@ -315,6 +316,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.WEB_SUMMARY,
         SyncMessageType.POLICY_SNAPSHOT,
         SyncMessageType.APP_INVENTORY,
+        SyncMessageType.DIAGNOSTICS_REPORT,
         -> false
     }
 
@@ -339,6 +341,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.CHAT_MESSAGE -> chat.rememberChat(message)
         SyncMessageType.POLICY_SNAPSHOT -> rememberPolicySnapshot(message)
         SyncMessageType.APP_INVENTORY -> telemetry.rememberAppInventory(message, senderId)
+        SyncMessageType.DIAGNOSTICS_REPORT -> telemetry.rememberDiagnosticsReport(message, senderId)
         SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
         SyncMessageType.STATE_DIGEST -> compareDigest(message)
         SyncMessageType.STATE_REPAIR -> answerRepair(message)
@@ -353,6 +356,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         SyncMessageType.POLICY_UPDATED,
         SyncMessageType.APP_INVENTORY_REQUESTED,
         SyncMessageType.PLACE_CREATE_REQUESTED,
+        SyncMessageType.DIAGNOSTICS_REQUESTED,
         -> false
     }
 
