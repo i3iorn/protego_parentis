@@ -672,6 +672,8 @@
     <string name="apps_allow">Tillåt</string>
     <string name="apps_block">Blockera</string>
     <string name="apps_blocked">Blockerad</string>
+    <string name="apps_request_list_update">Begär uppdaterad applista</string>
+    <string name="apps_request_list_update_sent">Frågat. Listan uppdateras när den telefonen svarar.</string>
     <string name="new_app_notification_title">En ny app dök upp</string>
     <string name="new_app_notification_body">%1$s installerades. Tillåt den eller blockera den.</string>
 
