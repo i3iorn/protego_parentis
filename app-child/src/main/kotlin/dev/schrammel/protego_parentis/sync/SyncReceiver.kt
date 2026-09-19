@@ -273,9 +273,22 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         val senderRole = admittance.device.role
         val senderId = admittance.device.id
 
-        return when (roles.roleOrChild) {
-            DeviceRole.CHILD -> applyAsChild(message, senderRole, senderId)
-            DeviceRole.PARENT -> applyAsParent(message, senderRole, senderId)
+        // A malformed or version-skewed field inside an otherwise correctly
+        // signed message can throw here (a handler parsing an amount, a
+        // package name, a policy snapshot) — content this device does not
+        // control, arriving on the shared sync executor. Uncaught, that
+        // reaches the process's default handler and kills the app; caught
+        // here, it is one refused message and the executor's queue keeps
+        // running for whatever is next.
+        return runCatching {
+            when (roles.roleOrChild) {
+                DeviceRole.CHILD -> applyAsChild(message, senderRole, senderId)
+                DeviceRole.PARENT -> applyAsParent(message, senderRole, senderId)
+            }
+        }.getOrElse { error ->
+            Log.w(TAG, "Refused message ${message.id}: threw while applying", error)
+            Diagnostics.record(appContext, DiagnosticEvent.SYNC_DISPATCH_FAILED)
+            false
         }
     }
 

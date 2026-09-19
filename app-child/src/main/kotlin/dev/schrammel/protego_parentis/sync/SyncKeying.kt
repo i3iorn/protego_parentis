@@ -1,9 +1,12 @@
 package dev.schrammel.protego_parentis.sync
 
+import android.util.Log
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
 import dev.schrammel.protego_parentis.sync.core.SyncKey
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+
+private const val TAG = "SyncKeying"
 
 /**
  * The plumbing [SyncPublisher] and [SyncReceiver] both need and neither owns
@@ -27,7 +30,21 @@ internal object SyncKeying {
     @Volatile
     private var cachedKey: Pair<Pair<String, String>, SyncKey>? = null
 
-    fun execute(task: () -> Unit) = io.execute(task)
+    /**
+     * Runs [task] on the shared sync thread.
+     *
+     * The specific, expected failures each caller already knows about — a bad
+     * key, a refused message, a transport error — are handled and logged
+     * inside [task] itself. This catch is the net underneath that: anything
+     * that still escapes would otherwise run uncaught on this single shared
+     * thread and take the whole process down with it, for every future call
+     * to [execute] as well as this one.
+     */
+    fun execute(task: () -> Unit) {
+        io.execute {
+            runCatching(task).onFailure { error -> Log.e(TAG, "sync task failed", error) }
+        }
+    }
 
     /**
      * The family key, derived once and kept.
