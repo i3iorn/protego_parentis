@@ -45,6 +45,7 @@ class RequestCoordinatorTest {
         coordinator().submit(GrantTarget.Device, 10.minutes, "homework", now)
 
         coordinator().notifyLapsedRequests(now)
+        Audit.awaitIdle()
 
         assertTrue(Audit.entries(context).none { it.action == AuditAction.REQUEST_EXPIRED })
     }
@@ -55,6 +56,7 @@ class RequestCoordinatorTest {
         RequestStore(context).save(lapsedPendingRequest(now))
 
         coordinator().notifyLapsedRequests(now)
+        Audit.awaitIdle()
 
         assertTrue(Audit.entries(context).any { it.action == AuditAction.REQUEST_EXPIRED })
     }
@@ -66,6 +68,7 @@ class RequestCoordinatorTest {
 
         coordinator().notifyLapsedRequests(now)
         coordinator().notifyLapsedRequests(now.plusSeconds(60))
+        Audit.awaitIdle()
 
         assertEquals(1, Audit.entries(context).count { it.action == AuditAction.REQUEST_EXPIRED })
     }

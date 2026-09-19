@@ -47,6 +47,7 @@ class AuditFamilyChainTest {
         LocalDeviceId.useInTests("DEVICEA")
         Audit.record(context, AuditActor.PARENT, AuditAction.PIN_CHANGED)
         Audit.record(context, AuditActor.CHILD, AuditAction.APP_LIMIT_CHANGED, subject = "Games", before = "30", after = "45")
+        Audit.awaitIdle()
 
         LocalDeviceId.useInTests("DEVICEB")
 
@@ -96,6 +97,7 @@ class AuditFamilyChainTest {
                 after = (index + 1).toString(),
             )
         }
+        Audit.awaitIdle()
 
         LocalDeviceId.useInTests("DEVICEB")
 
