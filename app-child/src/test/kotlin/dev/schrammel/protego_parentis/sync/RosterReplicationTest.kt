@@ -110,6 +110,7 @@ class RosterReplicationTest {
         )
 
         replication().pullIntoRoster()
+        Audit.awaitIdle()
 
         assertTrue(roster().devices.any { it.id == parentId })
         assertTrue(

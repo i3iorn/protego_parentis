@@ -11,6 +11,7 @@ import dev.schrammel.protego_parentis.security.LocalDeviceId
 import java.time.Instant
 import java.time.LocalTime
 import java.util.UUID
+import java.util.concurrent.Executors
 
 /**
  * The family's shared history (TR-3).
@@ -29,14 +30,24 @@ import java.util.UUID
 object Audit {
 
     /**
-     * Serialises the read-modify-write below.
+     * Serialises the read-modify-write below, and takes it off whichever
+     * thread called [record].
      *
-     * Entries are recorded from the enforcement worker, the sync executor and the
-     * UI thread. Appending is read-then-write, so without this two entries written
-     * at the same moment lose one of themselves — and a history that quietly drops
-     * rows is worse than no history, because it is still believed.
+     * Entries are recorded from the enforcement worker, the sync executor and
+     * the UI thread, and appending is read-then-write followed by a
+     * synchronous [commit] — a single-thread executor gives the same
+     * serialization a lock would, without making one of those three threads
+     * block on a disk write another one started. Before this was a plain
+     * `synchronized(lock)` block running inline on the caller's own thread: a
+     * UI tap that landed while the enforcement tick or a sync message was
+     * mid-`commit()` froze until that unrelated write finished — a stall with
+     * no fixed cause, gone the moment the other thread happened to be clear,
+     * which is exactly what "the UI hangs sometimes, retry works" looks like
+     * from the outside.
      */
-    private val lock = Any()
+    private val worker = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dementor-audit").apply { isDaemon = true }
+    }
 
     /**
      * Records an action, unless nothing actually changed.
@@ -44,6 +55,12 @@ object Audit {
      * The no-op guard is not a nicety: sliders and switches fire on every touch,
      * and a history where nine rows in ten say "changed from 45 to 45" is one
      * nobody will scroll.
+     *
+     * Returns before the write lands — see [worker]'s own doc comment. Nothing
+     * in this app reads [entries] back synchronously in the same call stack as
+     * a [record] that just changed it; the two are always separate visits to a
+     * screen, so the write landing a moment later is not observable as a lost
+     * update, only as the ordinary delay any background write already has.
      */
     fun record(
         context: Context,
@@ -65,8 +82,9 @@ object Audit {
             before = before,
             after = after,
         )
-        val linked = synchronized(lock) {
-            val prefs = prefs(context)
+        val appContext = context.applicationContext
+        worker.execute {
+            val prefs = prefs(appContext)
             val appended = AuditLogFormat.append(
                 raw = prefs.getString(KEY_LOG, null),
                 anchor = prefs.getString(KEY_ANCHOR, null) ?: AuditChain.GENESIS,
@@ -83,32 +101,50 @@ object Audit {
                 // catch on its own.
                 putLong(KEY_TOTAL, prefs.getLong(KEY_TOTAL, 0L) + 1L)
             }
-            appended.entry
-        }
+            val linked = appended.entry
 
-        // Recorded twice, deliberately, and the two copies do different jobs.
-        //
-        // The local log above is a hash chain: it proves *this phone's* history
-        // has not been edited underneath the app. That chain is linear by
-        // nature, and entries from three other devices arriving out of order
-        // cannot be threaded onto it without destroying the property.
-        //
-        // So the replica below carries the same entry to the rest of the
-        // family, unchained, and [entries] shows the union. The chain answers
-        // "has this phone's log been tampered with"; replication answers "does
-        // the family see the same history". Both were promised, and neither
-        // substitutes for the other.
-        AuditReplication(context).record(
-            actor = actor.name,
-            action = action.name,
-            subject = subject,
-            before = before,
-            after = after,
-            previousHash = linked.previousHash,
-            hash = linked.hash,
-            entryId = linked.id,
-            atMillis = linked.at.toEpochMilli(),
-        )
+            // Recorded twice, deliberately, and the two copies do different jobs.
+            //
+            // The local log above is a hash chain: it proves *this phone's* history
+            // has not been edited underneath the app. That chain is linear by
+            // nature, and entries from three other devices arriving out of order
+            // cannot be threaded onto it without destroying the property.
+            //
+            // So the replica below carries the same entry to the rest of the
+            // family, unchained, and [entries] shows the union. The chain answers
+            // "has this phone's log been tampered with"; replication answers "does
+            // the family see the same history". Both were promised, and neither
+            // substitutes for the other.
+            AuditReplication(appContext).record(
+                actor = actor.name,
+                action = action.name,
+                subject = subject,
+                before = before,
+                after = after,
+                previousHash = linked.previousHash,
+                hash = linked.hash,
+                entryId = linked.id,
+                atMillis = linked.at.toEpochMilli(),
+            )
+        }
+    }
+
+    /**
+     * Blocks until every [record] queued before this call has been written
+     * and replicated.
+     *
+     * Test-only: production code has no reason to wait for [worker] rather
+     * than letting it catch up on its own — the whole point of [worker] is
+     * that nothing has to. A test asserting on [entries]/[check]/[checkFamily]
+     * right after a [record] does have that reason, the same way tests
+     * elsewhere in this app wait out [dev.schrammel.protego_parentis.ui.Background]'s
+     * own worker rather than assuming it has already run.
+     */
+    internal fun awaitIdle() {
+        // Runnable, not a bare lambda: submit() is overloaded for Runnable and
+        // Callable<T>, and a no-argument lambda returning Unit is ambiguous
+        // between them.
+        worker.submit(Runnable {}).get()
     }
 
     /**

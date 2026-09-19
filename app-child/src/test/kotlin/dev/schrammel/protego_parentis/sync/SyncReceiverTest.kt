@@ -605,6 +605,7 @@ class SyncReceiverTest {
         assertEquals(51.5074, created?.latitude)
         assertEquals(-0.1278, created?.longitude)
         assertEquals(150, created?.radiusMetres)
+        Audit.awaitIdle()
         assertTrue(Audit.entries(context).any { it.action == AuditAction.PLACE_ADDED && it.subject == "Grandma's" })
     }
 
@@ -709,6 +710,7 @@ class SyncReceiverTest {
             .filter { it.target == GrantTarget.Device }
             .sumOf { it.amount.inWholeMinutes }
         assertTrue("the grant, and the notification alongside it, must not throw", granted >= 15)
+        Audit.awaitIdle()
         assertTrue(Audit.entries(context).any { it.action == AuditAction.BONUS_GRANTED })
     }
 
@@ -732,6 +734,7 @@ class SyncReceiverTest {
 
         assertTrue(applied)
         assertTrue("com.example.new" in LocalPolicyStore(context).blockedPackages)
+        Audit.awaitIdle()
         assertTrue(Audit.entries(context).any { it.action == AuditAction.APP_BLOCK_CHANGED })
     }
 
