@@ -3,6 +3,8 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -67,6 +69,7 @@ class AppControlActivity : ParentGatedActivity() {
     private var fresh: List<AppInfo> = emptyList()
     private var known: List<AppInfo> = emptyList()
     private var query = ""
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun supportsReadOnly() = true
 
@@ -103,6 +106,20 @@ class AppControlActivity : ParentGatedActivity() {
                 setOnClickListener { startActivity(RulesTutorialActivity.intent(this@AppControlActivity)) }
             },
         )
+        // Remote only: this device's own list is always current (LocalAppCatalog reads
+        // the package manager directly), so there is nothing to ask a local target for.
+        if (!target.isOwnDevice) {
+            column.addView(
+                actionButton().apply {
+                    setText(R.string.apps_request_list_update)
+                    setOnClickListener {
+                        SyncCoordinator(this@AppControlActivity).publishAppInventoryRequest()
+                        toast(getString(R.string.apps_request_list_update_sent))
+                        pollForFreshInventory()
+                    }
+                },
+            )
+        }
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
         // Outside the part that gets rebuilt on each keystroke, which would take
         // the cursor and the typed text with it. Prefilled because render() runs
@@ -111,7 +128,10 @@ class AppControlActivity : ParentGatedActivity() {
         column.addView(searchField(query) { query = it; renderRows() })
         rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(rows)
+        reloadCatalog()
+    }
 
+    private fun reloadCatalog() {
         Background.load(this, {
             val apps = appCatalog(this, target).launchable()
             if (target.isOwnDevice) {
@@ -125,6 +145,23 @@ class AppControlActivity : ParentGatedActivity() {
             known = rest
             renderRows()
         }
+    }
+
+    /**
+     * Checks back for the answer to a list-update request, a few times over
+     * the next minute — mirrors [AppPickerActivity.pollForFreshInventory],
+     * which the same request button relies on for the same reason: the reply
+     * arrives asynchronously over sync with nothing to call back into this
+     * screen when it lands. Reloads just the catalog rather than the whole
+     * screen, so a request made mid-search does not lose it.
+     */
+    private fun pollForFreshInventory(attempt: Int = 0) {
+        if (attempt >= MAX_INVENTORY_POLL_ATTEMPTS) return
+        handler.postDelayed({
+            if (isFinishing || isDestroyed) return@postDelayed
+            reloadCatalog()
+            pollForFreshInventory(attempt + 1)
+        }, INVENTORY_POLL_INTERVAL_MILLIS)
     }
 
     private fun renderRows() {
@@ -350,6 +387,12 @@ class AppControlActivity : ParentGatedActivity() {
     companion object {
         /** Dimmed rather than hidden — [R.string.apps_hint] promises the icon greys out, not that it vanishes. */
         private const val BLOCKED_ALPHA = 0.4f
+
+        /** How often [pollForFreshInventory] checks back after a request. */
+        private const val INVENTORY_POLL_INTERVAL_MILLIS = 5_000L
+
+        /** ~a minute of checking — long enough for realtime sync's usual case, not forever. */
+        private const val MAX_INVENTORY_POLL_ATTEMPTS = 12
 
         fun intent(context: Context, childId: DeviceId? = null) =
             RuleTargets.putExtra(Intent(context, AppControlActivity::class.java), childId)

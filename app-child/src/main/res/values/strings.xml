@@ -679,6 +679,8 @@
     <string name="apps_allow">Allow</string>
     <string name="apps_block">Block</string>
     <string name="apps_blocked">Blocked</string>
+    <string name="apps_request_list_update">Request app list update</string>
+    <string name="apps_request_list_update_sent">Asked. The list will update once that phone answers.</string>
     <string name="new_app_notification_title">A new app appeared</string>
     <string name="new_app_notification_body">%1$s was installed. Allow it or block it.</string>
 
