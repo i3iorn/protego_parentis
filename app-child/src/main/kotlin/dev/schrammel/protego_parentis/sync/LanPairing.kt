@@ -169,16 +169,28 @@ object LanPairing {
                 val answered = AtomicBoolean(false)
                 onRequest(code) { allowed ->
                     if (!answered.compareAndSet(false, true)) return@onRequest
-                    val token = SyncConfigStore(context).load().token()
-                    val reply = if (allowed && token != null) {
-                        PairingWire.grant(token)
-                    } else {
-                        PairingWire.deny()
-                    }
+                    // decide() is called from whatever thread the caller answers
+                    // on — for the real UI, an AlertDialog button, i.e. the main
+                    // thread. The reply is a disk read plus a blocking socket
+                    // write, so it must never run on the thread that invoked us;
+                    // io.execute puts it back on this Offer's own worker instead.
+                    // Rejected only if stop() already shut the executor down
+                    // (the person backed out as they answered), in which case
+                    // there is nobody left to write the reply to anyway.
                     runCatching {
-                        writer.write(reply)
-                        writer.newLine()
-                        writer.flush()
+                        io.execute {
+                            val token = SyncConfigStore(context).load().token()
+                            val reply = if (allowed && token != null) {
+                                PairingWire.grant(token)
+                            } else {
+                                PairingWire.deny()
+                            }
+                            runCatching {
+                                writer.write(reply)
+                                writer.newLine()
+                                writer.flush()
+                            }
+                        }
                     }
                 }
 
