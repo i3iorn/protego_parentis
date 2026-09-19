@@ -189,6 +189,10 @@ internal object ContextRuleCodec {
                 if (effect.hidden) put(KEY_HIDDEN, true)
             }
             is RuleEffect.Allow -> put(KEY_KIND, ALLOW)
+            is RuleEffect.AlwaysBlock -> {
+                put(KEY_KIND, ALWAYS_BLOCK)
+                if (effect.hidden) put(KEY_HIDDEN, true)
+            }
             is RuleEffect.SafetyExempt -> put(KEY_KIND, SAFETY_EXEMPT)
             is RuleEffect.SetBudget -> {
                 put(KEY_KIND, BUDGET)
@@ -203,6 +207,7 @@ internal object ContextRuleCodec {
     fun decodeEffect(json: JSONObject): RuleEffect? = when (json.optString(KEY_KIND)) {
         BLOCK -> RuleEffect.Block(hidden = json.optBoolean(KEY_HIDDEN, false))
         ALLOW -> RuleEffect.Allow
+        ALWAYS_BLOCK -> RuleEffect.AlwaysBlock(hidden = json.optBoolean(KEY_HIDDEN, false))
         SAFETY_EXEMPT -> RuleEffect.SafetyExempt
         BUDGET -> RuleEffect.SetBudget(
             WeeklyBudget.flat(json.optLong(KEY_MINUTES, 0L).coerceIn(0L, MAX_MINUTES).toInt().minutes),
@@ -303,6 +308,7 @@ internal object ContextRuleCodec {
 
     private const val BLOCK = "block"
     private const val ALLOW = "allow"
+    private const val ALWAYS_BLOCK = "alwaysBlock"
     private const val SAFETY_EXEMPT = "safetyExempt"
     private const val BUDGET = "budget"
 

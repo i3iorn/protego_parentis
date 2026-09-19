@@ -139,8 +139,13 @@ object PolicyEngine {
             if (isSafetyExempt(pkg)) continue
 
             // A contextual allow works like a temporary safety exemption: nothing
-            // else may restrict the app while the rule applies.
-            if (pkg in contextOutcome.allowed) continue
+            // else may restrict the app while the rule applies — unless a
+            // RuleEffect.AlwaysBlock override is also active for it, which
+            // outranks a plain Allow (see AlwaysBlock's own doc comment).
+            // contextOutcome.blocked already reflects that precedence, so an
+            // app it still names despite being allowed is exactly the
+            // override case, not a plain block a mere allow already beat.
+            if (pkg in contextOutcome.allowed && pkg !in contextOutcome.blocked) continue
 
             val reasons = buildList {
                 // A browser that ignores managed configuration would be a way
@@ -152,8 +157,13 @@ object PolicyEngine {
                     // A manual per-app block is an ordinary RuleEffect.Block
                     // rule now, the same as a scheduled one — AppRule.Blocked
                     // is no longer read here, so this is the one place hidden
-                    // apps are decided too.
-                    (rule.effect as? RuleEffect.Block)?.takeIf { it.hidden }?.let { hide += pkg }
+                    // apps are decided too. AlwaysBlock carries the same
+                    // hidden flag, for whichever of the two tiers this rule
+                    // turned out to be.
+                    val hidden = (rule.effect as? RuleEffect.Block)?.hidden
+                        ?: (rule.effect as? RuleEffect.AlwaysBlock)?.hidden
+                        ?: false
+                    if (hidden) hide += pkg
                     // #103: derived from the rule's own condition rather than
                     // assumed null. A window-based rule can say when it lifts;
                     // a Wi-Fi one still cannot, and null still means that.

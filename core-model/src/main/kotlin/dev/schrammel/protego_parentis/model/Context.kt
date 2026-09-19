@@ -204,6 +204,10 @@ sealed interface RuleEffect {
      * intact — the default) and `setApplicationHidden` (icon disappears), the
      * same distinction `AppRule.Blocked.hidden` drew before per-app blocking
      * became a rule like any other.
+     *
+     * The weakest of this engine's three block-or-stronger tiers: a plain
+     * [Allow] rule elsewhere always frees a target this settles. [AlwaysBlock]
+     * is the override that survives that.
      */
     data class Block(val hidden: Boolean = false) : RuleEffect
 
@@ -213,18 +217,32 @@ sealed interface RuleEffect {
      * Weaker than [SafetyExempt]: it settles only what [ContextRule]s decide
      * between themselves, so it has no bearing on network blocking, DNS
      * filtering, or anything outside this resolution — see [SafetyExempt] for
-     * the stronger form.
+     * the stronger form. Also weaker than [AlwaysBlock]: a family that wants
+     * an app blocked no matter what else the ruleset says reaches for that
+     * instead of a plain [Block].
      */
     data object Allow : RuleEffect
 
     /**
+     * Blocks the target regardless of any [Allow] rule that would otherwise
+     * spare it — the override a family reaches for when "no, this one is
+     * blocked, always" has to survive whatever else the ruleset says
+     * elsewhere, the one hole a plain [Block] cannot close.
+     *
+     * Still weaker than [SafetyExempt]: the built-in-safety-allowlist tier
+     * frees a target held here exactly as it frees one held by a plain
+     * [Block]. [hidden] carries the same meaning as [Block.hidden].
+     */
+    data class AlwaysBlock(val hidden: Boolean = false) : RuleEffect
+
+    /**
      * Exempts the target from everything, at the same tier as the built-in
      * safety allowlist (the dialer, and so on): every budget, every other
-     * contextual rule, network blocking, and DNS filtering. What
-     * `exemptPackages`/`AppRule.AlwaysAllowed` used to mean before the rule
-     * engine could express it directly — a parent-configured rule now, not a
-     * fixed invariant, so it can be as narrow or as broad a condition/target as
-     * any other rule.
+     * contextual rule (an [AlwaysBlock] override included), network blocking,
+     * and DNS filtering. What `exemptPackages`/`AppRule.AlwaysAllowed` used to
+     * mean before the rule engine could express it directly — a
+     * parent-configured rule now, not a fixed invariant, so it can be as
+     * narrow or as broad a condition/target as any other rule.
      */
     data object SafetyExempt : RuleEffect
 

@@ -136,6 +136,7 @@
     <string name="context_place_unknown">a deleted place</string>
     <string name="context_effect_block">block</string>
     <string name="context_effect_allow">allow freely</string>
+    <string name="context_effect_always_block">always block</string>
     <string name="context_effect_safety_exempt">exempt entirely, like the dialer</string>
     <string name="context_effect_budget">limit the phone to %1$s</string>
     <string name="context_choose_safety_exempt">Exempt entirely</string>
@@ -159,7 +160,7 @@
     <string name="context_invert">Apply when the above is NOT true</string>
     <string name="context_do_header">Do this</string>
     <string name="context_do_info_title">About “Do this”</string>
-    <string name="context_do_info_body">What the rule does while its condition holds. Block stops the target outright. Allow exempts it from every other rule and budget — an allow always beats a block from a different rule. Exempt entirely is stronger still: it also reaches network and DNS blocking, the same tier as the built-in safety allowlist. Set a limit replaces the target’s own daily allowance; when two rules set a limit for the same target, the tighter one wins.</string>
+    <string name="context_do_info_body">What the rule does while its condition holds. Block stops the target outright. Allow exempts it from every other rule and budget — an allow always beats a block from a different rule. Always block is one tier stronger: it survives an allow rule elsewhere, for the app or two a plain block is not enough to pin down. Exempt entirely is stronger still: it beats an always block too, and it also reaches network and DNS blocking, the same tier as the built-in safety allowlist. Set a limit replaces the target’s own daily allowance; when two rules set a limit for the same target, the tighter one wins.</string>
     <string name="context_to_header">To</string>
     <string name="context_to_info_title">About “To”</string>
     <string name="context_to_info_body">What this rule acts on: the whole device, one or more chosen apps, one or more categories, or everything except a short list you choose. Naming “everything except” is the strict way to write a lockdown — instead of listing what to block, you list the few things that should keep working.</string>
@@ -183,6 +184,7 @@
     <string name="context_delete_sent_remote">Sent — the child\'s phone drops the rule once it syncs.</string>
     <string name="context_blackout_title">Block everything, with no exception?</string>
     <string name="context_blackout_body">This rule blocks every app, always, and nothing else in this ruleset lets any app through. Nothing will run until this rule is turned off, deleted, or changed. If you meant to allow a few apps through, add an Allow rule for them first.</string>
+    <string name="context_blackout_body_always_block">This rule always-blocks every app, always, and an Allow rule cannot free anything from it — only Exempt entirely can, and nothing else in this ruleset uses that. Nothing will run until this rule is turned off, deleted, or changed. If you meant to spare a few apps, add an Exempt entirely rule for them first.</string>
 
     <string name="places_title">Places</string>
     <string name="places_explainer">A place is saved from where you are standing. Coordinates stay on this phone: they are never sent anywhere and never appear in the log.</string>
@@ -1327,6 +1329,9 @@
     <string name="rules_tutorial_block_except_title">Block a whole category, except one app</string>
     <string name="rules_tutorial_block_except_note">Two rules working together: the category block and the app-specific allow. The excepted app may belong to the blocked category — the allow still wins.</string>
 
+    <string name="rules_tutorial_always_block_title">Keep one app blocked even though its category is allowed</string>
+    <string name="rules_tutorial_always_block_note">The mirror image of the pair above: always block beats an allow from a different rule, for the one app in an otherwise-fine category that must stay off no matter what. Only Exempt entirely could free it now.</string>
+
     <string name="rules_tutorial_lockdown_title">Lock the phone down to just the essentials during school hours</string>
     <string name="rules_tutorial_lockdown_note">“Everything except” is the strict version of a schedule: instead of naming what to block, you name the short list that should keep working, and everything else stops.</string>
 
@@ -1340,7 +1345,7 @@
     <string name="rules_tutorial_anyof_note">“Any of these” means one condition holding is enough — the two situations do not need to happen at the same time.</string>
 
     <string name="rules_tutorial_safety_title">Keep the emergency contact app reachable no matter what</string>
-    <string name="rules_tutorial_safety_note">Exempt entirely is the strongest tier: unlike a plain allow, it also holds against network and DNS blocking, not just other rules.</string>
+    <string name="rules_tutorial_safety_note">Exempt entirely is the strongest tier of all — it beats even an always-block override — and unlike a plain allow, it also holds against network and DNS blocking, not just other rules.</string>
 
     <string name="rules_tutorial_cond_always">always</string>
     <string name="rules_tutorial_cond_window">during a time window (for example, school days 8:30–15:00)</string>
@@ -1349,6 +1354,7 @@
 
     <string name="rules_tutorial_effect_block">block</string>
     <string name="rules_tutorial_effect_allow">allow freely</string>
+    <string name="rules_tutorial_effect_always_block">always block</string>
     <string name="rules_tutorial_effect_safety_exempt">exempt entirely, like the dialer</string>
     <string name="rules_tutorial_effect_budget_split">a limit of, for example, 1 hour on school nights and 3 hours Friday–Sunday</string>
 
