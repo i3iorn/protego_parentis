@@ -20,6 +20,8 @@ import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.appBudgetLimits
+import dev.schrammel.protego_parentis.ui.rules.appBudgetRuleIdFor
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
@@ -121,17 +123,14 @@ class AppLimitsActivity : ParentGatedActivity() {
      * map the UI wants.
      *
      * Internal rather than private so [dev.schrammel.protego_parentis.ui.AppLimitsActivityTest]
-     * can pin the translation directly, the same way [ruleId] is.
+     * can pin the translation directly, the same way [ruleId] is. Delegates
+     * to [dev.schrammel.protego_parentis.ui.rules.appBudgetLimits] — shared
+     * with every other screen that edits a migrated rule by its well-known
+     * id, so the id scheme has one place to change.
      */
-    internal fun limitsFrom(rules: List<ContextRule>): Map<String, Int> =
-        rules.mapNotNull { rule ->
-            val effect = rule.effect as? RuleEffect.SetBudget ?: return@mapNotNull null
-            val onlyTarget = (rule.target as? RuleTarget.Apps)?.packages?.singleOrNull() ?: return@mapNotNull null
-            if (rule.id != ruleId(onlyTarget)) return@mapNotNull null
-            onlyTarget.value to effect.budget.default.inWholeMinutes.toInt()
-        }.toMap()
+    internal fun limitsFrom(rules: List<ContextRule>): Map<String, Int> = appBudgetLimits(rules)
 
-    internal fun ruleId(pkg: PackageName) = LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX + pkg.value
+    internal fun ruleId(pkg: PackageName) = appBudgetRuleIdFor(pkg)
 
     private fun renderRows() {
         rows.removeAllViews()

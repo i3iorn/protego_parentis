@@ -29,6 +29,8 @@ import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.categoryBudgetMinutes
+import dev.schrammel.protego_parentis.ui.rules.categoryBudgetRuleIdFor
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.deleteCategory
@@ -90,14 +92,16 @@ class CategoryEditActivity : ParentGatedActivity() {
         target = resolved
     }
 
-    /** [categoryId]'s budget as this screen's [ContextRule] says it, or null if there is none. */
-    private fun minutesFrom(rules: List<ContextRule>, categoryId: String): Int? {
-        val rule = rules.firstOrNull { it.id == ruleId(categoryId) } ?: return null
-        val effect = rule.effect as? RuleEffect.SetBudget ?: return null
-        return effect.budget.default.inWholeMinutes.toInt()
-    }
+    /**
+     * [categoryId]'s budget as this screen's [ContextRule] says it, or null if there is none.
+     * Delegates to [dev.schrammel.protego_parentis.ui.rules.categoryBudgetMinutes] —
+     * shared with every other screen that edits a migrated rule by its
+     * well-known id, so the id scheme has one place to change.
+     */
+    private fun minutesFrom(rules: List<ContextRule>, categoryId: String): Int? =
+        categoryBudgetMinutes(rules, categoryId)
 
-    private fun ruleId(categoryId: String) = LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX + categoryId
+    private fun ruleId(categoryId: String) = categoryBudgetRuleIdFor(categoryId)
 
     /**
      * Loaded once. A read-only viewer who unlocks mid-visit calls this again
