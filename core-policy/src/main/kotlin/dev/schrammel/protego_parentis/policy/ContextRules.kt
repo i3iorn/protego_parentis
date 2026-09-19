@@ -57,11 +57,17 @@ internal data class ContextOutcome(
  * results. Everything awkward about "where am I" is settled before this point,
  * which is what lets the interesting part be tested exhaustively without a phone.
  *
- * Two resolution rules, both chosen so a parent cannot accidentally create a hole:
+ * Three resolution rules, chosen so a parent cannot accidentally create a hole
+ * — nor accidentally lose the one deliberate exception to that:
  *
  *  - **Allow beats block.** An explicit "this app is fine here" is a more
  *    deliberate act than a broad block, and the safety allowlist already works
  *    this way, so the two behave alike.
+ *  - **Except an explicit override still beats allow.** [RuleEffect.AlwaysBlock]
+ *    exists for exactly the case a plain block cannot express: "block this
+ *    one, no matter what else the ruleset says" — a family reaches for it
+ *    when some other rule's "fine here" is the hole they want closed, not
+ *    the app it protects.
  *  - **The tightest budget wins.** Several rules setting the same device,
  *    app, or category's budget resolve to the smallest of that group. A rule
  *    can tighten, never loosen past another rule for the same target.
@@ -111,6 +117,7 @@ internal object ContextRules {
         val active = rules.filter { it.enabled && holds(it.condition, context, now, deviceUsage) }
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
+        val alwaysBlocked = LinkedHashMap<PackageName, ContextRule>()
         val allowed = mutableSetOf<PackageName>()
         val safetyExempt = mutableSetOf<PackageName>()
         var deviceBudget: WeeklyBudget? = null
@@ -122,6 +129,11 @@ internal object ContextRules {
                 is RuleEffect.Block ->
                     resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
                         blocked.putIfAbsent(pkg, rule)
+                    }
+
+                is RuleEffect.AlwaysBlock ->
+                    resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
+                        alwaysBlocked.putIfAbsent(pkg, rule)
                     }
 
                 is RuleEffect.Allow ->
@@ -151,9 +163,17 @@ internal object ContextRules {
             }
         }
 
+        // Allow wins over a plain block, but never over an override — see the
+        // class doc. alwaysBlocked is applied second, over the
+        // allow-filtered plain blocks, which is what lets an override
+        // re-claim a package the allow set just freed — a plain Block could
+        // never do that.
+        val effectiveBlocked = LinkedHashMap<PackageName, ContextRule>()
+        blocked.forEach { (pkg, rule) -> if (pkg !in allowed && pkg !in safetyExempt) effectiveBlocked[pkg] = rule }
+        alwaysBlocked.forEach { (pkg, rule) -> if (pkg !in safetyExempt) effectiveBlocked[pkg] = rule }
+
         return ContextOutcome(
-            // Allow wins: see the note above.
-            blocked = blocked.filterKeys { it !in allowed && it !in safetyExempt },
+            blocked = effectiveBlocked,
             allowed = allowed,
             safetyExempt = safetyExempt,
             deviceBudget = deviceBudget,

@@ -120,6 +120,25 @@ class RulesTutorialActivity : DementorActivity() {
                     ),
                 ),
             ),
+            // RuleEffect.AlwaysBlock: the mirror image of the pair above — an
+            // allow this broad would otherwise free the one app that has to
+            // stay off regardless.
+            Example(
+                title = R.string.rules_tutorial_always_block_title,
+                note = R.string.rules_tutorial_always_block_note,
+                steps = listOf(
+                    Step(
+                        R.string.rules_tutorial_cond_always,
+                        R.string.rules_tutorial_effect_allow,
+                        R.string.rules_tutorial_target_category,
+                    ),
+                    Step(
+                        R.string.rules_tutorial_cond_always,
+                        R.string.rules_tutorial_effect_always_block,
+                        R.string.rules_tutorial_target_one_app,
+                    ),
+                ),
+            ),
             // RuleTarget.EverythingExcept: a strict schedule that names the
             // short list of what should keep working, rather than what to block.
             Example(
@@ -170,8 +189,9 @@ class RulesTutorialActivity : DementorActivity() {
                     ),
                 ),
             ),
-            // RuleEffect.SafetyExempt: the one tier stronger than Allow — it
-            // also reaches network/DNS blocking, not just other context rules.
+            // RuleEffect.SafetyExempt: the strongest tier, stronger even than
+            // AlwaysBlock above — it also reaches network/DNS blocking, not
+            // just other context rules.
             Example(
                 title = R.string.rules_tutorial_safety_title,
                 note = R.string.rules_tutorial_safety_note,

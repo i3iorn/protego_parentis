@@ -512,6 +512,37 @@ class ContextRulesTest {
     }
 
     @Test
+    fun `an always-block override beats an allow`() {
+        // The one hole a plain block cannot close: a family that wants an
+        // app blocked no matter what needs this to survive the allow, not
+        // lose to it the way an ordinary block would.
+        val rules = listOf(
+            rule(Condition.Always, RuleEffect.Allow, RuleTarget.Everything, name = "allow"),
+            rule(Condition.Always, RuleEffect.AlwaysBlock(), RuleTarget.Apps(setOf(GAME)), name = "override"),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertTrue(GAME in outcome.blocked)
+        assertTrue(GAME in outcome.allowed)
+        assertFalse(HOMEWORK in outcome.blocked)
+    }
+
+    @Test
+    fun `a safety-exempt rule beats an always-block override too`() {
+        val rules = listOf(
+            rule(Condition.Always, RuleEffect.AlwaysBlock(), RuleTarget.Everything, name = "override"),
+            rule(Condition.Always, RuleEffect.SafetyExempt, RuleTarget.Apps(setOf(HOMEWORK)), name = "exempt"),
+        )
+
+        val outcome = evaluate(rules, DeviceContext.UNKNOWN)
+
+        assertFalse(HOMEWORK in outcome.blocked)
+        assertTrue(HOMEWORK in outcome.safetyExempt)
+        assertTrue(GAME in outcome.blocked)
+    }
+
+    @Test
     fun `the block names the rule that caused it`() {
         val rules = listOf(rule(Condition.OnWifi(school), name = "No games at school"))
 

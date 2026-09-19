@@ -298,6 +298,7 @@ class ContextRulesActivity : ParentGatedActivity() {
         val what = when (val effect = rule.effect) {
             is RuleEffect.Block -> getString(R.string.context_effect_block)
             is RuleEffect.Allow -> getString(R.string.context_effect_allow)
+            is RuleEffect.AlwaysBlock -> getString(R.string.context_effect_always_block)
             is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
             is RuleEffect.SetBudget ->
                 getString(R.string.context_effect_budget, formatDuration(effect.budget.default))

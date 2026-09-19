@@ -139,6 +139,7 @@
     <string name="context_place_unknown">en borttagen plats</string>
     <string name="context_effect_block">blockera</string>
     <string name="context_effect_allow">tillåt fritt</string>
+    <string name="context_effect_always_block">blockera alltid</string>
     <string name="context_effect_safety_exempt">undanta helt, som uppringaren</string>
     <string name="context_effect_budget">begränsa telefonen till %1$s</string>
     <string name="context_choose_safety_exempt">Undanta helt</string>
@@ -162,7 +163,7 @@
     <string name="context_invert">Gäller när ovanstående INTE stämmer</string>
     <string name="context_do_header">Gör detta</string>
     <string name="context_do_info_title">Om “Gör detta”</string>
-    <string name="context_do_info_body">Vad regeln gör medan villkoret gäller. Blockera stoppar målet helt. Tillåt fritt undantar det från alla andra regler och gränser — tillåt fritt vinner alltid över en blockering från en annan regel. Undanta helt är starkare: det når även nätverks- och DNS-blockering, samma nivå som den inbyggda säkerhetslistan. Sätt en gräns ersätter målets egen dagliga gräns; sätter två regler en gräns för samma mål vinner den snävaste.</string>
+    <string name="context_do_info_body">Vad regeln gör medan villkoret gäller. Blockera stoppar målet helt. Tillåt fritt undantar det från alla andra regler och gränser — tillåt fritt vinner alltid över en blockering från en annan regel. Blockera alltid är en nivå starkare: den överlever en tillåt fritt-regel någon annanstans, för den enstaka app en vanlig blockering inte räcker till för. Undanta helt är starkare än så: den vinner även över blockera alltid, och den når även nätverks- och DNS-blockering, samma nivå som den inbyggda säkerhetslistan. Sätt en gräns ersätter målets egen dagliga gräns; sätter två regler en gräns för samma mål vinner den snävaste.</string>
     <string name="context_to_header">Med</string>
     <string name="context_to_info_title">Om “Med”</string>
     <string name="context_to_info_body">Vad regeln gäller för: hela enheten, en eller flera valda appar, en eller flera kategorier, eller allt utom en kort lista du väljer. Att ange “allt utom” är det strikta sättet att skriva en nedstängning — istället för att lista vad som ska blockeras listar du de få saker som ska fortsätta fungera.</string>
@@ -186,6 +187,7 @@
     <string name="context_delete_sent_remote">Skickat — barnets telefon tar bort regeln när den synkroniserar.</string>
     <string name="context_blackout_title">Blockera allt, utan undantag?</string>
     <string name="context_blackout_body">Den här regeln blockerar alla appar, alltid, och inget annat i regelsamlingen släpper igenom någon app. Inget kommer att köras förrän regeln stängs av, tas bort eller ändras. Om du menade att släppa igenom några appar, lägg till en tillåt-regel för dem först.</string>
+    <string name="context_blackout_body_always_block">Den här regeln blockerar alltid alla appar, alltid, och en tillåt-regel kan inte befria något från den — bara Undanta helt kan det, och inget annat i regelsamlingen använder det. Inget kommer att köras förrän regeln stängs av, tas bort eller ändras. Om du menade att skona några appar, lägg till en Undanta helt-regel för dem först.</string>
 
     <string name="places_title">Platser</string>
     <string name="places_explainer">En plats sparas där du står. Koordinaterna stannar på telefonen: de skickas aldrig någonstans och syns aldrig i loggen.</string>
@@ -1306,6 +1308,9 @@
     <string name="rules_tutorial_block_except_title">Blockera en hel kategori, utom en app</string>
     <string name="rules_tutorial_block_except_note">Två regler som samverkar: kategoriblockeringen och undantaget för just den appen. Den undantagna appen kan tillhöra den blockerade kategorin — tillåt fritt vinner ändå.</string>
 
+    <string name="rules_tutorial_always_block_title">Håll en app blockerad även om dess kategori är tillåten</string>
+    <string name="rules_tutorial_always_block_note">Spegelbilden av paret ovan: blockera alltid vinner över ett tillåt fritt från en annan regel, för den enstaka app i en annars tillåten kategori som måste vara av oavsett vad. Bara Undanta helt kunde nu befria den.</string>
+
     <string name="rules_tutorial_lockdown_title">Lås ner telefonen till bara det nödvändigaste under skoltid</string>
     <string name="rules_tutorial_lockdown_note">“Allt utom” är den strikta varianten av ett schema: istället för att lista vad som ska blockeras listar du den korta listan som ska fortsätta fungera, och allt annat stoppas.</string>
 
@@ -1319,7 +1324,7 @@
     <string name="rules_tutorial_anyof_note">“Någon av dessa” betyder att ett villkor räcker — de två situationerna behöver inte inträffa samtidigt.</string>
 
     <string name="rules_tutorial_safety_title">Håll appen för nödkontakt nåbar oavsett vad</string>
-    <string name="rules_tutorial_safety_note">Undanta helt är den starkaste nivån: till skillnad från ett vanligt tillåt håller den även mot nätverks- och DNS-blockering, inte bara mot andra regler.</string>
+    <string name="rules_tutorial_safety_note">Undanta helt är den starkaste nivån av alla — den vinner även över en blockera alltid-regel — och till skillnad från ett vanligt tillåt håller den även mot nätverks- och DNS-blockering, inte bara mot andra regler.</string>
 
     <string name="rules_tutorial_cond_always">alltid</string>
     <string name="rules_tutorial_cond_window">under ett tidsfönster (till exempel skoldagar 8:30–15:00)</string>
@@ -1328,6 +1333,7 @@
 
     <string name="rules_tutorial_effect_block">blockera</string>
     <string name="rules_tutorial_effect_allow">tillåt fritt</string>
+    <string name="rules_tutorial_effect_always_block">blockera alltid</string>
     <string name="rules_tutorial_effect_safety_exempt">undanta helt, som uppringaren</string>
     <string name="rules_tutorial_effect_budget_split">en gräns på till exempel 1 timme på skolkvällar och 3 timmar fredag–söndag</string>
 

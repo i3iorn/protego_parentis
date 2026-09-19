@@ -151,6 +151,8 @@ class ContextRuleCodecTest {
             RuleEffect.Block(),
             RuleEffect.Block(hidden = true),
             RuleEffect.Allow,
+            RuleEffect.AlwaysBlock(),
+            RuleEffect.AlwaysBlock(hidden = true),
             RuleEffect.SafetyExempt,
             RuleEffect.SetBudget(WeeklyBudget.flat(45.minutes)),
         )

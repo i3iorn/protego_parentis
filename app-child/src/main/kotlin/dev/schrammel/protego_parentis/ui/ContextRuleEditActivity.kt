@@ -503,6 +503,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             listOf(
                 getString(R.string.context_effect_block) to { effect = RuleEffect.Block(); render() },
                 getString(R.string.context_effect_allow) to { effect = RuleEffect.Allow; render() },
+                getString(R.string.context_effect_always_block) to { effect = RuleEffect.AlwaysBlock(); render() },
                 getString(R.string.context_choose_safety_exempt) to { effect = RuleEffect.SafetyExempt; render() },
                 getString(R.string.context_choose_budget) to { askForBudget(effect) },
             ),
@@ -603,11 +604,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             target = ruleTarget,
         )
         if (looksLikeTotalBlackout(rule)) {
-            confirmDialog(
-                R.string.context_blackout_title,
-                R.string.context_blackout_body,
-                R.string.context_save,
-            ) { commit(rule) }
+            val bodyRes = if (rule.effect is RuleEffect.AlwaysBlock) {
+                R.string.context_blackout_body_always_block
+            } else {
+                R.string.context_blackout_body
+            }
+            confirmDialog(R.string.context_blackout_title, bodyRes, R.string.context_save) { commit(rule) }
             return
         }
         commit(rule)
@@ -621,14 +623,29 @@ class ContextRuleEditActivity : ParentGatedActivity() {
      * budgets are still on the parent to notice — just this one well-known
      * shape, which #87's combine/invert controls make easy to build by
      * accident.
+     *
+     * A plain [RuleEffect.Block] is only a true blackout while no [RuleEffect.Allow]
+     * rule carves an exception back out; a [RuleEffect.AlwaysBlock] is not
+     * saved by an [RuleEffect.Allow] at all — that is the whole point of the
+     * override — so only a [RuleEffect.SafetyExempt] rule counts as its
+     * exception. Getting this wrong in either direction would either warn a
+     * parent who has already carved out an exception that works, or, worse,
+     * silently let an always-block-everything rule through believing an
+     * ordinary allow rule will save some app from it when it cannot.
+     *
+     * Internal rather than private, so [ContextRuleEditActivityTest] can pin
+     * both branches directly, without driving the "Do this" menu's dialog.
      */
-    private fun looksLikeTotalBlackout(rule: ContextRule): Boolean {
+    internal fun looksLikeTotalBlackout(rule: ContextRule): Boolean {
         if (!rule.enabled) return false
-        if (rule.effect !is RuleEffect.Block) return false
         if (rule.target != RuleTarget.Everything) return false
         if (rule.condition != Condition.Always) return false
         val others = contextRuleRuleStore(this, target).read().filterNot { it.id == rule.id }
-        return others.none { it.enabled && it.effect is RuleEffect.Allow }
+        return when (rule.effect) {
+            is RuleEffect.Block -> others.none { it.enabled && it.effect is RuleEffect.Allow }
+            is RuleEffect.AlwaysBlock -> others.none { it.enabled && it.effect is RuleEffect.SafetyExempt }
+            else -> false
+        }
     }
 
     private fun commit(rule: ContextRule) {
@@ -738,6 +755,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun describeEffect(): String = when (val current = effect) {
         is RuleEffect.Block -> getString(R.string.context_effect_block)
         is RuleEffect.Allow -> getString(R.string.context_effect_allow)
+        is RuleEffect.AlwaysBlock -> getString(R.string.context_effect_always_block)
         is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
         is RuleEffect.SetBudget ->
             getString(R.string.context_effect_budget, formatDuration(current.budget.default))

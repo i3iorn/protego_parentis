@@ -93,6 +93,64 @@ class PolicyEngineTest {
         assertTrue("the safety-exempt app must not be", HOMEWORK !in result.networkBlocked)
     }
 
+    /**
+     * [RuleEffect.AlwaysBlock] exists for exactly this: an [RuleEffect.Allow]
+     * rule that would otherwise free the app must not, while a
+     * [RuleEffect.SafetyExempt] rule still can — the one tier the override
+     * itself cannot beat.
+     */
+    @Test
+    fun `an always-block override survives an allow rule, but not a safety-exempt one`() {
+        val policy = policy(
+            contextRules = listOf(
+                ContextRule(
+                    id = "allow-everything",
+                    name = "Allow",
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.Allow,
+                    target = RuleTarget.Everything,
+                ),
+                ContextRule(
+                    id = "always-block-game",
+                    name = "Override",
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.AlwaysBlock(),
+                    target = RuleTarget.Apps(setOf(GAME)),
+                ),
+            ),
+        )
+
+        val result = PolicyEngine.evaluate(
+            policy = policy,
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        assertTrue("the override must survive the allow rule", result.suspend.containsKey(GAME))
+        assertNull("an app the override does not name stays freed by the allow", result.suspend[HOMEWORK])
+
+        val exempt = PolicyEngine.evaluate(
+            policy = policy.copy(
+                contextRules = policy.contextRules + ContextRule(
+                    id = "exempt-game",
+                    name = "Exempt",
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SafetyExempt,
+                    target = RuleTarget.Apps(setOf(GAME)),
+                ),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        assertNull("only a safety-exempt rule can free an app from the override", exempt.suspend[GAME])
+    }
+
     // ---------- device budget ----------
 
     @Test
