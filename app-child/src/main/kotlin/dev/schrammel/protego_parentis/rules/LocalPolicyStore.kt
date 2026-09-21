@@ -66,8 +66,16 @@ data class BedtimeSetting(
  * its rules from local storage and never from the network, so enforcement keeps
  * working with the phone in airplane mode.
  *
- * Every setter bumps the policy version, which is the signal the enforcement
- * service uses to notice a change and re-evaluate.
+ * Every setter that writes into this store's own SharedPreferences file bumps
+ * the policy version, which is the signal the enforcement service uses to
+ * notice a change and re-evaluate. Setters that delegate to a sibling store
+ * instead — [webFilterProfile], [webFilterCustomHost], [browserPolicy],
+ * [webFilterCountVisits], [goal], [disabledFeatures] — write into that
+ * store's own file and do not bump this version; their callers are
+ * responsible for triggering re-evaluation themselves (see e.g.
+ * `WebFilterActivity`'s own calls to `AppRegistry.ruleMutationSink.rulesChanged()`).
+ * [bedtime] is the one setter here that does neither: see its own doc
+ * comment for why it triggers enforcement directly instead.
  *
  * TODO(M1): replace with Room + Firestore sync, keeping local as the read path.
  */
