@@ -235,6 +235,39 @@ class SyncReceiverTest {
         assertTrue(roster().devices.none { it.id == Fingerprints.of(newDevice.public.encoded) })
     }
 
+    /**
+     * A vouch names the *new* device's role, not the sender's — so a family
+     * with an unmigrated phone can genuinely vouch for a role this build has
+     * no case for, the moment a newer sibling build adds one. [SyncRole.parse]
+     * exists for exactly this; this proves it end to end, through the same
+     * signed-envelope path a real vouch takes, rather than only at the enum.
+     */
+    @Test
+    fun `a vouch for a role this build does not recognise is refused, not enrolled as something wrong`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val voucher = keyPair()
+        enroll(voucher, SyncRole.PARENT, "Mum's phone")
+        val newDevice = keyPair()
+
+        val applied = deliver(
+            message(
+                voucher,
+                SyncMessageType.DEVICE_VOUCHED,
+                SyncRole.PARENT,
+                fields = mapOf(
+                    FIELD_VOUCHED_ID to Fingerprints.of(newDevice.public.encoded).value,
+                    FIELD_VOUCHED_ROLE to "GRANDPARENT",
+                    FIELD_VOUCHED_KEY to Fingerprints.encodeKey(newDevice.public.encoded),
+                    FIELD_TARGET_LABEL to "Grandma's phone",
+                ),
+            ),
+            voucher,
+        )
+
+        assertFalse(applied)
+        assertTrue(roster().devices.none { it.id == Fingerprints.of(newDevice.public.encoded) })
+    }
+
     // ---------- applyRevoke ----------
 
     @Test
