@@ -82,20 +82,33 @@ object PolicyEngine {
         // unified format still needs the old field to answer this".
         val effectiveDeviceBudget = contextOutcome.deviceBudget ?: WeeklyBudget.UNLIMITED
 
-        val deviceBudget = statusOf(
-            allowed = effectiveDeviceBudget.forDay(weekday),
-            used = usage.deviceTotal,
-            bonus = bonusFor(GrantTarget.Device),
-            thresholds = policy.warningThresholds,
-        )
-        val hierarchy = hierarchyForRules
-
         // A RuleEffect.SafetyExempt rule sits at the same tier as the built-in
         // safety allowlist — a parent-configured invariant, not just a
         // contextual allow — so every place that used to ask Policy alone now
         // asks this instead.
         fun isSafetyExempt(pkg: PackageName): Boolean =
             policy.isSafetyExempt(pkg) || pkg in contextOutcome.safetyExempt
+
+        // usage.deviceTotal already excludes Policy.isSafetyExempt apps (that
+        // filtering happens where usage is collected, which only ever sees
+        // the static policy). A context rule's own SafetyExempt effect is not
+        // known until contextOutcome exists, so it cannot be excluded there —
+        // it is excluded here instead, before the total is used for
+        // anything. filterNot(policy::isSafetyExempt) avoids double-
+        // subtracting an app that is exempt through both tiers at once.
+        val deviceUsed = (
+            usage.deviceTotal - contextOutcome.safetyExempt
+                .filterNot(policy::isSafetyExempt)
+                .fold(Duration.ZERO) { acc, pkg -> acc + usage.forPackage(pkg) }
+            ).coerceAtLeast(Duration.ZERO)
+
+        val deviceBudget = statusOf(
+            allowed = effectiveDeviceBudget.forDay(weekday),
+            used = deviceUsed,
+            bonus = bonusFor(GrantTarget.Device),
+            thresholds = policy.warningThresholds,
+        )
+        val hierarchy = hierarchyForRules
 
         // A category's usage is the sum of its members' time. An app in two
         // categories spends from both — see Category's documentation. Apps that are
