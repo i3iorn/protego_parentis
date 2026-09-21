@@ -227,6 +227,9 @@ object AuditText {
 
             AuditAction.ROLE_CHANGED ->
                 context.getString(R.string.audit_role_changed, role(context, entry.after))
+
+            AuditAction.APP_UNINSTALLED_BY_CHILD ->
+                context.getString(R.string.audit_app_uninstalled_by_child, subject)
         }
     }
 
