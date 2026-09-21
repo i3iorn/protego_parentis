@@ -526,7 +526,7 @@
     <string name="parent_title">Familj</string>
     <string name="parent_not_connected">Inte ansluten ännu</string>
     <string name="parent_not_connected_hint">Ställ in familjeanslutningen för att börja ta emot förfrågningar.</string>
-    <string name="parent_nothing_waiting">Inget väntar på dig</string>
+    <string name="parent_nothing_waiting">Inga förfrågningar väntar</string>
     <string name="parent_stale_checkin">Har inte hört av sig på ett tag</string>
     <plurals name="parent_waiting">
         <item quantity="one">%1$d förfrågan väntar</item>
