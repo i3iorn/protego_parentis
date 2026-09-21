@@ -14,6 +14,7 @@ import dev.schrammel.protego_parentis.rules.AutoApprovalStore
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
+import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
@@ -279,6 +280,9 @@ fun categoryBudgetMinutes(rules: List<ContextRule>, categoryId: String): Int? {
 
 /** The well-known [ContextRule] id [pkg]'s migrated per-app budget rule uses. */
 fun appBudgetRuleIdFor(pkg: PackageName): String = LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX + pkg.value
+
+/** The well-known [ContextRule] id the migrated bedtime schedule uses. */
+fun bedtimeRuleId(): String = LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + ScheduleStore.BEDTIME_ID
 
 /** Every migrated per-app budget among [rules], as the plain package-to-minutes map the UI wants. */
 fun appBudgetLimits(rules: List<ContextRule>): Map<String, Int> = rules.mapNotNull { rule ->
