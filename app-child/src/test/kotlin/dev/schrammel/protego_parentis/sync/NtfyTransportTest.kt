@@ -58,4 +58,55 @@ class NtfyTransportTest {
 
         assertEquals(listOf("short-envelope"), result)
     }
+
+    // ---------- reading bounded rather than filtering after the fact (#252) ----------
+
+    /**
+     * [readEnvelopes] used to filter on [BufferedReader.readLine]'s own
+     * output — which meant an oversized line was already fully in memory by
+     * the time anything rejected it, since `readLine()` has no length limit
+     * of its own. These pin the hand-rolled bounded reader's line-boundary
+     * tracking, which the old implementation got for free from
+     * [BufferedReader]: everything after an oversized line must still read
+     * correctly, not get shifted, merged, or lost.
+     */
+    @Test
+    fun `an oversized line does not swallow the legitimate one that follows it`() {
+        val tooBig = "x".repeat(NtfyTransport.MAX_LINE_CHARS + 1)
+
+        val result = readLines(ntfyLine(tooBig), ntfyLine("short-envelope"))
+
+        assertEquals(listOf("short-envelope"), result)
+    }
+
+    @Test
+    fun `several oversized lines in a row still leave real messages readable`() {
+        val tooBig = "x".repeat(NtfyTransport.MAX_LINE_CHARS + 1)
+
+        val result = readLines(ntfyLine(tooBig), ntfyLine(tooBig), ntfyLine("first"), ntfyLine(tooBig), ntfyLine("second"))
+
+        assertEquals(listOf("first", "second"), result)
+    }
+
+    @Test
+    fun `a line with no trailing newline at all is dropped like any other oversized line`() {
+        // The exact gap #252 found: a line with no terminator was previously
+        // bounded only by the connection's read timeout, not MAX_LINE_CHARS,
+        // since BufferedReader.readLine() still returns whatever it collected
+        // up to end-of-stream as the final line.
+        val tooBig = "x".repeat(NtfyTransport.MAX_LINE_CHARS + 1)
+
+        val result = transport.readEnvelopes(BufferedReader(StringReader(ntfyLine(tooBig))))
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `a trailing carriage return is not treated as part of the message`() {
+        val result = transport.readEnvelopes(
+            BufferedReader(StringReader(ntfyLine("short-envelope") + "\r\n")),
+        )
+
+        assertEquals(listOf("short-envelope"), result)
+    }
 }

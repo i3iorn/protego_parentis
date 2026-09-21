@@ -102,18 +102,78 @@ class NtfyTransport(
      * to it — they can read nothing, but a single enormous line would otherwise be
      * pulled into memory in full before anything looked at its size.
      *
+     * Reads through [readBoundedLine] rather than [BufferedReader.readLine],
+     * which has no length limit of its own — it keeps growing its buffer
+     * until it finds a line terminator or the stream ends, so the previous
+     * "drop anything over [MAX_LINE_CHARS]" filter only ever ran *after* an
+     * oversized line was already fully in memory (#252). A line with no
+     * terminator at all was bounded only by [TIMEOUT_MILLIS] and whatever
+     * fit in that time, not by [MAX_LINE_CHARS]. [readBoundedLine] keeps the
+     * buffer itself bounded regardless of how long the line turns out to be.
+     *
      * Internal rather than private so a test can drive it directly with a
      * synthetic long line, without standing up a fake server for something
      * that is otherwise pure string handling.
      */
-    internal fun readEnvelopes(reader: BufferedReader): List<String> =
-        reader.lineSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_LINE_CHARS }
-            .mapNotNull { line -> runCatching { JSONObject(line) }.getOrNull() }
-            .filter { it.optString(FIELD_EVENT) == EVENT_MESSAGE }
-            .mapNotNull { it.optString(FIELD_MESSAGE).takeIf(String::isNotBlank) }
-            .take(MAX_MESSAGES_PER_POLL)
-            .toList()
+    internal fun readEnvelopes(reader: BufferedReader): List<String> {
+        val messages = mutableListOf<String>()
+        while (messages.size < MAX_MESSAGES_PER_POLL) {
+            val line = when (val result = readBoundedLine(reader, MAX_LINE_CHARS)) {
+                LineResult.EndOfStream -> break
+                // Dropped without being parsed, same as before — just never
+                // held in full to begin with. Reading continues at the next
+                // line rather than aborting the whole poll, so one bad line
+                // (from a stranger's traffic on the same public topic) does
+                // not cost every legitimate message still queued behind it.
+                LineResult.TooLong -> continue
+                is LineResult.Ok -> result.line
+            }
+            if (line.isBlank()) continue
+            val json = runCatching { JSONObject(line) }.getOrNull() ?: continue
+            if (json.optString(FIELD_EVENT) != EVENT_MESSAGE) continue
+            val message = json.optString(FIELD_MESSAGE).takeIf(String::isNotBlank) ?: continue
+            messages += message
+        }
+        return messages
+    }
+
+    /** What [readBoundedLine] found. */
+    private sealed interface LineResult {
+        data class Ok(val line: String) : LineResult
+        /** A line existed but passed [maxChars] before its terminator. */
+        data object TooLong : LineResult
+        data object EndOfStream : LineResult
+    }
+
+    /**
+     * Reads one line, holding at most [maxChars] characters in memory no
+     * matter how long the actual line turns out to be — see [readEnvelopes]
+     * for why that matters. Once the cap is passed, further characters up to
+     * the next `\n` (or the stream ending) are read one at a time and
+     * discarded rather than appended, so the line boundary is still found
+     * correctly and reading can resume at the next line.
+     */
+    private fun readBoundedLine(reader: BufferedReader, maxChars: Int): LineResult {
+        val builder = StringBuilder()
+        var oversized = false
+        while (true) {
+            val next = reader.read()
+            if (next < 0) {
+                return when {
+                    oversized -> LineResult.TooLong
+                    builder.isEmpty() -> LineResult.EndOfStream
+                    else -> LineResult.Ok(builder.toString())
+                }
+            }
+            if (next == '\n'.code) {
+                // A trailing \r (the common HTTP line ending) is not part of
+                // the content.
+                if (builder.isNotEmpty() && builder.last() == '\r') builder.setLength(builder.length - 1)
+                return if (oversized) LineResult.TooLong else LineResult.Ok(builder.toString())
+            }
+            if (builder.length < maxChars) builder.append(next.toChar()) else oversized = true
+        }
+    }
 
     private fun open(url: String, method: String): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
