@@ -29,6 +29,9 @@ enum class DiagnosticEvent {
     DEVICE_OWNER_MISSING,
     INVARIANT_VIOLATION,
 
+    /** A managed-configuration push to an app failed — never which one. */
+    MANAGED_CONFIG_FAILED,
+
     PIN_FAILED,
     PIN_CHANGED,
 
