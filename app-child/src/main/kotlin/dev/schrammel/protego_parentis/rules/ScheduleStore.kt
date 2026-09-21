@@ -66,7 +66,11 @@ data class StoredSchedule(
             // is bedtime, and it is the commonest schedule there is.
             !(mode == ScheduleBlock.Mode.INCLUSIVE && packages.isEmpty())
 
-    /** Null when incomplete, so one unfinished row cannot break the whole policy. */
+    /**
+     * Null when incomplete, so one unfinished row cannot break the whole policy —
+     * also null if every stored [days] value turns out not to be a real ISO day
+     * number, which the same "don't break the policy" reasoning applies to.
+     */
     fun toDomain(): ScheduleBlock? {
         if (!isComplete) return null
         return ScheduleBlock(

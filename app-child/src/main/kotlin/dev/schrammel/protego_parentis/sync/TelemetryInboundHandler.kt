@@ -230,16 +230,23 @@ internal class TelemetryInboundHandler(
     }
 
     private fun parseDomain(raw: String): Pair<String, Int>? {
-        val at = raw.indexOf(APP_SEPARATOR)
-        if (at <= 0 || at == raw.lastIndex) return null
-        val count = raw.substring(0, at).toIntOrNull() ?: return null
-        return raw.substring(at + 1).clip() to count
+        val (count, label) = parseCountedField(raw) ?: return null
+        return label to count
     }
 
     private fun parseAppTime(raw: String): AppTime? {
+        val (minutes, label) = parseCountedField(raw) ?: return null
+        return AppTime(label = label, minutes = minutes)
+    }
+
+    /**
+     * The shared "count:label" shape [FIELD_DOMAIN_PREFIX] and [FIELD_APP_PREFIX]
+     * entries both use, split once rather than in each caller.
+     */
+    private fun parseCountedField(raw: String): Pair<Int, String>? {
         val at = raw.indexOf(APP_SEPARATOR)
         if (at <= 0 || at == raw.lastIndex) return null
-        val minutes = raw.substring(0, at).toIntOrNull() ?: return null
-        return AppTime(label = raw.substring(at + 1).take(MAX_WIRE_TEXT), minutes = minutes)
+        val count = raw.substring(0, at).toIntOrNull() ?: return null
+        return count to raw.substring(at + 1).clip()
     }
 }
