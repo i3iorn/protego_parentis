@@ -153,6 +153,52 @@ class PolicyEngineTest {
 
     // ---------- device budget ----------
 
+    /**
+     * [UsageSnapshot.deviceTotal]'s own doc comment says a safety-exempt
+     * app's time does not count against the device budget — but usage is
+     * collected against a static [Policy] alone, before any context rule is
+     * resolved, so it can only apply that for [Policy.isSafetyExempt].
+     * Whatever [RuleEffect.SafetyExempt] exempts contextually has to be
+     * subtracted here, the one place both the usage and the context outcome
+     * already exist together, or a long homework-app session would silently
+     * eat into everyone else's device budget despite the app itself never
+     * being restricted.
+     */
+    @Test
+    fun `a context-exempt app's own time does not count against the device budget`() {
+        val policy = policy(
+            deviceBudget = WeeklyBudget.flat(1.hours),
+            contextRules = listOf(
+                ContextRule(
+                    id = "exempt-homework",
+                    name = "Exempt",
+                    enabled = true,
+                    condition = Condition.Always,
+                    effect = RuleEffect.SafetyExempt,
+                    target = RuleTarget.Apps(setOf(HOMEWORK)),
+                ),
+            ),
+        )
+
+        val result = PolicyEngine.evaluate(
+            policy = policy,
+            installedPackages = ALL_PACKAGES,
+            // 50 minutes on the exempt app, 10 on everything else: without
+            // subtracting the exempt app's share, the device total (1 hour)
+            // would exhaust a 1-hour budget outright.
+            usage = usage(
+                "2026-08-21",
+                deviceTotal = 1.hours,
+                byPackage = mapOf(HOMEWORK to 50.minutes, YOUTUBE to 10.minutes),
+            ),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        assertEquals(10.minutes, result.deviceBudget.used)
+        assertEquals(BudgetLevel.NORMAL, result.deviceBudget.level)
+        assertNull("the device budget is nowhere near exhausted", result.suspend[YOUTUBE])
+    }
+
     @Test
     fun `exhausted device budget suspends every non-exempt app until the day boundary`() {
         val now = at("2026-08-21", "18:00")

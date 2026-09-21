@@ -75,7 +75,16 @@ class GoalStore(context: Context) {
         )
     }
 
-    fun setPending(achievement: GoalAchievement) {
+    /**
+     * Synchronized on [prefs], the same lock [markCelebrated] uses: without
+     * it, the enforcement worker setting a new pending prize and the UI
+     * thread dismissing the current one write the same four keys with no
+     * ordering between them — a dismissal that lands between this method's
+     * four separate `put`s could clear a prize this call had not finished
+     * writing yet, or this call could land right after a dismissal and bring
+     * an already-shown prize straight back.
+     */
+    fun setPending(achievement: GoalAchievement) = synchronized(prefs) {
         prefs.edit {
             putString(KEY_PENDING_DAY, achievement.day.toString())
             putInt(KEY_PENDING_USED, achievement.used.inWholeMinutes.toInt())

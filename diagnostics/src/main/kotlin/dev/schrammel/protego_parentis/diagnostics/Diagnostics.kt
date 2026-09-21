@@ -98,6 +98,15 @@ enum class DiagnosticEvent {
      */
     APP_CRASHED,
 
+    /**
+     * Something threw while applying a received sync message — malformed or
+     * version-skewed content this device does not control, not a bug in the
+     * message itself reaching this phone. Unlike [APP_CRASHED], this is
+     * recoverable: caught before the process's crash handler, one message
+     * refused rather than the app going down.
+     */
+    SYNC_DISPATCH_FAILED,
+
     /** Fetching `update.json` failed — offline, or the release feed unreachable. */
     UPDATE_CHECK_FAILED,
 

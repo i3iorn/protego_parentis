@@ -66,6 +66,16 @@ class PinActivity : DementorActivity() {
     private var step = Step.UNLOCK
     private var chosen: String? = null
 
+    /**
+     * Set while a submitted PIN is being checked or stored off the UI thread
+     * — see [verify] and [confirmNew]'s own doc comments for why that work
+     * moved off it. Guards against a second tap queuing a second check while
+     * the first is still in flight; before this moved off the UI thread, the
+     * thread being blocked for the duration was what stopped that by
+     * accident.
+     */
+    private var verifying = false
+
     /** True only when launched as step 2 of first-time setup, from RoleSetupActivity. */
     private val onboarding: Boolean by lazy { intent.getBooleanExtra(EXTRA_ONBOARDING, false) }
 
@@ -120,8 +130,14 @@ class PinActivity : DementorActivity() {
                 override fun onAuthenticationSucceeded(
                     result: BiometricPrompt.AuthenticationResult,
                 ) {
-                    attempts.recordSuccess()
-                    succeed()
+                    // BiometricPrompt delivers this on the main executor
+                    // passed to its constructor below — same reason as
+                    // verify()'s own doc comment for taking the commit off it.
+                    verifying = true
+                    Background.load(this@PinActivity, { attempts.recordSuccess() }) {
+                        verifying = false
+                        succeed()
+                    }
                 }
 
                 override fun onAuthenticationError(code: Int, message: CharSequence) {
@@ -251,17 +267,19 @@ class PinActivity : DementorActivity() {
     }
 
     private fun onSubmit() {
-        if (rejectWhileLockedOut()) return
+        if (verifying || rejectWhileLockedOut()) return
 
         val entered = input.text.toString()
         input.setText("")
 
         when (step) {
-            Step.UNLOCK -> if (verify(entered)) succeed()
+            Step.UNLOCK -> verify(entered) { matched -> if (matched) succeed() }
 
-            Step.VERIFY_EXISTING -> if (verify(entered)) {
-                step = Step.CHOOSE_NEW
-                updatePrompt()
+            Step.VERIFY_EXISTING -> verify(entered) { matched ->
+                if (matched) {
+                    step = Step.CHOOSE_NEW
+                    updatePrompt()
+                }
             }
 
             Step.CHOOSE_NEW -> chooseNew(entered)
@@ -270,16 +288,34 @@ class PinActivity : DementorActivity() {
         }
     }
 
-    /** Checks an entered PIN, recording the attempt either way. */
-    private fun verify(entered: String): Boolean {
-        if (lock.verify(entered)) {
-            attempts.recordSuccess()
-            return true
+    /**
+     * Checks an entered PIN off the UI thread, recording the attempt either
+     * way, and calls [onChecked] back with whether it matched.
+     *
+     * [PinLock.verify] stretches the PIN through 150,000 rounds of PBKDF2 by
+     * design — real, deliberate CPU cost, not an accident to optimise away —
+     * and [PinAttempts.recordSuccess]/[PinAttempts.recordFailure] both commit
+     * to disk synchronously by design too (see their own doc comment on why
+     * an async write would not do). Both used to run inline on this screen's
+     * click listener — on a loaded or slower device, tens to a couple hundred
+     * milliseconds of the UI thread simply not responding, occasionally
+     * enough to feel like a hung tap that a retry a moment later did not
+     * reproduce.
+     */
+    private fun verify(entered: String, onChecked: (Boolean) -> Unit) {
+        verifying = true
+        Background.load(this, {
+            val matched = lock.verify(entered)
+            if (matched) attempts.recordSuccess() else attempts.recordFailure()
+            matched
+        }) { matched ->
+            verifying = false
+            if (!matched) {
+                Diagnostics.record(this, DiagnosticEvent.PIN_FAILED)
+                if (!rejectWhileLockedOut()) toast(getString(R.string.pin_wrong))
+            }
+            onChecked(matched)
         }
-        attempts.recordFailure()
-        Diagnostics.record(this, DiagnosticEvent.PIN_FAILED)
-        if (!rejectWhileLockedOut()) toast(getString(R.string.pin_wrong))
-        return false
     }
 
     private fun chooseNew(entered: String) {
@@ -307,12 +343,19 @@ class PinActivity : DementorActivity() {
             toast(getString(R.string.pin_mismatch))
             return
         }
-        // Only now is any previous PIN replaced.
-        lock.set(entered)
-        attempts.recordSuccess()
-        Diagnostics.record(this, DiagnosticEvent.PIN_CHANGED)
-        Audit.record(this, AuditActor.PARENT, AuditAction.PIN_CHANGED)
-        succeed()
+        // Off the UI thread for the same reason verify() is — PinLock.set
+        // hashes through the same PBKDF2 cost and commits synchronously.
+        verifying = true
+        Background.load(this, {
+            // Only now is any previous PIN replaced.
+            lock.set(entered)
+            attempts.recordSuccess()
+        }) {
+            verifying = false
+            Diagnostics.record(this, DiagnosticEvent.PIN_CHANGED)
+            Audit.record(this, AuditActor.PARENT, AuditAction.PIN_CHANGED)
+            succeed()
+        }
     }
 
     /** True when a lockout is in force, having told the user how long is left. */

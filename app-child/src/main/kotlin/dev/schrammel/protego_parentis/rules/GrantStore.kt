@@ -63,8 +63,17 @@ class GrantStore(context: Context) {
         )
     }
 
-    /** Drops every grant for today — the "I changed my mind" path. */
-    fun clearAll() {
+    /**
+     * Drops every grant for today — the "I changed my mind" path.
+     *
+     * Synchronized for the same reason [add] is: without it, a grant [add]
+     * read state for just before this runs could still be written back
+     * afterward, silently undoing the clear — or a clear taken just before
+     * [add] reads could be overwritten right back by that read's now-stale
+     * copy. Either way a parent's own action would be the thing that
+     * disappears, not a rule doing what was asked.
+     */
+    fun clearAll() = synchronized(prefs) {
         write(emptyList())
     }
 

@@ -81,8 +81,16 @@ class LanOfferActivity : DementorActivity() {
 
         offer = LanPairing.Offer(
             context = this,
-            onRequest = { code, decide -> runOnUiThread { ask(code, decide) } },
-            onStopped = { reason -> runOnUiThread { stopped(reason) } },
+            onRequest = { code, decide ->
+                runOnUiThread {
+                    // A connection accepted on the pairing thread just as this
+                    // screen is backing out (onStop already ran end(), or the
+                    // activity is fully gone) must not show a dialog on a
+                    // window token that no longer exists.
+                    if (!isFinishing && !isDestroyed) ask(code, decide)
+                }
+            },
+            onStopped = { reason -> runOnUiThread { if (!isFinishing && !isDestroyed) stopped(reason) } },
         ).also { it.start() }
 
         countdown = object : CountDownTimer(
@@ -198,9 +206,11 @@ class LanFindActivity : DementorActivity() {
 
         finder = LanPairing.Finder(
             context = this,
-            onFound = { phone -> runOnUiThread { add(phone) } },
+            onFound = { phone -> runOnUiThread { if (!isFinishing && !isDestroyed) add(phone) } },
             onStopped = { reason ->
-                runOnUiThread { if (reason != null) status.setText(R.string.pair_unavailable) }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed && reason != null) status.setText(R.string.pair_unavailable)
+                }
             },
         ).also { it.start() }
     }
@@ -231,7 +241,7 @@ class LanFindActivity : DementorActivity() {
         results.removeAllViews()
 
         finder?.request(phone, shown) { answer ->
-            runOnUiThread { answered(answer) }
+            runOnUiThread { if (!isFinishing && !isDestroyed) answered(answer) }
         }
     }
 
