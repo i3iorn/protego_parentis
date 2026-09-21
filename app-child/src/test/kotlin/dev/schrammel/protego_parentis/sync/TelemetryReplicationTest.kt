@@ -2,8 +2,11 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import dev.schrammel.protego_parentis.security.LocalDeviceId
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.SyncRole
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,5 +67,30 @@ class TelemetryReplicationTest {
         telemetry().report(topApps = emptyList())
 
         assertEquals(emptyList<AppTime>(), telemetry().topApps())
+    }
+
+    /**
+     * `telemetry/locate/result` is [LocateOutcome.name] on the wire, written by
+     * whichever build's managed phone last answered a locate request — which, in
+     * a mid-rollout family, can be newer than the build reading it here. A
+     * result this build has no case for must read back as "nothing to show",
+     * not throw, and must not stop the rest of telemetry — figures with no
+     * connection to `locate/*` at all — from reading back correctly.
+     */
+    @Test
+    fun `a locate result this build does not recognise reads as no result, without corrupting the rest of telemetry`() {
+        val origin = LocalDeviceId.current()!!
+        val state = ReplicatedStateStore(context)
+        state.write(
+            "${ReplicationRules.TELEMETRY}${ReplicationRules.SEPARATOR}locate/result",
+            "SNOOZED",
+            origin,
+            SyncRole.CHILD,
+        )
+        telemetry().report(usedMinutes = 12, batteryPercent = 80)
+
+        assertNull(telemetry().lastLocate())
+        assertEquals(12, telemetry().read().usedMinutes)
+        assertEquals(80, telemetry().read().batteryPercent)
     }
 }
