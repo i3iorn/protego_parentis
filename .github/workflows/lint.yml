@@ -1,0 +1,53 @@
+# Runs Android Lint across every module, on every push and pull request.
+#
+# See test.yml's own header comment for why this is a separate, lighter
+# workflow rather than folded into the old `./gradlew build`: lint needs the
+# Android Gradle Plugin and Kotlin compiler but not a release assembly, so it
+# has no business paying for one on every commit.
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Android lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up the JDK
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run Android lint
+        run: ./gradlew lint --stacktrace
+
+      - name: Keep the reports from a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-reports
+          path: |
+            **/build/reports/lint-results*.html
+            **/build/reports/lint-results*.xml
+          retention-days: 7
+          if-no-files-found: ignore
