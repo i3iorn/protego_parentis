@@ -148,6 +148,7 @@
     <string name="context_edit_title">Rule</string>
     <string name="context_name_hint">Name, for example No games at school</string>
     <string name="context_name_required">Give the rule a name.</string>
+    <string name="context_well_known_target_locked">This rule came from an app limit or app block, and its target has to stay just that one app so it keeps showing up there — condition and effect can still be changed here. To cover more apps, make a separate rule instead.</string>
     <string name="context_enabled">Rule is on</string>
     <string name="context_when_header">When</string>
     <string name="context_when_info_title">About “When”</string>
