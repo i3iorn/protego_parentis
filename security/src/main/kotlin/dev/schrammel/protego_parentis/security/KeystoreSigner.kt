@@ -2,8 +2,6 @@ package dev.schrammel.protego_parentis.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.core.Fingerprints
 import dev.schrammel.protego_parentis.sync.core.Signer
 import java.security.KeyPairGenerator
 import java.security.KeyStore
@@ -33,10 +31,6 @@ class KeystoreSigner(private val alias: String = DEFAULT_ALIAS) : Signer {
 
     override val publicKey: ByteArray
         get() = entry().certificate.publicKey.encoded
-
-    val deviceId: DeviceId get() = Fingerprints.of(publicKey)
-
-    val publicKeyBase64: String get() = Fingerprints.encodeKey(publicKey)
 
     override fun sign(payload: ByteArray): ByteArray =
         Signature.getInstance(SIGNATURE_ALGORITHM).run {

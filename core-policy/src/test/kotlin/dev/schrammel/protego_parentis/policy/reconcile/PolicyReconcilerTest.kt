@@ -86,6 +86,9 @@ internal class FakeDevicePolicyPort(
     var networkLogging = false
     var alwaysOnVpn: String? = null
 
+    /** Set to refuse the next change, standing in for a package that cannot serve as one. */
+    var refuseVpn: Boolean = false
+
     override fun lockScreen() {
         locks++
     }
@@ -102,6 +105,7 @@ internal class FakeDevicePolicyPort(
     override fun currentAlwaysOnVpn(): String? = alwaysOnVpn
 
     override fun setAlwaysOnVpn(packageName: String?): Boolean {
+        if (refuseVpn) return false
         alwaysOnVpn = packageName
         return true
     }
@@ -389,6 +393,44 @@ class PolicyReconcilerTest {
 
         assertFalse(result.dnsChanged)
         assertTrue(result.invariantViolations.any { it.contains("not.a.resolver") })
+    }
+
+    // ---------- per-app network blocking (VPN) ----------
+
+    @Test
+    fun `blocking an app's network sets this app as the always-on VPN`() {
+        val port = FakeDevicePolicyPort()
+        val result = PolicyReconciler(port, SELF)
+            .reconcile(policy(), enforcement().copy(networkBlocked = setOf(GAME)))
+
+        assertEquals(SELF.value, port.alwaysOnVpn)
+        assertTrue(result.vpnChanged)
+    }
+
+    @Test
+    fun `clearing the last network-blocked app tears the VPN down`() {
+        val port = FakeDevicePolicyPort().apply { alwaysOnVpn = SELF.value }
+
+        val result = PolicyReconciler(port, SELF).reconcile(policy(), enforcement())
+
+        assertNull(port.alwaysOnVpn)
+        assertTrue(result.vpnChanged)
+    }
+
+    /**
+     * A package that cannot serve as the always-on VPN is refused by Android.
+     * Failing quietly would leave a family believing an app's network was
+     * blocked when it never was.
+     */
+    @Test
+    fun `a VPN that cannot be set is reported as a violation`() {
+        val port = FakeDevicePolicyPort().apply { refuseVpn = true }
+
+        val result = PolicyReconciler(port, SELF)
+            .reconcile(policy(), enforcement().copy(networkBlocked = setOf(GAME)))
+
+        assertFalse(result.vpnChanged)
+        assertTrue(result.invariantViolations.any { it.contains("always-on VPN") })
     }
 
     /** A filter that can be switched off in Settings is decoration. */
