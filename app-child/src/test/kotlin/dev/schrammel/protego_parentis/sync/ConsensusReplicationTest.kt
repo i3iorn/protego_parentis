@@ -283,6 +283,48 @@ class ConsensusReplicationTest {
         assertNull(consensus().proposal(id))
     }
 
+    // ---------- a kind this build does not recognise ----------
+
+    /**
+     * The four [ConsensusKind]s are a fixed, deliberately short list — but not
+     * fixed *forever*: a future release could add a fifth. Until every parent
+     * in a family is on that release, an older parent's phone will see a
+     * proposal of a kind it has never heard of. [ConsensusReplication.proposal]
+     * already guards this with [ConsensusKind.parse], the same as every other
+     * decode here; this proves the guard end to end — a raw record written the
+     * way a newer build's [ConsensusReplication.propose] would, straight into
+     * this replica's state, the way replication actually delivers it, rather
+     * than only exercising the enum.
+     *
+     * Dropping it here is a real limitation this test also records: an older
+     * parent's device does not just fail to *act* on a kind it does not know —
+     * it never counts as having approved anything about it either, so a
+     * proposal needing that device's unanimous approval can never actually
+     * complete until every parent has upgraded. That is a rollout property to
+     * be aware of, not a bug this change fixes.
+     */
+    @Test
+    fun `a proposal of a kind this build does not recognise is skipped, not the whole list`() {
+        val p1 = seedParent("P1")
+        LocalDeviceId.useInTests(p1.value)
+        val knownId = consensus().propose(ConsensusKind.DISBAND_FAMILY, target = p1)!!
+
+        val unknownId = "future-proposal"
+        state().writeAll(
+            mapOf(
+                "consensus/$unknownId/kind" to "merge_families",
+                "consensus/$unknownId/target" to p1.value,
+                "consensus/$unknownId/proposedBy" to p1.value,
+                "consensus/$unknownId/proposedAt" to Instant.now().epochSecond.toString(),
+            ),
+            origin = p1.value,
+            role = SyncRole.PARENT,
+        )
+
+        assertNull(consensus().proposal(unknownId))
+        assertEquals(listOf(knownId), consensus().proposals().map { it.id })
+    }
+
     // ---------- idempotent commit ----------
 
     @Test
