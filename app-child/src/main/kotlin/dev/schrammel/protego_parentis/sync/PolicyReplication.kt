@@ -708,11 +708,23 @@ class PolicyReplication(context: Context) {
      * differs per record type — everything else here was copy-pasted once
      * per type before this existed.
      */
+    /**
+     * [flatten] reads current state (to decide what to tombstone) before
+     * [ReplicatedStateStore.writeAll] ever runs — two separate operations
+     * that, called from the UI thread with nothing else holding them
+     * together, an inbound [SyncReceiver.apply] on the sync executor could
+     * interleave between: a local edit computed from what has just gone
+     * stale (#263). [ReplicatedStateStore.locked] makes the read and the
+     * write one atomic step, the same guarantee [SyncKeying]'s executor
+     * gives every other sync-state write, without moving this one off the
+     * UI thread and onto it — several screens still rely on a local save
+     * taking effect the instant this call returns.
+     */
     private fun writeRecords(childId: DeviceId?, flatten: (DeviceId) -> Map<String, String?>): List<StateOp> {
         val id = childId ?: return emptyList()
         val origin = LocalDeviceId.current() ?: return emptyList()
         val role = RoleStore(appContext).roleOrChild.toSyncRole()
-        return state.writeAll(flatten(id), origin, role)
+        return state.locked { state.writeAll(flatten(id), origin, role) }
     }
 
     /**
