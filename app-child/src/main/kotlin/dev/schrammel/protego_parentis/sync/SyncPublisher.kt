@@ -26,6 +26,7 @@ import dev.schrammel.protego_parentis.sync.core.SyncMessageType
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.TransportKind
 import dev.schrammel.protego_parentis.sync.core.TransportResult
+import dev.schrammel.protego_parentis.sync.core.deviceId
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ACCURACY
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ALLOWED

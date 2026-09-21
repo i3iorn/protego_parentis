@@ -4,16 +4,18 @@ import android.content.Context
 import android.util.Log
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
-import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
 import dev.schrammel.protego_parentis.sync.core.MessageFragments
 import dev.schrammel.protego_parentis.sync.core.MessageSignatures
+import dev.schrammel.protego_parentis.sync.core.Signer
 import dev.schrammel.protego_parentis.sync.core.SyncCodec
 import dev.schrammel.protego_parentis.sync.core.SyncMessage
 import dev.schrammel.protego_parentis.sync.core.SyncMessageType
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.TransportResult
+import dev.schrammel.protego_parentis.sync.core.deviceId
+import dev.schrammel.protego_parentis.sync.core.publicKeyBase64
 import java.time.Instant
 import java.util.UUID
 
@@ -28,7 +30,7 @@ internal class MessageTransmitter(
     context: Context,
     private val config: SyncConfigStore,
     private val roles: RoleStore,
-    private val signer: KeystoreSigner,
+    private val signer: Signer,
 ) {
 
     private val appContext = context.applicationContext
