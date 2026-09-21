@@ -18,15 +18,10 @@ import android.widget.TextView
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.model.AuditAction
-import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
-import dev.schrammel.protego_parentis.diagnostics.Diagnostics
+import dev.schrammel.protego_parentis.pin.PinVerifier
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.BiometricGate
-import dev.schrammel.protego_parentis.security.PinAttempts
 import dev.schrammel.protego_parentis.security.PinLock
 import kotlin.time.Duration
 
@@ -53,8 +48,7 @@ class PinActivity : DementorActivity() {
     /** Where we are in the sequence; which sequence depends on how we were launched. */
     private enum class Step { UNLOCK, VERIFY_EXISTING, CHOOSE_NEW, CONFIRM_NEW }
 
-    private lateinit var lock: PinLock
-    private lateinit var attempts: PinAttempts
+    private lateinit var verifier: PinVerifier
     private lateinit var biometrics: BiometricGate
 
     private lateinit var prompt: TextView
@@ -84,8 +78,7 @@ class PinActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        lock = PinLock(this)
-        attempts = PinAttempts(this)
+        verifier = PinVerifier(this)
         biometrics = BiometricGate(this)
 
         // The PIN screen must not appear in the recents thumbnail.
@@ -95,7 +88,7 @@ class PinActivity : DementorActivity() {
         )
 
         step = when {
-            !lock.isSet -> Step.CHOOSE_NEW
+            !verifier.isSet -> Step.CHOOSE_NEW
             intent.getBooleanExtra(EXTRA_CHANGE, false) -> Step.VERIFY_EXISTING
             else -> Step.UNLOCK
         }
@@ -118,7 +111,7 @@ class PinActivity : DementorActivity() {
     private fun canOfferBiometrics(): Boolean =
         step == Step.UNLOCK &&
             biometrics.canUnlock() &&
-            attempts.lockoutRemaining() <= Duration.ZERO
+            verifier.lockoutRemaining() <= Duration.ZERO
 
     private fun showBiometricPrompt() {
         val cipher = biometrics.cipher() ?: return
@@ -134,7 +127,7 @@ class PinActivity : DementorActivity() {
                     // passed to its constructor below — same reason as
                     // verify()'s own doc comment for taking the commit off it.
                     verifying = true
-                    Background.load(this@PinActivity, { attempts.recordSuccess() }) {
+                    Background.load(this@PinActivity, { verifier.recordBiometricSuccess() }) {
                         verifying = false
                         succeed()
                     }
@@ -292,26 +285,21 @@ class PinActivity : DementorActivity() {
      * Checks an entered PIN off the UI thread, recording the attempt either
      * way, and calls [onChecked] back with whether it matched.
      *
-     * [PinLock.verify] stretches the PIN through 150,000 rounds of PBKDF2 by
-     * design — real, deliberate CPU cost, not an accident to optimise away —
-     * and [PinAttempts.recordSuccess]/[PinAttempts.recordFailure] both commit
-     * to disk synchronously by design too (see their own doc comment on why
-     * an async write would not do). Both used to run inline on this screen's
-     * click listener — on a loaded or slower device, tens to a couple hundred
-     * milliseconds of the UI thread simply not responding, occasionally
-     * enough to feel like a hung tap that a retry a moment later did not
-     * reproduce.
+     * [PinVerifier.verify] runs [PinLock.verify]'s 150,000 rounds of PBKDF2 —
+     * real, deliberate CPU cost, not an accident to optimise away — and
+     * commits the attempt to disk synchronously by design too (see
+     * [dev.schrammel.protego_parentis.security.PinAttempts]'s own doc
+     * comment on why an async write would not do).
+     * Both used to run inline on this screen's click listener — on a loaded
+     * or slower device, tens to a couple hundred milliseconds of the UI
+     * thread simply not responding, occasionally enough to feel like a hung
+     * tap that a retry a moment later did not reproduce.
      */
     private fun verify(entered: String, onChecked: (Boolean) -> Unit) {
         verifying = true
-        Background.load(this, {
-            val matched = lock.verify(entered)
-            if (matched) attempts.recordSuccess() else attempts.recordFailure()
-            matched
-        }) { matched ->
+        Background.load(this, { verifier.verify(entered) }) { matched ->
             verifying = false
             if (!matched) {
-                Diagnostics.record(this, DiagnosticEvent.PIN_FAILED)
                 if (!rejectWhileLockedOut()) toast(getString(R.string.pin_wrong))
             }
             onChecked(matched)
@@ -346,21 +334,16 @@ class PinActivity : DementorActivity() {
         // Off the UI thread for the same reason verify() is — PinLock.set
         // hashes through the same PBKDF2 cost and commits synchronously.
         verifying = true
-        Background.load(this, {
-            // Only now is any previous PIN replaced.
-            lock.set(entered)
-            attempts.recordSuccess()
-        }) {
+        // Only now is any previous PIN replaced.
+        Background.load(this, { verifier.setNewPin(entered) }) {
             verifying = false
-            Diagnostics.record(this, DiagnosticEvent.PIN_CHANGED)
-            Audit.record(this, AuditActor.PARENT, AuditAction.PIN_CHANGED)
             succeed()
         }
     }
 
     /** True when a lockout is in force, having told the user how long is left. */
     private fun rejectWhileLockedOut(): Boolean {
-        val waiting = attempts.lockoutRemaining()
+        val waiting = verifier.lockoutRemaining()
         if (waiting <= Duration.ZERO) return false
         val seconds = waiting.inWholeSeconds.toInt()
         toast(resources.getQuantityString(R.plurals.pin_locked_out, seconds, seconds))
