@@ -6,11 +6,12 @@ import dev.schrammel.protego_parentis.enforcement.RequestNotifier
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.rules.FeatureFlags
-import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TEXT
 import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.core.Signer
 import dev.schrammel.protego_parentis.sync.core.StateOp
 import dev.schrammel.protego_parentis.sync.core.SyncMessage
+import dev.schrammel.protego_parentis.sync.core.deviceId
 
 /**
  * Family chat, both directions it can arrive by: as its own message
@@ -24,7 +25,7 @@ internal class ChatInboundHandler(
     context: Context,
     private val roster: RosterStore,
     private val notifier: RequestNotifier,
-    private val signer: KeystoreSigner,
+    private val signer: Signer,
 ) {
     private val appContext = context.applicationContext
 
