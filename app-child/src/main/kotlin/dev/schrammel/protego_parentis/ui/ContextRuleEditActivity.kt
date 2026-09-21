@@ -29,6 +29,7 @@ import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
+import dev.schrammel.protego_parentis.policy.ContextRuleAuthoring
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.categories
@@ -621,7 +622,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             effect = effect,
             target = ruleTarget,
         )
-        if (looksLikeTotalBlackout(rule)) {
+        if (ContextRuleAuthoring.looksLikeTotalBlackout(rule, contextRuleRuleStore(this, target).read())) {
             val bodyRes = if (rule.effect is RuleEffect.AlwaysBlock) {
                 R.string.context_blackout_body_always_block
             } else {
@@ -631,39 +632,6 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             return
         }
         commit(rule)
-    }
-
-    /**
-     * The one contradiction the tutorial itself warns about, made hard to miss
-     * at the moment it's easy to create: an unconditioned block of literally
-     * everything, with nothing anywhere in this ruleset carved back out. Not a
-     * general contradiction checker — AllOf/AnyOf combinations and overlapping
-     * budgets are still on the parent to notice — just this one well-known
-     * shape, which #87's combine/invert controls make easy to build by
-     * accident.
-     *
-     * A plain [RuleEffect.Block] is only a true blackout while no [RuleEffect.Allow]
-     * rule carves an exception back out; a [RuleEffect.AlwaysBlock] is not
-     * saved by an [RuleEffect.Allow] at all — that is the whole point of the
-     * override — so only a [RuleEffect.SafetyExempt] rule counts as its
-     * exception. Getting this wrong in either direction would either warn a
-     * parent who has already carved out an exception that works, or, worse,
-     * silently let an always-block-everything rule through believing an
-     * ordinary allow rule will save some app from it when it cannot.
-     *
-     * Internal rather than private, so [ContextRuleEditActivityTest] can pin
-     * both branches directly, without driving the "Do this" menu's dialog.
-     */
-    internal fun looksLikeTotalBlackout(rule: ContextRule): Boolean {
-        if (!rule.enabled) return false
-        if (rule.target != RuleTarget.Everything) return false
-        if (rule.condition != Condition.Always) return false
-        val others = contextRuleRuleStore(this, target).read().filterNot { it.id == rule.id }
-        return when (rule.effect) {
-            is RuleEffect.Block -> others.none { it.enabled && it.effect is RuleEffect.Allow }
-            is RuleEffect.AlwaysBlock -> others.none { it.enabled && it.effect is RuleEffect.SafetyExempt }
-            else -> false
-        }
     }
 
     private fun commit(rule: ContextRule) {
