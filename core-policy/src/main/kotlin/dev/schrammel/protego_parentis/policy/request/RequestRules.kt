@@ -1,5 +1,6 @@
 package dev.schrammel.protego_parentis.policy.request
 
+import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.Grant
 import dev.schrammel.protego_parentis.model.GrantId
 import dev.schrammel.protego_parentis.model.GrantTarget
@@ -7,6 +8,7 @@ import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestId
 import dev.schrammel.protego_parentis.model.RequestState
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -59,6 +61,19 @@ object RequestRules {
         } else {
             request
         }
+    }
+
+    /**
+     * Drops requests — including their free-text `reason` — older than
+     * [Defaults.HISTORY_RETENTION_DAYS] (#248). Every other retention-
+     * sensitive store in this app bounds itself already (chat: 200 messages,
+     * usage: [Defaults.HISTORY_RETENTION_DAYS] itself, web activity: today
+     * only); this reuses that same horizon rather than inventing a second
+     * number for what is, in the end, the same minimization principle.
+     */
+    fun prune(requests: List<Request>, now: Instant): List<Request> {
+        val cutoff = now.minus(Defaults.HISTORY_RETENTION_DAYS.toLong(), ChronoUnit.DAYS)
+        return requests.filter { it.createdAt.isAfter(cutoff) }
     }
 
     /**

@@ -76,10 +76,14 @@ object Defaults {
     const val SCHEDULE_HORIZON_DAYS = 15L
 
     /**
-     * How long daily totals are kept: thirteen months, so a full year plus the
-     * current month is always comparable.
+     * How long daily totals are kept.
+     *
+     * Trimmed from 400 (a full year plus the current month, for year-over-
+     * year comparison) to 90 per #250: data-minimization outweighs a
+     * comparison the trend UI never actually showed, and 90 days still
+     * covers every trend view this app offers.
      */
-    const val HISTORY_RETENTION_DAYS = 400
+    const val HISTORY_RETENTION_DAYS = 90
 
     /**
      * How often the child device says it is still working (TR-2).

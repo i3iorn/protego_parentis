@@ -72,6 +72,20 @@ class ReplicatedStateStore(context: Context) {
 
     fun value(path: String): String? = entries[path]?.value
 
+    /**
+     * Runs [block] holding the same lock every read and write here already
+     * takes internally (#263). [writeAll]/[receive] are each atomic on their
+     * own, but a caller that has to *read* current state, decide what to
+     * write from it, and only then call [writeAll] — as replication's own
+     * flatten-then-tombstone step does — is not atomic as a whole unless
+     * that whole sequence holds the lock throughout: an inbound [receive]
+     * landing between the read and the write would make the decision stale,
+     * silently losing or resurrecting whatever it changed. Reentrant, so
+     * [block] calling straight into [entries]/[writeAll]/etc. from the same
+     * thread is safe rather than a self-deadlock.
+     */
+    fun <T> locked(block: () -> T): T = synchronized(LOCK) { block() }
+
     /** Every live value directly under [prefix], keyed by the segment after it. */
     fun children(prefix: String): Map<String, String> {
         val root = prefix.trimEnd(ReplicationRules.SEPARATOR) + ReplicationRules.SEPARATOR

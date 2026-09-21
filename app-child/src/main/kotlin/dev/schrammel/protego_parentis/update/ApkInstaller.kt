@@ -62,7 +62,9 @@ object ApkInstaller {
                 context,
                 sessionId,
                 callback,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+                // Nothing downstream needs to rewrite these extras — the
+                // version name is already fully populated above.
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             session.commit(pending.intentSender)
         }

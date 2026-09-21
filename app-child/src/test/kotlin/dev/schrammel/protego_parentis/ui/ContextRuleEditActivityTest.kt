@@ -28,6 +28,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.shadows.ShadowAlertDialog
 import java.time.DayOfWeek
 import java.time.LocalTime
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * This screen's own pickers used to be the only way in the app to build a
@@ -103,6 +104,77 @@ class ContextRuleEditActivityTest {
             RuleTarget.EverythingExcept(setOf(PackageName("com.google.android.deskclock"))),
             saved.target,
         )
+    }
+
+    // ---------- well-known single-app ids (#223) ----------
+
+    /**
+     * AppLimitsActivity.limitsFrom only recognizes a migrated per-app budget
+     * rule while its target is still exactly the one package the id was
+     * derived from (RuleStores.appBudgetLimits) — there is no well-known id
+     * a second package could ever be recognized under. A rule already
+     * widened past that shape (by whatever means) must refuse to save
+     * unrelated edits too, rather than let the screen quietly compound the
+     * damage.
+     */
+    @Test
+    fun `saving an already-widened well-known-id rule is refused`() {
+        val budgetRuleId = "migrated-app-budget-com.example.game"
+        store().upsert(
+            ContextRule(
+                id = budgetRuleId,
+                name = "Game limit",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.SetBudget(dev.schrammel.protego_parentis.model.WeeklyBudget.flat(30.minutes)),
+                target = RuleTarget.Apps(setOf(PackageName("com.example.game"), PackageName("com.example.other"))),
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, budgetRuleId),
+        ).setup().get()
+
+        renameField(activity)?.setText("Game limit (renamed)")
+        clickButton(activity, "Save rule")
+
+        assertEquals(
+            context.getString(R.string.context_well_known_target_locked),
+            org.robolectric.shadows.ShadowToast.getTextOfLatestToast(),
+        )
+        assertTrue("the screen must not finish on a refused save", !activity.isFinishing)
+        assertEquals(
+            "the already-stored rule must be untouched, not silently rewritten",
+            "Game limit",
+            store().rules.single { it.id == budgetRuleId }.name,
+        )
+    }
+
+    /** The mirror: a well-known-id rule still in its one-app shape saves normally. */
+    @Test
+    fun `an unwidened well-known-id rule still saves its other edits`() {
+        val blockRuleId = "migrated-app-block-com.example.game"
+        store().upsert(
+            ContextRule(
+                id = blockRuleId,
+                name = "Game block",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Apps(setOf(PackageName("com.example.game"))),
+            ),
+        )
+
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, blockRuleId),
+        ).setup().get()
+
+        renameField(activity)?.setText("Game block (renamed)")
+        clickButton(activity, "Save rule")
+
+        assertEquals("Game block (renamed)", store().rules.single { it.id == blockRuleId }.name)
     }
 
     @Test

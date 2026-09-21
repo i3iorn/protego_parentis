@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Explicit, independent of targetSdk: every real network call already gates
+  itself on https:// (SyncSettings.isUsable, UpdateClient's hardcoded GitHub
+  URL), and cleartext is already refused by the platform default at this
+  targetSdk. This makes that refusal a stated property of the app rather than
+  an implicit consequence of a build-config value someone could lower later.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

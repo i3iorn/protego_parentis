@@ -37,6 +37,7 @@ import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
+import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.categories
@@ -590,10 +591,36 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             .show()
     }
 
+    /**
+     * The one package [ruleId] was derived from, if it is one of
+     * [dev.schrammel.protego_parentis.rules.LocalPolicyStore]'s well-known
+     * per-app ids (#223) — the slot [AppLimitsActivity]/[AppControlActivity]
+     * each read their own rules by. The id format has no room for a second
+     * package: `appBudgetLimits` (see `RuleStores.kt`) only recognizes such a
+     * rule while its target is still exactly this one app, so widening it
+     * here would not grow what the rule covers from those screens' point of
+     * view — it would just make the rule vanish from the one that created it,
+     * while it goes on enforcing regardless. Null for an ordinary rule, which
+     * has no such shape to protect.
+     */
+    private fun wellKnownSingleAppTarget(): RuleTarget.Apps? {
+        val budgetPkg = ruleId.removePrefix(LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX)
+        if (budgetPkg != ruleId) return RuleTarget.Apps(setOf(PackageName(budgetPkg)))
+        val blockPkg = ruleId.removePrefix(LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX)
+        if (blockPkg != ruleId) return RuleTarget.Apps(setOf(PackageName(blockPkg)))
+        return null
+    }
+
     private fun save() {
         if (name.isBlank()) {
             toast(getString(R.string.context_name_required))
             return
+        }
+        wellKnownSingleAppTarget()?.let { locked ->
+            if (ruleTarget != locked) {
+                toast(getString(R.string.context_well_known_target_locked))
+                return
+            }
         }
         val rule = ContextRule(
             id = ruleId,

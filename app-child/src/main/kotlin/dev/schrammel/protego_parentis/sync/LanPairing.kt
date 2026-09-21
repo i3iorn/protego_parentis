@@ -338,7 +338,10 @@ object LanPairing {
                         )
                     }
                 }.getOrElse { error ->
-                    Log.w(TAG, "Pairing with ${phone.name} failed", error)
+                    // Not phone.name: a user-chosen device name has no place
+                    // in a log line, the same rule Diagnostics.kt states for
+                    // its own content.
+                    Log.w(TAG, "Pairing with a nearby phone failed", error)
                     PairingWire.Answer.Unreadable
                 }
                 onAnswer(answer)

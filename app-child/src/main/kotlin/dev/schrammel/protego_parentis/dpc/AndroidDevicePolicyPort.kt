@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RestrictionValue
 import dev.schrammel.protego_parentis.policy.reconcile.DevicePolicyPort
@@ -139,7 +141,13 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
             }
         }
         runCatching { dpm.setApplicationRestrictions(admin, pkg.value, bundle) }
-            .onFailure { Log.w(TAG, "Could not set managed configuration for ${pkg.value}", it) }
+            .onFailure {
+                // Not the package name — Diagnostics.kt's own rule, applied
+                // here too: this log records what the app did, not which app
+                // it did it to.
+                Log.w(TAG, "Could not set managed configuration", it)
+                Diagnostics.record(appContext, DiagnosticEvent.MANAGED_CONFIG_FAILED)
+            }
     }
 
     /**
@@ -220,8 +228,10 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
         dpm.isPackageSuspended(admin, pkg.value)
     } catch (e: PackageManager.NameNotFoundException) {
         // Uninstalled between listing and querying. Treat as not suspended; the
-        // next reconcile pass sees the shorter package list.
-        Log.d(TAG, "Package went away while reading suspend state: ${pkg.value}", e)
+        // next reconcile pass sees the shorter package list. Not logged with
+        // the package name — an ordinary, expected race, not a fault worth a
+        // trace, and Diagnostics.kt's own rule applies here too regardless.
+        Log.d(TAG, "Package went away while reading suspend state", e)
         false
     }
 

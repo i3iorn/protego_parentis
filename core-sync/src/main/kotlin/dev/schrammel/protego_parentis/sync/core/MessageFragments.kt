@@ -106,6 +106,15 @@ object MessageFragments {
  * message already is on this transport, so nothing here tries to be more
  * reliable than the rest of the sync layer.
  *
+ * Fragments carry no per-chunk authentication of their own (#249) — the
+ * eventual AEAD open over the reassembled envelope is what actually proves a
+ * message, not this class. What this class alone can and does guard against
+ * is a race: an on-topic attacker who sees a real group id can try to fill an
+ * unclaimed slot with a fragment of their own before the real one lands. Two
+ * different fragments for the same slot are never legitimate — a sender mints
+ * a fresh group id per publish — so the second one poisons the group rather
+ * than either silently winning.
+ *
  * [maxPendingGroups] and each fragment's own [MessageFragments.Fragment.total]
  * are both bounded (see [MAX_FRAGMENTS_PER_GROUP]) for the same reason
  * `NtfyTransport.MAX_MESSAGES_PER_POLL` exists: the topic is public, and
@@ -118,7 +127,10 @@ class FragmentAssembler(
     private val now: () -> Instant = Instant::now,
 ) {
 
-    private class Pending(val chunks: Array<String?>, val startedAt: Instant)
+    private class Pending(val chunks: Array<String?>, val startedAt: Instant) {
+        /** #249: set once two different fragments race for the same slot. */
+        var poisoned = false
+    }
 
     private val pending = LinkedHashMap<String, Pending>()
 
@@ -127,7 +139,7 @@ class FragmentAssembler(
      *
      * Returns [wire] itself when it is not a fragment at all, the reassembled
      * envelope once [wire] completes its group, or null while still waiting
-     * (or after refusing something malformed or oversized).
+     * (or after refusing something malformed, oversized, or poisoned).
      */
     fun accept(wire: String): String? {
         val fragment = MessageFragments.parse(wire) ?: return wire
@@ -148,6 +160,26 @@ class FragmentAssembler(
             // one publish call picks one total for all its pieces. Discard
             // rather than guess which total to believe.
             pending.remove(fragment.groupId)
+            return null
+        }
+
+        if (entry.poisoned) return null
+
+        val existing = entry.chunks[fragment.index]
+        if (existing != null) {
+            if (existing != fragment.chunk) {
+                // #249: two different fragments for the same slot — never
+                // legitimate, since a sender mints a fresh group id per
+                // publish rather than republishing one under the same id
+                // with different content (SyncPublisher/MessageTransmitter's
+                // own id). Whichever arrived first is no more trustworthy
+                // than the second, so the group is quarantined rather than
+                // silently kept or reset: no further chunk completes it
+                // until it ages out through the ordinary evictStale sweep,
+                // so an attacker cannot just retry immediately, and a
+                // completed-but-wrong reassembly can never happen.
+                entry.poisoned = true
+            }
             return null
         }
 

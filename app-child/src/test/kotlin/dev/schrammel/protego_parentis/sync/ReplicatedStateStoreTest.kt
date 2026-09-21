@@ -329,4 +329,58 @@ class ReplicatedStateStoreTest {
         assertEquals("90", op?.value)
         assertEquals("90", store().value("policy/SELF/dailyLimitMinutes"))
     }
+
+    // ---------- locked (#263) ----------
+
+    /**
+     * [ReplicatedStateStore.locked] exists so [PolicyReplication]'s own
+     * read-then-decide-then-write sequence can be made atomic against a
+     * concurrent [receive] the way [writeAll]/[receive] already are against
+     * each other individually. This proves the mutual exclusion actually
+     * holds: while one thread is inside [locked], a [receive] from another
+     * thread must wait for it to finish rather than interleaving.
+     */
+    @Test
+    fun `receive on another thread waits for a locked block to finish`() {
+        val insideLocked = java.util.concurrent.CountDownLatch(1)
+        val releaseLocked = java.util.concurrent.CountDownLatch(1)
+        val receiveDone = java.util.concurrent.CountDownLatch(1)
+
+        val holder = Thread {
+            store().locked {
+                insideLocked.countDown()
+                releaseLocked.await()
+            }
+        }.apply { start() }
+
+        assertTrue(insideLocked.await(5, java.util.concurrent.TimeUnit.SECONDS))
+
+        val receiver = Thread {
+            store().receive(
+                listOf(
+                    StateOp(
+                        path = "policy/SELF/dailyLimitMinutes",
+                        value = "45",
+                        lamport = 1L,
+                        origin = "OTHER",
+                    ),
+                ),
+            )
+            receiveDone.countDown()
+        }.apply { start() }
+
+        // receive() must still be blocked on the same lock — half a second is
+        // generous for a Thread that has had every chance to run if it were
+        // ever going to interleave instead of waiting.
+        assertTrue(
+            "receive() must not complete while locked{} is still held",
+            !receiveDone.await(500, java.util.concurrent.TimeUnit.MILLISECONDS),
+        )
+
+        releaseLocked.countDown()
+        holder.join(5_000)
+
+        assertTrue(receiveDone.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals("45", store().value("policy/SELF/dailyLimitMinutes"))
+    }
 }
