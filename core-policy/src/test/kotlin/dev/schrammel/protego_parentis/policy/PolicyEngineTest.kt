@@ -2,24 +2,101 @@ package dev.schrammel.protego_parentis.policy
 
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.BudgetLevel
+import dev.schrammel.protego_parentis.model.Category
+import dev.schrammel.protego_parentis.model.CategoryId
+import dev.schrammel.protego_parentis.model.ChildId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceState
 import dev.schrammel.protego_parentis.model.GrantTarget
+import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.ScheduleBlock
+import dev.schrammel.protego_parentis.model.ScheduleId
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 class PolicyEngineTest {
+
+    // ---------- wire compatibility with an older build ----------
+
+    /**
+     * [Policy.deviceBudget], [Policy.schedules], [AppRule.Budgeted]/
+     * [AppRule.Blocked], and [Category.budget] all say, in their own doc
+     * comments, that [PolicyEngine] no longer reads them — each was replaced
+     * by an equivalent [ContextRule] under #105/#106. They stay on the type
+     * only because a sibling phone still running a build from before that
+     * migration can still send or receive one over sync (see
+     * `docs/RULES-INVENTORY.md`'s `LocalPolicyStore` section), and a family
+     * is not required to update every phone at once.
+     *
+     * The [policy] test helper always translates these into the equivalent
+     * [ContextRule] before constructing a [Policy], the same conversion
+     * `LocalPolicyStore.migrateToUnifiedRules`/`migrateAppRulesToUnifiedRules`
+     * do for a real device — so every other test in this file, and every
+     * other test in this suite, never actually exercises these fields being
+     * non-default. This one constructs a [Policy] directly, the way an
+     * *unmigrated* store still can, with every one of them set to something
+     * that would suspend or restrict every app if [PolicyEngine] read it —
+     * and asserts nothing is suspended. An older sibling phone (or a
+     * downgrade, or a field a future refactor forgets to remove) populating
+     * these must never silently change enforcement.
+     */
+    @Test
+    fun `an unmigrated policy's dead fields do not affect enforcement`() {
+        val lockdownSchedule = ScheduleBlock(
+            id = ScheduleId("legacy-lockdown"),
+            name = "Legacy lockdown",
+            days = weekdayOf("2026-08-21").let(::setOf),
+            start = LocalTime.MIN,
+            end = LocalTime.of(23, 59),
+            packages = emptySet(),
+            mode = ScheduleBlock.Mode.EXCLUSIVE,
+        )
+        val lockedCategory = Category(
+            id = CategoryId("legacy-category"),
+            name = "Legacy category",
+            budget = WeeklyBudget.flat(Duration.ZERO),
+            packages = setOf(GAME),
+        )
+
+        val policy = Policy(
+            version = 1L,
+            childId = ChildId("child-1"),
+            timeZone = ZONE,
+            deviceBudget = WeeklyBudget.flat(Duration.ZERO),
+            appRules = mapOf(
+                GAME to AppRule.Blocked(),
+                YOUTUBE to AppRule.Budgeted(WeeklyBudget.flat(Duration.ZERO)),
+            ),
+            categories = listOf(lockedCategory),
+            schedules = listOf(lockdownSchedule),
+            contextRules = emptyList(),
+            safetyAllowlist = emptySet(),
+        )
+
+        val result = PolicyEngine.evaluate(
+            policy = policy,
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21", deviceTotal = 5.hours),
+            now = at("2026-08-21", "18:00"),
+        )
+
+        assertTrue(
+            "a Policy whose only restrictions live in the fields #105/#106 stopped reading " +
+                "must suspend nothing — suspended: ${result.suspend.keys}",
+            result.suspend.isEmpty(),
+        )
+    }
 
     // ---------- safety invariant ----------
 
