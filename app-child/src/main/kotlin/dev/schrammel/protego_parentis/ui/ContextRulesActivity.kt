@@ -21,8 +21,8 @@ import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
-import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.bedtimeRuleId
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
@@ -415,7 +415,7 @@ class ContextRulesActivity : ParentGatedActivity() {
                 EVERY_DAY,
                 Defaults.BEDTIME_START,
                 Defaults.BEDTIME_END,
-                fixedId = LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + ScheduleStore.BEDTIME_ID,
+                fixedId = bedtimeRuleId(),
             ),
         )
 

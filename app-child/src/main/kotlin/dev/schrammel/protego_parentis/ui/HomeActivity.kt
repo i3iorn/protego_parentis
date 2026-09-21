@@ -34,11 +34,11 @@ import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
-import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
+import dev.schrammel.protego_parentis.ui.rules.bedtimeRuleId
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.usage.UsageAccess
 
@@ -435,7 +435,7 @@ class HomeActivity : DementorActivity() {
             ),
         )
 
-        val bedtimeId = LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + ScheduleStore.BEDTIME_ID
+        val bedtimeId = bedtimeRuleId()
         val bedtime = rules.firstOrNull { it.id == bedtimeId }
         val window = (bedtime?.condition as? Condition.DuringWindow)?.takeIf { bedtime.enabled }?.window
         container.addView(
