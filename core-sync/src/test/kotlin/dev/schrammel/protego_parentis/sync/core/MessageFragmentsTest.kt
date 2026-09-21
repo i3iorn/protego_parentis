@@ -120,4 +120,63 @@ class MessageFragmentsTest {
 
         assertNull(assembler.accept("F1:g:0:100000:aaa"))
     }
+
+    // ---------- poisoning a racing slot (#249) ----------
+
+    /**
+     * The scenario #249 describes: an on-topic attacker sees a real group id
+     * appear and races a bogus fragment into an unfilled slot before the real
+     * one lands. Once two different fragments claim the same slot, the group
+     * must never complete — not from whichever arrived first, which is no
+     * more trustworthy than the second.
+     */
+    @Test
+    fun `two different fragments racing for the same slot poison the whole group`() {
+        val assembler = FragmentAssembler()
+
+        assertNull(assembler.accept("F1:g:0:2:real-chunk-0"))
+        // An attacker's fragment for the same slot, different content.
+        assertNull(assembler.accept("F1:g:0:2:forged-chunk-0"))
+        // The real second (and final) piece arrives — must not complete the
+        // group from a mix of the real piece 1 and whichever piece 0 won.
+        assertNull(assembler.accept("F1:g:1:2:real-chunk-1"))
+    }
+
+    @Test
+    fun `the same fragment arriving twice for one slot is not treated as a race`() {
+        val assembler = FragmentAssembler()
+
+        assertNull(assembler.accept("F1:g:0:2:chunk-0"))
+        // A legitimate retransmission of the exact same piece — must not
+        // poison the group, since nothing about it actually conflicts.
+        assertNull(assembler.accept("F1:g:0:2:chunk-0"))
+
+        assertEquals("chunk-0chunk-1", assembler.accept("F1:g:1:2:chunk-1"))
+    }
+
+    @Test
+    fun `a poisoned group stays refused even for its correct remaining pieces`() {
+        val assembler = FragmentAssembler()
+
+        assembler.accept("F1:g:0:3:real-0")
+        assembler.accept("F1:g:0:3:forged-0") // poisons the group
+
+        assertNull(assembler.accept("F1:g:1:3:real-1"))
+        assertNull(assembler.accept("F1:g:2:3:real-2"))
+    }
+
+    @Test
+    fun `a poisoned group ages out the same as any other, not held forever`() {
+        var clock = Instant.parse("2024-01-01T00:00:00Z")
+        val assembler = FragmentAssembler(maxAgeMillis = 1_000, now = { clock })
+
+        assembler.accept("F1:g:0:2:real-0")
+        assembler.accept("F1:g:0:2:forged-0") // poisons the group
+        clock = clock.plusMillis(5_000)
+
+        // A fresh attempt under the same group id, after the poisoned entry
+        // has aged out, is an ordinary new group rather than refused forever.
+        assertNull(assembler.accept("F1:g:0:2:fresh-0"))
+        assertEquals("fresh-0fresh-1", assembler.accept("F1:g:1:2:fresh-1"))
+    }
 }
