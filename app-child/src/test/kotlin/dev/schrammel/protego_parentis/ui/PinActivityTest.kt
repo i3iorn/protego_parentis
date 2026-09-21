@@ -68,11 +68,11 @@ class PinActivityTest {
     fun `choosing and confirming a first PIN commits it off the UI thread and finishes ok`() {
         val activity = Robolectric.buildActivity(PinActivity::class.java).setup().get()
 
-        findEditText(activity.window.decorView)?.setText("1234")
+        findEditText(activity.window.decorView)?.setText("123456")
         clickButton(activity, "Continue")
 
         // Now on CONFIRM_NEW.
-        findEditText(activity.window.decorView)?.setText("1234")
+        findEditText(activity.window.decorView)?.setText("123456")
         clickButton(activity, "Continue")
 
         assertTrue(
@@ -85,10 +85,10 @@ class PinActivityTest {
 
     @Test
     fun `an existing PIN entered wrong is checked off the UI thread and refused`() {
-        PinLock(RuntimeEnvironment.getApplication()).set("1234")
+        PinLock(RuntimeEnvironment.getApplication()).set("123456")
         val activity = Robolectric.buildActivity(PinActivity::class.java).setup().get()
 
-        findEditText(activity.window.decorView)?.setText("0000")
+        findEditText(activity.window.decorView)?.setText("000000")
         clickButton(activity, "Continue")
 
         assertTrue(

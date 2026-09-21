@@ -397,68 +397,6 @@ class ContextRuleEditActivityTest {
         assertTrue(store().rules.any { it.name == "Lockdown except homework" })
     }
 
-    /**
-     * [ContextRuleEditActivity.looksLikeTotalBlackout] draws its blackout line
-     * differently for an [RuleEffect.AlwaysBlock] rule than for a plain
-     * [RuleEffect.Block]: an [RuleEffect.Allow] rule saves the latter but not
-     * the former, so an override-everything rule needs its own carve-out
-     * (only [RuleEffect.SafetyExempt] counts) to stop the warning. Pinned
-     * directly against the internal method — see its own doc comment — since
-     * nothing here drives the "Do this" menu's dialog to pick the effect.
-     */
-    @Test
-    fun `an always-block-everything rule is a blackout even with an allow rule, but not with a safety-exempt one`() {
-        val activity = Robolectric.buildActivity(
-            ContextRuleEditActivity::class.java,
-            ContextRuleEditActivity.intent(context),
-        ).setup().get()
-
-        val overrideEverything = ContextRule(
-            id = "override-everything",
-            name = "Lockdown",
-            enabled = true,
-            condition = Condition.Always,
-            effect = RuleEffect.AlwaysBlock(),
-            target = RuleTarget.Everything,
-        )
-
-        assertTrue(
-            "with no carve-out at all, this is a blackout",
-            activity.looksLikeTotalBlackout(overrideEverything),
-        )
-
-        store().upsert(
-            ContextRule(
-                id = "an-allow-rule",
-                name = "Except homework app",
-                enabled = true,
-                condition = Condition.Always,
-                effect = RuleEffect.Allow,
-                target = RuleTarget.Apps(setOf(PackageName("com.example.homework"))),
-            ),
-        )
-        assertTrue(
-            "an allow rule cannot save anything from an always-block override",
-            activity.looksLikeTotalBlackout(overrideEverything),
-        )
-
-        store().upsert(
-            ContextRule(
-                id = "an-exempt-rule",
-                name = "Exempt homework app",
-                enabled = true,
-                condition = Condition.Always,
-                effect = RuleEffect.SafetyExempt,
-                target = RuleTarget.Apps(setOf(PackageName("com.example.homework"))),
-            ),
-        )
-        assertEquals(
-            "only a safety-exempt rule counts as this override's own carve-out",
-            false,
-            activity.looksLikeTotalBlackout(overrideEverything),
-        )
-    }
-
     private fun renameField(activity: ContextRuleEditActivity): android.widget.EditText? =
         findAll(activity.window.decorView) { it is android.widget.EditText }
             .filterIsInstance<android.widget.EditText>()

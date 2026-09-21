@@ -36,3 +36,7 @@ captures/
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Claude Code agent worktrees — transient checkouts for background subagents,
+# never repository content.
+.claude/worktrees/

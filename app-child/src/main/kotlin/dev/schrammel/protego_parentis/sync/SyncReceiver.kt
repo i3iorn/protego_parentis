@@ -28,6 +28,8 @@ import dev.schrammel.protego_parentis.sync.core.MessageSignatures
 import dev.schrammel.protego_parentis.sync.core.ReplayGuard
 import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.core.RosterRules
+import dev.schrammel.protego_parentis.sync.core.SeenMessage
+import dev.schrammel.protego_parentis.sync.core.SignedPayload
 import dev.schrammel.protego_parentis.sync.core.StateCodec
 import dev.schrammel.protego_parentis.sync.core.StateDigest
 import dev.schrammel.protego_parentis.sync.core.StateOp
@@ -174,31 +176,58 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     /**
      * Opens one envelope and acts on it.
      *
-     * Anything that fails to decrypt is someone else's traffic on a public topic,
-     * which is expected and silent. Anything that decrypts but fails the replay
-     * guard is logged, because that is either a clock problem or an attack.
+     * Reads top to bottom as the pipeline it is — reassemble the wire bytes,
+     * decrypt and decode them, admit the message on timing, admit the sender
+     * on identity, then dispatch. Each stage below returns null/false the
+     * moment it refuses the message, so this function is nothing but that
+     * sequence and the plumbing between stages; the reasoning for *why* a
+     * stage refuses what it refuses lives on that stage, not here.
+     *
+     * Anything that fails to decrypt is someone else's traffic on a public
+     * topic, which is expected and silent. Anything that decrypts but fails
+     * the replay guard is logged, because that is either a clock problem or
+     * an attack.
      */
     private fun apply(key: SyncKey, envelope: String): Boolean {
-        // A whole envelope, or one piece of one MessageFragments split apart —
-        // either way, fragments.accept hands back an opaque sealed string once
-        // (and only once) there is a complete one to open, and both a poll
-        // batch and the realtime stream feed every wire message through here,
-        // so this is the one place reassembly needs to happen.
-        val whole = fragments.accept(envelope) ?: return false
-
-        val plaintext = when (val opened = MessageCrypto.open(key, whole)) {
-            is DecryptResult.Opened -> opened.plaintext
-            is DecryptResult.Failed -> return false
-        }
-
-        val payload = MessageSignatures.split(plaintext) ?: return false
-        val message = SyncCodec.decode(payload.body) ?: return false
+        val whole = reassemble(envelope) ?: return false
+        val opened = decrypt(key, whole) ?: return false
 
         // Our own messages come back from the topic; ignore them.
-        if (message.sender == config.load().deviceId) return false
+        if (opened.message.sender == config.load().deviceId) return false
 
         val now = Instant.now()
         val seen = config.seenMessages()
+        if (!admitReplay(opened.message, now, seen)) return false
+
+        val admittance = admitSender(opened.message, opened.payload, now) ?: return false
+        rememberReplay(opened.message, now, seen)
+
+        return dispatch(opened.message, admittance)
+    }
+
+    /**
+     * A whole envelope, or one piece of one MessageFragments split apart —
+     * either way, [FragmentAssembler.accept] hands back an opaque sealed
+     * string once (and only once) there is a complete one to open, and both
+     * a poll batch and the realtime stream feed every wire message through
+     * here, so this is the one place reassembly needs to happen.
+     */
+    private fun reassemble(envelope: String): String? = fragments.accept(envelope)
+
+    /** Decrypts a reassembled envelope and decodes the message inside it. */
+    private fun decrypt(key: SyncKey, whole: String): OpenedMessage? {
+        val plaintext = when (val opened = MessageCrypto.open(key, whole)) {
+            is DecryptResult.Opened -> opened.plaintext
+            is DecryptResult.Failed -> return null
+        }
+
+        val payload = MessageSignatures.split(plaintext) ?: return null
+        val message = SyncCodec.decode(payload.body) ?: return null
+        return OpenedMessage(message, payload)
+    }
+
+    /** Refuses a message that decrypted fine but is too old, too new, or already seen. */
+    private fun admitReplay(message: SyncMessage, now: Instant, seen: List<SeenMessage>): Boolean {
         val admission = ReplayGuard.admit(message, now, seen)
         if (admission is Admission.Reject) {
             Log.w(TAG, "Refused message ${message.id}: ${admission.reason}")
@@ -209,10 +238,17 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             )
             return false
         }
+        return true
+    }
 
-        // Who is speaking, decided from the roster rather than from the message.
-        val admittance = RosterRules.admit(message, payload, roster.devices, now)
-        when (admittance) {
+    /**
+     * Who is speaking, decided from the roster rather than from the message.
+     *
+     * Returns the accepted admittance, or null once this stage has already
+     * refused the message and recorded why.
+     */
+    private fun admitSender(message: SyncMessage, payload: SignedPayload, now: Instant): Admittance.Accepted? {
+        return when (val admittance = RosterRules.admit(message, payload, roster.devices, now)) {
             is Admittance.Refused -> {
                 Log.w(TAG, "Refused message ${message.id}: ${admittance.reason}")
                 Diagnostics.record(
@@ -220,7 +256,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
                     DiagnosticEvent.SYNC_SENDER_REFUSED,
                     mapOf("reason" to admittance.reason.ordinal.toLong()),
                 )
-                return false
+                null
             }
 
             is Admittance.Unknown -> {
@@ -240,17 +276,23 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
                 if (noticed && Enrolment.mayApprove(syncRole(), roster.parents().size)) {
                     notifier.notifyDevicePending()
                 }
-                return false
+                null
             }
 
-            is Admittance.Accepted -> roster.observed(
-                id = admittance.device.id,
-                name = message.senderName,
-                at = now,
-                appVersion = message.field(FIELD_APP_VERSION),
-            )
+            is Admittance.Accepted -> {
+                roster.observed(
+                    id = admittance.device.id,
+                    name = message.senderName,
+                    at = now,
+                    appVersion = message.field(FIELD_APP_VERSION),
+                )
+                admittance
+            }
         }
+    }
 
+    /** Marks an admitted message seen, so a later replay of it is refused. */
+    private fun rememberReplay(message: SyncMessage, now: Instant, seen: List<SeenMessage>) {
         val remembered = ReplayGuard.remember(message, now, seen)
         config.rememberSeen(remembered.seen)
         if (remembered.droppedWhileFresh > 0) {
@@ -264,22 +306,27 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
                 mapOf("dropped" to remembered.droppedWhileFresh.toLong()),
             )
         }
+    }
 
-        // What the roster says this sender is, never what the message claims.
-        // Replication decides what an op may touch from this, so it has to be
-        // the established role rather than the self-reported one.
-        // No cast: every other branch of the `when` above returns, so this is
-        // only reached for an accepted sender and the compiler knows it.
+    /**
+     * Acts on an admitted message, routed by this device's own role.
+     *
+     * What the roster says the sender is, never what the message claims —
+     * replication decides what an op may touch from this, so it has to be
+     * the established role rather than the self-reported one.
+     *
+     * A malformed or version-skewed field inside an otherwise correctly
+     * signed message can throw here (a handler parsing an amount, a
+     * package name, a policy snapshot) — content this device does not
+     * control, arriving on the shared sync executor. Uncaught, that
+     * reaches the process's default handler and kills the app; caught
+     * here, it is one refused message and the executor's queue keeps
+     * running for whatever is next.
+     */
+    private fun dispatch(message: SyncMessage, admittance: Admittance.Accepted): Boolean {
         val senderRole = admittance.device.role
         val senderId = admittance.device.id
 
-        // A malformed or version-skewed field inside an otherwise correctly
-        // signed message can throw here (a handler parsing an amount, a
-        // package name, a policy snapshot) — content this device does not
-        // control, arriving on the shared sync executor. Uncaught, that
-        // reaches the process's default handler and kills the app; caught
-        // here, it is one refused message and the executor's queue keeps
-        // running for whatever is next.
         return runCatching {
             when (roles.roleOrChild) {
                 DeviceRole.CHILD -> applyAsChild(message, senderRole, senderId)
@@ -291,6 +338,9 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
             false
         }
     }
+
+    /** A decrypted, decoded message alongside the signed payload it came from. */
+    private data class OpenedMessage(val message: SyncMessage, val payload: SignedPayload)
 
     private fun syncRole(): SyncRole = roles.roleOrChild.toSyncRole()
 
