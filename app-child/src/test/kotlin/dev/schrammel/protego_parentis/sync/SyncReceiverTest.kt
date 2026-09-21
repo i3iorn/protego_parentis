@@ -26,6 +26,7 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REASON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REQUEST_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_STATE
