@@ -105,7 +105,7 @@ class MessageCryptoTest {
         assertTrue(
             "PBKDF2-HMAC-SHA256 wants 600 000; this build uses " +
                 MessageCrypto.PBKDF2_ITERATIONS,
-            MessageCrypto.PBKDF2_ITERATIONS >= 600_000,
+            MessageCrypto.PBKDF2_ITERATIONS >= 900_000,
         )
     }
 

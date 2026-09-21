@@ -96,7 +96,7 @@ object MessageCrypto {
      * talk to a phone on another and the failure is indistinguishable from a
      * wrong passphrase. Free to change now, while nothing has shipped.
      */
-    internal const val PBKDF2_ITERATIONS = 900_000
+    internal const val PBKDF2_ITERATIONS = 1_200_000
 
     /** Shortest passphrase we will derive from. Shorter is not a secret. */
     const val MIN_PASSPHRASE_LENGTH = 12
