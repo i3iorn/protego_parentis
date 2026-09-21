@@ -20,18 +20,18 @@ class PinLockTest {
     @Test
     fun `the wrong pin does not clear anything`() {
         val lock = PinLock(context)
-        lock.set("4821")
+        lock.set("482134")
 
-        assertFalse(lock.clearIfVerified("0000"))
+        assertFalse(lock.clearIfVerified("000000"))
         assertTrue(lock.isSet)
     }
 
     @Test
     fun `the right pin clears it`() {
         val lock = PinLock(context)
-        lock.set("4821")
+        lock.set("482134")
 
-        assertTrue(lock.clearIfVerified("4821"))
+        assertTrue(lock.clearIfVerified("482134"))
         assertFalse(lock.isSet)
     }
 }
