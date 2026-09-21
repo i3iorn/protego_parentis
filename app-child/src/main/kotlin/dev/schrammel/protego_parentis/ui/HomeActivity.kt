@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -12,6 +13,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.AppRegistry
@@ -21,6 +23,8 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
+import dev.schrammel.protego_parentis.model.AuditAction
+import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PackageName
@@ -62,6 +66,39 @@ class HomeActivity : DementorActivity() {
 
     /** See `res/values/config.xml`. */
     private val maxRows: Int by lazy { resources.getInteger(R.integer.dashboard_max_rows) }
+
+    /**
+     * Which blocked app [uninstallResult] is currently waiting to hear back
+     * about — the launch intent itself carries no package, only [uninstallResult]'s
+     * callback fires, so this is how it knows what to record.
+     */
+    private var pendingUninstall: PackageName? = null
+
+    /**
+     * The system's own uninstall-confirmation dialog for [pendingUninstall],
+     * launched from [requestUninstall] (#207). Not this app's decision to make
+     * silently or skip a confirmation for — Android's dialog is the same one
+     * every other uninstall path on the phone already uses, and this screen
+     * has no more authority to remove an app unconfirmed than any other.
+     */
+    private val uninstallResult = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val pkg = pendingUninstall
+        pendingUninstall = null
+        // RESULT_OK only when the system reports the uninstall actually
+        // completed — a cancel, or the dialog simply being backed out of,
+        // must not be recorded as though the app were gone.
+        if (pkg != null && result.resultCode == RESULT_OK) {
+            Audit.record(
+                this,
+                AuditActor.CHILD,
+                AuditAction.APP_UNINSTALLED_BY_CHILD,
+                subject = installedApps.labelFor(pkg),
+            )
+        }
+        render()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -416,6 +453,17 @@ class HomeActivity : DementorActivity() {
         )
     }
 
+    /**
+     * #207: this list used to be inert on purpose — "those are the apps that
+     * will not open, and offering a row that refuses is worse than not
+     * offering one" (see [renderUsage]'s own doc comment for the reasoning
+     * that shaped it). But staring at an app you cannot open and cannot do
+     * anything about is exactly what this list otherwise leaves a child
+     * with, so each row is now tappable too — to Android's own uninstall
+     * confirmation, not straight to opening the app it still refuses to
+     * open. A parent who blocked something to pause it, not remove it,
+     * still finds out: see [AuditAction.APP_UNINSTALLED_BY_CHILD].
+     */
     private fun renderBlocked(snapshot: EnforcementSnapshot) {
         val container = clear(R.id.blocked_list)
         val blocked = snapshot.enforcement.suspend + snapshot.enforcement.deferred
@@ -428,13 +476,30 @@ class HomeActivity : DementorActivity() {
         // Cap the list: with a device-wide limit hit, every installed app is in
         // here, and a wall of two hundred rows tells the reader nothing.
         blocked.entries.take(maxRows).forEach { (pkg, reason) ->
-            container.addView(row(pkg, describe(reason), trailingColor = R.color.state_critical))
+            val trailing = describe(reason) + " · " + getString(R.string.home_tap_to_uninstall)
+            container.addView(
+                row(pkg, trailing, trailingColor = R.color.state_critical, uninstallable = true),
+            )
         }
         if (blocked.size > maxRows) {
             val extra = blocked.size - maxRows
             container.addView(
                 line(resources.getQuantityString(R.plurals.home_and_more, extra, extra)),
             )
+        }
+    }
+
+    /**
+     * Sends [pkg] to Android's own uninstall-confirmation dialog — the same
+     * one Settings and every other uninstall path on the phone already uses,
+     * not something this screen invents or skips a confirmation for.
+     */
+    private fun requestUninstall(pkg: PackageName) {
+        pendingUninstall = pkg
+        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${pkg.value}"))
+        runCatching { uninstallResult.launch(intent) }.onFailure {
+            pendingUninstall = null
+            toast(R.string.home_cannot_uninstall)
         }
     }
 
@@ -496,6 +561,7 @@ class HomeActivity : DementorActivity() {
         trailing: String,
         openable: Boolean = false,
         trailingColor: Int? = null,
+        uninstallable: Boolean = false,
     ): View {
         val app = installedApps
         return LinearLayout(this).apply {
@@ -504,6 +570,7 @@ class HomeActivity : DementorActivity() {
             setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
 
             if (openable) makeOpenable(pkg)
+            if (uninstallable) makeUninstallable(pkg)
 
             addView(
                 ImageView(context).apply {
@@ -563,6 +630,12 @@ class HomeActivity : DementorActivity() {
                 this@HomeActivity.toast(R.string.home_cannot_open)
             }
         }
+    }
+
+    /** Turns a blocked row into Android's own uninstall confirmation for the app it names (#207). */
+    private fun View.makeUninstallable(pkg: PackageName) {
+        withRipple()
+        setOnClickListener { requestUninstall(pkg) }
     }
 
     private fun tint(bar: ProgressBar, level: BudgetLevel) {

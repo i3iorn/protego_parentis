@@ -987,6 +987,7 @@
     <string name="audit_place_added">A parent added the place %1$s</string>
     <string name="audit_sos_raised">An emergency was raised</string>
     <string name="audit_sos_cleared">The emergency was ended</string>
+    <string name="audit_app_uninstalled_by_child">Uninstalled the blocked app %1$s</string>
 
     <!-- What the privacy screen must now say. -->
     <string name="privacy_location_header">Where you are</string>
@@ -1156,6 +1157,8 @@
     <string name="chat_status_days_ago">%1$s · %2$d d ago</string>
 
     <string name="home_cannot_open">That app cannot be opened from here.</string>
+    <string name="home_tap_to_uninstall">Tap to uninstall</string>
+    <string name="home_cannot_uninstall">That app could not be uninstalled from here.</string>
 
     <string name="pin_create_child">Parent: choose a PIN. It is yours, not theirs — you will need it to change any rule on this phone.</string>
     <string name="pin_create_child_warning">Type it in yourself, and keep it to yourself. Every limit on this phone is only as private as this PIN, and the app cannot work out later who chose it.</string>

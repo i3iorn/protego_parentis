@@ -144,6 +144,16 @@ enum class AuditAction(val valueKind: ValueKind) {
     DEVICE_RELEASED(ValueKind.NONE),
     DEVICE_LOCKED(ValueKind.NONE),
     ROLE_CHANGED(ValueKind.TOKEN),
+
+    /**
+     * The child removed a blocked app themselves, from the dashboard's own
+     * blocked list (#207) — rather than staring at an app they can no longer
+     * open, uninstalling it is offered as the alternative. Recorded so a
+     * parent who blocked the app to pause it, not remove it, is not left
+     * finding out only when it is gone: the same family-wide transparency
+     * every other action in this log already gets.
+     */
+    APP_UNINSTALLED_BY_CHILD(ValueKind.NONE),
 }
 
 /**
