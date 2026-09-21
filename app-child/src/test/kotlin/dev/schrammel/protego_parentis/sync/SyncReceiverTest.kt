@@ -5,6 +5,7 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.GrantTarget
+import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.rules.ContextRuleCodec
@@ -25,7 +26,9 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REQUEST_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_STATE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET_LABEL
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ID
@@ -857,5 +860,61 @@ class SyncReceiverTest {
             "the parent's rule must reach this phone's own ContextRuleStore, not just avoid throwing",
             rules.any { it.id == "rule-1" && it.name == "No games after nine" },
         )
+    }
+
+    // ---------- settleRequest ----------
+
+    /**
+     * REQUEST_DECIDED's state is the answering phone's own — a second parent's
+     * phone one build behind never generates one this build cannot read, but
+     * a *newer* answering phone can, the moment a state is added to
+     * [RequestState]. [RequestSyncHandler.settleRequest] guards this with
+     * `entries.firstOrNull`; this proves the request one parent is still
+     * waiting on survives an answer from another parent's phone naming a
+     * state this build has never heard of, rather than being silently
+     * settled into the wrong outcome or left in a broken half-state.
+     */
+    @Test
+    fun `a decision naming a state this build does not recognise leaves the request pending`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD, "The managed phone")
+        val otherParent = keyPair()
+        enroll(otherParent, SyncRole.PARENT, "Dad's phone")
+
+        val raised = deliver(
+            message(
+                child,
+                SyncMessageType.REQUEST_RAISED,
+                SyncRole.CHILD,
+                fields = mapOf(
+                    FIELD_REQUEST_ID to "r-1",
+                    FIELD_MINUTES to "20",
+                    FIELD_REASON to "Homework app",
+                    FIELD_TARGET to "com.example.homework",
+                    FIELD_TARGET_LABEL to "Homework",
+                ),
+            ),
+            child,
+        )
+        assertTrue(raised)
+        val id = InboxStore(context).pending().single().id
+
+        val applied = deliver(
+            message(
+                otherParent,
+                SyncMessageType.REQUEST_DECIDED,
+                SyncRole.PARENT,
+                fields = mapOf(
+                    FIELD_REQUEST_ID to id,
+                    FIELD_STATE to "SNOOZED",
+                ),
+            ),
+            otherParent,
+        )
+
+        assertFalse(applied)
+        val request = InboxStore(context).all().single { it.id == id }
+        assertEquals(RequestState.PENDING, request.state)
     }
 }
