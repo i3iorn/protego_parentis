@@ -31,7 +31,7 @@ internal object PinBackoff {
 
     /** The ceiling. Long enough to make brute force hopeless, short enough that a
      *  parent who genuinely forgot is not locked out for the evening. */
-    private val MAX_LOCKOUT = 15.minutes
+    private val MAX_LOCKOUT = 30.minutes
 
     /**
      * The lockout imposed after [consecutiveFailures] wrong attempts.

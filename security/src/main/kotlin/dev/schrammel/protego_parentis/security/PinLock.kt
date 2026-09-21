@@ -59,7 +59,7 @@ class PinLock(context: Context) {
         runCatching { Base64.getDecoder().decode(value) }.getOrNull()
 
     companion object {
-        const val MIN_LENGTH = 4
+        const val MIN_LENGTH = 6
 
         private const val FILE_NAME = "security"
         private const val KEY_SALT = "pin_salt"
