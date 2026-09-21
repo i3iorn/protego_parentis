@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.policy.request
 
 import dev.schrammel.protego_parentis.model.CategoryId
+import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.GrantId
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.PackageName
@@ -13,6 +14,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.time.Duration.Companion.minutes
 
 class RequestRulesTest {
@@ -97,6 +99,47 @@ class RequestRulesTest {
 
         assertEquals(RequestState.DENIED, result.state)
         assertEquals(now.minusSeconds(500), result.decidedAt)
+    }
+
+    // ---------- pruning (#248) ----------
+
+    @Test
+    fun `a request older than the retention horizon is dropped`() {
+        val ancientAt = now.minus(Defaults.HISTORY_RETENTION_DAYS.toLong() + 1, ChronoUnit.DAYS)
+        val ancient = request(
+            state = RequestState.EXPIRED,
+            createdAt = ancientAt,
+            expiresAt = ancientAt.plusSeconds(7200),
+            decidedAt = ancientAt,
+        )
+
+        assertTrue(RequestRules.prune(listOf(ancient), now).isEmpty())
+    }
+
+    @Test
+    fun `a request within the retention horizon survives pruning`() {
+        val recentAt = now.minus(Defaults.HISTORY_RETENTION_DAYS.toLong() - 1, ChronoUnit.DAYS)
+        val recent = request(
+            state = RequestState.EXPIRED,
+            createdAt = recentAt,
+            expiresAt = recentAt.plusSeconds(7200),
+            decidedAt = recentAt,
+        )
+
+        assertEquals(listOf(recent), RequestRules.prune(listOf(recent), now))
+    }
+
+    @Test
+    fun `a still-pending request older than the horizon is pruned too`() {
+        // Pruning is by age alone, not state — an ancient request has long
+        // since expired via the poll that runs alongside it in RequestStore,
+        // but prune() itself makes no assumption about that ordering.
+        val ancientPending = request(
+            createdAt = now.minus(Defaults.HISTORY_RETENTION_DAYS.toLong() + 1, ChronoUnit.DAYS),
+            expiresAt = now.minus(Defaults.HISTORY_RETENTION_DAYS.toLong() + 1, ChronoUnit.DAYS).plusSeconds(7200),
+        )
+
+        assertTrue(RequestRules.prune(listOf(ancientPending), now).isEmpty())
     }
 
     // ---------- submitting ----------
