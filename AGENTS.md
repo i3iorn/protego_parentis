@@ -30,18 +30,29 @@ Needs JDK 21+ on the path.
 ./gradlew test                   # every unit test (1000+), JVM only, no device
 ./gradlew :core-policy:test      # one module
 ./gradlew test --tests "*RequestRulesTest*"   # one test class, any module
-./gradlew build                  # test + Android lint + assemble release — what CI runs
+./gradlew test lint              # what CI runs — see below
+./gradlew build                  # the above, plus assembling a release build
 ```
 
-**Trap:** `./gradlew build` also produces a release APK
+**Trap:** `./gradlew build` (not `test`/`lint`) also produces a release APK
 (`app-child-release-unsigned.apk`) that is genuinely unsigned — Android
 refuses to install it. Use the debug APK unless release signing is set up
 (`docs/RELEASING.md`).
 
-CI (`.github/workflows/build.yml`) runs `./gradlew build --stacktrace` on
-every push and PR — build, full test suite, and Android lint together, plus a
-16 KB native-library-alignment check on the release APK. There is no separate
-lint-only or typecheck-only command; `build` is the one gate.
+CI is two separate workflows, both read-only and both running on every push
+and PR: `.github/workflows/test.yml` (`./gradlew test --stacktrace`) and
+`.github/workflows/lint.yml` (`./gradlew lint --stacktrace`). Neither
+assembles a release build — CI only does that once, in
+`.github/workflows/release.yml`, on a `v*` tag push, which is also where the
+16 KB native-library-alignment check now lives. This split exists because a
+full `./gradlew build` on every single push (assembling and R8-minifying a
+release variant each time) was burning through GitHub Actions spending fast
+enough to start failing runner assignment outright — verifying the code is
+correct doesn't need a release artifact built alongside it, so CI stopped
+doing that on every push. Building a release artifact is a deliberate,
+occasional action (a tag push, or a person running `./gradlew build`/
+`bundleRelease` by hand per `docs/RELEASING.md`), not something every commit
+should pay for.
 
 If Gradle can't reach `dl.google.com`/`repo.maven.apache.org` (a blocked-network
 sandbox), that's an environment network policy, not a build misconfiguration —

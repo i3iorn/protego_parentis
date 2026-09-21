@@ -1,0 +1,83 @@
+# Compiles every module and runs every unit test, on every push and pull
+# request.
+#
+# Split out of what used to be a single `build.yml` running the full
+# `./gradlew build` (test + lint + assembleRelease + a native-library
+# alignment check) on every push and PR. That full build is expensive enough,
+# run that often, to burn through GitHub Actions spending fast — this repo's
+# CI was regularly failing to even get a runner assigned because of it
+# ("recent account payments have failed or your spending limit needs to be
+# increased"). Compiling and assembling a release artifact on every commit
+# was never actually needed to know whether the code is correct; running the
+# unit tests and Android lint is. So CI now only verifies — see lint.yml for
+# the other half — and an actual build (`assembleRelease`/`bundleRelease`) is
+# something a person runs deliberately, the same way docs/RELEASING.md
+# already described it, or `release.yml` does it once, on a tag push, when a
+# release is actually being cut.
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only. This workflow only compiles and tests; it has no business
+# pushing, tagging or commenting, and a token that cannot do those things
+# cannot be talked into doing them by something that ends up on the
+# classpath.
+permissions:
+  contents: read
+
+# A new push supersedes the run in flight for the same branch. Cancelling the
+# old one is free; letting it finish only produces an answer about code
+# nobody has any more.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # The wrapper JAR is a binary in the repository that the build
+      # executes. gradle-wrapper.properties already pins a distribution
+      # checksum, which covers what the wrapper downloads; this covers the
+      # wrapper itself.
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      # 21 rather than the newest available. Everything here targets JVM 11
+      # and nothing needs a modern JDK, so the version is chosen to be one
+      # every contributor already has rather than one they must go and fetch.
+      - name: Set up the JDK
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # `test`, not `build` or `check`: this job's only job is "does every
+      # test pass" — lint is a separate workflow so either can be re-run,
+      # cached and read on its own.
+      - name: Run every unit test
+        run: ./gradlew test --stacktrace
+
+      # The console output says which test failed; these say what it
+      # expected. Kept only on failure, since a green run's reports are of no
+      # interest and this repository has hundreds of them.
+      - name: Keep the reports from a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

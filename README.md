@@ -57,11 +57,15 @@ app-child/build/outputs/apk/debug/app-child-debug.apk
 Run everything — unit tests plus Android lint:
 
 ```bash
-./gradlew build
+./gradlew test lint
 ```
 
-The same command runs on every push and pull request; see
-`.github/workflows/build.yml`.
+Those two run separately on every push and pull request — see
+`.github/workflows/test.yml`/`.github/workflows/lint.yml`. CI does not
+assemble a release build on every push; that only happens in
+`.github/workflows/release.yml`, deliberately, on a tag push. Assembling and
+signing a release build the rest of the time is something a person does, per
+`docs/RELEASING.md`.
 
 In Android Studio, select the **app-child** run configuration. If it is missing,
 use *File → Sync Project with Gradle Files*.
@@ -88,12 +92,12 @@ Two things follow, and both are deliberate:
   automatically (it has since 8.5.1), so the day a native dependency does arrive
   the packaging is already right. Adding settings now would only be settings that
   do nothing.
-- **CI checks the assumption, not the alignment.** `.github/workflows/build.yml`
-  looks for `lib/*` in the release APK. While there is none it passes and says
-  so; the moment a dependency brings one in, it runs `zipalign -c -P 16` against
-  it and fails if that alignment is missing. A check that verified alignment on
-  an APK containing no native code would pass forever without ever having tested
-  anything.
+- **CI checks the assumption, not the alignment.** `.github/workflows/release.yml`
+  looks for `lib/*` in the release APK it builds when a release tag is pushed.
+  While there is none it passes and says so; the moment a dependency brings one
+  in, it runs `zipalign -c -P 16` against it and fails if that alignment is
+  missing. A check that verified alignment on an APK containing no native code
+  would pass forever without ever having tested anything.
 
 Note that page-size support is a **compatibility** requirement, not a
 performance one. It is unrelated to asset packing or startup time, and there is
