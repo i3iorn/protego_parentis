@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.minutes
  * exactly the same encoding for a rule's three logic fields as three
  * separate replicated registers — one path each, so two parents editing a
  * rule's effect and its target at the same moment both survive, the same
- * reasoning `PolicyReplication.flattenSchedules` applies to a schedule's
+ * reasoning `ScheduleReplication.flattenSchedules` applies to a schedule's
  * fields. Only `condition`, `effect` and `target` are opaque JSON *within*
  * their own register; decomposing a condition tree itself into further paths
  * was judged not worth the complexity for how rarely two parents edit the
