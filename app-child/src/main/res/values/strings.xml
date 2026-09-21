@@ -534,7 +534,7 @@
     <string name="parent_title">Family</string>
     <string name="parent_not_connected">Not connected yet</string>
     <string name="parent_not_connected_hint">Set up the family connection to start receiving requests.</string>
-    <string name="parent_nothing_waiting">Nothing waiting for you</string>
+    <string name="parent_nothing_waiting">No requests waiting</string>
     <string name="parent_stale_checkin">Hasn\'t checked in for a while</string>
     <plurals name="parent_waiting">
         <item quantity="one">%1$d request waiting</item>

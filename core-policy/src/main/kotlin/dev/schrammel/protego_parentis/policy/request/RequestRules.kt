@@ -127,16 +127,7 @@ object RequestRules {
             decidedBy = by,
             decisionNote = note,
         )
-        val grant = Grant(
-            id = grantId,
-            target = request.target,
-            amount = request.amount,
-            grantedAt = now,
-            expiresAt = grantExpiresAt,
-            grantedBy = by,
-            sourceRequestId = request.id,
-        )
-        return approved to grant
+        return approved to grantFor(request, now, by, grantExpiresAt, grantId)
     }
 
     /**
@@ -168,20 +159,28 @@ object RequestRules {
             decidedBy = by,
             autoApprovedBy = ruleId,
         )
-        val grant = Grant(
-            id = grantId,
-            target = request.target,
-            amount = request.amount,
-            grantedAt = now,
-            expiresAt = grantExpiresAt,
-            grantedBy = by,
-            sourceRequestId = request.id,
-        )
-        return approved to grant
+        return approved to grantFor(request, now, by, grantExpiresAt, grantId)
     }
 
     /** How an automatic approval signs itself, in the request and in the grant. */
     const val AUTOMATIC_PREFIX = "auto:"
+
+    /** The grant an approval — human or standing rule — produces, shared by [approve] and [autoApprove]. */
+    private fun grantFor(
+        request: Request,
+        now: Instant,
+        by: String,
+        grantExpiresAt: Instant,
+        grantId: GrantId,
+    ): Grant = Grant(
+        id = grantId,
+        target = request.target,
+        amount = request.amount,
+        grantedAt = now,
+        expiresAt = grantExpiresAt,
+        grantedBy = by,
+        sourceRequestId = request.id,
+    )
 
     fun deny(request: Request, now: Instant, by: String, note: String? = null): Request {
         require(request.state.isOpen) { "only a pending request can be denied" }

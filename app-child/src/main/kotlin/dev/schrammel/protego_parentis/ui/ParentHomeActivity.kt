@@ -15,7 +15,6 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
-import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.sync.DailySummary
 import dev.schrammel.protego_parentis.sync.DailySummaryStore
@@ -142,7 +141,8 @@ class ParentHomeActivity : ParentRoleActivity() {
         // "Settings" being back on the dashboard rather than one tap inside
         // Family is the same fix as the managed phone's — reachable "only by
         // way of the family it configures" read well and meant nobody found it.
-        homeSections(DeviceRole.PARENT, ::featureVisible).forEach { section ->
+        val disabledByChild = disabledFeaturesByChild()
+        homeSections(DeviceRole.PARENT) { feature -> featureVisible(feature, disabledByChild) }.forEach { section ->
             addSection(
                 column,
                 section.label?.let(::getString),
@@ -171,26 +171,22 @@ class ParentHomeActivity : ParentRoleActivity() {
     }
 
     /**
-     * Whether [feature] should show on this dashboard (#91).
+     * Every managed child's replicated `disabledFeatures`, read once per
+     * [render] rather than once per feature checked.
      *
-     * This phone has no rules of its own — Feature toggles are per managed
-     * child now, the same as every other rule (#104's decision applied here
-     * too), and this dashboard is not about any one of them. Hiding a row
-     * only once *every* managed child has the feature switched off is the
-     * direction that never surprises a parent: it can only ever make a row
-     * disappear that no child still uses, never one that some child does.
-     * A child this phone has not yet heard a policy from counts as still
-     * having it on, matching the "everything on by default" rule
-     * [dev.schrammel.protego_parentis.rules.FeatureFlags] already applies
-     * locally.
+     * [featureVisible] used to call [PolicyReplication.read] itself, which
+     * decodes this phone's entire replicated-state store from disk on every
+     * call. [homeSections] checks more than one [dev.schrammel.protego_parentis.rules.Feature], so a screen with
+     * two children and three feature checks meant six full-state decodes on
+     * the UI thread every time this screen rendered — on every resume, and
+     * again after every poll response — which is what made this dashboard
+     * feel unresponsive as a family's replicated state grew. One pass here,
+     * reused by every [featureVisible] call in [render], does the same reads
+     * once.
      */
-    private fun featureVisible(feature: Feature): Boolean {
-        val children = RosterStore(this).children()
-        if (children.isEmpty()) return true
-        return children.any { child ->
-            val disabled = PolicyReplication(this).read(child.id)?.disabledFeatures
-            disabled == null || feature.name !in disabled
-        }
+    private fun disabledFeaturesByChild(): List<Set<String>?> {
+        val replication = PolicyReplication(this)
+        return RosterStore(this).children().map { child -> replication.read(child.id)?.disabledFeatures }
     }
 
     /**

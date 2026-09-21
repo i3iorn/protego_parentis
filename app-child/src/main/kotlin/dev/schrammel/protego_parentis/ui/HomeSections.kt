@@ -156,3 +156,24 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
         ),
     )
 }.filter { it.rows.isNotEmpty() }
+
+/**
+ * Whether [feature] should show on a parent's dashboard (#91), given each
+ * managed child's replicated `disabledFeatures` set (null for a child this
+ * phone has not yet heard a policy from).
+ *
+ * A pure predicate on purpose — see [ParentHomeActivity.disabledFeaturesByChild]'s
+ * own doc comment for why the read that produces [disabledByChild] happens
+ * exactly once per screen render rather than once per feature checked here.
+ *
+ * Hiding a row only once *every* managed child has the feature switched off
+ * is the direction that never surprises a parent: it can only ever make a
+ * row disappear that no child still uses, never one that some child does. A
+ * child this phone has not yet heard a policy from counts as still having it
+ * on, matching the "everything on by default" rule
+ * [dev.schrammel.protego_parentis.rules.FeatureFlags] already applies locally.
+ */
+internal fun featureVisible(feature: Feature, disabledByChild: List<Set<String>?>): Boolean {
+    if (disabledByChild.isEmpty()) return true
+    return disabledByChild.any { disabled -> disabled == null || feature.name !in disabled }
+}
