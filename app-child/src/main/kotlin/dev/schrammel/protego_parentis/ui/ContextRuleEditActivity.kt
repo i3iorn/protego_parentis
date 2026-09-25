@@ -15,15 +15,15 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
-import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
@@ -32,6 +32,8 @@ import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.policy.ContextRuleAuthoring
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
@@ -39,8 +41,6 @@ import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
-import dev.schrammel.protego_parentis.ui.rules.RuleScope
-import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -646,7 +646,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         // service already read the same store. A remote one only reaches the
         // child's own store once sync carries it there, which without this
         // would look identical from here: same button, same instant finish().
-        if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
+        acknowledgeRuleWrite(contextRuleRuleStore(this, target))
         finish()
     }
 

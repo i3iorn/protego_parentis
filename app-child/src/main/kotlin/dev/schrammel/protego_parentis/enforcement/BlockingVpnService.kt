@@ -4,8 +4,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import dev.schrammel.protego_parentis.model.PackageName
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.AppRegistry
 
 /**
  * A tunnel that goes nowhere, for the apps that should not reach the network (WF-4).
@@ -60,7 +59,7 @@ class BlockingVpnService : VpnService() {
     private fun establish() {
         close()
 
-        val blocked = LocalPolicyStore(this).networkBlockedPackages
+        val blocked = AppRegistry.childStores.policy.networkBlockedPackages
         if (blocked.isEmpty()) {
             // Nothing to block. Running an empty tunnel would put a permanent VPN
             // key in the status bar for no reason at all.

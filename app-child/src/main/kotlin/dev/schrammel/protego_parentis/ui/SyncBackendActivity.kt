@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -16,12 +15,13 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.sync.core.FamilyToken
-import dev.schrammel.protego_parentis.sync.core.FamilyTokens
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.FamilyTokens
 import dev.schrammel.protego_parentis.sync.core.TransportKind
-import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 
 /**
  * Where the family's messages are carried.
@@ -56,7 +56,7 @@ class SyncBackendActivity : ParentGatedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         config = SyncConfigStore(this)
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
 
         val settings = config.load()
         chosen = settings.transport

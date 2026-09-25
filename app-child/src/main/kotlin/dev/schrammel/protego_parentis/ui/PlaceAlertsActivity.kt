@@ -3,16 +3,16 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.context.PlaceWatcher
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 
 /**
  * Telling the parents about arrivals (LOC-1).
@@ -48,7 +48,7 @@ class PlaceAlertsActivity : ParentGatedActivity() {
         super.onCreate(savedInstanceState)
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
-        settings = ContextRuleStore(this)
+        settings = AppRegistry.childStores.contextRules
         column = contentColumn()
         showColumn(column)
     }

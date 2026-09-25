@@ -7,7 +7,6 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -22,18 +21,19 @@ import dev.schrammel.protego_parentis.model.Passphrases
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.PinLock
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.core.FamilyToken
-import dev.schrammel.protego_parentis.sync.core.FamilyTokens
-import dev.schrammel.protego_parentis.sync.core.Band
-import dev.schrammel.protego_parentis.sync.core.PassphraseStrength
-import dev.schrammel.protego_parentis.sync.core.PassphraseVerdict
-import dev.schrammel.protego_parentis.sync.core.Weakness
-import dev.schrammel.protego_parentis.sync.core.MessageCrypto
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.SyncSettings
+import dev.schrammel.protego_parentis.sync.core.Band
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.FamilyTokens
+import dev.schrammel.protego_parentis.sync.core.MessageCrypto
+import dev.schrammel.protego_parentis.sync.core.PassphraseStrength
+import dev.schrammel.protego_parentis.sync.core.PassphraseVerdict
 import dev.schrammel.protego_parentis.sync.core.TransportKind
-import dev.schrammel.protego_parentis.sync.RealtimeSyncService
+import dev.schrammel.protego_parentis.sync.core.Weakness
 
 /**
  * Joining a family, or starting one.
@@ -77,7 +77,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
         // FLAG_SECURE treatment: no recents thumbnail, no screenshot, no screen
         // recording.
         config = SyncConfigStore(this)
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
 
         tokenInput = EditText(this).apply {
             hint = getString(R.string.join_token_hint)

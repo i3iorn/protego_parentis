@@ -2,28 +2,26 @@ package dev.schrammel.protego_parentis.rules
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.AppRule
 import dev.schrammel.protego_parentis.model.BrowserPolicy
-import dev.schrammel.protego_parentis.model.Category
-import dev.schrammel.protego_parentis.model.CategoryId
-import dev.schrammel.protego_parentis.model.ChildId
 import dev.schrammel.protego_parentis.model.DailyGoal
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
-import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.ScheduleBlock
-import dev.schrammel.protego_parentis.model.WeeklyBudget
+import dev.schrammel.protego_parentis.rules.LocalPolicyStore.Companion.KEY_RULES_MIGRATED
 import org.json.JSONObject
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
-import kotlin.time.Duration.Companion.minutes
+
+/** Log tag, outside the companion so the reflection-based inventory test sees only KEY_ constants. */
+private const val TAG = "LocalPolicyStore"
 
 /**
  * When the phone becomes uninteresting.
@@ -91,57 +89,23 @@ class LocalPolicyStore(context: Context) {
 
     // ---------- the assembled policy ----------
 
-    /** Builds the domain [Policy] the engine evaluates. */
-    fun load(): Policy = Policy(
+    /** Builds the domain [Policy] the engine evaluates — delegates to the
+     * pure-JVM assembler so storage and policy construction are separate
+     * concerns. */
+    fun load(): Policy = PolicyAssembler.assemble(
+        appContext = appContext,
+        subStores = PolicyAssembler.PolicySubStores(
+            policyStore = this,
+            scheduleStore = scheduleStore,
+            contextRuleStore = contextRuleStore,
+            webFilterStore = webFilterStore,
+        ),
         version = prefs.getLong(KEY_VERSION, INITIAL_VERSION),
-        childId = ChildId(LOCAL_CHILD_ID),
-        timeZone = ZoneId.systemDefault(),
-        deviceBudget = budgetOf(dailyLimitMinutes),
-        appRules = appRules(),
-        categories = categories.map(::toDomain),
-        // Bedtime is a StoredSchedule like any other now (see ScheduleStore's
-        // own doc comment) — active() already includes it once enabled, with
-        // no special-casing needed here any more.
-        schedules = scheduleStore.active(),
-        contextRules = contextRuleStore.rules,
-        safetyAllowlist = SafetyAllowlist.of(appContext),
-        dnsFilter = webFilterStore.filter(),
-        browserPolicy = webFilterStore.browserPolicy,
-        networkBlockedPackages = networkBlockedPackages.map(::PackageName).toSet(),
-        installPolicy = installPolicy,
-        installWindowUntil = installWindowUntil,
-        tamperProtection = tamperProtection,
-        dayBoundaryHour = Defaults.DAY_BOUNDARY_HOUR,
+        childId = LOCAL_CHILD_ID,
+        budgetMinutes = dailyLimitMinutes,
+        categoryList = categories,
+        networkBlocked = networkBlockedPackages,
     )
-
-    /**
-     * Per-app limits first, then exemptions on top: an exempt app ignores every
-     * limit, so being on both lists must resolve to exempt rather than to a cap.
-     */
-    private fun appRules(): Map<PackageName, AppRule> = buildMap {
-        appLimits.forEach { (pkg, minutes) ->
-            put(PackageName(pkg), AppRule.Budgeted(budgetOf(minutes)))
-        }
-        exemptPackages.forEach { pkg -> put(PackageName(pkg), AppRule.AlwaysAllowed) }
-
-        // Last, so an explicit block wins over an exemption. "Ignores limits" and
-        // "is not on this phone" can both be set from different screens, and the
-        // more specific of the two has to be the one that survives.
-        blockedPackages.forEach { pkg -> put(PackageName(pkg), AppRule.Blocked(hidden = false)) }
-        hiddenPackages.forEach { pkg -> put(PackageName(pkg), AppRule.Blocked(hidden = true)) }
-    }
-
-    private fun toDomain(stored: StoredCategory) = Category(
-        id = CategoryId(stored.id),
-        name = stored.name,
-        budget = budgetOf(stored.limitMinutes),
-        packages = stored.packages.map(::PackageName).toSet(),
-        subcategories = stored.subcategories.map(::CategoryId).toSet(),
-    )
-
-    /** Zero means "no limit"; the sliders have no other way to express it. */
-    private fun budgetOf(minutes: Int): WeeklyBudget =
-        if (minutes <= 0) WeeklyBudget.UNLIMITED else WeeklyBudget.flat(minutes.minutes)
 
     // ---------- device limit ----------
 
@@ -324,8 +288,14 @@ class LocalPolicyStore(context: Context) {
     // ---------- categories ----------
 
     var categories: List<StoredCategory>
-        get() = StoredCategory.listFromJson(prefs.getString(KEY_CATEGORIES, null))
+        // Decode-cached: the tick's load() reads this every pass — see DecodeCache.
+        get() = categoriesCache.get(
+            prefs.getString(KEY_CATEGORIES, null),
+            StoredCategory::listFromJson
+        )
         set(value) = write { putString(KEY_CATEGORIES, StoredCategory.listToJson(value)) }
+
+    private val categoriesCache = DecodeCache<List<StoredCategory>>()
 
     fun upsertCategory(category: StoredCategory) = synchronized(prefs) {
         categories = categories.filterNot { it.id == category.id } + category
@@ -340,15 +310,22 @@ class LocalPolicyStore(context: Context) {
     /** Per-app daily limits in minutes, keyed by package name. */
     var appLimits: Map<String, Int>
         get() {
-            val raw = prefs.getString(KEY_APP_LIMITS, null) ?: return emptyMap()
-            val json = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
-            return json.keys().asSequence()
-                .associateWith { json.optInt(it, 0) }
-                .filterValues { it > 0 }
+            val raw = prefs.getString(KEY_APP_LIMITS, null)
+                ?: return emptyMap()
+            // Decode-cached: the tick's load() reads this every pass — see DecodeCache.
+            return appLimitsCache.get(raw) { r ->
+                val json = runCatching { JSONObject(r.orEmpty()) }.getOrNull()
+                    ?: return@get emptyMap()
+                json.keys().asSequence()
+                    .associateWith { json.optInt(it, 0) }
+                    .filterValues { it > 0 }
+            }
         }
         set(value) = write {
             putString(KEY_APP_LIMITS, JSONObject(value.filterValues { it > 0 }).toString())
         }
+
+    private val appLimitsCache = DecodeCache<Map<String, Int>>()
 
     fun setAppLimit(packageName: String, minutes: Int) = synchronized(prefs) {
         appLimits = appLimits.toMutableMap().apply {
@@ -462,6 +439,11 @@ class LocalPolicyStore(context: Context) {
             block()
             putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, INITIAL_VERSION) + 1L)
         }
+        // The mutation is the trigger, not the caller: every setter here is a
+        // rule change, and enforcement must hear about it whether the write
+        // came from a screen (which used to remember to call
+        // AppRegistry.ruleMutationSink.rulesChanged() itself) or from sync.
+        notifyRulesChanged()
     }
 
     /** Set only for the duration of [atomically]; null otherwise. */
@@ -489,9 +471,18 @@ class LocalPolicyStore(context: Context) {
             block()
             editor.putLong(KEY_VERSION, prefs.getLong(KEY_VERSION, INITIAL_VERSION) + 1L)
             editor.apply()
+            // One kick per transaction, not one per setter inside it — the
+            // setters' own notifyRulesChanged calls are suppressed by the open
+            // batch (write() takes the batchEditor branch, which returns early).
+            notifyRulesChanged()
         } finally {
             batchEditor = null
         }
+    }
+
+    private fun notifyRulesChanged() {
+        runCatching { AppRegistry.ruleMutationSink.rulesChanged() }
+            .onFailure { Log.w(TAG, "Could not notify enforcement of a rule change", it) }
     }
 
     companion object {

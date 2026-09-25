@@ -39,7 +39,7 @@ class WebFilterActivity : ParentGatedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = WebFilterStore(this)
+        store = AppRegistry.childStores.webFilter
         column = contentColumn()
         showColumn(column)
     }

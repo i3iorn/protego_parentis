@@ -2,33 +2,30 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.content.Context
 import android.util.Log
-import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.AppRegistry
+import dev.schrammel.protego_parentis.context.ContextProvider
+import dev.schrammel.protego_parentis.context.NavigationWatcher
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.dpc.AndroidDevicePolicyPort
-import dev.schrammel.protego_parentis.context.ContextProvider
-import dev.schrammel.protego_parentis.context.NavigationWatcher
 import dev.schrammel.protego_parentis.model.DeviceContext
 import dev.schrammel.protego_parentis.model.DeviceState
-import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.model.Enforcement
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import dev.schrammel.protego_parentis.policy.PolicyClock
 import dev.schrammel.protego_parentis.policy.PolicyEngine
-import dev.schrammel.protego_parentis.policy.reconcile.DevicePolicyPort
 import dev.schrammel.protego_parentis.policy.reconcile.DeviceLocker
-import dev.schrammel.protego_parentis.policy.reconcile.LockResult
+import dev.schrammel.protego_parentis.policy.reconcile.DevicePolicyPort
 import dev.schrammel.protego_parentis.policy.reconcile.DeviceReleaser
+import dev.schrammel.protego_parentis.policy.reconcile.LockResult
 import dev.schrammel.protego_parentis.policy.reconcile.PolicyReconciler
-import dev.schrammel.protego_parentis.policy.reconcile.SupportMessages
-import dev.schrammel.protego_parentis.policy.reconcile.ReleaseResult
 import dev.schrammel.protego_parentis.policy.reconcile.ReconcileResult
+import dev.schrammel.protego_parentis.policy.reconcile.ReleaseResult
+import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
-import dev.schrammel.protego_parentis.rules.SosStore
-import dev.schrammel.protego_parentis.rules.WebFilterStore
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import dev.schrammel.protego_parentis.usage.InstalledApps
@@ -76,29 +73,58 @@ class EnforcementCoordinator(
     private val contextProvider: ContextProvider = ContextProvider(context.applicationContext),
     private val contextRules: ContextRuleStore = ContextRuleStore(context.applicationContext),
     private val recorder: UsageHistoryRecorder = UsageHistoryRecorder(collector, history),
+    private val hygiene: PlatformHygiene = PlatformHygiene(context.applicationContext, port),
 ) {
 
     private val appContext = context.applicationContext
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
 
-    init {
-        // Runs once each, before anything here ever reads a Policy — see
-        // each method's own doc comment for why this is safe to call every
-        // time this class is constructed rather than gating it here too, and
-        // why the two are separate calls rather than one.
+    /** Hoisted off [evaluate]'s per-tick construction — cheap but pointless each pass. */
+    private val sosStore = AppRegistry.childStores.sos
+
+    /**
+     * Whether this phone is the device owner, asked once and remembered.
+     *
+     * [evaluate] asked [DevicePolicyPort.isDeviceOwner] twice per pass — two
+     * binder round-trips for a fact that cannot flip while this process runs
+     * short of [releaseDevice] itself relinquishing it, which clears the cache.
+     * A test that swaps in a fake port builds its own coordinator, so a cache
+     * per coordinator instance cannot go stale across fakes either.
+     */
+    @Volatile
+    private var cachedOwner: Boolean? = null
+
+    private fun ownerState(): Boolean =
+        cachedOwner ?: port.isDeviceOwner().also { cachedOwner = it }
+
+    /**
+     * Runs each migration once, before anything here ever reads a Policy — see
+     * each method's own doc comment for why this is safe to call rather than
+     * gating it, and why the three are separate calls.
+     *
+     * Lazy rather than in `init`: screens construct this coordinator on the main
+     * thread (HomeActivity, WeekActivity, DeviceControlActivity), and these are
+     * preference-file reads and writes. Touched only from [historyIncludingToday]
+     * and [evaluate] — the two paths that read [store] — both of which run on
+     * Background's executor, so the cost lands where the rest of the disk work
+     * already lives.
+     */
+    private val migrationsApplied: Boolean by lazy {
         store.migrateToUnifiedRules()
         store.migrateAppRulesToUnifiedRules()
         // Recovers a family whose rules were set while PolicyReplication's
         // defaultChildId() bug was live — see backfillIfNeeded's own doc
         // comment. Same shape as the two migrations above: a flag-gated
-        // one-time correction, safe to call on every construction.
+        // one-time correction, safe to call every time this runs.
         PolicyReplication(appContext).backfillIfNeeded()
+        true
     }
 
     fun hasUsageAccess(): Boolean = UsageAccess.isGranted(appContext)
 
     /** Closed days from history plus today, computed live. */
     fun historyIncludingToday(now: Instant = Instant.now()): List<UsageSnapshot> {
+        check(migrationsApplied)
         if (!hasUsageAccess()) return emptyList()
         val policy = store.load()
         recorder.recordClosedDays(policy, now)
@@ -128,6 +154,7 @@ class EnforcementCoordinator(
      */
     fun releaseDevice(): ReleaseResult =
         DeviceReleaser(port, PackageName(appContext.packageName)).release()
+            .also { cachedOwner = null }
 
     /**
      * Returns null when usage access has not been granted — without it every
@@ -135,6 +162,7 @@ class EnforcementCoordinator(
      * would be worse than reporting nothing.
      */
     fun evaluate(now: Instant = Instant.now()): EnforcementSnapshot? {
+        check(migrationsApplied)
         if (!hasUsageAccess()) return null
 
         val policy = store.load()
@@ -193,7 +221,7 @@ class EnforcementCoordinator(
                 navigatingPackage = NavigationWatcher.current(),
                 // An emergency lifts everything, so it is read on every pass
                 // rather than pushed — a restart must not quietly end one.
-                emergency = SosStore(appContext).isActive,
+                emergency = sosStore.isActive,
             ),
             context = surroundings,
             // Only read when browser policy is on; on a phone with no filtering
@@ -206,17 +234,14 @@ class EnforcementCoordinator(
             now = now,
         )
 
-        // Counting sites is desired state like anything else, but it has no
-        // Enforcement field: it is a recording setting rather than a restriction,
-        // and giving it one would invite the engine to start making decisions
-        // about it.
-        if (port.isDeviceOwner()) {
-            val wanted = WebFilterStore(appContext).countVisits
-            if (port.isNetworkLoggingEnabled() != wanted) port.setNetworkLoggingEnabled(wanted)
-            applySupportMessages()
-        }
+        // The two platform-hygiene assertions (network logging, support
+        // messages) live behind [PlatformHygiene]: they are reads with side
+        // effects on DevicePolicyPort, which is why they are not part of the
+        // snapshot-building query itself.
+        val owner = ownerState()
+        hygiene.apply(owner)
 
-        val reconcile = if (port.isDeviceOwner()) {
+        val reconcile = if (owner) {
             reconciler.reconcile(policy, enforcement).also { result ->
                 EnforcementStatus(appContext).dnsFailed =
                     result.invariantViolations.any { it.contains("private DNS") }
@@ -236,31 +261,6 @@ class EnforcementCoordinator(
         }
 
         return EnforcementSnapshot(policy, usage, enforcement, reconcile, now)
-    }
-
-    /**
-     * Replaces Android's enterprise wording where the platform lets us.
-     *
-     * Left to Android, a child who taps a setting this app has disabled is told
-     * it is blocked by a work policy and to contact their IT department. On a
-     * family phone that names the wrong relationship and points them at a support
-     * desk that does not exist.
-     *
-     * Re-asserted on every pass rather than written once at provisioning time,
-     * and only when it differs. That is what makes a language change take effect:
-     * the platform stores the literal string it was handed, so the only way it
-     * follows the family's chosen language is for somebody to notice and write it
-     * again. Reading first keeps that from being a write every minute.
-     */
-    private fun applySupportMessages() {
-        val wanted = SupportMessages(
-            short = appContext.getString(R.string.support_message_short),
-            long = appContext.getString(
-                R.string.support_message_long,
-                appContext.getString(R.string.app_name),
-            ),
-        )
-        if (port.currentSupportMessages() != wanted) port.setSupportMessages(wanted)
     }
 
     private companion object {

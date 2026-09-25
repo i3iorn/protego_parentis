@@ -18,16 +18,17 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import java.util.UUID
 
 /**
@@ -85,7 +86,7 @@ class PlacesActivity : ParentGatedActivity() {
     // ---------- the managed phone editing its own places: unchanged, coordinates and all ----------
 
     private fun renderLocal() {
-        val store = ContextRuleStore(this)
+        val store = AppRegistry.childStores.contextRules
         val places = store.places
         val clampedIds = store.clampedPlaceIds
         if (places.isEmpty()) {
@@ -399,7 +400,8 @@ class PlacesActivity : ParentGatedActivity() {
      */
     private fun addPositionRemotely() {
         addMyPosition { name, latitude, longitude ->
-            SyncCoordinator(this).publishPlaceCreateRequest(name, latitude, longitude, DEFAULT_RADIUS_METRES)
+            SyncGraph.get(this)
+                .publishPlaceCreateRequest(name, latitude, longitude, DEFAULT_RADIUS_METRES)
             Toast.makeText(this, R.string.places_create_requested, Toast.LENGTH_LONG).show()
         }
     }
@@ -416,7 +418,7 @@ class PlacesActivity : ParentGatedActivity() {
      */
     private fun addPlaceRemotely() {
         addByCoordinates { name, latitude, longitude, radiusMetres ->
-            SyncCoordinator(this).publishPlaceCreateRequest(name, latitude, longitude, radiusMetres)
+            SyncGraph.get(this).publishPlaceCreateRequest(name, latitude, longitude, radiusMetres)
             Toast.makeText(this, R.string.places_create_requested, Toast.LENGTH_LONG).show()
         }
     }

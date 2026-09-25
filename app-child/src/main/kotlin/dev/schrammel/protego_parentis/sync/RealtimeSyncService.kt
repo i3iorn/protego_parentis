@@ -14,6 +14,9 @@ import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
+import dev.schrammel.protego_parentis.enforcement.NotificationIds
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService.Companion.start
+import dev.schrammel.protego_parentis.sync.RealtimeSyncService.Companion.stop
 import dev.schrammel.protego_parentis.sync.core.TransportKind
 import java.net.HttpURLConnection
 import java.net.URL
@@ -60,7 +63,7 @@ class RealtimeSyncService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        coordinator = SyncCoordinator(this)
+        coordinator = SyncGraph.get(this)
         config = SyncConfigStore(this)
         executor = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "dementor-realtime-sync").apply { isDaemon = true }
@@ -179,9 +182,12 @@ class RealtimeSyncService : Service() {
 
     /** Decrypts and applies one envelope, on the shared sync executor. */
     private fun deliver(envelope: String) {
-        val settings = config.load()
-        val key = SyncKeying.keyFor(settings) ?: return
+        // The key is derived *inside* the sync executor, where [SyncKeying]
+        // documents it must be called: from a cache miss this runs PBKDF2, and
+        // doing that on the SSE read thread stalled the stream for the whole
+        // derivation while every queued message waited behind it.
         SyncKeying.execute {
+            val key = SyncKeying.keyFor(config.load()) ?: return@execute
             coordinator.receiveEnvelope(key, envelope)
         }
     }
@@ -210,7 +216,9 @@ class RealtimeSyncService : Service() {
     companion object {
         private const val TAG = "DementorRealtimeSync"
         private const val CHANNEL_ID = "realtime_sync"
-        private const val NOTIFICATION_ID = 6
+
+        /** Registered in [NotificationIds] — 6 was a collision with RequestNotifier's silent id. */
+        private const val NOTIFICATION_ID = NotificationIds.REALTIME_SERVICE
 
         private const val CONNECT_TIMEOUT_MILLIS = 15_000
         private val READ_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(90).toInt()

@@ -23,7 +23,7 @@ import dev.schrammel.protego_parentis.model.Heartbeat
 class RealtimeSyncAdapter(context: Context) : RealtimeSync {
 
     private val appContext = context.applicationContext
-    private val coordinator = SyncCoordinator(appContext)
+    private val coordinator = SyncGraph.get(appContext)
 
     override fun connectRealtime() = RealtimeSyncService.start(appContext)
 
@@ -32,7 +32,8 @@ class RealtimeSyncAdapter(context: Context) : RealtimeSync {
     override fun publishHeartbeat(heartbeat: Heartbeat, force: Boolean) =
         coordinator.publishHeartbeat(heartbeat, force)
 
-    override fun pollNow(onFinished: (String) -> Unit) = coordinator.pollNow(onFinished)
+    override fun pollNow(minAgeMillis: Long, onFinished: (String) -> Unit) =
+        coordinator.pollNow(minAgeMillis, onFinished)
 
     override fun announceSelf(force: Boolean) = coordinator.announceSelf(force)
 

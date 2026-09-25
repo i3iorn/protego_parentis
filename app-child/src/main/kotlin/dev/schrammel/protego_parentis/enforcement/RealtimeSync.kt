@@ -34,7 +34,7 @@ interface RealtimeSync {
     fun publishHeartbeat(heartbeat: Heartbeat, force: Boolean = false)
 
     /** Fetches and applies anything the other phones have sent. */
-    fun pollNow(onFinished: (String) -> Unit = {})
+    fun pollNow(minAgeMillis: Long = 0L, onFinished: (String) -> Unit = {})
 
     /** Introduces this phone to the family. */
     fun announceSelf(force: Boolean = false)

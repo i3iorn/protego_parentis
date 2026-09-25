@@ -9,11 +9,11 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
@@ -27,6 +27,8 @@ import dev.schrammel.protego_parentis.policy.CategoryHierarchy
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.categoryBudgetMinutes
@@ -37,8 +39,6 @@ import dev.schrammel.protego_parentis.ui.rules.deleteCategory
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.ui.rules.upsertCategory
-import dev.schrammel.protego_parentis.ui.rules.RuleScope
-import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
@@ -317,7 +317,7 @@ class CategoryEditActivity : ParentGatedActivity() {
         // situation: this writes to the same remotely-synced stores, and "same
         // button, same instant finish()" would otherwise look identical to a
         // local save that already took effect.
-        if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
+        acknowledgeRuleWrite(policyRuleStore(this, target))
         finish()
     }
 

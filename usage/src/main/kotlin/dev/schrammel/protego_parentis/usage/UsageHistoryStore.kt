@@ -27,30 +27,55 @@ class UsageHistoryStore(context: Context) {
 
     private val file = File(context.applicationContext.filesDir, FILE_NAME)
 
+    /**
+     * The parsed history, cached against the file's last-modified stamp.
+     *
+     * [record] runs on the enforcement tick (via UsageHistoryRecorder's
+     * closed-day pass) up to every fifteen seconds, and each call used to read
+     * and parse the whole file whether or not anything changed. The cache is
+     * invalidated by [write] itself and by any other process of this app
+     * rewriting the file, since the stamp is read from the file each time.
+     */
+    private val cacheLock = Any()
+    private var cachedStamp: Long = Long.MIN_VALUE
+    private var cachedValue: List<UsageSnapshot> = emptyList()
+
     fun record(snapshot: UsageSnapshot) {
-        val existing = all().filterNot { it.policyDay == snapshot.policyDay }
-        val updated = (existing + snapshot)
-            .sortedBy { it.policyDay }
-            .takeLast(Defaults.HISTORY_RETENTION_DAYS)
-        write(updated)
+        synchronized(cacheLock) {
+            val existing = read()
+            val updated = (existing.filterNot { it.policyDay == snapshot.policyDay } + snapshot)
+                .sortedBy { it.policyDay }
+                .takeLast(Defaults.HISTORY_RETENTION_DAYS)
+            // Writing the same day's identical totals again is the common case
+            // on a short tick — skip the file rewrite entirely when nothing moved.
+            if (updated == existing) return
+            write(updated)
+        }
     }
 
-    fun all(): List<UsageSnapshot> {
-        if (!file.exists()) return emptyList()
-        val raw = runCatching { file.readText() }.getOrNull() ?: return emptyList()
-        val root = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyList()
-        val days = root.optJSONArray(KEY_DAYS) ?: return emptyList()
-
-        return (0 until days.length())
-            .mapNotNull { days.optJSONObject(it)?.let(::fromJson) }
-            .sortedBy { it.policyDay }
-    }
+    fun all(): List<UsageSnapshot> = synchronized(cacheLock) { read() }
 
     fun lastRecordedDay(): LocalDate? = all().lastOrNull()?.policyDay
 
     /** Everything recorded within the inclusive range. */
     fun range(from: LocalDate, to: LocalDate): List<UsageSnapshot> =
         all().filter { it.policyDay >= from && it.policyDay <= to }
+
+    private fun read(): List<UsageSnapshot> {
+        if (!file.exists()) return emptyList()
+        val stamp = file.lastModified()
+        if (cachedStamp == stamp) return cachedValue
+        val raw = runCatching { file.readText() }.getOrNull() ?: return emptyList()
+        val root = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyList()
+        val days = root.optJSONArray(KEY_DAYS) ?: return emptyList()
+
+        val parsed = (0 until days.length())
+            .mapNotNull { days.optJSONObject(it)?.let(::fromJson) }
+            .sortedBy { it.policyDay }
+        cachedStamp = stamp
+        cachedValue = parsed
+        return parsed
+    }
 
     private fun write(days: List<UsageSnapshot>) {
         val root = JSONObject().put(KEY_DAYS, JSONArray(days.map(::toJson)))
@@ -64,6 +89,14 @@ class UsageHistoryStore(context: Context) {
                 temp.delete()
             }
         }.onFailure { Log.w(TAG, "Could not write usage history", it) }
+        // Drop the cache rather than pre-warming it: the write path does not go
+        // through fromJson, which is where the read path drops rows (a package
+        // with zero recorded time, a malformed row). The next read re-parses
+        // exactly what is on disk, so cache and file can never disagree.
+        synchronized(cacheLock) {
+            cachedStamp = Long.MIN_VALUE
+            cachedValue = emptyList()
+        }
     }
 
     private fun toJson(snapshot: UsageSnapshot): JSONObject = JSONObject().apply {
@@ -99,6 +132,10 @@ class UsageHistoryStore(context: Context) {
     /** Used by the release flow; history is the child's data and goes with them. */
     fun clear() {
         runCatching { file.delete() }
+        synchronized(cacheLock) {
+            cachedStamp = Long.MIN_VALUE
+            cachedValue = emptyList()
+        }
     }
 
     private companion object {

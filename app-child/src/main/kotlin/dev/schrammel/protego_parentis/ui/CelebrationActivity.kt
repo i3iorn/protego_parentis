@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.GoalAchievement
@@ -29,7 +30,7 @@ class CelebrationActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = GoalStore(this)
+        store = AppRegistry.childStores.goals
 
         val achievement = store.pending()
         if (achievement == null) {

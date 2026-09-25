@@ -5,16 +5,16 @@ import android.os.Build
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.security.SecretVault
+import dev.schrammel.protego_parentis.sync.SyncSettings.Companion.DEFAULT_SERVER
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.ReplayGuard
 import dev.schrammel.protego_parentis.sync.core.SeenMessage
 import dev.schrammel.protego_parentis.sync.core.TransportKind
-import dev.schrammel.protego_parentis.sync.SyncSettings.Companion.DEFAULT_SERVER
 import java.time.Instant
 import java.util.UUID
-import dev.schrammel.protego_parentis.sync.core.ReplayGuard
-import dev.schrammel.protego_parentis.security.LocalDeviceId
 
 /** Everything needed to reach the family's topic. */
 data class SyncSettings(
@@ -242,7 +242,20 @@ class SyncConfigStore(context: Context) {
         }
 
     private fun deviceName(): String {
-        prefs.getString(KEY_DEVICE_NAME, null)?.takeIf(String::isNotBlank)?.let { return it }
+        // Cached process-wide: AuditReplication.deviceName() calls this for every
+        // audit entry written, and the name changes at most when a user edits it.
+        cachedDeviceName?.let { (raw, name) ->
+            if (raw == prefs.getString(
+                    KEY_DEVICE_NAME,
+                    null
+                )
+            ) return name
+        }
+
+        prefs.getString(KEY_DEVICE_NAME, null)?.takeIf(String::isNotBlank)?.let {
+            cachedDeviceName = it to it
+            return it
+        }
 
         val suffix = when (RoleStore(appContext).roleOrChild) {
             DeviceRole.CHILD -> ""
@@ -250,6 +263,7 @@ class SyncConfigStore(context: Context) {
         }
         val generated = (Build.MODEL?.takeIf(String::isNotBlank) ?: "Phone") + suffix
         prefs.edit { putString(KEY_DEVICE_NAME, generated) }
+        cachedDeviceName = generated to generated
         return generated
     }
 
@@ -368,6 +382,10 @@ class SyncConfigStore(context: Context) {
 
         @Volatile
         var cachedPassphrase: Pair<String, String>? = null
+
+        /** [String?] stored name to [String] resolved name — see [deviceName]. */
+        @Volatile
+        var cachedDeviceName: Pair<String?, String>? = null
 
         const val FILE_NAME = "sync"
         const val SEPARATOR = ","

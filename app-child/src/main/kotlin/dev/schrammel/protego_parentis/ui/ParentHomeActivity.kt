@@ -24,6 +24,7 @@ import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import java.time.Instant
 
 /**
@@ -51,7 +52,7 @@ class ParentHomeActivity : ParentRoleActivity() {
 
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
         inbox = InboxStore(this)
         summaries = DailySummaryStore(this)
         // Idempotent, and re-asserted here so a phone that was granted the family

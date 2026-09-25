@@ -2,8 +2,8 @@ package dev.schrammel.protego_parentis.ui
 
 import android.Manifest
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -20,9 +20,9 @@ import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.ActivitySeenTracker
 import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
@@ -30,8 +30,6 @@ import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.model.RuleEffect
-import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.security.DeviceRole
@@ -40,7 +38,6 @@ import dev.schrammel.protego_parentis.sync.ParentPollWorker
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.ui.rules.bedtimeRuleId
 import dev.schrammel.protego_parentis.usage.InstalledApps
-import dev.schrammel.protego_parentis.usage.UsageAccess
 
 /**
  * The teen's dashboard (RPT-4).
@@ -165,7 +162,10 @@ class HomeActivity : DementorActivity() {
         val navigation = findViewById<LinearLayout>(R.id.navigation)
         navigation.removeAllViews()
 
-        homeSections(DeviceRole.CHILD, FeatureFlags(this)::isEnabled).forEach { section ->
+        homeSections(
+            DeviceRole.CHILD,
+            AppRegistry.childStores.featureFlags::isEnabled
+        ).forEach { section ->
             addSection(
                 navigation,
                 section.label?.let(::getString),
@@ -421,7 +421,7 @@ class HomeActivity : DementorActivity() {
      */
     private fun renderRules() {
         val container = clear(R.id.rules_list)
-        val rules = ContextRuleStore(this).rules
+        val rules = AppRegistry.childStores.contextRules.rules
 
         val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
         val budget = (dailyLimit?.effect as? RuleEffect.SetBudget)?.takeIf { dailyLimit.enabled }

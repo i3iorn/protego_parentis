@@ -1,28 +1,29 @@
 package dev.schrammel.protego_parentis.ui
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.net.toUri
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.audit.Audit
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.IntegrityProblem
 import dev.schrammel.protego_parentis.policy.IntegrityRules
-import android.content.ActivityNotFoundException
-import androidx.core.net.toUri
 import dev.schrammel.protego_parentis.sync.FamilyEventStore
 import dev.schrammel.protego_parentis.sync.HeartbeatStore
 import dev.schrammel.protego_parentis.sync.LocateOutcome
-import dev.schrammel.protego_parentis.sync.TelemetryReplication
 import dev.schrammel.protego_parentis.sync.NewApp
 import dev.schrammel.protego_parentis.sync.NewAppStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
+import dev.schrammel.protego_parentis.sync.TelemetryReplication
 import java.time.Instant
 
 /**
@@ -49,7 +50,7 @@ class ParentDeviceActivity : ParentRoleActivity() {
         heartbeats = HeartbeatStore(this)
         newApps = NewAppStore(this)
         family = FamilyEventStore(this)
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
         column = contentColumn()
         showColumn(column)
     }

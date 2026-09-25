@@ -8,11 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.PersistableBundle
 import android.util.Log
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.policy.PolicyClock
 import dev.schrammel.protego_parentis.provisioning.ProvisioningPayload
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
-import dev.schrammel.protego_parentis.rules.WebActivityStore
-import dev.schrammel.protego_parentis.rules.WebFilterStore
 import java.time.Instant
 
 /**
@@ -70,7 +68,7 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
         batchToken: Long,
         networkLogsCount: Int,
     ) {
-        if (!WebFilterStore(context).countVisits) return
+        if (!AppRegistry.childStores.webFilter.countVisits) return
 
         val dpm = context.getSystemService(DevicePolicyManager::class.java) ?: return
         val events = runCatching { dpm.retrieveNetworkLogs(componentName(context), batchToken) }
@@ -93,9 +91,9 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
         // Keyed by the same policy day the budget resets on, not real midnight —
         // a lookup just after midnight but before the day-boundary hour must land
         // in yesterday's bucket, same as every other counter in the app.
-        val policy = LocalPolicyStore(context).load()
+        val policy = AppRegistry.childStores.policy.load()
         val today = PolicyClock.policyDay(Instant.now(), policy.timeZone, policy.dayBoundaryHour)
-        WebActivityStore(context).record(today, hostnames, blocked)
+        AppRegistry.childStores.webActivity.record(today, hostnames, blocked)
         Log.d(TAG, "Counted a batch of $networkLogsCount events")
     }
 

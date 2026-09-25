@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.rules
 
 import android.content.Context
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.usage.InstalledApps
@@ -18,7 +19,7 @@ object TargetLabels {
         is GrantTarget.Device -> context.getString(R.string.requests_target_device)
         is GrantTarget.App -> InstalledApps(context).labelFor(target.pkg)
         is GrantTarget.Category ->
-            LocalPolicyStore(context).categories
+            AppRegistry.childStores.policy.categories
                 .firstOrNull { it.id == target.id.value }
                 ?.name
                 ?: context.getString(R.string.requests_target_category)

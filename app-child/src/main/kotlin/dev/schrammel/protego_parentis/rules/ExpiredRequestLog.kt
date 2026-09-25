@@ -19,7 +19,14 @@ class ExpiredRequestLog(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    fun contains(id: RequestId): Boolean = announced().contains(id.value)
+    fun contains(id: RequestId): Boolean = announcedIds().contains(id.value)
+
+    /**
+     * Every announced id in one read. [contains] decodes the whole list per
+     * call, which made a lapsed-request sweep one parse per expired request;
+     * the tick's sweep reads the set once and filters against it.
+     */
+    fun announcedIds(): Set<String> = announced().toSet()
 
     /**
      * Bounded like every other persisted collection in this app (#156's own

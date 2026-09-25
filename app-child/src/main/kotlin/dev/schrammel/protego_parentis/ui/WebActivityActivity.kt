@@ -12,7 +12,6 @@ import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.policy.PolicyClock
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.WebActivityStore
 import dev.schrammel.protego_parentis.rules.WebFilterStore
 import java.time.Instant
@@ -33,8 +32,8 @@ class WebActivityActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = WebActivityStore(this)
-        settings = WebFilterStore(this)
+        store = AppRegistry.childStores.webActivity
+        settings = AppRegistry.childStores.webFilter
         column = contentColumn()
         showColumn(column)
     }
@@ -92,7 +91,7 @@ class WebActivityActivity : DementorActivity() {
         // The same policy day the budget resets on, not real midnight — a family
         // with a day-boundary hour set would otherwise see this list clear four
         // hours before the budget it is shown alongside does.
-        val policy = LocalPolicyStore(this).load()
+        val policy = AppRegistry.childStores.policy.load()
         val today = PolicyClock.policyDay(Instant.now(), policy.timeZone, policy.dayBoundaryHour)
         val visits = store.visits(today)
 

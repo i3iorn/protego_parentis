@@ -1,21 +1,23 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.context.PlaceTransition
+import dev.schrammel.protego_parentis.context.Position
 import dev.schrammel.protego_parentis.model.AutoApproval
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestState
-import dev.schrammel.protego_parentis.context.PlaceTransition
-import dev.schrammel.protego_parentis.context.Position
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.StoredSchedule
 import dev.schrammel.protego_parentis.security.DeviceRole
+import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.KnownDevice
 import dev.schrammel.protego_parentis.sync.core.RosterRules
+import dev.schrammel.protego_parentis.sync.core.Signer
 import dev.schrammel.protego_parentis.sync.core.SyncKey
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 
@@ -58,11 +60,11 @@ internal fun DeviceRole.toSyncRole(): SyncRole = when (this) {
  * collaborators (see [SyncKeying]). The methods here return immediately;
  * nothing blocks the caller.
  */
-class SyncCoordinator(context: Context) {
+class SyncCoordinator(context: Context, signer: Signer = KeystoreSigner()) {
 
     private val context = context.applicationContext
-    private val publisher = SyncPublisher(context)
-    private val receiver = SyncReceiver(context, publisher)
+    private val publisher = SyncPublisher(context, signer)
+    private val receiver = SyncReceiver(context, publisher, signer)
 
     fun settings(): SyncSettings = publisher.settings()
 
@@ -235,7 +237,8 @@ class SyncCoordinator(context: Context) {
         publisher.testReachable(token, onFinished)
 
     /** Fetches and applies anything the other phones have sent. */
-    fun pollNow(onFinished: (String) -> Unit = {}) = receiver.pollNow(onFinished)
+    fun pollNow(minAgeMillis: Long = 0L, onFinished: (String) -> Unit = {}) =
+        receiver.pollNow(minAgeMillis, onFinished)
 
     /** Applies one envelope [RealtimeSyncService] read off the live stream. */
     fun receiveEnvelope(key: SyncKey, envelope: String): Boolean =

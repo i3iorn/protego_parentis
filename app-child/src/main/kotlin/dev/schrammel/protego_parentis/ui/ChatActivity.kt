@@ -18,12 +18,13 @@ import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.RequestNotifier
 import dev.schrammel.protego_parentis.model.ChatText
+import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.ChatMessage
 import dev.schrammel.protego_parentis.sync.ChatStore
-import dev.schrammel.protego_parentis.sync.core.KnownDevice
-import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
 import java.time.Duration
 import java.time.Instant
 
@@ -75,6 +76,14 @@ class ChatActivity : DementorActivity() {
     private lateinit var status: TextView
 
     private val pollHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * The message list as the screen last painted it. A poll tick that reloads
+     * the same conversation must not rebuild every bubble — this is the
+     * equality check that keeps an open screen from churning views.
+     */
+    private var renderedMessages: List<ChatMessage> = emptyList()
+
     private val pollTick = object : Runnable {
         override fun run() {
             sync.pollNow { runOnUiThread { render() } }
@@ -84,7 +93,7 @@ class ChatActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
         store = ChatStore(this)
         roster = RosterStore(this)
 
@@ -174,11 +183,11 @@ class ChatActivity : DementorActivity() {
         setPadding(pad, 0, pad, dimen(R.dimen.space_xs))
     }
 
-    private fun renderStatus() {
+    private fun renderStatus(others: List<KnownDevice>) {
         val selfId = LocalDeviceId.current()
-        val others = roster.devices.filter { it.id.value != selfId }
-        status.visibility = if (others.isEmpty()) View.GONE else View.VISIBLE
-        status.text = others
+        val visible = others.filter { it.id.value != selfId }
+        status.visibility = if (visible.isEmpty()) View.GONE else View.VISIBLE
+        status.text = visible
             .sortedBy { it.name.lowercase() }
             .joinToString(STATUS_SEPARATOR) { statusFor(it) }
     }
@@ -266,19 +275,54 @@ class ChatActivity : DementorActivity() {
 
         sync.publishChat(typed)
         input.setText("")
+        // The optimistic render: force the next refresh to rebuild even if the
+        // store has not received the sent message through replication yet.
+        renderedMessages = emptyList()
         render()
     }
 
+    /**
+     * Reloads the conversation and roster off the main thread, then repaints.
+     *
+     * [store.all] and [roster.devices] are preference files, and this used to read
+     * them on the poll tick — disk I/O on the main thread every few seconds for as
+     * long as the screen is open, plus a full rebuild of every bubble whether or
+     * not anything had changed. The read happens on Background's executor; only
+     * the view work runs on the main thread, and only when something changed.
+     */
     private fun render() {
-        conversation.removeAllViews()
-        val messages = store.all()
+        Background.load(
+            this,
+            {
+                val messages = store.all()
+                val connected = sync.settings().isUsable
+                val others = if (connected) roster.devices else emptyList()
+                Render(messages, others, connected)
+            },
+        ) { data ->
+            composer.visibility = if (data.connected) View.VISIBLE else View.GONE
+            if (data.connected) renderStatus(data.others) else status.visibility = View.GONE
+            renderConversation(data.messages, data.connected)
+        }
+    }
 
-        // Said once, at the top, rather than left for the sender to discover when
-        // a message goes nowhere. There is no family to send to, so there is
-        // nothing to type into either.
-        val connected = sync.settings().isUsable
-        composer.visibility = if (connected) View.VISIBLE else View.GONE
-        if (connected) renderStatus() else status.visibility = View.GONE
+    /** One shot of what the conversation screens need, computed off the main thread. */
+    private data class Render(
+        val messages: List<ChatMessage>,
+        val others: List<KnownDevice>,
+        val connected: Boolean,
+    )
+
+    /**
+     * The conversation. Rebuilds the bubbles only when the message list actually
+     * changed — a poll tick that fetched nothing new leaves the views alone, so a
+     * screen that sits open does not churn view construction for nothing.
+     */
+    private fun renderConversation(messages: List<ChatMessage>, connected: Boolean) {
+        if (messages == renderedMessages) return
+        renderedMessages = messages
+
+        conversation.removeAllViews()
         if (!connected) conversation.addView(captionText(getString(R.string.chat_no_family)))
 
         if (messages.isEmpty()) {

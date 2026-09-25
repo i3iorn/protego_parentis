@@ -2,43 +2,31 @@ package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
 import android.util.Log
-import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.enforcement.RequestNotifier
-import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.RequestCoordinator
-import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BUCKETS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIGEST
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
-import java.time.Instant
 import dev.schrammel.protego_parentis.sync.core.Admission
 import dev.schrammel.protego_parentis.sync.core.Admittance
 import dev.schrammel.protego_parentis.sync.core.DecryptResult
-import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.Enrolment
 import dev.schrammel.protego_parentis.sync.core.FragmentAssembler
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
 import dev.schrammel.protego_parentis.sync.core.MessageSignatures
 import dev.schrammel.protego_parentis.sync.core.ReplayGuard
-import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.core.RosterRules
 import dev.schrammel.protego_parentis.sync.core.SeenMessage
 import dev.schrammel.protego_parentis.sync.core.SignedPayload
-import dev.schrammel.protego_parentis.sync.core.StateCodec
-import dev.schrammel.protego_parentis.sync.core.StateDigest
-import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.sync.core.Signer
 import dev.schrammel.protego_parentis.sync.core.SyncCodec
 import dev.schrammel.protego_parentis.sync.core.SyncKey
 import dev.schrammel.protego_parentis.sync.core.SyncMessage
-import dev.schrammel.protego_parentis.sync.core.SyncMessageType
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.TransportResult
+import java.time.Instant
 
 /**
  * Everything a phone *receives*: opening an envelope, deciding whether to
@@ -62,7 +50,11 @@ import dev.schrammel.protego_parentis.sync.core.TransportResult
  * byte that changes hands to leave the phone still goes out through
  * [SyncPublisher]'s own signing and sealing, unchanged.
  */
-class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
+class SyncReceiver(
+    context: Context,
+    private val publisher: SyncPublisher,
+    private val signer: Signer = KeystoreSigner()
+) {
 
     private val appContext = context.applicationContext
     private val config = SyncConfigStore(appContext)
@@ -88,7 +80,37 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
     private val childCommand by lazy { ChildCommandHandler(appContext, publisher, notifier) }
     private val requestSync by lazy { RequestSyncHandler(appContext, requests, inbox, notifier) }
     private val telemetry by lazy { TelemetryInboundHandler(appContext, heartbeats, newApps, summaries, family, notifier) }
-    private val chat by lazy { ChatInboundHandler(appContext, roster, notifier, KeystoreSigner()) }
+    private val chat by lazy { ChatInboundHandler(appContext, roster, notifier, signer) }
+
+    // The receiver delegates dispatch and replicated-state maintenance to these
+    // two — see [MessageRouter] and [ReplicaMaintainer]. Lazy so a phone that
+    // never receives a message pays nothing for them.
+    private val replica by lazy {
+        ReplicaMaintainer(
+            appContext,
+            roles,
+            publisher,
+            state,
+            config,
+            chat,
+            requestSync,
+            telemetry,
+            notifier
+        )
+    }
+    private val router by lazy {
+        MessageRouter(
+            appContext,
+            roles,
+            deviceTrust,
+            childCommand,
+            requestSync,
+            telemetry,
+            chat,
+            publisher,
+            replica
+        )
+    }
 
     /**
      * Fetches and applies anything the other phones have sent.
@@ -97,11 +119,27 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
      * show a result. Called from the enforcement tick on the child device, and on
      * resume on a parent's.
      */
-    fun pollNow(onFinished: (String) -> Unit = {}) {
+    fun pollNow(minAgeMillis: Long = 0L, onFinished: (String) -> Unit = {}) {
         val settings = config.load()
         if (!settings.isUsable) {
             onFinished(RESULT_NOT_CONFIGURED)
             return
+        }
+
+        // A minimum age on the last successful poll. The realtime stream already
+        // delivers every message the moment it is published, so a background
+        // caller that also polls on a short timer (the enforcement tick, up to
+        // every fifteen seconds when a limit is close) spends its network budget
+        // re-downloading a topic it just had pushed to it — and each slow poll
+        // blocks every publish and stream delivery behind it on the shared sync
+        // executor. Callers that need an answer right now (a screen on resume,
+        // the chat's own timer) pass the default 0 and are never gated.
+        if (minAgeMillis > 0L) {
+            val age = System.currentTimeMillis() - config.lastPolledAt().toEpochMilli()
+            if (age in 0 until minAgeMillis) {
+                onFinished(RESULT_SKIPPED_FRESH)
+                return
+            }
         }
 
         SyncKeying.execute {
@@ -138,7 +176,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
                 is TransportResult.Ok -> {
                     val applied = result.value.count { envelope -> apply(key, envelope) }
                     config.recordPolledAt(Instant.now())
-                    keepReplicaCurrent()
+                    replica.keepReplicaCurrent()
                     Diagnostics.record(
                         appContext,
                         DiagnosticEvent.SYNC_POLLED,
@@ -202,7 +240,7 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         val admittance = admitSender(opened.message, opened.payload, now) ?: return false
         rememberReplay(opened.message, now, seen)
 
-        return dispatch(opened.message, admittance)
+        return router.dispatch(opened.message, admittance)
     }
 
     /**
@@ -308,360 +346,18 @@ class SyncReceiver(context: Context, private val publisher: SyncPublisher) {
         }
     }
 
-    /**
-     * Acts on an admitted message, routed by this device's own role.
-     *
-     * What the roster says the sender is, never what the message claims —
-     * replication decides what an op may touch from this, so it has to be
-     * the established role rather than the self-reported one.
-     *
-     * A malformed or version-skewed field inside an otherwise correctly
-     * signed message can throw here (a handler parsing an amount, a
-     * package name, a policy snapshot) — content this device does not
-     * control, arriving on the shared sync executor. Uncaught, that
-     * reaches the process's default handler and kills the app; caught
-     * here, it is one refused message and the executor's queue keeps
-     * running for whatever is next.
-     */
-    private fun dispatch(message: SyncMessage, admittance: Admittance.Accepted): Boolean {
-        val senderRole = admittance.device.role
-        val senderId = admittance.device.id
-
-        return runCatching {
-            when (roles.roleOrChild) {
-                DeviceRole.CHILD -> applyAsChild(message, senderRole, senderId)
-                DeviceRole.PARENT -> applyAsParent(message, senderRole, senderId)
-            }
-        }.getOrElse { error ->
-            Log.w(TAG, "Refused message ${message.id}: threw while applying", error)
-            Diagnostics.record(appContext, DiagnosticEvent.SYNC_DISPATCH_FAILED)
-            false
-        }
-    }
-
     /** A decrypted, decoded message alongside the signed payload it came from. */
     private data class OpenedMessage(val message: SyncMessage, val payload: SignedPayload)
 
     private fun syncRole(): SyncRole = roles.roleOrChild.toSyncRole()
 
-    private fun applyAsChild(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean = when (message.type) {
-        SyncMessageType.REQUEST_DECIDED -> requestSync.applyDecision(message)
-        SyncMessageType.BONUS_GRANTED -> childCommand.applyBonus(message)
-        SyncMessageType.APP_DECIDED -> childCommand.applyAppDecision(message)
-        SyncMessageType.LOCK_NOW -> childCommand.applyLockNow()
-        SyncMessageType.LOCATE_REQUEST -> childCommand.applyLocateRequest()
-        SyncMessageType.DEVICE_VOUCHED -> deviceTrust.applyVouch(message)
-        SyncMessageType.DEVICE_REVOKED -> deviceTrust.applyRevoke(message)
-        SyncMessageType.FAMILY_DISBANDED -> deviceTrust.applyDisband(message)
-        SyncMessageType.CHAT_MESSAGE -> chat.rememberChat(message)
-        SyncMessageType.POLICY_REQUESTED -> { publisher.publishPolicySnapshot(); true }
-        SyncMessageType.POLICY_UPDATED -> childCommand.applyPolicyUpdate(message)
-        SyncMessageType.APP_INVENTORY_REQUESTED -> { publisher.publishAppInventory(); true }
-        SyncMessageType.PLACE_CREATE_REQUESTED -> childCommand.applyPlaceCreateRequest(message)
-        SyncMessageType.DIAGNOSTICS_REQUESTED -> { publisher.publishDiagnosticsReport(); true }
-        SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
-        SyncMessageType.STATE_DIGEST -> compareDigest(message)
-        SyncMessageType.STATE_REPAIR -> answerRepair(message)
-        // A child phone is the only source of these; hearing one back means a
-        // second child device shares the family topic, which is not supported yet.
-        // An announcement has already done its work in the roster by this point.
-        SyncMessageType.REQUEST_RAISED,
-        SyncMessageType.HEARTBEAT,
-        SyncMessageType.APP_INSTALLED,
-        SyncMessageType.DAILY_SUMMARY,
-        SyncMessageType.DEVICE_STOPPING,
-        SyncMessageType.DEVICE_ANNOUNCE,
-        SyncMessageType.REQUEST_AUTO_APPROVED,
-        SyncMessageType.LOCATION_REPORT,
-        SyncMessageType.PLACE_TRANSITION,
-        SyncMessageType.SOS_RAISED,
-        SyncMessageType.SOS_CLEARED,
-        SyncMessageType.WEB_SUMMARY,
-        SyncMessageType.POLICY_SNAPSHOT,
-        SyncMessageType.APP_INVENTORY,
-        SyncMessageType.DIAGNOSTICS_REPORT,
-        -> false
-    }
-
-    private fun applyAsParent(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean = when (message.type) {
-        SyncMessageType.REQUEST_RAISED -> requestSync.rememberRequest(message)
-        // Another parent answered first. Recording that here is what stops two
-        // parents answering the same request twice.
-        SyncMessageType.REQUEST_DECIDED -> requestSync.settleRequest(message)
-        SyncMessageType.HEARTBEAT -> telemetry.rememberHeartbeat(message)
-        SyncMessageType.APP_INSTALLED -> telemetry.rememberNewApp(message, senderId)
-        SyncMessageType.DEVICE_VOUCHED -> deviceTrust.applyVouch(message)
-        SyncMessageType.DEVICE_REVOKED -> deviceTrust.applyRevoke(message)
-        SyncMessageType.FAMILY_DISBANDED -> deviceTrust.applyDisband(message)
-        SyncMessageType.DAILY_SUMMARY -> telemetry.rememberSummary(message)
-        SyncMessageType.DEVICE_STOPPING -> telemetry.rememberStopping(message)
-        SyncMessageType.REQUEST_AUTO_APPROVED -> requestSync.settleAutoApproved(message)
-        SyncMessageType.LOCATION_REPORT -> telemetry.rememberLocation(message)
-        SyncMessageType.PLACE_TRANSITION -> telemetry.rememberTransition(message)
-        SyncMessageType.SOS_RAISED -> telemetry.rememberSos(message, raised = true)
-        SyncMessageType.SOS_CLEARED -> telemetry.rememberSos(message, raised = false)
-        SyncMessageType.WEB_SUMMARY -> telemetry.rememberWebSummary(message)
-        SyncMessageType.CHAT_MESSAGE -> chat.rememberChat(message)
-        SyncMessageType.POLICY_SNAPSHOT -> rememberPolicySnapshot(message)
-        SyncMessageType.APP_INVENTORY -> telemetry.rememberAppInventory(message, senderId)
-        SyncMessageType.DIAGNOSTICS_REPORT -> telemetry.rememberDiagnosticsReport(message, senderId)
-        SyncMessageType.STATE_OPS -> applyStateOps(message, senderRole, senderId)
-        SyncMessageType.STATE_DIGEST -> compareDigest(message)
-        SyncMessageType.STATE_REPAIR -> answerRepair(message)
-        // Sent by a parent, including possibly this one. Nothing to do with it.
-        // An announcement has already done its work in the roster by this point.
-        SyncMessageType.BONUS_GRANTED,
-        SyncMessageType.APP_DECIDED,
-        SyncMessageType.DEVICE_ANNOUNCE,
-        SyncMessageType.LOCK_NOW,
-        SyncMessageType.LOCATE_REQUEST,
-        SyncMessageType.POLICY_REQUESTED,
-        SyncMessageType.POLICY_UPDATED,
-        SyncMessageType.APP_INVENTORY_REQUESTED,
-        SyncMessageType.PLACE_CREATE_REQUESTED,
-        SyncMessageType.DIAGNOSTICS_REQUESTED,
-        -> false
-    }
-
-    // ---------- replicated state ----------
-
-    /**
-     * The half of replication that happens whether or not anything arrived.
-     *
-     * Runs at the end of every poll, on both roles. Three things, in order:
-     * anything edited locally goes out (including edits made while offline,
-     * which is why the queue is durable); the managed phone records its own
-     * rules, so an edit made standing at it reaches the parents without being
-     * asked for; and on a slow timer this device says what it holds, which is
-     * how a replica that missed ops entirely ever finds out.
-     */
-    private fun keepReplicaCurrent() {
-        if (roles.roleOrChild == DeviceRole.CHILD) {
-            PolicyReplication(appContext).pushFromLocalPolicy()
-            PolicyReplication(appContext).pushSchedulesFromLocal()
-            PolicyReplication(appContext).pushContextRulesFromLocal()
-            PolicyReplication(appContext).pushPlaceRefsFromLocal()
-            PolicyReplication(appContext).pushAutoApprovalsFromLocal()
-        } else {
-            // Only a parent may write the roster, and every parent holds the
-            // same one — so each publishes what it trusts and they converge,
-            // rather than a vouch having to be timed to land after an approval.
-            RosterReplication(appContext).push()
-            // Every parent's device runs this independently and lands on the
-            // same outcome — see ConsensusReplication.commitIfReady. Only a
-            // parent has anything to check: the managed phone is not a party
-            // to any of the four decisions.
-            commitReadyConsensusProposals()
-        }
-        publisher.publishPendingOps()
-
-        val now = Instant.now()
-        if (config.digestDue(now)) {
-            // Pruned first, so the digest published reflects what this replica
-            // will actually still be holding when somebody compares against it.
-            state.prune(now.epochSecond)
-            publisher.publishDigest()
-            config.recordDigestAt(now)
-        }
-    }
-
-    /**
-     * Commits every consensus proposal this replica can see has reached its
-     * threshold — unanimous approval, or an uncancelled timer.
-     *
-     * Every parent's device does this independently, and that is by design:
-     * see [ConsensusReplication.commitIfReady] for why more than one device
-     * acting on the same proposal is harmless.
-     *
-     * Stops the moment a disband commits: it wipes this phone's own family
-     * membership, so nothing left in the list is still this replica's to act
-     * on.
-     */
-    private fun commitReadyConsensusProposals() {
-        val consensus = ConsensusReplication(appContext)
-        for (proposal in consensus.proposals()) {
-            val committed = consensus.commitIfReady(proposal, publisher)
-            if (committed && proposal.kind == ConsensusKind.DISBAND_FAMILY) return
-        }
-    }
-
-    /**
-     * Folds a batch of writes from another device into this replica.
-     *
-     * Every op is checked individually against [ReplicationRules] using the role
-     * the *roster* established for the sender, never what the message claimed.
-     * That check is the whole trust boundary of symmetric replication: a managed
-     * phone holding the family passphrase can sign a policy op perfectly well,
-     * and it is refused here.
-     *
-     * A refused op is dropped silently and locally. There is no reply, because
-     * there is nothing useful to say to a device that should not have asked —
-     * it will see its value disagree at the next digest, and be unable to do
-     * anything about it, which is the intended outcome.
-     */
-    private fun applyStateOps(message: SyncMessage, senderRole: SyncRole?, senderId: DeviceId): Boolean {
-        val incoming = StateCodec.decodeOps(message.field(FIELD_OPS))
-        if (incoming.isEmpty()) return false
-
-        val (authorised, unauthorised) = incoming.partition {
-            ReplicationRules.accepts(senderRole, it, senderId)
-        }
-        val (allowed, overCapacity) = withinCapacity(authorised)
-        val refused = unauthorised + overCapacity
-        if (refused.isNotEmpty()) {
-            Diagnostics.record(
-                appContext,
-                DiagnosticEvent.STATE_OPS_REFUSED,
-                mapOf("count" to refused.size.toLong()),
-            )
-        }
-
-        val applied = state.receive(allowed)
-        if (applied.isNotEmpty()) onStateChanged(applied)
-        return applied.isNotEmpty()
-    }
-
-    /**
-     * Drops writes that would grow a section past what it may hold.
-     *
-     * Only writes that create a *new* key are capped. A section at its limit
-     * still accepts updates to keys it already has, so it goes on converging
-     * rather than freezing part-way through a disagreement — which would be a
-     * worse failure than the one being defended against.
-     *
-     * The defence is against a device in the family inventing keys until every
-     * other replica runs out of room. Enrolment already keeps strangers out;
-     * this bounds the damage a phone that got in can do.
-     */
-    private fun withinCapacity(ops: List<StateOp>): Pair<List<StateOp>, List<StateOp>> {
-        val held = state.entries
-        val counts = held.keys
-            .groupingBy { it.substringBefore(ReplicationRules.SEPARATOR) }
-            .eachCount()
-            .toMutableMap()
-
-        val allowed = mutableListOf<StateOp>()
-        val refused = mutableListOf<StateOp>()
-        ops.forEach { op ->
-            if (op.path in held) {
-                allowed += op
-                return@forEach
-            }
-            val section = op.path.substringBefore(ReplicationRules.SEPARATOR)
-            val count = counts[section] ?: 0
-            if (count >= ReplicationRules.capacityOf(op.path)) {
-                refused += op
-            } else {
-                counts[section] = count + 1
-                allowed += op
-            }
-        }
-        return allowed to refused
-    }
-
-    /**
-     * Compares somebody else's summary with ours and asks for what is missing.
-     *
-     * This is what makes the protocol self-healing rather than dependent on the
-     * relay keeping every op forever. Both sides do it, so whichever is behind
-     * asks — and the one that is ahead simply finds nothing to ask for.
-     */
-    private fun compareDigest(message: SyncMessage): Boolean {
-        val theirs = StateCodec.decodeDigest(message.field(FIELD_DIGEST))
-        if (theirs.isEmpty()) return false
-
-        val differing = StateDigest.differing(state.digest(), theirs)
-        if (differing.isEmpty()) return false
-
-        // Asking is enough: the answer arrives as ordinary ops, and this device
-        // publishes its own side of the difference in the same exchange so the
-        // other replica converges too rather than only this one.
-        publisher.publishRepairRequest(differing)
-        // Batched by size, like every other send. A bucket set holding a busy
-        // conversation is far more than one message can carry, and an over-long
-        // one is dropped by the receiver rather than truncated — so sending it
-        // whole meant the repair silently accomplished nothing.
-        StateCodec.batch(state.entriesIn(differing)).forEach(publisher::publishOps)
-        Diagnostics.record(
-            appContext,
-            DiagnosticEvent.STATE_REPAIR_REQUESTED,
-            mapOf("buckets" to differing.size.toLong()),
-        )
-        return true
-    }
-
-    /** Answers a repair request with everything held in the buckets asked for. */
-    private fun answerRepair(message: SyncMessage): Boolean {
-        val buckets = StateCodec.decodeBuckets(message.field(FIELD_BUCKETS))
-        if (buckets.isEmpty()) return false
-
-        val entries = state.entriesIn(buckets)
-        if (entries.isEmpty()) return false
-        StateCodec.batch(entries).forEach(publisher::publishOps)
-        return true
-    }
-
-    /**
-     * Re-applies anything downstream of state that just changed.
-     *
-     * Enforcement is restarted only when the rules themselves moved — a chat
-     * message or another device's telemetry arriving should not cost a policy
-     * re-evaluation on the managed phone.
-     */
-    private fun onStateChanged(applied: List<StateOp>) {
-        val sections = applied.mapTo(mutableSetOf()) {
-            it.path.substringBefore(ReplicationRules.SEPARATOR)
-        }
-
-        if (ReplicationRules.POLICY in sections && roles.roleOrChild == DeviceRole.CHILD) {
-            PolicyReplication(appContext).pullIntoLocalPolicy()
-            PolicyReplication(appContext).pullSchedulesIntoLocal()
-            PolicyReplication(appContext).pullContextRulesIntoLocal()
-            PolicyReplication(appContext).pullPlaceRefsIntoLocal()
-            PolicyReplication(appContext).pullAutoApprovalsIntoLocal()
-            AppRegistry.ruleMutationSink.rulesChanged()
-            // A child's own local edit never reaches here: LocalPolicyRuleStore
-            // (and its schedule/context-rule/place/auto-approval equivalents)
-            // write straight to disk with no op pushed, so this branch only
-            // ever runs for a change that genuinely came from somewhere else —
-            // a parent's phone, editing remotely.
-            notifier.notifyRuleChanged()
-        }
-        // Additive only, and never for the managed phone: see the doc comment
-        // on pullIntoRoster for why trust must fail closed here.
-        if (ReplicationRules.ROSTER in sections) {
-            RosterReplication(appContext).pullIntoRoster()
-        }
-        if (ReplicationRules.CHAT in sections) {
-            chat.announceNewChat(applied)
-        }
-        if (ReplicationRules.REQUESTS in sections && roles.roleOrChild == DeviceRole.CHILD) {
-            requestSync.applyAnsweredRequests()
-        }
-        // "As of" on a parent's dashboard means "when I last heard", and this is
-        // that moment. Recorded here rather than derived from the ops, which
-        // carry a logical clock and no wall-clock time at all.
-        if (ReplicationRules.TELEMETRY in sections && roles.roleOrChild == DeviceRole.PARENT) {
-            telemetry.markSummaryHeard()
-        }
-    }
-
-    /**
-     * Takes a whole-policy answer from a phone still on the older protocol.
-     *
-     * Folded into the replica rather than kept beside it, so a family part-way
-     * through updating still converges: the older phone speaks whole snapshots,
-     * this one turns each into ops, and every newer device in the family sees
-     * the rules arrive the way it expects.
-     */
-    private fun rememberPolicySnapshot(message: SyncMessage): Boolean {
-        val snapshot = PolicySnapshot.decode(message.field(FIELD_POLICY_JSON)) ?: return false
-        return PolicyReplication(appContext).write(snapshot).isNotEmpty()
-    }
 
     companion object {
         const val RESULT_NOT_CONFIGURED = "not configured"
         const val RESULT_BAD_PASSPHRASE = "passphrase too short"
+
+        /** Returned when a gated poll was skipped because the last one is fresh. */
+        const val RESULT_SKIPPED_FRESH = "skipped: recently polled"
 
         private const val TAG = "DementorSync"
         private const val POLL_OVERLAP_SECONDS = 5L

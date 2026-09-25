@@ -8,7 +8,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
@@ -19,11 +18,10 @@ import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
-import dev.schrammel.protego_parentis.ui.rules.categories
-import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
-import dev.schrammel.protego_parentis.usage.InstalledApps
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -221,7 +219,7 @@ class DeviceControlActivity : ParentGatedActivity() {
      * screen that says a thing twice in a row reads as a rendering fault.
      */
     private fun render() {
-        val store = LocalPolicyStore(this)
+        val store = AppRegistry.childStores.policy
         val coordinator = EnforcementCoordinator(this)
 
         column.removeAllViews()
@@ -275,8 +273,9 @@ class DeviceControlActivity : ParentGatedActivity() {
                                 after = Audit.flag(checked),
                             )
                             // Applied at once: turning it off is how someone
-                            // recovers a device.
-                            AppRegistry.ruleMutationSink.rulesChanged()
+                            // recovers a device. The re-kick is the store's job
+                            // now — every LocalPolicyStore write fires the
+                            // ruleMutationSink itself.
                         }
                     },
                 )
@@ -302,7 +301,6 @@ class DeviceControlActivity : ParentGatedActivity() {
                                 action = AuditAction.INSTALL_POLICY_CHANGED,
                                 after = chosen.name,
                             )
-                            AppRegistry.ruleMutationSink.rulesChanged()
                             render()
                         }
                     },
@@ -370,7 +368,6 @@ class DeviceControlActivity : ParentGatedActivity() {
                             action = AuditAction.INSTALL_WINDOW_OPENED,
                             after = Audit.minutes(Defaults.INSTALL_WINDOW_MINUTES.toInt()),
                         )
-                        AppRegistry.ruleMutationSink.rulesChanged()
                         render()
                     }
                 },

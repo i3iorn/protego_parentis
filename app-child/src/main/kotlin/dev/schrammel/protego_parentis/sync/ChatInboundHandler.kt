@@ -1,11 +1,11 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.RequestNotifier
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TEXT
 import dev.schrammel.protego_parentis.sync.core.ReplicationRules
 import dev.schrammel.protego_parentis.sync.core.Signer
@@ -45,7 +45,7 @@ internal class ChatInboundHandler(
      * direction override could make one person's words appear to be another's.
      */
     fun rememberChat(message: SyncMessage): Boolean {
-        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return false
+        if (!AppRegistry.childStores.featureFlags.isEnabled(Feature.CHAT)) return false
 
         val text = ChatText.sanitise(message.field(FIELD_TEXT).orEmpty()) ?: return false
         // The roster's name, not the one the message carries. A device chooses
@@ -70,7 +70,7 @@ internal class ChatInboundHandler(
      * and only for messages this phone did not itself write.
      */
     fun announceNewChat(applied: List<StateOp>) {
-        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return
+        if (!AppRegistry.childStores.featureFlags.isEnabled(Feature.CHAT)) return
         val self = runCatching { signer.deviceId.value }.getOrNull()
 
         val arrived = applied.filter {

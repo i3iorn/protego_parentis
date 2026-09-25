@@ -1,65 +1,46 @@
 package dev.schrammel.protego_parentis.sync
 
 import android.content.Context
+import dev.schrammel.protego_parentis.AppRegistry
+import dev.schrammel.protego_parentis.context.PlaceTransition
+import dev.schrammel.protego_parentis.context.Position
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.model.ChatText
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.Request
 import dev.schrammel.protego_parentis.model.RequestState
-import dev.schrammel.protego_parentis.context.PlaceTransition
-import dev.schrammel.protego_parentis.context.Position
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
-import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.KeystoreSigner
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.core.FamilyToken
-import dev.schrammel.protego_parentis.sync.core.KnownDevice
-import dev.schrammel.protego_parentis.sync.core.StateCodec
-import dev.schrammel.protego_parentis.sync.core.StateOp
-import dev.schrammel.protego_parentis.sync.core.SyncMessageType
-import dev.schrammel.protego_parentis.sync.core.SyncRole
-import dev.schrammel.protego_parentis.sync.core.TransportKind
-import dev.schrammel.protego_parentis.sync.core.TransportResult
-import dev.schrammel.protego_parentis.sync.core.deviceId
 import dev.schrammel.protego_parentis.sync.SyncWireFields.APP_SEPARATOR
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ACCURACY
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ALLOWED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_PREFIX
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APPS_JSON
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_APP_VERSION
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_ARRIVED
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BUCKETS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIAGNOSTICS_LOG
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIGEST
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BATTERY
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BLOCKED_COUNT
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BONUS
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_BUCKETS
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIAGNOSTICS_LOG
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DIGEST
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_DOMAIN_PREFIX
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_EMERGENCY
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_EXPIRES_AT
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_HISTORY_COUNT
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_HISTORY_HEAD
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LATITUDE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LEVEL
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_LONGITUDE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MANAGED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_MINUTES
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_NOTE
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_OPS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PACKAGE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_PLACE
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_JSON
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_POLICY_VERSION
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REASON
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REMAINING
+import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RADIUS
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REQUEST_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_REVOKED_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_RULE_NAME
@@ -67,15 +48,24 @@ import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_STATE
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_SUSPENDED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TARGET_LABEL
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_TEXT
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_USAGE_ACCESS
-import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_USED
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ID
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_KEY
 import dev.schrammel.protego_parentis.sync.SyncWireFields.FIELD_VOUCHED_ROLE
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.FamilyToken
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
+import dev.schrammel.protego_parentis.sync.core.Signer
+import dev.schrammel.protego_parentis.sync.core.StateCodec
+import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.sync.core.SyncMessageType
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.TransportKind
+import dev.schrammel.protego_parentis.sync.core.TransportResult
+import dev.schrammel.protego_parentis.sync.core.deviceId
 import java.time.Instant
 import java.util.UUID
-import dev.schrammel.protego_parentis.sync.core.Enrolment
 
 /**
  * Everything a phone *sends*: the family's own commands and reports, and the
@@ -93,12 +83,11 @@ import dev.schrammel.protego_parentis.sync.core.Enrolment
  * send, record the outcome) is [MessageTransmitter]'s job; see its own doc
  * comment for why that split exists.
  */
-class SyncPublisher(context: Context) {
+class SyncPublisher(context: Context, private val signer: Signer = KeystoreSigner()) {
 
     private val appContext = context.applicationContext
     private val config = SyncConfigStore(appContext)
     private val roles = RoleStore(appContext)
-    private val signer = KeystoreSigner()
     private val chat by lazy { ChatStore(appContext) }
     private val state by lazy { ReplicatedStateStore(appContext) }
     private val transmitter = MessageTransmitter(appContext, config, roles, signer)
@@ -378,7 +367,7 @@ class SyncPublisher(context: Context) {
      * Returns the stored message, or null when there was nothing worth sending.
      */
     fun publishChat(raw: String): ChatMessage? {
-        if (!FeatureFlags(appContext).isEnabled(Feature.CHAT)) return null
+        if (!AppRegistry.childStores.featureFlags.isEnabled(Feature.CHAT)) return null
         // Checked before anything is stored. publish() quietly does nothing on an
         // unconfigured phone, which for every other message is right — but here it
         // would leave the sender looking at their own message in a conversation
@@ -499,7 +488,7 @@ class SyncPublisher(context: Context) {
     /** Child: answers with every rule this phone currently enforces. */
     fun publishPolicySnapshot() = publish(
         type = SyncMessageType.POLICY_SNAPSHOT,
-        fields = mapOf(FIELD_POLICY_JSON to LocalPolicyStore(appContext).snapshot().encode()),
+        fields = mapOf(FIELD_POLICY_JSON to AppRegistry.childStores.policy.snapshot().encode()),
     )
 
     /** Parent: asks the child phone for the apps it has installed. */

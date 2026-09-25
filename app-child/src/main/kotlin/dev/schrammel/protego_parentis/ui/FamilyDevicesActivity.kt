@@ -13,21 +13,22 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
+import dev.schrammel.protego_parentis.security.LocalDeviceId
+import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ConsensusKind
 import dev.schrammel.protego_parentis.sync.ConsensusReplication
-import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.core.KnownDevice
-import dev.schrammel.protego_parentis.security.LocalDeviceId
-import dev.schrammel.protego_parentis.sync.appVersionName
-import dev.schrammel.protego_parentis.sync.versionsDiffer
-import dev.schrammel.protego_parentis.sync.core.PendingDevice
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
+import dev.schrammel.protego_parentis.sync.appVersionName
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.Enrolment
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
+import dev.schrammel.protego_parentis.sync.core.PendingDevice
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.toSyncRole
-import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.versionsDiffer
 
 /**
  * Who is in the family, and which phone is which.
@@ -73,7 +74,7 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         super.onCreate(savedInstanceState)
         roster = RosterStore(this)
         config = SyncConfigStore(this)
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
         consensus = ConsensusReplication(this)
         column = contentColumn()
         showColumn(column)

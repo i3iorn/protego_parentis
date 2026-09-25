@@ -2,6 +2,7 @@ package dev.schrammel.protego_parentis.audit
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import dev.schrammel.protego_parentis.audit.AuditSignature.sign
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import javax.crypto.Mac
@@ -32,12 +33,28 @@ import javax.crypto.SecretKey
  */
 object AuditSignature {
 
+    /**
+     * The one initialised [Mac], kept across entries.
+     *
+     * A Keystore-backed HMAC key is reusable: only `init` is expensive (a
+     * KeyStore round-trip), and every [sign] call was paying it — once per
+     * audit entry appended. `Mac.doFinal` resets the instance for reuse, so
+     * a single cached Mac is safe; on any failure it is discarded and the
+     * next call re-inits rather than carrying a broken instance forward.
+     */
+    @Volatile
+    private var mac: Mac? = null
+
     /** The signature for [data], or null if the keystore refuses — see [SecretVault.seal] for why null, not an exception. */
     fun sign(data: String): String? = runCatching {
-        Mac.getInstance(ALGORITHM).apply { init(key()) }
+        val current = synchronized(LOCK) {
+            mac?.takeIf { it.algorithm == ALGORITHM } ?: Mac.getInstance(ALGORITHM)
+                .apply { init(key()) }.also { mac = it }
+        }
+        current
             .doFinal(data.toByteArray(Charsets.UTF_8))
             .joinToString("") { byte -> "%02x".format(byte) }
-    }.getOrNull()
+    }.onFailure { mac = null }.getOrNull()
 
     /** Whether the keystore is usable at all, so a caller can degrade rather than fail. */
     fun isAvailable(): Boolean = runCatching { key() }.isSuccess

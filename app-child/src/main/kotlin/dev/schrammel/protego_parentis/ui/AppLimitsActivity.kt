@@ -20,6 +20,8 @@ import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import dev.schrammel.protego_parentis.ui.rules.appBudgetLimits
 import dev.schrammel.protego_parentis.ui.rules.appBudgetRuleIdFor
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
@@ -27,8 +29,6 @@ import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.ui.rules.RuleScope
-import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -222,7 +222,7 @@ class AppLimitsActivity : ParentGatedActivity() {
             // situation: this writes to the same remotely-synced store, and a
             // parent editing a limit for a child's device deserves to know the
             // change is pending sync rather than already live.
-            if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
+            acknowledgeRuleWrite(store)
             onGatedContentVisible()
         }
     }

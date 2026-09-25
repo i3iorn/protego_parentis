@@ -14,12 +14,7 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
-import dev.schrammel.protego_parentis.rules.AppReviewStore
-import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
-import dev.schrammel.protego_parentis.rules.GrantStore
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.rules.applySnapshot
@@ -94,7 +89,7 @@ internal class ChildCommandHandler(
         // from an answer still in flight.
         val telemetry = TelemetryReplication(appContext)
 
-        if (!FeatureFlags(appContext).isEnabled(Feature.LOCATION)) {
+        if (!AppRegistry.childStores.featureFlags.isEnabled(Feature.LOCATION)) {
             Log.i(TAG, "Asked for a position while locating is switched off")
             telemetry.reportLocate(LocateOutcome.SWITCHED_OFF)
             publisher.publishPendingOps()
@@ -134,7 +129,7 @@ internal class ChildCommandHandler(
         if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
         if (radiusMetres < Place.MINIMUM_RADIUS_METRES) return false
 
-        ContextRuleStore(appContext).upsertPlace(
+        AppRegistry.childStores.contextRules.upsertPlace(
             Place(
                 id = PlaceId(UUID.randomUUID().toString()),
                 name = name,
@@ -168,8 +163,8 @@ internal class ChildCommandHandler(
         val blocked = message.field(FIELD_BLOCKED)?.toBoolean() ?: return false
 
         val label = InstalledApps(appContext).labelFor(PackageName(packageName))
-        LocalPolicyStore(appContext).setBlocked(packageName, blocked)
-        AppReviewStore(appContext).markReviewed(packageName)
+        AppRegistry.childStores.policy.setBlocked(packageName, blocked)
+        AppRegistry.childStores.appReview.markReviewed(packageName)
         Audit.record(
             context = appContext,
             actor = AuditActor.PARENT,
@@ -196,8 +191,8 @@ internal class ChildCommandHandler(
         val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it > 0 } ?: return false
         val target = SyncTargets.decode(message.field(FIELD_TARGET)) ?: return false
 
-        val policy = LocalPolicyStore(appContext).load()
-        GrantStore(appContext).add(
+        val policy = AppRegistry.childStores.policy.load()
+        AppRegistry.childStores.grants.add(
             target = target,
             minutes = minutes,
             now = Instant.now(),
@@ -230,7 +225,7 @@ internal class ChildCommandHandler(
      */
     fun applyPolicyUpdate(message: SyncMessage): Boolean {
         val incoming = PolicySnapshot.decode(message.field(FIELD_POLICY_JSON)) ?: return false
-        val store = LocalPolicyStore(appContext)
+        val store = AppRegistry.childStores.policy
 
         if (store.load().version != incoming.version) {
             Diagnostics.record(appContext, DiagnosticEvent.POLICY_UPDATE_CONFLICT)

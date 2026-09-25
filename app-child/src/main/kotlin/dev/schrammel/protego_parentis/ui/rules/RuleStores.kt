@@ -19,9 +19,9 @@ import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
-import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.PolicyReplication
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
+import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.usage.InstalledApps
 
@@ -39,12 +39,24 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  * to go. Local edits still reach the family — the existing push loop in
  * `SyncReceiver.keepReplicaCurrent` already carries them out.
  */
-interface PolicyRuleStore {
+interface PolicyRuleStore : RuleWriteKind {
     fun read(): PolicySnapshot?
     fun write(snapshot: PolicySnapshot)
 }
 
-class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore {
+/**
+ * Whether writes to a rule store travel over sync instead of landing on this
+ * phone. The five editor screens used to re-branch on `target.isOwnDevice`
+ * just to decide whether to say "save sent remotely" — the store already knows
+ * which kind it is, so it says so here and the screens ask it.
+ */
+interface RuleWriteKind {
+    val writesRemotely: Boolean
+}
+
+
+class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore, RuleWriteKind {
+    override val writesRemotely: Boolean = false
     private val store = LocalPolicyStore(context)
     override fun read(): PolicySnapshot = store.snapshot()
     override fun write(snapshot: PolicySnapshot) {
@@ -53,9 +65,12 @@ class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore {
     }
 }
 
-class RemotePolicyRuleStore(private val context: Context, private val childId: DeviceId) : PolicyRuleStore {
+class RemotePolicyRuleStore(private val context: Context, private val childId: DeviceId) :
+    PolicyRuleStore, RuleWriteKind {
+    override val writesRemotely: Boolean = true
     override fun read(): PolicySnapshot? = PolicyReplication(context).read(childId)
-    override fun write(snapshot: PolicySnapshot) = SyncCoordinator(context).applyPolicyEdit(snapshot, childId)
+    override fun write(snapshot: PolicySnapshot) =
+        SyncGraph.get(context).applyPolicyEdit(snapshot, childId)
 }
 
 fun policyRuleStore(context: Context, target: RuleScope): PolicyRuleStore =
@@ -74,12 +89,14 @@ fun PolicyRuleStore.deleteCategory(id: String) {
     write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == id }))
 }
 
-interface ContextRuleRuleStore {
+interface ContextRuleRuleStore : RuleWriteKind {
     fun read(): List<ContextRule>
     fun write(rules: List<ContextRule>)
 }
 
-class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleStore {
+class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleStore,
+    RuleWriteKind {
+    override val writesRemotely: Boolean = false
     private val store = ContextRuleStore(context)
     override fun read(): List<ContextRule> = store.rules
     override fun write(rules: List<ContextRule>) {
@@ -88,10 +105,12 @@ class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleS
     }
 }
 
-class RemoteContextRuleRuleStore(private val context: Context, private val childId: DeviceId) : ContextRuleRuleStore {
+class RemoteContextRuleRuleStore(private val context: Context, private val childId: DeviceId) :
+    ContextRuleRuleStore, RuleWriteKind {
+    override val writesRemotely: Boolean = true
     override fun read(): List<ContextRule> = PolicyReplication(context).readContextRules(childId)
     override fun write(rules: List<ContextRule>) =
-        SyncCoordinator(context).applyContextRuleEdit(rules, childId)
+        SyncGraph.get(context).applyContextRuleEdit(rules, childId)
 }
 
 fun contextRuleRuleStore(context: Context, target: RuleScope): ContextRuleRuleStore =
@@ -117,23 +136,31 @@ fun ContextRuleRuleStore.delete(id: String) {
  * exactly the gap where every other rule kind had already grown this
  * abstraction and auto-approval had not.
  */
-interface AutoApprovalRuleStore {
+interface AutoApprovalRuleStore : RuleWriteKind {
     fun read(): List<AutoApproval>
     fun write(rules: List<AutoApproval>)
 }
 
-class LocalAutoApprovalRuleStore(private val context: Context) : AutoApprovalRuleStore {
+class LocalAutoApprovalRuleStore(private val context: Context) : AutoApprovalRuleStore,
+    RuleWriteKind {
+    override val writesRemotely: Boolean = false
     private val store = AutoApprovalStore(context)
     override fun read(): List<AutoApproval> = store.rules
     override fun write(rules: List<AutoApproval>) {
         store.rules = rules
+        // The mutation is the trigger: every other local store's write path
+        // re-kicks enforcement, and this one's silence meant an auto-approval
+        // edit re-applied only whenever some other mutation happened to fire.
+        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 
-class RemoteAutoApprovalRuleStore(private val context: Context, private val childId: DeviceId) : AutoApprovalRuleStore {
+class RemoteAutoApprovalRuleStore(private val context: Context, private val childId: DeviceId) :
+    AutoApprovalRuleStore, RuleWriteKind {
+    override val writesRemotely: Boolean = true
     override fun read(): List<AutoApproval> = PolicyReplication(context).readAutoApprovals(childId)
     override fun write(rules: List<AutoApproval>) =
-        SyncCoordinator(context).applyAutoApprovalEdit(rules, childId)
+        SyncGraph.get(context).applyAutoApprovalEdit(rules, childId)
 }
 
 fun autoApprovalRuleStore(context: Context, target: RuleScope): AutoApprovalRuleStore =
@@ -165,14 +192,15 @@ fun AutoApprovalRuleStore.delete(id: String) {
  * rather than writing a coordinate-free ref here that would have nowhere to
  * get a coordinate from.
  */
-interface PlaceRuleStore {
+interface PlaceRuleStore : RuleWriteKind {
     fun read(): List<PlaceRef>
     fun rename(id: PlaceId, name: String)
     fun resize(id: PlaceId, radiusMetres: Int)
     fun delete(id: PlaceId)
 }
 
-class LocalPlaceRuleStore(private val context: Context) : PlaceRuleStore {
+class LocalPlaceRuleStore(private val context: Context) : PlaceRuleStore, RuleWriteKind {
+    override val writesRemotely: Boolean = false
     private val store = ContextRuleStore(context)
     override fun read(): List<PlaceRef> = store.places.map { PlaceRef(it.id, it.name, it.radiusMetres) }
 
@@ -186,19 +214,21 @@ class LocalPlaceRuleStore(private val context: Context) : PlaceRuleStore {
     }
 }
 
-class RemotePlaceRuleStore(private val context: Context, private val childId: DeviceId) : PlaceRuleStore {
+class RemotePlaceRuleStore(private val context: Context, private val childId: DeviceId) :
+    PlaceRuleStore, RuleWriteKind {
+    override val writesRemotely: Boolean = true
     override fun read(): List<PlaceRef> = PolicyReplication(context).readPlaceRefs(childId)
 
     override fun rename(id: PlaceId, name: String) = edit(id) { it.copy(name = name) }
     override fun resize(id: PlaceId, radiusMetres: Int) = edit(id) { it.copy(radiusMetres = radiusMetres) }
     override fun delete(id: PlaceId) {
-        SyncCoordinator(context).applyPlaceRefEdit(read().filterNot { it.id == id }, childId)
+        SyncGraph.get(context).applyPlaceRefEdit(read().filterNot { it.id == id }, childId)
     }
 
     private fun edit(id: PlaceId, change: (PlaceRef) -> PlaceRef) {
         val refs = read()
         val updated = refs.map { if (it.id == id) change(it) else it }
-        SyncCoordinator(context).applyPlaceRefEdit(updated, childId)
+        SyncGraph.get(context).applyPlaceRefEdit(updated, childId)
     }
 }
 
@@ -243,8 +273,21 @@ class LocalAppCatalog(private val context: Context) : AppCatalog {
 }
 
 class RemoteAppCatalog(private val context: Context, private val childId: DeviceId) : AppCatalog {
-    override fun launchable(): List<AppInfo> =
+
+    /**
+     * Read once per catalog instance: [labelFor] used to fall back to the
+     * interface default's `launchable().firstOrNull { ... }`, which is a full
+     * inventory read per package asked about — N labels in a category summary
+     * cost N reads. One read, memoised here, answers all of them.
+     */
+    private val apps: List<AppInfo> by lazy {
         AppInventoryStore(context).apps(childId).map { AppInfo(PackageName(it.packageName), it.label, icon = null) }
+    }
+
+    override fun launchable(): List<AppInfo> = apps
+
+    override fun labelFor(pkg: PackageName): String =
+        apps.firstOrNull { it.pkg == pkg }?.label ?: pkg.value
 }
 
 fun appCatalog(context: Context, target: RuleScope): AppCatalog =

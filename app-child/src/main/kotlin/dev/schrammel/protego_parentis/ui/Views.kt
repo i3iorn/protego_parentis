@@ -18,6 +18,7 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.ui.rules.RuleWriteKind
 
 internal const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
@@ -600,6 +601,17 @@ internal fun Activity.toast(message: String, duration: Int = Toast.LENGTH_SHORT)
 
 internal fun Activity.toast(@StringRes messageRes: Int, duration: Int = Toast.LENGTH_SHORT) =
     toast(getString(messageRes), duration)
+
+/**
+ * The acknowledgement a rule editor gives after writing through a
+ * [dev.schrammel.protego_parentis.ui.rules.RuleWriteKind] store: a local write
+ * is already live and needs no word, a remote one only reaches the child once
+ * sync carries it there. Five screens used to hand-roll this branch; the store
+ * knows which kind it is, so they ask it instead.
+ */
+internal fun Activity.acknowledgeRuleWrite(store: RuleWriteKind) {
+    if (store.writesRemotely) toast(R.string.context_save_sent_remote)
+}
 
 /**
  * Asks before a consequential or irreversible action: title, message, a

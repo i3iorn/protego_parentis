@@ -192,6 +192,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.json)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.work.testing)
 }
 
 /**

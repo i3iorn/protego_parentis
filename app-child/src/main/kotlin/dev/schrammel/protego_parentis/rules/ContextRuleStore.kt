@@ -40,10 +40,20 @@ class ContextRuleStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
+    /**
+     * Decoded across instances and ticks — see [DecodeCache]. `rules` is read
+     * by the enforcement tick through [LocalPolicyStore.load] up to every
+     * fifteen seconds, and this store is constructed per call throughout the
+     * UI, so the cache lives on the raw stored string rather than on anything
+     * instance-scoped.
+     */
+    private val rulesCache = DecodeCache<List<ContextRule>>()
+    private val placesCache = DecodeCache<List<Place>>()
+
     // ---------- rules ----------
 
     var rules: List<ContextRule>
-        get() = decodeRules(prefs.getString(KEY_RULES, null))
+        get() = rulesCache.get(prefs.getString(KEY_RULES, null), ::decodeRules)
         set(value) = prefs.edit { putString(KEY_RULES, encodeRules(value)) }
 
     fun upsert(rule: ContextRule) = synchronized(prefs) {
@@ -57,7 +67,7 @@ class ContextRuleStore(context: Context) {
     // ---------- places ----------
 
     var places: List<Place>
-        get() = decodePlaces(prefs.getString(KEY_PLACES, null))
+        get() = placesCache.get(prefs.getString(KEY_PLACES, null), ::decodePlaces)
         set(value) = prefs.edit { putString(KEY_PLACES, encodePlaces(value)) }
 
     /**

@@ -23,6 +23,15 @@ class RequestStore(context: Context) {
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
     /**
+     * Decoded across instances — see [DecodeCache]. Stores here are constructed
+     * per call site, so the cache keys on the raw stored string; a save from
+     * another instance rewrites it and any other instance's cache misses once.
+     * `all()` runs on the enforcement tick (lapsed-request checks) and on the
+     * UI thread; both used to re-parse the whole list on every call.
+     */
+    private val cache = DecodeCache<List<Request>>()
+
+    /**
      * Everything within the retention horizon, newest first, with lapsed
      * requests already closed.
      *
@@ -62,8 +71,11 @@ class RequestStore(context: Context) {
         prefs.edit { remove(KEY_REQUESTS) }
     }
 
-    private fun read(): List<Request> {
-        val raw = prefs.getString(KEY_REQUESTS, null) ?: return emptyList()
+    private fun read(): List<Request> =
+        cache.get(prefs.getString(KEY_REQUESTS, null), ::decode)
+
+    private fun decode(raw: String?): List<Request> {
+        if (raw == null) return emptyList()
         val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
         return (0 until array.length()).mapNotNull { array.optJSONObject(it)?.let(::fromJson) }
     }

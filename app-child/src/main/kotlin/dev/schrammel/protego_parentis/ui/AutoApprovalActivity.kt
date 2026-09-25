@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -16,12 +15,12 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.AutoApproval
 import dev.schrammel.protego_parentis.model.AutoApprovalWindow
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import dev.schrammel.protego_parentis.ui.rules.autoApprovalRuleStore
 import dev.schrammel.protego_parentis.ui.rules.delete
 import dev.schrammel.protego_parentis.ui.rules.find
 import dev.schrammel.protego_parentis.ui.rules.upsert
-import dev.schrammel.protego_parentis.ui.rules.RuleScope
-import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
@@ -286,7 +285,7 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
         )
         // Same acknowledgement ContextRuleEditActivity gives for the identical
         // situation: this writes to the same remotely-synced store.
-        if (!target.isOwnDevice) toast(getString(R.string.context_save_sent_remote))
+        acknowledgeRuleWrite(autoApprovalRuleStore(this, target))
         finish()
     }
 

@@ -105,7 +105,7 @@ class InboxStore(context: Context) {
         // enforcement tick, so its next poll can be a quarter of an hour away —
         // and an approval that appears to do nothing for fifteen minutes is one
         // nobody trusts the second time.
-        SyncCoordinator(appContext).publishPendingOps()
+        SyncGraph.get(appContext).publishPendingOps()
         return true
     }
 

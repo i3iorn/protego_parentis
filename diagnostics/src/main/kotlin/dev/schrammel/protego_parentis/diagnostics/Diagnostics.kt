@@ -2,6 +2,11 @@ package dev.schrammel.protego_parentis.diagnostics
 
 import android.content.Context
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics.asText
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics.clear
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics.lock
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics.prefs
+import dev.schrammel.protego_parentis.diagnostics.Diagnostics.record
 import java.time.Instant
 
 /**
@@ -166,6 +171,19 @@ object Diagnostics {
     private const val FILE_NAME = "diagnostics"
     private const val KEY_LOG = "log"
 
+    /**
+     * The log, decoded once and kept in memory.
+     *
+     * [record] fires on genuinely hot paths — every publish, every poll, every
+     * tick — and appending used to mean decoding the whole stored log and
+     * re-encoding all of it for one line. The decoded list is cached under
+     * [lock]; only the first read and a [clear] go back to the file. The file
+     * write itself stays as it was (an [android.content.SharedPreferences] edit
+     * of the full encoded log), because that is the cheap half.
+     */
+    private val lock = Any()
+    private var cached: List<DiagnosticEntry>? = null
+
     fun record(
         context: Context,
         event: DiagnosticEvent,
@@ -173,18 +191,31 @@ object Diagnostics {
         at: Instant = Instant.now(),
     ) {
         val prefs = prefs(context)
-        val updated = DiagnosticLogFormat.append(
-            raw = prefs.getString(KEY_LOG, null),
-            entry = DiagnosticEntry(at, event, counts),
-        )
-        prefs.edit { putString(KEY_LOG, updated) }
+        synchronized(lock) {
+            val entries = cached ?: DiagnosticLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
+            cached = (entries + DiagnosticEntry(
+                at,
+                event,
+                counts
+            )).takeLast(DiagnosticLogFormat.MAX_ENTRIES)
+            prefs.edit { putString(KEY_LOG, DiagnosticLogFormat.encodeAll(cached!!)) }
+        }
     }
 
-    internal fun entries(context: Context): List<DiagnosticEntry> =
-        DiagnosticLogFormat.decodeAll(prefs(context).getString(KEY_LOG, null))
+    internal fun entries(context: Context): List<DiagnosticEntry> {
+        val prefs = prefs(context)
+        synchronized(lock) {
+            return cached ?: DiagnosticLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
+                .also { cached = it }
+        }
+    }
 
     fun clear(context: Context) {
-        prefs(context).edit { remove(KEY_LOG) }
+        val prefs = prefs(context)
+        synchronized(lock) {
+            cached = null
+            prefs.edit { remove(KEY_LOG) }
+        }
     }
 
     /**

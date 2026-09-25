@@ -6,13 +6,12 @@ import android.os.Bundle
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.CrashCapture
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.rules.Feature
-import dev.schrammel.protego_parentis.rules.FeatureFlags
-import dev.schrammel.protego_parentis.rules.WebFilterStore
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.appVersionName
 import dev.schrammel.protego_parentis.update.ApkInstaller
 import dev.schrammel.protego_parentis.update.PendingUpdateStore
@@ -60,7 +59,7 @@ class PrivacyActivity : DementorActivity() {
 
         // Whether anything leaves the phone at all depends on configuration, so
         // this section reports the live answer rather than a general claim.
-        val settings = SyncCoordinator(this).settings()
+        val settings = SyncGraph.get(this).settings()
         if (settings.isUsable) {
             claim(
                 R.string.privacy_sent_header,
@@ -78,12 +77,12 @@ class PrivacyActivity : DementorActivity() {
             // Said plainly rather than left implied. Messages are the one thing
             // on this list the child chose to send — but "I typed it" is not the
             // same as "I know where it is kept", and both ends keep a copy.
-            if (FeatureFlags(this).isEnabled(Feature.CHAT)) {
+            if (AppRegistry.childStores.featureFlags.isEnabled(Feature.CHAT)) {
                 claim(R.string.privacy_chat_header, R.string.privacy_chat_body)
             }
             // The most intimate thing that leaves this phone, and it was missing
             // from the one screen whose whole job is to say what leaves it.
-            if (WebFilterStore(this).countVisits) {
+            if (AppRegistry.childStores.webFilter.countVisits) {
                 claim(R.string.privacy_web_header, R.string.privacy_web_body)
             }
         } else {

@@ -225,15 +225,16 @@ class RequestCoordinator(
         val expired = requests.all(now).filter { it.state == RequestState.EXPIRED }
         if (expired.isEmpty()) return
 
-        val announced = ExpiredRequestLog(appContext)
-        val newlyLapsed = expired.filterNot { announced.contains(it.id) }
+        val announcedLog = ExpiredRequestLog(appContext)
+        val announced = announcedLog.announcedIds()
+        val newlyLapsed = expired.filterNot { it.id.value in announced }
         if (newlyLapsed.isEmpty()) return
 
         newlyLapsed.forEach { request ->
             record(AuditActor.SYSTEM, AuditAction.REQUEST_EXPIRED, request)
             notifier.notifyExpired(request)
         }
-        announced.markAnnounced(newlyLapsed.map { it.id })
+        announcedLog.markAnnounced(newlyLapsed.map { it.id })
     }
 
     /**

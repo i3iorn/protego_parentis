@@ -10,6 +10,7 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 
 /**
  * Sending extra time from a parent's phone (ST-4).
@@ -27,7 +28,7 @@ class ParentBonusActivity : ParentRoleActivity() {
     private lateinit var sync: SyncCoordinator
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
 
         val column = contentColumn()
         column.addView(screenTitle(getString(R.string.parent_bonus_title)))

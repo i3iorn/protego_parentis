@@ -13,12 +13,12 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
-import dev.schrammel.protego_parentis.ui.rules.appCatalog
-import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.appCatalog
+import dev.schrammel.protego_parentis.usage.AppInfo
 
 /**
  * Multi-select list of installed apps.
@@ -119,7 +119,7 @@ class AppPickerActivity : ParentGatedActivity() {
             actionButton().apply {
                 setText(R.string.app_picker_request_list)
                 setOnClickListener {
-                    SyncCoordinator(this@AppPickerActivity).publishAppInventoryRequest()
+                    SyncGraph.get(this@AppPickerActivity).publishAppInventoryRequest()
                     toast(getString(R.string.app_picker_request_list_sent))
                     pollForFreshInventory()
                 }

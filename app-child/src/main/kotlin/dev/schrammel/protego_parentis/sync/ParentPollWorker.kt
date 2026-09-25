@@ -46,7 +46,7 @@ class ParentPollWorker(
         val context = applicationContext
         if (RoleStore(context).roleOrChild != DeviceRole.PARENT) return Result.success()
 
-        val sync = SyncCoordinator(context)
+        val sync = SyncGraph.get(context)
         if (!sync.settings().isUsable) return Result.success()
 
         // Idempotent, and the cheapest re-arm available for a stream the OS

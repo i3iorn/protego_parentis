@@ -17,33 +17,18 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.context.PlaceWatcher
 import dev.schrammel.protego_parentis.diagnostics.CrashCapture
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
-import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.model.AuditAction
-import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.model.BudgetLevel
-import dev.schrammel.protego_parentis.model.Heartbeat
-import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.rules.AppReviewStore
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
-import dev.schrammel.protego_parentis.rules.RequestCoordinator
+import dev.schrammel.protego_parentis.rules.SosStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.usage.InstalledApps
-import dev.schrammel.protego_parentis.context.BatteryReader
-import dev.schrammel.protego_parentis.context.ContextProvider
-import dev.schrammel.protego_parentis.context.LocationSharing
-import dev.schrammel.protego_parentis.context.PlaceWatcher
-import dev.schrammel.protego_parentis.rules.ContextRuleStore
-import dev.schrammel.protego_parentis.rules.SosStore
-import dev.schrammel.protego_parentis.rules.WebActivityStore
-import dev.schrammel.protego_parentis.rules.WebFilterStore
-import dev.schrammel.protego_parentis.sync.AppTime
-import java.time.LocalDate
-import dev.schrammel.protego_parentis.format.formatDuration
 import java.time.Instant
+import java.util.concurrent.Executors
 
 /**
  * Keeps enforcement alive and re-evaluates on a tick.
@@ -67,6 +52,14 @@ class EnforcementService : Service() {
      */
     private val worker = HandlerThread("dementor-enforcement").apply { start() }
     private val handler = Handler(worker.looper)
+
+    /**
+     * Publishes SOS positions off the tick thread — see [repeatEmergency].
+     * Single-threaded so fixes are sent in the order they were asked for.
+     */
+    private val locator = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dementor-locate").apply { isDaemon = true }
+    }
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var warnings: WarningNotifier
     private lateinit var goals: GoalCoordinator
@@ -107,7 +100,14 @@ class EnforcementService : Service() {
             // as a new install would flag half the phone after a Play Store sweep.
             if (intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true) return
             handler.post {
-                runCatching { sweepForNewApps() }
+                // Only the broadcast needs the cache dropped: it is the one path
+                // woken by an install this process has not seen. The tick's own
+                // sweep must not invalidate — paying a cold PackageManager walk
+                // every evaluation is exactly what the cache exists to avoid,
+                // and the cache's own PACKAGE_ADDED/REMOVED receiver already
+                // keeps it fresh between sweeps.
+                InstalledApps.invalidate()
+                runCatching { tickWork.sweepForNewApps() }
                     .onFailure { Log.w(TAG, "Could not check for new apps", it) }
             }
         }
@@ -134,7 +134,7 @@ class EnforcementService : Service() {
             // enforcement permanently, with the notification still claiming the
             // rules are active. Always reschedule, whatever happened.
             val nextIn = try {
-                evaluate()
+                tickWork.run(Instant.now())
             } catch (e: Exception) {
                 Log.e(TAG, "Evaluation failed; retrying", e)
                 Diagnostics.record(this@EnforcementService, DiagnosticEvent.EVALUATION_FAILED)
@@ -166,10 +166,16 @@ class EnforcementService : Service() {
      */
     internal var coordinatorFactory: (Context) -> EnforcementCoordinator = { EnforcementCoordinator(it) }
 
+    /**
+     * The tick's behaviours, built once here against the same collaborators the
+     * receivers use — see [TickWork] for what moved and why.
+     */
+    private lateinit var tickWork: TickWork
+
     override fun onCreate() {
         super.onCreate()
         coordinator = coordinatorFactory(this)
-        review = AppReviewStore(this)
+        review = AppRegistry.childStores.appReview
         installedApps = InstalledApps(this)
         requestNotifier = RequestNotifier(this)
         warnings = WarningNotifier(this)
@@ -179,8 +185,21 @@ class EnforcementService : Service() {
         // limit change or a lock command lands as soon as it is published rather
         // than on the next enforcement tick. Idempotent if already running.
         AppRegistry.realtimeSync.connectRealtime()
-        sos = SosStore(this)
+        sos = AppRegistry.childStores.sos
         places = PlaceWatcher(this)
+        tickWork = TickWork(
+            context = this,
+            coordinator = coordinator,
+            sync = AppRegistry.realtimeSync,
+            warnings = warnings,
+            review = review,
+            installedApps = installedApps,
+            requestNotifier = requestNotifier,
+            sos = sos,
+            places = places,
+            locator = locator,
+            onNotification = ::updateNotification,
+        )
         createNotificationChannel()
         ContextCompat.registerReceiver(
             this,
@@ -245,206 +264,11 @@ class EnforcementService : Service() {
         Diagnostics.record(this, DiagnosticEvent.SERVICE_STOPPED)
         handler.removeCallbacks(tick)
         worker.quitSafely()
+        locator.shutdownNow()
         runCatching { unregisterReceiver(onUnlocked) }
         runCatching { unregisterReceiver(onPackagesChanged) }
         runCatching { unregisterReceiver(onShutdown) }
         super.onDestroy()
-    }
-
-    /** Evaluates once and returns how long to wait before doing it again. */
-    private fun evaluate(): Long {
-        val now = Instant.now()
-        val snapshot = coordinator.evaluate(now)
-        if (snapshot == null) {
-            updateNotification(getString(R.string.service_needs_permission))
-            Diagnostics.record(this, DiagnosticEvent.USAGE_ACCESS_MISSING)
-            // Still say hello. Without this, revoked usage access is indistinguishable
-            // from a phone that has been switched off — and the two want very
-            // different responses from a parent.
-            runCatching {
-                val (head, count) = Audit.witness(this)
-                AppRegistry.realtimeSync.publishHeartbeat(
-                    Heartbeat(
-                        sentAt = now,
-                        policyVersion = 0L,
-                        batteryPercent = batteryPercent(),
-                        managed = coordinator.isDeviceOwner(),
-                        usageAccessGranted = false,
-                        suspendedCount = 0,
-                        historyHead = head,
-                        historyCount = count,
-                    ),
-                )
-            }.onFailure { Log.w(TAG, "Could not send heartbeat", it) }
-            AppRegistry.realtimeSync.pollNow()
-            return MAX_INTERVAL_MILLIS
-        }
-
-        warnings.onEvaluated(snapshot.enforcement.deviceBudget, snapshot.usage.snapshot.policyDay)
-        updateNotification(summarise(snapshot))
-
-        // Counts only: enough to see that a day is being measured and how much is
-        // being enforced, without recording which apps or when they were used.
-        Diagnostics.record(
-            this,
-            DiagnosticEvent.EVALUATED,
-            mapOf(
-                "usedMinutes" to snapshot.usage.snapshot.deviceTotal.inWholeMinutes,
-                "appsWithTime" to snapshot.usage.snapshot.byPackage.size.toLong(),
-                "wouldSuspend" to snapshot.enforcement.suspend.size.toLong(),
-                "level" to snapshot.enforcement.deviceBudget.level.ordinal.toLong(),
-                "managed" to if (snapshot.monitorOnly) 0L else 1L,
-            ),
-        )
-
-        Log.d(
-            TAG,
-            "used=${snapshot.usage.snapshot.deviceTotal} " +
-                "level=${snapshot.enforcement.deviceBudget.level} " +
-                "wouldSuspend=${snapshot.enforcement.suspend.size} " +
-                "monitorOnly=${snapshot.monitorOnly}",
-        )
-
-        // The broadcast is the fast path; this catches anything installed while
-        // the service was not running, which on a rebooting phone is a real window.
-        runCatching { sweepForNewApps() }
-            .onFailure { Log.w(TAG, "Could not check for new apps", it) }
-
-        // Nothing else calls this: a request expiring is not an event with a
-        // moment of its own to hook (see RequestCoordinator.notifyLapsedRequests),
-        // only something a periodic check can notice — this tick is that check.
-        runCatching { RequestCoordinator(this).notifyLapsedRequests(now) }
-            .onFailure { Log.w(TAG, "Could not check for lapsed requests", it) }
-
-        // Throttled inside the coordinator: this tick can fire every fifteen
-        // seconds when a limit is close, and a heartbeat that often is a battery bug.
-        val saidHello = runCatching { AppRegistry.realtimeSync.publishHeartbeat(heartbeatOf(snapshot, now)) }
-            .onFailure { Log.w(TAG, "Could not send heartbeat", it) }
-            .isSuccess
-
-        // Rides the heartbeat's throttle: the two answer the same question from a
-        // parent, and there is no sense in one being fresh while the other is a
-        // quarter of an hour stale.
-        if (saidHello) {
-            runCatching { publishToday(snapshot) }
-                .onFailure { Log.w(TAG, "Could not send today's summary", it) }
-        }
-
-        // An emergency repeats until it is ended, so a parent who missed the
-        // first one still finds out. Runs before the poll, so the position is on
-        // its way in the same pass that noticed the emergency is still running.
-        runCatching { repeatEmergency(now) }
-            .onFailure { Log.w(TAG, "Could not repeat the emergency", it) }
-
-        runCatching { announceArrivals() }
-            .onFailure { Log.w(TAG, "Could not check saved places", it) }
-
-        runCatching { publishBrowsing(snapshot.usage.snapshot.policyDay) }
-            .onFailure { Log.w(TAG, "Could not send the browsing summary", it) }
-
-        // Introduces this phone to any parent that has not enrolled it yet.
-        // Throttled inside the coordinator to once an hour.
-        runCatching { AppRegistry.realtimeSync.announceSelf() }
-            .onFailure { Log.w(TAG, "Could not announce this device", it) }
-
-        // Piggybacks on the same tick rather than holding a connection open.
-        // Failures are reported through the callback and never reach here.
-        AppRegistry.realtimeSync.pollNow()
-
-        return delayUntil(snapshot.enforcement.nextChangeAt, now)
-    }
-
-    /**
-     * Notices apps that were not on the phone last time we looked (AC-3).
-     *
-     * The very first sweep seeds instead of reporting — see [AppReviewStore]. Runs
-     * on the worker thread; walking the package list is slow.
-     */
-    private fun sweepForNewApps() {
-        // Not redundant with the cache's own receiver: the two are separate
-        // broadcasts with no ordering guarantee between them, and reading a stale
-        // list here would miss the app this sweep was woken for.
-        InstalledApps.invalidate()
-        // A browser that has just been reinstalled may have lost its managed
-        // configuration, and the desired configuration has not changed, so the
-        // reconciler has to be told to push it again rather than diff it away.
-        coordinator.forgetAppliedRestrictions()
-
-        val installedPackages = installedApps.launchable().map { it.pkg.value }.toSet()
-        val fresh = review.noticeInstalled(installedPackages)
-        fresh.forEach { pkg -> requestNotifier.notifyNewAppLocally(installedApps.labelFor(PackageName(pkg))) }
-
-        // An uninstall never reaches noticeInstalled — it only ever compares
-        // what is newly present — so a pending app that disappeared before a
-        // parent answered would otherwise sit forever, and now be repeated by
-        // the retry below on every tick.
-        (review.pending - installedPackages).forEach(review::forgetPending)
-
-        // Announces every app still waiting on a parent's decision, not only
-        // what is fresh this sweep. AppRegistry.realtimeSync.publishAppInstalled
-        // is a single, non-durable publish (see SyncPublisher.publish) with no
-        // queue behind it, so a phone that was offline or mid-handshake the one
-        // time an app was noticed would otherwise never tell a parent about it
-        // again — review.pending only clears once a parent actually answers, so
-        // this keeps retrying until one does. NewAppStore.remember on the
-        // receiving end already ignores a package it is already holding, so
-        // repeating this once the first attempt did land costs nothing.
-        review.pending.forEach { pkg ->
-            AppRegistry.realtimeSync.publishAppInstalled(pkg, installedApps.labelFor(PackageName(pkg)))
-        }
-    }
-
-    /**
-     * What the child device tells its parents about itself (TR-2).
-     *
-     * Facts about the app and the phone, never about what was used. The one field
-     * that comes close is the count of suspended apps, which says how much is being
-     * enforced without saying what.
-     */
-    private fun heartbeatOf(snapshot: EnforcementSnapshot, now: Instant): Heartbeat {
-        val (head, count) = Audit.witness(this)
-        return Heartbeat(
-            sentAt = now,
-            policyVersion = snapshot.policy.version,
-            batteryPercent = batteryPercent(),
-            managed = !snapshot.monitorOnly,
-            // Unconditionally true: a snapshot only exists when usage access is
-            // granted. The other branch of evaluate() sends the false case.
-            usageAccessGranted = true,
-            suspendedCount = snapshot.enforcement.suspend.size,
-            historyHead = head,
-            historyCount = count,
-        )
-    }
-
-    /**
-     * Today's totals, for the parent's one-glance view (RPT-1).
-     *
-     * A summary, not a log: totals, and the handful of apps that account for most
-     * of them. No times, no sessions, nothing about *when*. The child sees the
-     * identical figures on their own dashboard, and the privacy screen names this
-     * message so nobody has to guess what leaves the phone.
-     */
-    private fun publishToday(snapshot: EnforcementSnapshot) {
-        val budget = snapshot.enforcement.deviceBudget
-        val top = snapshot.usage.snapshot.byPackage
-            .entries
-            .sortedByDescending { it.value }
-            .take(resources.getInteger(R.integer.week_top_apps))
-            .filter { it.value.inWholeMinutes > 0 }
-            .map { (pkg, time) ->
-                AppTime(installedApps.labelFor(pkg), time.inWholeMinutes.toInt())
-            }
-
-        AppRegistry.realtimeSync.publishDailySummary(
-            usedMinutes = budget.used.inWholeMinutes.toInt(),
-            // Infinite means no limit; zero is how that travels.
-            allowedMinutes = if (budget.isUnlimited) 0 else budget.allowed.inWholeMinutes.toInt(),
-            bonusMinutes = budget.bonus.inWholeMinutes.toInt(),
-            remainingMinutes = budget.remaining.inWholeMinutes.toInt(),
-            level = budget.level.ordinal,
-            topApps = top,
-        )
     }
 
     /**
@@ -462,113 +286,6 @@ class EnforcementService : Service() {
                 // saying, because a parent has just been told it locked.
                 Log.w(TAG, "Locked a phone with no lock screen set")
             }
-        }
-    }
-
-    /**
-     * Keeps telling the parents while an emergency is running (LOC-3).
-     *
-     * Every minute, with a fresh position each time. A single message that arrived
-     * while a phone was in a pocket would be the whole feature failing quietly.
-     */
-    private fun repeatEmergency(now: Instant) {
-        if (!sos.isActive) return
-
-        val last = sos.lastSentAt
-        val due = last == null ||
-            now.toEpochMilli() - last.toEpochMilli() >= SOS_REPEAT_MILLIS ||
-            now.isBefore(last)
-        if (!due) return
-
-        sos.lastSentAt = now
-        AppRegistry.realtimeSync.publishSosRaised()
-        LocationSharing(this).locate()?.let { position ->
-            AppRegistry.realtimeSync.publishLocation(position, forEmergency = true)
-        }
-    }
-
-    /**
-     * Tells the parents about arrivals at saved places (LOC-1).
-     *
-     * The name of the place and nothing else. Where the phone actually is stays
-     * something a parent has to ask for, visibly, one answer at a time.
-     */
-    private fun announceArrivals() {
-        val rules = ContextRuleStore(this)
-        if (!rules.announceArrivals) return
-
-        val saved = rules.places
-        if (saved.isEmpty()) return
-
-        val inside = ContextProvider(this).current(saved).insidePlaces
-        places.transitions(saved, inside).forEach { transition ->
-            Audit.record(
-                context = this,
-                actor = AuditActor.SYSTEM,
-                action = if (transition.arrived) {
-                    AuditAction.PLACE_ENTERED
-                } else {
-                    AuditAction.PLACE_LEFT
-                },
-                subject = transition.place.name,
-            )
-            AppRegistry.realtimeSync.publishPlaceTransition(transition)
-        }
-    }
-
-    /**
-     * Today's domains, counted, on the same throttle as the heartbeat (WF-3).
-     *
-     * [today] is the policy day the tick just evaluated, not [LocalDate.now] —
-     * a family with a day-boundary hour set (a budget day that runs, say,
-     * 4am-to-4am) must see this summary reset in step with the budget it is
-     * reported alongside, not at real midnight.
-     */
-    private fun publishBrowsing(today: LocalDate) {
-        if (!WebFilterStore(this).countVisits) return
-
-        val store = WebActivityStore(this)
-        val visits = store.visits(today)
-        if (visits.isEmpty()) return
-
-        AppRegistry.realtimeSync.publishWebSummary(
-            domains = visits.map { it.domain to it.count },
-            blocked = store.blockedAttempts(today),
-        )
-    }
-
-    /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
-    private fun batteryPercent(): Int = BatteryReader.percent(this) ?: -1
-
-    /**
-     * Sleeps until the engine says the decision would change, within bounds.
-     *
-     * The engine already computes the exact moment a limit bites or a warning is
-     * due, so there is no reason to wake every minute. With the screen off and
-     * nothing running, the next change is usually the 4am reset and we idle at the
-     * maximum interval instead of burning battery on 300 pointless evaluations.
-     *
-     * Exact alarms would be the theoretical ideal, but `SCHEDULE_EXACT_ALARM` is a
-     * restricted permission that Play grants to alarm-clock apps, and a minute of
-     * slack on a screen-time warning does not justify that fight.
-     */
-    private fun delayUntil(nextChange: Instant?, now: Instant): Long {
-        if (nextChange == null) return MAX_INTERVAL_MILLIS
-        val millis = nextChange.toEpochMilli() - now.toEpochMilli()
-        return millis.coerceIn(MIN_INTERVAL_MILLIS, MAX_INTERVAL_MILLIS)
-    }
-
-    private fun summarise(snapshot: EnforcementSnapshot): String {
-        val budget = snapshot.enforcement.deviceBudget
-        return when {
-            budget.isUnlimited ->
-                getString(R.string.service_no_limit, formatDuration(budget.used))
-
-            budget.level == BudgetLevel.EXHAUSTED ->
-                getString(R.string.service_used_up)
-
-            else ->
-                getString(R.string.service_remaining, formatDuration(budget.remaining))
         }
     }
 
@@ -603,17 +320,23 @@ class EnforcementService : Service() {
         private const val TAG = "DementorService"
         private const val CHANNEL_ID = "enforcement"
         private const val NOTIFICATION_ID = 1
-        /** Never re-evaluate more often than this, however close the next change is. */
-        private const val MIN_INTERVAL_MILLIS = 15_000L
 
-        /** Never sleep longer than this, so drift and missed events self-correct. */
-        private const val MAX_INTERVAL_MILLIS = 1 * 60_000L
+        /**
+         * Never sleep longer than this, so drift and missed events self-correct.
+         *
+         * Five minutes, not one: idling at the maximum interval rather than
+         * burning battery on pointless evaluations was always the promise; at
+         * 60 s it was worth little — a full evaluation pipeline (usage replay,
+         * policy read, heartbeat, poll) every minute, day and night. Anything
+         * that genuinely arrives as an event (a lock command, a rule push, an
+         * install) rides the realtime stream or a broadcast and does not wait
+         * for the tick; five minutes of slack only affects the cadence of the
+         * periodic sweep and the notification refresh.
+         */
+        internal const val MAX_INTERVAL_MILLIS = 5 * 60_000L
 
         /** Backs off briefly after a failure rather than hammering a broken call. */
         private const val RETRY_INTERVAL_MILLIS = 30_000L
-
-        /** How often an unresolved emergency repeats itself to the parents. */
-        private const val SOS_REPEAT_MILLIS = 30_000L
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, EnforcementService::class.java))

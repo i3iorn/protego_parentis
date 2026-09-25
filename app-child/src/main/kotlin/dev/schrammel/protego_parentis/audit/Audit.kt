@@ -2,6 +2,12 @@ package dev.schrammel.protego_parentis.audit
 
 import android.content.Context
 import androidx.core.content.edit
+import dev.schrammel.protego_parentis.audit.Audit.check
+import dev.schrammel.protego_parentis.audit.Audit.checkFamily
+import dev.schrammel.protego_parentis.audit.Audit.entries
+import dev.schrammel.protego_parentis.audit.Audit.record
+import dev.schrammel.protego_parentis.audit.Audit.witness
+import dev.schrammel.protego_parentis.audit.Audit.worker
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.AuditChain
@@ -95,6 +101,9 @@ object Audit {
             prefs.edit(commit = true) {
                 putString(KEY_LOG, appended.log)
                 putString(KEY_ANCHOR, appended.anchor)
+                // The head hash, kept separately so a heartbeat's witness() does
+                // not have to decode the whole log to read the last hash.
+                putString(KEY_HEAD, appended.entry.hash)
                 // Only ever incremented. Sent to the parents so a history that has
                 // been rebuilt rather than appended to shows up as a count that
                 // went backwards — which is the one thing a local chain cannot
@@ -319,9 +328,12 @@ object Audit {
      */
     fun witness(context: Context): Pair<String, Long> {
         val prefs = prefs(context)
-        val head = AuditLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
-            .lastOrNull()
-            ?.hash
+        // The head hash is persisted by record() — reading it here used to mean
+        // decoding the entire stored log on every heartbeat.
+        val head = prefs.getString(KEY_HEAD, null)
+            ?: AuditLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
+                .lastOrNull()
+                ?.hash
             ?: prefs.getString(KEY_ANCHOR, null)
             ?: AuditChain.GENESIS
         return head to prefs.getLong(KEY_TOTAL, 0L)
@@ -344,6 +356,9 @@ object Audit {
      * stops an ordinary trim looking exactly like a deleted first page.
      */
     private const val KEY_ANCHOR = "anchor"
+
+    /** The head hash, persisted so [witness] needs no full-log decode. */
+    private const val KEY_HEAD = "head"
 
     /** Entries ever written, as opposed to entries still stored. */
     private const val KEY_TOTAL = "total"

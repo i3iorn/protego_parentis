@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.GrantTarget
@@ -17,7 +18,7 @@ import dev.schrammel.protego_parentis.policy.request.SubmitDecision
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.rules.TargetLabels
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.usage.InstalledApps
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -44,8 +45,8 @@ class RequestsActivity : DementorActivity() {
         super.onCreate(savedInstanceState)
         // Publishing is fire-and-forget and off the main thread; an offline phone
         // simply keeps the request local until the next poll drains it.
-        val sync = SyncCoordinator(this)
-        policyStore = LocalPolicyStore(this)
+        val sync = SyncGraph.get(this)
+        policyStore = AppRegistry.childStores.policy
         installedApps = InstalledApps(this)
         coordinator = RequestCoordinator(
             context = this,

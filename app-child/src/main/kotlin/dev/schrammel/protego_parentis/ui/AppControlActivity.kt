@@ -13,6 +13,7 @@ import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
@@ -23,9 +24,11 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.rules.AppReviewStore
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.PolicySnapshot
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.DeviceId
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.ui.rules.RuleScope
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import dev.schrammel.protego_parentis.ui.rules.appCatalog
 import dev.schrammel.protego_parentis.ui.rules.blockRuleIdFor
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
@@ -34,8 +37,6 @@ import dev.schrammel.protego_parentis.ui.rules.isAppBlocked
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.usage.AppInfo
-import dev.schrammel.protego_parentis.ui.rules.RuleScope
-import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 
 /**
  * Which apps are allowed on [target]'s phone, and what is new (AC-2, AC-3),
@@ -113,7 +114,7 @@ class AppControlActivity : ParentGatedActivity() {
                 actionButton().apply {
                     setText(R.string.apps_request_list_update)
                     setOnClickListener {
-                        SyncCoordinator(this@AppControlActivity).publishAppInventoryRequest()
+                        SyncGraph.get(this@AppControlActivity).publishAppInventoryRequest()
                         toast(getString(R.string.apps_request_list_update_sent))
                         pollForFreshInventory()
                     }
@@ -134,15 +135,21 @@ class AppControlActivity : ParentGatedActivity() {
     private fun reloadCatalog() {
         Background.load(this, {
             val apps = appCatalog(this, target).launchable()
+            // The per-row state, read here where the rest of the disk work lives —
+            // renderRows used to read it once per row instead (see [rowState]).
+            val snapshot = policyRuleStore(this, target).read()
+            val rules = contextRuleRuleStore(this, target).read()
             if (target.isOwnDevice) {
-                val pending = AppReviewStore(this).pending
-                apps.partition { it.pkg.value in pending }
+                val pending = AppRegistry.childStores.appReview.pending
+                (apps.partition { it.pkg.value in pending }) to RowState(snapshot, rules)
             } else {
-                emptyList<AppInfo>() to apps
+                (emptyList<AppInfo>() to apps) to RowState(snapshot, rules)
             }
-        }) { (pending, rest) ->
+        }) { (pair, state) ->
+            val (pending, rest) = pair
             fresh = pending
             known = rest
+            rowState = state
             renderRows()
         }
     }
@@ -185,9 +192,20 @@ class AppControlActivity : ParentGatedActivity() {
             // matched nothing, and needs a different answer from the reader.
             known.isEmpty() -> rows.addView(bodyText(getString(R.string.apps_none)))
             knownMatches.isEmpty() -> rows.addView(noSearchResults())
-            else -> rows.addView(group(knownMatches.map(::knownAppRow)))
+            else -> rows.addView(group(knownMatches.map { app -> knownAppRow(app, rowState) }))
         }
     }
+
+    /**
+     * The rules state every row needs, read once per render rather than once
+     * per row — `knownAppRow` used to decode the full rules JSON and policy
+     * snapshot for every app in the list, O(rows) store reads on the main
+     * thread per keystroke. Loaded with the catalog in [reloadCatalog]; a row
+     * that finds nothing here falls back to reading (and repopulates it).
+     */
+    private var rowState: RowState = RowState(null, emptyList())
+
+    private data class RowState(val snapshot: PolicySnapshot?, val rules: List<ContextRule>)
 
     /** A new arrival: name, icon, and the two answers. Only ever shown on the managed phone itself. */
     private fun newAppRow(app: AppInfo): LinearLayout = LinearLayout(this).apply {
@@ -229,14 +247,18 @@ class AppControlActivity : ParentGatedActivity() {
      * the harsher and rarer option, and offering it on the same row invites a tap
      * from someone who has not read the difference.
      */
-    private fun knownAppRow(app: AppInfo): LinearLayout = LinearLayout(this).apply {
+    private fun knownAppRow(app: AppInfo, state: RowState): LinearLayout =
+        LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
 
-        val snapshot = policyRuleStore(this@AppControlActivity, target).read()
-        val rules = contextRuleRuleStore(this@AppControlActivity, target).read()
+            // Normally handed in with the catalog load (see [rowState]); read here
+            // only when a row renders before that load has landed.
+            val snapshot = state.snapshot ?: policyRuleStore(this@AppControlActivity, target).read()
+            val rules =
+                state.rules.ifEmpty { contextRuleRuleStore(this@AppControlActivity, target).read() }
 
         val blockedNow = isBlocked(app.pkg, rules)
         val identityRow = identity(app, weighted = true, blocked = blockedNow)
@@ -266,6 +288,7 @@ class AppControlActivity : ParentGatedActivity() {
                         current.networkBlockedPackages - app.pkg.value
                     }
                     store.write(current.copy(networkBlockedPackages = updated))
+                    rowState = RowState(null, emptyList())
                     Audit.record(
                         context = this@AppControlActivity,
                         actor = AuditActor.PARENT,
@@ -355,6 +378,9 @@ class AppControlActivity : ParentGatedActivity() {
         } else {
             store.delete(id)
         }
+        // The rules just changed; the cached row state is now stale. Drop it so
+        // the next render reads fresh rather than painting the old answer.
+        rowState = RowState(null, emptyList())
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
@@ -366,7 +392,7 @@ class AppControlActivity : ParentGatedActivity() {
         if (wasNew) {
             // Only reachable when target.isOwnDevice — see this class's own doc
             // comment — so review/publishAppDecision are always this device's own.
-            AppReviewStore(this).markReviewed(app.pkg.value)
+            AppRegistry.childStores.appReview.markReviewed(app.pkg.value)
             Audit.record(
                 context = this,
                 actor = AuditActor.PARENT,
@@ -375,12 +401,12 @@ class AppControlActivity : ParentGatedActivity() {
             )
             // Tell the parent phones, so the same app does not sit in their list
             // waiting for an answer that has already been given here.
-            SyncCoordinator(this).publishAppDecision(app.pkg.value, blocked)
+            SyncGraph.get(this).publishAppDecision(app.pkg.value, blocked)
             render()
-        } else if (!target.isOwnDevice) {
+        } else {
             // Same acknowledgement ContextRuleEditActivity gives for the identical
             // situation: this writes to the same remotely-synced store.
-            toast(getString(R.string.context_save_sent_remote))
+            acknowledgeRuleWrite(contextRuleRuleStore(this, target))
         }
     }
 

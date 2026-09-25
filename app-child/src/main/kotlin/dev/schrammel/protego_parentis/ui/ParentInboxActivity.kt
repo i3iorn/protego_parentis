@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
@@ -11,9 +10,10 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.RequestState
-import dev.schrammel.protego_parentis.sync.IncomingRequest
 import dev.schrammel.protego_parentis.sync.InboxStore
+import dev.schrammel.protego_parentis.sync.IncomingRequest
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import java.time.Instant
 
 /**
@@ -37,7 +37,7 @@ class ParentInboxActivity : ParentRoleActivity() {
 
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
-        sync = SyncCoordinator(this)
+        sync = SyncGraph.get(this)
         inbox = InboxStore(this)
 
         column = contentColumn()

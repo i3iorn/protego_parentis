@@ -1,10 +1,16 @@
 package dev.schrammel.protego_parentis
 
 import android.content.Context
+import dev.schrammel.protego_parentis.AppRegistry.install
+import dev.schrammel.protego_parentis.AppRegistry.notificationUx
+import dev.schrammel.protego_parentis.AppRegistry.realtimeSync
+import dev.schrammel.protego_parentis.AppRegistry.restartLauncher
+import dev.schrammel.protego_parentis.AppRegistry.ruleMutationSink
 import dev.schrammel.protego_parentis.diagnostics.RestartLauncher
 import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.enforcement.NotificationUx
 import dev.schrammel.protego_parentis.enforcement.RealtimeSync
+import dev.schrammel.protego_parentis.rules.ChildStores
 import dev.schrammel.protego_parentis.sync.RealtimeSyncAdapter
 import dev.schrammel.protego_parentis.sync.core.RuleMutationSink
 import dev.schrammel.protego_parentis.ui.RealNotificationUx
@@ -37,8 +43,29 @@ object AppRegistry {
     lateinit var restartLauncher: RestartLauncher
         private set
 
+    /**
+     * The process-wide store instances — see [ChildStores]. Available from the
+     * first access after [install]; the container is lazy, so nothing is built
+     * that no screen or service ever asks for.
+     */
+    @Volatile
+    private var childStoresInstance: ChildStores? = null
+
+    val childStores: ChildStores
+        get() = childStoresInstance ?: synchronized(this) {
+            childStoresInstance
+                ?: ChildStores(checkNotNull(appContext)).also { childStoresInstance = it }
+        }
+
+    private var appContext: Context? = null
+
     fun install(context: Context) {
         val appContext = context.applicationContext
+        this.appContext = appContext
+        // A fresh install means a fresh application object; the store container
+        // must follow (Robolectric gives every test a new one, and a container
+        // cached across tests would serve one test's storage to the next).
+        childStoresInstance = null
         ruleMutationSink = RuleMutationSink { EnforcementService.start(appContext) }
         notificationUx = RealNotificationUx(appContext)
         realtimeSync = RealtimeSyncAdapter(appContext)

@@ -5,12 +5,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.sync.RemoteDiagnosticsStore
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 
 /**
@@ -52,49 +53,60 @@ class RemoteDiagnosticsActivity : ParentGatedActivity() {
             actionButton().apply {
                 setText(R.string.remote_diagnostics_request)
                 setOnClickListener {
-                    SyncCoordinator(this@RemoteDiagnosticsActivity).publishDiagnosticsRequest()
+                    SyncGraph.get(this@RemoteDiagnosticsActivity).publishDiagnosticsRequest()
                     toast(getString(R.string.remote_diagnostics_requested))
                     pollForFreshLog()
                 }
             },
         )
 
-        val raw = RemoteDiagnosticsStore(this).log(childId)
-        if (raw.isNullOrEmpty()) {
-            column.addView(bodyText(getString(R.string.remote_diagnostics_empty)))
-            return
-        }
-
-        val text = Diagnostics.asText(
-            raw = raw,
-            header = getString(R.string.diagnostics_header),
-            empty = getString(R.string.diagnostics_empty),
-        )
-        column.addView(
-            card {
-                addView(
-                    TextView(this@RemoteDiagnosticsActivity).apply {
-                        this.text = text
-                        typeface = android.graphics.Typeface.MONOSPACE
-                        setTextIsSelectable(true)
-                        styleAs(R.style.TextAppearance_Dementor_Caption)
-                    },
-                )
-            },
-        )
-        column.addView(
-            actionButton().apply {
-                setText(R.string.diagnostics_share)
-                setOnClickListener {
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, text)
-                    }
-                    startActivity(Intent.createChooser(send, getString(R.string.diagnostics_share)))
+        // The log is a stored string that can run to tens of KB, and rendering
+        // it here meant reading and re-formatting it on the main thread — on
+        // every poll tick while a fresh log is being waited for, too.
+        Background.load(
+            this,
+            {
+                RemoteDiagnosticsStore(this).log(childId)?.let { raw ->
+                    Diagnostics.asText(
+                        raw = raw,
+                        header = getString(R.string.diagnostics_header),
+                        empty = getString(R.string.diagnostics_empty),
+                    )
                 }
             },
-        )
+        ) { text ->
+            if (text == null) {
+                column.addView(bodyText(getString(R.string.remote_diagnostics_empty)))
+            } else {
+                column.addView(cardFor(text))
+                column.addView(shareButton(text))
+            }
+        }
     }
+
+    private fun cardFor(text: String): View =
+        card {
+            addView(
+                TextView(this@RemoteDiagnosticsActivity).apply {
+                    this.text = text
+                    typeface = android.graphics.Typeface.MONOSPACE
+                    setTextIsSelectable(true)
+                    styleAs(R.style.TextAppearance_Dementor_Caption)
+                },
+            )
+        }
+
+    private fun shareButton(text: String): View =
+        actionButton().apply {
+            setText(R.string.diagnostics_share)
+            setOnClickListener {
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                startActivity(Intent.createChooser(send, getString(R.string.diagnostics_share)))
+            }
+        }
 
     /**
      * Checks back for the answer to a log request, a few times over the next

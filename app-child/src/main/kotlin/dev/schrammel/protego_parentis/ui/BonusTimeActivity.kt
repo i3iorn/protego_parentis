@@ -10,14 +10,14 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.model.CategoryId
-import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
+import dev.schrammel.protego_parentis.model.CategoryId
+import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.rules.GrantStore
-import dev.schrammel.protego_parentis.rules.TargetLabels
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.TargetLabels
 import java.time.Instant
 
 /**
@@ -46,8 +46,8 @@ class BonusTimeActivity : ParentGatedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = LocalPolicyStore(this)
-        grants = GrantStore(this)
+        store = AppRegistry.childStores.policy
+        grants = AppRegistry.childStores.grants
         showColumn(buildLayout())
     }
 

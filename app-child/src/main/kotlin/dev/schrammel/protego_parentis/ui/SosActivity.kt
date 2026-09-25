@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.LinearLayout
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
@@ -12,6 +11,7 @@ import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.rules.SosStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 
 /**
  * The child's emergency button (LOC-3).
@@ -37,8 +37,8 @@ class SosActivity : DementorActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sos = SosStore(this)
-        sync = SyncCoordinator(this)
+        sos = AppRegistry.childStores.sos
+        sync = SyncGraph.get(this)
         column = contentColumn()
         showColumn(column)
     }

@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.ScheduleBlock
 import dev.schrammel.protego_parentis.model.ScheduleId
+import dev.schrammel.protego_parentis.rules.ScheduleStore.Companion.BEDTIME_ID
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.DayOfWeek
@@ -118,8 +119,15 @@ class ScheduleStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
+    /**
+     * Decoded across instances and ticks — see [DecodeCache]. The tick reads
+     * `active()` up to every fifteen seconds; without this, every read
+     * re-parsed the whole schedules JSON.
+     */
+    private val schedulesCache = DecodeCache<List<StoredSchedule>>()
+
     var schedules: List<StoredSchedule>
-        get() = decode(prefs.getString(KEY_SCHEDULES, null))
+        get() = schedulesCache.get(prefs.getString(KEY_SCHEDULES, null), ::decode)
         set(value) = prefs.edit { putString(KEY_SCHEDULES, encode(value)) }
 
     fun find(id: String): StoredSchedule? = schedules.firstOrNull { it.id == id }

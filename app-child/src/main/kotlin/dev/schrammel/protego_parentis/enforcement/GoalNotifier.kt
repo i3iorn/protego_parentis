@@ -6,8 +6,8 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.model.GoalAchievement
 import dev.schrammel.protego_parentis.format.formatDuration
+import dev.schrammel.protego_parentis.model.GoalAchievement
 
 /**
  * Announces an earned prize on the next unlock.
@@ -66,6 +66,8 @@ class GoalNotifier(context: Context) {
 
     private companion object {
         const val CHANNEL_ID = "goal_earned"
-        const val NOTIFICATION_ID = 5
+
+        /** Registered in [NotificationIds] — 5 was a collision with RequestNotifier's new-app id. */
+        const val NOTIFICATION_ID = NotificationIds.GOAL_EARNED
     }
 }

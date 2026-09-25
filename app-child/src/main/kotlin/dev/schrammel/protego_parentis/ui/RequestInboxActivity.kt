@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.AppRegistry
@@ -14,7 +13,7 @@ import dev.schrammel.protego_parentis.model.RequestId
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.rules.TargetLabels
-import dev.schrammel.protego_parentis.sync.SyncCoordinator
+import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
@@ -33,10 +32,10 @@ class RequestInboxActivity : ParentGatedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val sync = SyncCoordinator(this)
+        val sync = SyncGraph.get(this)
         // So a second parent phone sees that this one has already answered.
         coordinator = RequestCoordinator(this, onDecided = sync::publishDecision)
-        policyStore = LocalPolicyStore(this)
+        policyStore = AppRegistry.childStores.policy
         installedApps = InstalledApps(this)
 
         container = contentColumn()
