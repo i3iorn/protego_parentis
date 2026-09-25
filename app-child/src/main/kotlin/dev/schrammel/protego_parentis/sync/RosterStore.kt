@@ -73,12 +73,23 @@ class RosterStore(context: Context) {
     }
 
     /**
-     * Enrols a pending device. The role and key are taken from what was announced
-     * and shown to whoever approved it, not re-read afterwards.
+     * Enrols a pending device, with the role and key it last announced.
+     *
+     * [expectedRole] is for callers that approved a device *as* something —
+     * a consensus proposal to enrol a child, say. A pending entry's role is
+     * whatever the device most recently claimed ([notice] replaces it), so
+     * without this a candidate approved as a child could announce itself as
+     * a parent before the approval committed and be enrolled as one.
      */
-    fun approve(id: DeviceId, name: String, now: Instant = Instant.now()): KnownDevice? =
+    fun approve(
+        id: DeviceId,
+        name: String,
+        now: Instant = Instant.now(),
+        expectedRole: SyncRole? = null,
+    ): KnownDevice? =
         synchronized(LOCK) {
             val candidate = pending.firstOrNull { it.id == id } ?: return@synchronized null
+            if (expectedRole != null && candidate.role != expectedRole) return@synchronized null
             val device = KnownDevice(
                 id = candidate.id,
                 name = name.ifBlank { candidate.name }.ifBlank { candidate.id.value },

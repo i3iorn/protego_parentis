@@ -234,6 +234,26 @@ class ConsensusReplicationTest {
         assertNotNull(consensus().proposal(id))
     }
 
+    /**
+     * A pending entry's role is whatever the device last announced, so a
+     * candidate approved as a child could otherwise announce itself as a
+     * parent before the proposal committed and be enrolled as one — parent
+     * authority from child approvals.
+     */
+    @Test
+    fun `an enrol-child candidate that now claims to be a parent is not enrolled`() {
+        val p1 = seedParent("P1")
+        val candidate = seedPending("NEWCHILD", role = SyncRole.CHILD)
+        LocalDeviceId.useInTests(p1.value)
+        val id = consensus().propose(ConsensusKind.ENROL_CHILD, target = candidate)!!
+        consensus().approve(id)
+
+        seedPending("NEWCHILD", role = SyncRole.PARENT)
+        consensus().commitIfReady(consensus().proposal(id)!!, SyncPublisher(context))
+
+        assertTrue(roster().devices.none { it.id == candidate })
+    }
+
     // ---------- remove-parent: timer + veto ----------
 
     @Test
