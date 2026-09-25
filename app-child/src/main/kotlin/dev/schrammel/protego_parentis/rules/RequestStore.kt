@@ -23,15 +23,6 @@ class RequestStore(context: Context) {
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
     /**
-     * Decoded across instances — see [DecodeCache]. Stores here are constructed
-     * per call site, so the cache keys on the raw stored string; a save from
-     * another instance rewrites it and any other instance's cache misses once.
-     * `all()` runs on the enforcement tick (lapsed-request checks) and on the
-     * UI thread; both used to re-parse the whole list on every call.
-     */
-    private val cache = DecodeCache<List<Request>>()
-
-    /**
      * Everything within the retention horizon, newest first, with lapsed
      * requests already closed.
      *
@@ -133,6 +124,11 @@ class RequestStore(context: Context) {
     }
 
     private companion object {
+        // Shared across instances (see DecodeCache): screens and the per-poll
+        // replication classes each build their own store, so a cache held
+        // per instance would almost never be warm.
+        private val cache = DecodeCache<List<Request>>()
+
         const val FILE_NAME = "requests"
         const val KEY_REQUESTS = "requests"
         const val KEY_ID = "id"

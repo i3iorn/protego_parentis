@@ -312,8 +312,6 @@ class LocalPolicyStore(context: Context) {
         )
         set(value) = write { putString(KEY_CATEGORIES, StoredCategory.listToJson(value)) }
 
-    private val categoriesCache = DecodeCache<List<StoredCategory>>()
-
     fun upsertCategory(category: StoredCategory) = synchronized(prefs) {
         categories = categories.filterNot { it.id == category.id } + category
     }
@@ -341,8 +339,6 @@ class LocalPolicyStore(context: Context) {
         set(value) = write {
             putString(KEY_APP_LIMITS, JSONObject(value.filterValues { it > 0 }).toString())
         }
-
-    private val appLimitsCache = DecodeCache<Map<String, Int>>()
 
     fun setAppLimit(packageName: String, minutes: Int) = synchronized(prefs) {
         appLimits = appLimits.toMutableMap().apply {
@@ -503,6 +499,12 @@ class LocalPolicyStore(context: Context) {
     }
 
     companion object {
+        // Shared across instances (see DecodeCache): screens and the per-poll
+        // replication classes each build their own store, so a cache held
+        // per instance would almost never be warm.
+        private val categoriesCache = DecodeCache<List<StoredCategory>>()
+        private val appLimitsCache = DecodeCache<Map<String, Int>>()
+
         const val FILE_NAME = "local_policy"
         const val INITIAL_VERSION = 1L
         const val LOCAL_CHILD_ID = "local"

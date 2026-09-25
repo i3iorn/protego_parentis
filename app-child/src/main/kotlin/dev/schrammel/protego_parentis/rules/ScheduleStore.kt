@@ -119,13 +119,6 @@ class ScheduleStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    /**
-     * Decoded across instances and ticks — see [DecodeCache]. The tick reads
-     * `active()` up to every fifteen seconds; without this, every read
-     * re-parsed the whole schedules JSON.
-     */
-    private val schedulesCache = DecodeCache<List<StoredSchedule>>()
-
     var schedules: List<StoredSchedule>
         get() = schedulesCache.get(prefs.getString(KEY_SCHEDULES, null), ::decode)
         set(value) = prefs.edit { putString(KEY_SCHEDULES, encode(value)) }
@@ -204,6 +197,11 @@ class ScheduleStore(context: Context) {
         }.orEmpty().toSet()
 
     companion object {
+        // Shared across instances (see DecodeCache): screens and the per-poll
+        // replication classes each build their own store, so a cache held
+        // per instance would almost never be warm.
+        private val schedulesCache = DecodeCache<List<StoredSchedule>>()
+
         /** The one schedule id [ScheduleStore] and its screens treat specially. */
         const val BEDTIME_ID = "bedtime"
 
