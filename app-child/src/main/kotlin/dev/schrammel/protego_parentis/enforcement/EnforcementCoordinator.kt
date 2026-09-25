@@ -26,6 +26,7 @@ import dev.schrammel.protego_parentis.policy.reconcile.ReleaseResult
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.SosStore
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import dev.schrammel.protego_parentis.usage.InstalledApps
@@ -74,13 +75,11 @@ class EnforcementCoordinator(
     private val contextRules: ContextRuleStore = ContextRuleStore(context.applicationContext),
     private val recorder: UsageHistoryRecorder = UsageHistoryRecorder(collector, history),
     private val hygiene: PlatformHygiene = PlatformHygiene(context.applicationContext, port),
+    private val sosStore: SosStore = AppRegistry.childStores.sos,
 ) {
 
     private val appContext = context.applicationContext
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
-
-    /** Hoisted off [evaluate]'s per-tick construction — cheap but pointless each pass. */
-    private val sosStore = AppRegistry.childStores.sos
 
     /**
      * Runs each migration once, before anything here ever reads a Policy — see
