@@ -85,10 +85,33 @@ class UpdateCheckerTest {
             source = FakeUpdateSource(manifest = newer),
             isDeviceOwner = { true },
             installSilently = { _, _, versionName -> installedVersion = versionName },
+            isOurs = { _, _ -> true },
         )
 
         assertEquals(UpdateOutcome.INSTALLED_SILENTLY, outcome)
         assertEquals("5.0.0", installedVersion)
+    }
+
+    /**
+     * The checksum only proves the download matches its own release. An APK
+     * for another package, or signed by another key, must never reach the
+     * installer, which as device owner would install it without a prompt.
+     */
+    @Test
+    fun `an update that is not this app is refused before anything installs it`() {
+        val newer = manifest(versionCode = appVersionCode(context) + 1, versionName = "5.0.0")
+        var installCalled = false
+
+        val outcome = UpdateChecker.checkNow(
+            context = context,
+            source = FakeUpdateSource(manifest = newer),
+            isDeviceOwner = { true },
+            installSilently = { _, _, _ -> installCalled = true },
+            isOurs = { _, _ -> false },
+        )
+
+        assertEquals(UpdateOutcome.DOWNLOAD_FAILED, outcome)
+        assertFalse(installCalled)
     }
 
     @Test
@@ -102,6 +125,7 @@ class UpdateCheckerTest {
             source = FakeUpdateSource(manifest = newer),
             isDeviceOwner = { false },
             installSilently = { _, _, _ -> installCalled = true },
+            isOurs = { _, _ -> true },
             pendingUpdateStore = store,
         )
 
