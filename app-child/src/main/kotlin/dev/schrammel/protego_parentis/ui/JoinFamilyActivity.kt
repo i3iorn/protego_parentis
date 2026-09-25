@@ -210,7 +210,7 @@ class JoinFamilyActivity : ParentGatedActivity() {
         column.addView(sectionHeader(getString(R.string.join_passphrase_header)))
         column.addView(passphraseInput)
         column.addView(strengthNote)
-        passphraseInput.addTextChangedListener(PassphraseWatcher { showStrength(it) })
+        passphraseInput.addTextChangedListener(SimpleWatcher { showStrength(it) })
         formError.visibility = View.GONE
         (formError.parent as? ViewGroup)?.removeView(formError)
         column.addView(formError)
@@ -585,9 +585,3 @@ class JoinFamilyActivity : ParentGatedActivity() {
     }
 }
 
-/** Reports the text after every edit. */
-private class PassphraseWatcher(private val onChanged: (String) -> Unit) : android.text.TextWatcher {
-    override fun afterTextChanged(s: android.text.Editable?) = onChanged(s?.toString().orEmpty())
-    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-}
