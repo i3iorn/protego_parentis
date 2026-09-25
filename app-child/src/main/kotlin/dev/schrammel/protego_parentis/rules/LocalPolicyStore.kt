@@ -19,6 +19,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 /** Log tag, outside the companion so the reflection-based inventory test sees only KEY_ constants. */
 private const val TAG = "LocalPolicyStore"
@@ -100,12 +101,28 @@ class LocalPolicyStore(context: Context) {
             contextRuleStore = contextRuleStore,
             webFilterStore = webFilterStore,
         ),
-        version = prefs.getLong(KEY_VERSION, INITIAL_VERSION),
+        version = version,
+        timeZone = timeZone,
+        dayBoundaryHour = dayBoundaryHour,
         childId = LOCAL_CHILD_ID,
         budgetMinutes = dailyLimitMinutes,
         categoryList = categories,
         networkBlocked = networkBlockedPackages,
     )
+
+    /**
+     * [load]'s `version`, `timeZone` and `dayBoundaryHour`, without building
+     * the [Policy]. [load] decodes several stores and asks the package manager
+     * for the safety allowlist; callers that only need to know whether the
+     * rules moved, or where the policy day starts, read these instead —
+     * [dev.schrammel.protego_parentis.sync.PolicyReplication.pushFromLocalPolicy]
+     * on every poll, and the grant/visit paths that only place a moment in a day.
+     */
+    val version: Long get() = prefs.getLong(KEY_VERSION, INITIAL_VERSION)
+
+    val timeZone: ZoneId get() = ZoneId.systemDefault()
+
+    val dayBoundaryHour: Int get() = Defaults.DAY_BOUNDARY_HOUR
 
     // ---------- device limit ----------
 

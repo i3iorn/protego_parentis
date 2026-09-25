@@ -91,8 +91,8 @@ class WebActivityActivity : DementorActivity() {
         // The same policy day the budget resets on, not real midnight — a family
         // with a day-boundary hour set would otherwise see this list clear four
         // hours before the budget it is shown alongside does.
-        val policy = AppRegistry.childStores.policy.load()
-        val today = PolicyClock.policyDay(Instant.now(), policy.timeZone, policy.dayBoundaryHour)
+        val policyStore = AppRegistry.childStores.policy
+        val today = PolicyClock.policyDay(Instant.now(), policyStore.timeZone, policyStore.dayBoundaryHour)
         val visits = store.visits(today)
 
         column.addView(sectionHeader(getString(R.string.parent_today_header)))

@@ -191,13 +191,12 @@ internal class ChildCommandHandler(
         val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it > 0 } ?: return false
         val target = SyncTargets.decode(message.field(FIELD_TARGET)) ?: return false
 
-        val policy = AppRegistry.childStores.policy.load()
         AppRegistry.childStores.grants.add(
             target = target,
             minutes = minutes,
             now = Instant.now(),
-            zone = policy.timeZone,
-            dayBoundaryHour = policy.dayBoundaryHour,
+            zone = AppRegistry.childStores.policy.timeZone,
+            dayBoundaryHour = AppRegistry.childStores.policy.dayBoundaryHour,
         )
         Audit.record(
             context = appContext,
@@ -227,7 +226,7 @@ internal class ChildCommandHandler(
         val incoming = PolicySnapshot.decode(message.field(FIELD_POLICY_JSON)) ?: return false
         val store = AppRegistry.childStores.policy
 
-        if (store.load().version != incoming.version) {
+        if (store.version != incoming.version) {
             Diagnostics.record(appContext, DiagnosticEvent.POLICY_UPDATE_CONFLICT)
             return false
         }

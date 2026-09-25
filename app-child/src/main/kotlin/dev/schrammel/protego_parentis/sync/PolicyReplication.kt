@@ -146,7 +146,7 @@ class PolicyReplication(context: Context) {
      * every local write, so it is a sufficient answer to "is this worth doing".
      */
     fun pushFromLocalPolicy(childId: DeviceId? = defaultChildId()): List<StateOp> {
-        val version = store.load().version
+        val version = store.version
         if (version == prefs.getLong(KEY_PUSHED_VERSION, NEVER)) return emptyList()
 
         // A phone that cannot say who it is has not pushed anything, and must not

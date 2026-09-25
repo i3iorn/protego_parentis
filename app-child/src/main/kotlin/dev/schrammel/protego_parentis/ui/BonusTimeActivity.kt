@@ -124,13 +124,12 @@ class BonusTimeActivity : ParentGatedActivity() {
         if (now - lastGrantAt < GRANT_DEBOUNCE_MS) return
         lastGrantAt = now
 
-        val policy = store.load()
         grants.add(
             target = target,
             minutes = minutes,
             now = Instant.now(),
-            zone = policy.timeZone,
-            dayBoundaryHour = policy.dayBoundaryHour,
+            zone = store.timeZone,
+            dayBoundaryHour = store.dayBoundaryHour,
         )
         Audit.record(
             context = this,

@@ -6,7 +6,6 @@ import dev.schrammel.protego_parentis.model.BrowserPolicy
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.ChildId
-import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
@@ -30,6 +29,8 @@ internal object PolicyAssembler {
         appContext: Context,
         subStores: PolicySubStores,
         version: Long,
+        timeZone: ZoneId,
+        dayBoundaryHour: Int,
         childId: String,
         budgetMinutes: Int,
         categoryList: List<StoredCategory>,
@@ -43,7 +44,7 @@ internal object PolicyAssembler {
         return Policy(
             version = version,
             childId = ChildId(childId),
-            timeZone = ZoneId.systemDefault(),
+            timeZone = timeZone,
             deviceBudget = budgetOf(budgetMinutes),
             appRules = buildAppRules(appLimits, exemptPackages, blockedPackages, hiddenPackages),
             categories = categoryList.map(::toDomain),
@@ -56,7 +57,7 @@ internal object PolicyAssembler {
             installPolicy = subStores.policyStore?.installPolicy ?: InstallPolicy.NOTIFY,
             installWindowUntil = subStores.policyStore?.installWindowUntil,
             tamperProtection = subStores.policyStore?.tamperProtection ?: true,
-            dayBoundaryHour = Defaults.DAY_BOUNDARY_HOUR,
+            dayBoundaryHour = dayBoundaryHour,
         )
     }
 
