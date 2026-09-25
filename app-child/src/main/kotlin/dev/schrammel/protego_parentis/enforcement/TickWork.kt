@@ -161,7 +161,7 @@ internal class TickWork(
         // stream that is down, not the primary path — see TICK_POLL_MIN_AGE_MILLIS.
         sync.pollNow(minAgeMillis = TICK_POLL_MIN_AGE_MILLIS)
 
-        return delayUntil(snapshot.enforcement.nextChangeAt, now)
+        return nextDelay(snapshot.enforcement.nextChangeAt, now, emergencyActive = sos.isActive)
     }
 
     /**
@@ -267,8 +267,10 @@ internal class TickWork(
     /**
      * Keeps telling the parents while an emergency is running (LOC-3).
      *
-     * Every minute, with a fresh position each time. A single message that arrived
-     * while a phone was in a pocket would be the whole feature failing quietly.
+     * Every [SOS_REPEAT_MILLIS], with a fresh position each time. A single
+     * message that arrived while a phone was in a pocket would be the whole
+     * feature failing quietly. Only runs when a tick does, which is why
+     * [nextDelay] keeps ticks this close together while one is active.
      */
     private fun repeatEmergency(now: Instant) {
         if (!sos.isActive) return
@@ -347,24 +349,6 @@ internal class TickWork(
     /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
     private fun batteryPercent(): Int = BatteryReader.percent(context) ?: -1
 
-    /**
-     * Sleeps until the engine says the decision would change, within bounds.
-     *
-     * The engine already computes the exact moment a limit bites or a warning is
-     * due, so there is no reason to wake every minute. With the screen off and
-     * nothing running, the next change is usually the 4am reset and we idle at the
-     * maximum interval instead of burning battery on pointless evaluations.
-     *
-     * Exact alarms would be the theoretical ideal, but `SCHEDULE_EXACT_ALARM` is a
-     * restricted permission that Play grants to alarm-clock apps, and a minute of
-     * slack on a screen-time warning does not justify that fight.
-     */
-    private fun delayUntil(nextChange: Instant?, now: Instant): Long {
-        if (nextChange == null) return MAX_INTERVAL_MILLIS
-        val millis = nextChange.toEpochMilli() - now.toEpochMilli()
-        return millis.coerceIn(MIN_INTERVAL_MILLIS, MAX_INTERVAL_MILLIS)
-    }
-
     private fun summarise(snapshot: EnforcementSnapshot): String {
         val budget = snapshot.enforcement.deviceBudget
         return when {
@@ -396,5 +380,34 @@ internal class TickWork(
 
         /** How often an unresolved emergency repeats itself to the parents. */
         const val SOS_REPEAT_MILLIS = 30_000L
+
+        /**
+         * How long to sleep before the next tick.
+         *
+         * Until the engine says the decision would change, within bounds. The
+         * engine already computes the exact moment a limit bites or a warning is
+         * due, so there is no reason to wake every minute. With the screen off
+         * and nothing running, the next change is usually the 4am reset and we
+         * idle at the maximum interval instead of burning battery on pointless
+         * evaluations.
+         *
+         * Held to [SOS_REPEAT_MILLIS] while an emergency is active: the engine's
+         * next-change moment knows nothing about an emergency, and the repeat
+         * only runs when a tick does — without this it could fall
+         * [MAX_INTERVAL_MILLIS] apart.
+         *
+         * Exact alarms would be the theoretical ideal, but `SCHEDULE_EXACT_ALARM`
+         * is a restricted permission that Play grants to alarm-clock apps, and a
+         * minute of slack on a screen-time warning does not justify that fight.
+         */
+        internal fun nextDelay(nextChange: Instant?, now: Instant, emergencyActive: Boolean): Long {
+            val untilChange = if (nextChange == null) {
+                MAX_INTERVAL_MILLIS
+            } else {
+                (nextChange.toEpochMilli() - now.toEpochMilli())
+                    .coerceIn(MIN_INTERVAL_MILLIS, MAX_INTERVAL_MILLIS)
+            }
+            return if (emergencyActive) untilChange.coerceAtMost(SOS_REPEAT_MILLIS) else untilChange
+        }
     }
 }

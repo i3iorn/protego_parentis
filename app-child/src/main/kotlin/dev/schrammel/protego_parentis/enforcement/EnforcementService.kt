@@ -39,7 +39,7 @@ import java.util.concurrent.Executors
  * notification is not dismissible, and that is deliberate.
  *
  * The re-evaluation interval is driven by the engine's own `nextChangeAt` rather
- * than a fixed poll — see [delayUntil].
+ * than a fixed poll — see [TickWork.nextDelay].
  */
 class EnforcementService : Service() {
 
