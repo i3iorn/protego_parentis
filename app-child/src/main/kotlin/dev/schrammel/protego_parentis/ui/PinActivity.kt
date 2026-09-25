@@ -110,6 +110,9 @@ class PinActivity : DementorActivity() {
      */
     private fun canOfferBiometrics(): Boolean =
         step == Step.UNLOCK &&
+            // Never on the managed phone, whose enrolled fingers are the
+            // child's own — see BiometricSetting.
+            RoleStore(this).roleOrChild != DeviceRole.CHILD &&
             biometrics.canUnlock() &&
             verifier.lockoutRemaining() <= Duration.ZERO
 

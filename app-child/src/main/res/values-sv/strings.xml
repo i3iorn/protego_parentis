@@ -846,7 +846,7 @@
     <string name="biometric_header">Fingeravtryck eller ansikte</string>
     <string name="biometric_enable">Tillåt fingeravtryck eller ansikte i stället för PIN-koden</string>
     <string name="biometric_body">Ett snabbare sätt in för den som håller i telefonen. PIN-koden fortsätter fungera, och är vägen in om det här slutar fungera.</string>
-    <string name="biometric_warning_child">Var försiktig på den här telefonen. Varje fingeravtryck och ansikte som är registrerat på den öppnar reglerna — även ditt barns, eftersom det är deras telefon. Låt det här vara avstängt om inte bara en förälder är registrerad här.</string>
+    <string name="biometric_child_unavailable">Inte tillgängligt på den här telefonen. Varje fingeravtryck och ansikte som är registrerat här skulle öppna reglerna, och de som finns på ditt barns telefon är ditt barns. Använd PIN-koden.</string>
     <string name="biometric_none">Inget fingeravtryck och inget ansikte är registrerat på den här telefonen ännu. Lägg till ett i telefonens egna inställningar först.</string>
     <string name="biometric_unsupported">Den här telefonen har ingen läsare för fingeravtryck eller ansikte som appen kan lita på.</string>
     <string name="biometric_invalidated">Avstängt av telefonen, eftersom de registrerade fingeravtrycken eller ansiktena ändrades. Använd PIN-koden och slå på det igen om du fortfarande vill ha det.</string>
