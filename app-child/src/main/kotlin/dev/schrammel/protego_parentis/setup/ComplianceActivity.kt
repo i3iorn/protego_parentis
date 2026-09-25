@@ -33,8 +33,10 @@ import dev.schrammel.protego_parentis.ui.styleAs
  * the teen's attention on a fresh device, so the monitoring disclosure lives here
  * rather than being buried in a settings screen nobody opens.
  *
- * TODO(M2): redeem the pairing token against the server before continuing.
- * TODO(M2): request usage access, notification, and battery-exemption grants.
+ * The pairing details provisioning saved are only checked here, not used: see
+ * #278. Permission grants (usage access, notifications, battery exemption) are
+ * asked for afterwards, from Home, through PermissionsActivity.
+ *
  * TODO(M3): let the teen choose their display name and avatar — it is their phone.
  */
 class ComplianceActivity : DementorActivity() {
