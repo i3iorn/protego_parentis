@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.diagnostics
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics.asText
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics.clear
@@ -177,12 +178,14 @@ object Diagnostics {
      * [record] fires on genuinely hot paths — every publish, every poll, every
      * tick — and appending used to mean decoding the whole stored log and
      * re-encoding all of it for one line. The decoded list is cached under
-     * [lock]; only the first read and a [clear] go back to the file. The file
-     * write itself stays as it was (an [android.content.SharedPreferences] edit
-     * of the full encoded log), because that is the cheap half.
+     * [lock], keyed on the stored string it was decoded from, so anything that
+     * changes the file (a [clear], a fresh preference file in a Robolectric
+     * test) is seen on the next read rather than served stale. The file write
+     * itself stays as it was (an [android.content.SharedPreferences] edit of
+     * the full encoded log), because that is the cheap half.
      */
     private val lock = Any()
-    private var cached: List<DiagnosticEntry>? = null
+    private var cached: Pair<String?, List<DiagnosticEntry>>? = null
 
     fun record(
         context: Context,
@@ -192,28 +195,31 @@ object Diagnostics {
     ) {
         val prefs = prefs(context)
         synchronized(lock) {
-            val entries = cached ?: DiagnosticLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
-            cached = (entries + DiagnosticEntry(
-                at,
-                event,
-                counts
-            )).takeLast(DiagnosticLogFormat.MAX_ENTRIES)
-            prefs.edit { putString(KEY_LOG, DiagnosticLogFormat.encodeAll(cached!!)) }
+            val entries = (load(prefs) + DiagnosticEntry(at, event, counts))
+                .takeLast(DiagnosticLogFormat.MAX_ENTRIES)
+            val encoded = DiagnosticLogFormat.encodeAll(entries)
+            prefs.edit { putString(KEY_LOG, encoded) }
+            cached = encoded to entries
         }
     }
 
     internal fun entries(context: Context): List<DiagnosticEntry> {
         val prefs = prefs(context)
-        synchronized(lock) {
-            return cached ?: DiagnosticLogFormat.decodeAll(prefs.getString(KEY_LOG, null))
-                .also { cached = it }
-        }
+        synchronized(lock) { return load(prefs) }
+    }
+
+    /** Callers hold [lock]. */
+    private fun load(prefs: SharedPreferences): List<DiagnosticEntry> {
+        val raw = prefs.getString(KEY_LOG, null)
+        // Identity first: SharedPreferences hands back the instance it was
+        // given, so the common case never compares the whole log.
+        cached?.let { (from, entries) -> if (from === raw || from == raw) return entries }
+        return DiagnosticLogFormat.decodeAll(raw).also { cached = raw to it }
     }
 
     fun clear(context: Context) {
         val prefs = prefs(context)
         synchronized(lock) {
-            cached = null
             prefs.edit { remove(KEY_LOG) }
         }
     }
