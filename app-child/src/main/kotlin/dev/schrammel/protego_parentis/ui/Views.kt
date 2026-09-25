@@ -54,6 +54,10 @@ internal fun Activity.showColumn(column: LinearLayout) {
 /** The screen's name. One per screen, at the top. */
 internal fun Activity.screenTitle(text: String): TextView = TextView(this).apply {
     this.text = text
+    // Screens are built in code, so nothing else tells TalkBack where one
+    // part of a screen ends; headings are what its heading navigation jumps
+    // between.
+    isAccessibilityHeading = true
     styleAs(R.style.TextAppearance_Dementor_Title)
     setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_lg))
 }
@@ -66,6 +70,7 @@ internal fun Activity.screenTitle(text: String): TextView = TextView(this).apply
  */
 internal fun Activity.sectionHeader(text: String): TextView = TextView(this).apply {
     this.text = text
+    isAccessibilityHeading = true
     styleAs(R.style.TextAppearance_Dementor_Section)
     setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_sm))
 }

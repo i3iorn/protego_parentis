@@ -79,7 +79,8 @@ data class BedtimeSetting(
  * writes [ScheduleStore] and kicks enforcement directly: see its own doc
  * comment.
  *
- * TODO(M1): replace with Room + Firestore sync, keeping local as the read path.
+ * Still SharedPreferences rather than Room — listed under "Not built yet" in
+ * the README. Sync is device-to-device through the relay, not a cloud store.
  */
 class LocalPolicyStore(context: Context) {
 

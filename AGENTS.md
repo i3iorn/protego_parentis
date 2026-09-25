@@ -73,8 +73,10 @@ on must bump both**, as part of the same PR, not a follow-up:
   the last release actually did if unsure — see `git log -p -- app-child/build.gradle.kts`.
 
 Skip the bump only for a change that touches no `app-child`-reachable code at
-all (docs, CI config, a pure-JVM module nothing in `app-child` depends on
-yet). When in doubt, bump it.
+all (docs, CI config, tests, the store listing). When in doubt, bump it.
+`test.yml`'s "Version bump" job enforces this on every PR: it fails when a
+file outside `src/test/`, `docs/`, `.github/`, `.claude/`, `play/` or a `.md`
+changed and `versionCode` did not go up.
 
 ## Releasing (not a PR concern, but relevant context)
 
