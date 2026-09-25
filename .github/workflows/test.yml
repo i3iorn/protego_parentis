@@ -81,3 +81,57 @@ jobs:
             **/build/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # AGENTS.md's "bump on every PR" rule (#275). versionCode is what gates the
+  # OTA channel — UpdateClient only ever moves forward — so a PR that changes
+  # what ships without raising it produces a release phones can't tell apart
+  # from the last one. A job of its own rather than a step above: it needs
+  # the full history instead of a shallow clone, no JDK, and should say
+  # "forgot the bump" separately from "a test failed".
+  version-bump:
+    name: Version bump
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # app-child depends on every other module, so anything outside the
+      # paths below reaches the APK. Tests, docs, CI config and the store
+      # listing don't, which matches AGENTS.md's skip list.
+      #
+      # Reads versionCode with a regex rather than from Gradle: running
+      # Gradle twice (base and head) would cost more than the rest of this
+      # workflow. If the line is ever reformatted past the regex, this fails
+      # saying so rather than passing silently.
+      - name: Require a versionCode increase when shipped code changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          shipped=$(git diff --name-only "$BASE_SHA"...HEAD \
+            | grep -vE '(^|/)src/test/|\.md$|^docs/|^\.github/|^\.claude/|^play/' || true)
+          if [ -z "$shipped" ]; then
+            echo "No shipped code changed; no bump needed."
+            exit 0
+          fi
+
+          read_code() {
+            grep -oE '^\s*versionCode = [0-9]+' | grep -oE '[0-9]+$' || true
+          }
+          base=$(git show "$BASE_SHA:app-child/build.gradle.kts" | read_code)
+          head=$(read_code < app-child/build.gradle.kts)
+          if [ -z "$base" ] || [ -z "$head" ]; then
+            echo "::error file=app-child/build.gradle.kts::Could not find 'versionCode = N'; update this check's regex."
+            exit 1
+          fi
+
+          if [ "$head" -le "$base" ]; then
+            echo "::error file=app-child/build.gradle.kts::This PR changes shipped code but versionCode is still $head (base $base). Bump versionCode and versionName; see AGENTS.md."
+            echo "Shipped files changed:"
+            echo "$shipped"
+            exit 1
+          fi
+          echo "versionCode $base -> $head"
