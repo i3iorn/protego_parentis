@@ -6,6 +6,7 @@ import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import dev.schrammel.protego_parentis.diagnostics.CrashRecovery
 import dev.schrammel.protego_parentis.sync.RealtimeConnectivityWatcher
+import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.update.UpdateCheckWorker
 
@@ -38,9 +39,11 @@ class TestApplication : Application() {
             Configuration.Builder().setExecutor(SynchronousExecutor()).build(),
         )
         // Robolectric gives every test a fresh application and preference files;
-        // the process-wide sync singleton must follow suit or one test's storage
-        // is served to the next. (In production this is never called.)
+        // process-wide state that isn't keyed on what's stored must follow suit
+        // or one test's storage is served to the next. (In production this is
+        // never called.) The store container is reset by AppRegistry.install.
         SyncGraph.resetForTest()
+        SyncConfigStore.resetForTest()
         // Mirror DementorApplication.onCreate — kept in step with it deliberately:
         // a test process should boot exactly the way the phone does.
         CrashRecovery.install(this) { AppRegistry.restartLauncher }
