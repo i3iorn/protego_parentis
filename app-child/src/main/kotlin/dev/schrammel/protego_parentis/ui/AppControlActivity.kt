@@ -200,12 +200,20 @@ class AppControlActivity : ParentGatedActivity() {
      * The rules state every row needs, read once per render rather than once
      * per row — `knownAppRow` used to decode the full rules JSON and policy
      * snapshot for every app in the list, O(rows) store reads on the main
-     * thread per keystroke. Loaded with the catalog in [reloadCatalog]; a row
-     * that finds nothing here falls back to reading (and repopulates it).
+     * thread per keystroke. Loaded with the catalog in [reloadCatalog], which
+     * is also the only thing that populates [known], so no row can render
+     * before it. A write on this screen updates it in place with what was
+     * just written rather than clearing it: clearing it made every row read
+     * both stores again on each keystroke after the first toggle.
      */
     private var rowState: RowState = RowState(null, emptyList())
 
-    private data class RowState(val snapshot: PolicySnapshot?, val rules: List<ContextRule>)
+    internal data class RowState(val snapshot: PolicySnapshot?, val rules: List<ContextRule>) {
+
+        /** This state after the rule at [id] was replaced by [rule], or deleted when null. */
+        fun withRule(id: String, rule: ContextRule?): RowState =
+            copy(rules = rules.filterNot { it.id == id } + listOfNotNull(rule))
+    }
 
     /** A new arrival: name, icon, and the two answers. Only ever shown on the managed phone itself. */
     private fun newAppRow(app: AppInfo): LinearLayout = LinearLayout(this).apply {
@@ -254,11 +262,8 @@ class AppControlActivity : ParentGatedActivity() {
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
 
-            // Normally handed in with the catalog load (see [rowState]); read here
-            // only when a row renders before that load has landed.
-            val snapshot = state.snapshot ?: policyRuleStore(this@AppControlActivity, target).read()
-            val rules =
-                state.rules.ifEmpty { contextRuleRuleStore(this@AppControlActivity, target).read() }
+            val snapshot = state.snapshot
+            val rules = state.rules
 
         val blockedNow = isBlocked(app.pkg, rules)
         val identityRow = identity(app, weighted = true, blocked = blockedNow)
@@ -287,8 +292,9 @@ class AppControlActivity : ParentGatedActivity() {
                     } else {
                         current.networkBlockedPackages - app.pkg.value
                     }
-                    store.write(current.copy(networkBlockedPackages = updated))
-                    rowState = RowState(null, emptyList())
+                    val written = current.copy(networkBlockedPackages = updated)
+                    store.write(written)
+                    rowState = rowState.copy(snapshot = written)
                     Audit.record(
                         context = this@AppControlActivity,
                         actor = AuditActor.PARENT,
@@ -364,23 +370,20 @@ class AppControlActivity : ParentGatedActivity() {
     private fun decide(app: AppInfo, blocked: Boolean, wasNew: Boolean) {
         val store = contextRuleRuleStore(this, target)
         val id = blockRuleId(app.pkg)
-        if (blocked) {
-            store.upsert(
-                ContextRule(
-                    id = id,
-                    name = getString(R.string.apps_title),
-                    enabled = true,
-                    condition = Condition.Always,
-                    effect = RuleEffect.Block(hidden = false),
-                    target = RuleTarget.Apps(setOf(app.pkg)),
-                ),
+        val rule = if (blocked) {
+            ContextRule(
+                id = id,
+                name = getString(R.string.apps_title),
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Block(hidden = false),
+                target = RuleTarget.Apps(setOf(app.pkg)),
             )
         } else {
-            store.delete(id)
+            null
         }
-        // The rules just changed; the cached row state is now stale. Drop it so
-        // the next render reads fresh rather than painting the old answer.
-        rowState = RowState(null, emptyList())
+        if (rule != null) store.upsert(rule) else store.delete(id)
+        rowState = rowState.withRule(id, rule)
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,

@@ -97,6 +97,46 @@ class AppControlActivityTest {
         assertTrue(activity.blockRuleId(pkg) == activity.blockRuleId(pkg))
         assertFalse(activity.blockRuleId(pkg) == activity.blockRuleId(other))
     }
+
+    /**
+     * A toggle used to clear the screen's row state, and nothing reloaded it —
+     * so after the first toggle every row read both rule stores again on each
+     * search keystroke, on the main thread. The state is now updated in place
+     * with the write that was just made, which only works if that update gives
+     * the same answer a fresh read would.
+     */
+    @Test
+    fun `blocking then unblocking updates the row state to match what was written`() {
+        val id = activity.blockRuleId(pkg)
+        val unrelated = ContextRule(
+            id = "some-other-rule",
+            name = "Unrelated",
+            enabled = true,
+            condition = Condition.Always,
+            effect = RuleEffect.Block(),
+            target = RuleTarget.Apps(setOf(PackageName("com.example.other"))),
+        )
+        val block = ContextRule(
+            id = id,
+            name = "Blocked",
+            enabled = true,
+            condition = Condition.Always,
+            effect = RuleEffect.Block(),
+            target = RuleTarget.Apps(setOf(pkg)),
+        )
+        val loaded = AppControlActivity.RowState(snapshot = null, rules = listOf(unrelated))
+
+        val blocked = loaded.withRule(id, block)
+        assertTrue(activity.isBlocked(pkg, blocked.rules))
+        assertTrue(unrelated in blocked.rules)
+
+        val blockedAgain = blocked.withRule(id, block)
+        assertTrue(blockedAgain.rules.count { it.id == id } == 1)
+
+        val unblocked = blockedAgain.withRule(id, null)
+        assertFalse(activity.isBlocked(pkg, unblocked.rules))
+        assertTrue(unblocked.rules == listOf(unrelated))
+    }
 }
 
 /**
