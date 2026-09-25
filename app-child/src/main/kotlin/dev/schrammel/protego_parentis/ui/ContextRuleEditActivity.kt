@@ -285,14 +285,15 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                             .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
                             val deleted = name
-                            contextRuleRuleStore(this@ContextRuleEditActivity, target).delete(ruleId)
+                            val store = contextRuleRuleStore(this@ContextRuleEditActivity, target)
+                            store.delete(ruleId)
                             Audit.record(
                                 context = this@ContextRuleEditActivity,
                                 actor = AuditActor.PARENT,
                                 action = AuditAction.CONTEXT_RULE_DELETED,
                                 subject = deleted,
                             )
-                            if (!target.isOwnDevice) toast(getString(R.string.context_delete_sent_remote))
+                            acknowledgeRuleWrite(store, R.string.context_delete_sent_remote)
                             finish()
                         }
                     },

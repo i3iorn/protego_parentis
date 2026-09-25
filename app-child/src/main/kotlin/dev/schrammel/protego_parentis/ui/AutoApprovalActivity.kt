@@ -291,14 +291,15 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
 
     private fun delete() {
         val name = existing?.name.orEmpty()
-        autoApprovalRuleStore(this, target).delete(ruleId)
+        val store = autoApprovalRuleStore(this, target)
+        store.delete(ruleId)
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
             action = AuditAction.AUTO_RULE_DELETED,
             subject = name,
         )
-        if (!target.isOwnDevice) toast(getString(R.string.context_delete_sent_remote))
+        acknowledgeRuleWrite(store, R.string.context_delete_sent_remote)
         finish()
     }
 

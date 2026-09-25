@@ -607,10 +607,14 @@ internal fun Activity.toast(@StringRes messageRes: Int, duration: Int = Toast.LE
  * [dev.schrammel.protego_parentis.ui.rules.RuleWriteKind] store: a local write
  * is already live and needs no word, a remote one only reaches the child once
  * sync carries it there. Five screens used to hand-roll this branch; the store
- * knows which kind it is, so they ask it instead.
+ * knows which kind it is, so they ask it instead. A delete passes its own
+ * [remoteMessage].
  */
-internal fun Activity.acknowledgeRuleWrite(store: RuleWriteKind) {
-    if (store.writesRemotely) toast(R.string.context_save_sent_remote)
+internal fun Activity.acknowledgeRuleWrite(
+    store: RuleWriteKind,
+    @StringRes remoteMessage: Int = R.string.context_save_sent_remote,
+) {
+    if (store.writesRemotely) toast(remoteMessage)
 }
 
 /**
