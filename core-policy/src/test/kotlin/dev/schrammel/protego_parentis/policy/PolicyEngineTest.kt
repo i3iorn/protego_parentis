@@ -658,6 +658,35 @@ class PolicyEngineTest {
         assertTrue(result.suspend[GAME] is Reason.ContextRuleActive)
     }
 
+    /**
+     * The rule reported for an app is the one lifting last, but hiding is
+     * decided by every active block: a hidden rule that lifts sooner still
+     * hides the app while it applies.
+     */
+    @Test
+    fun `an app stays hidden when the rule reported for it is not the hidden one`() {
+        val hiddenAtBedtime = ContextRule(
+            id = "hidden-at-bedtime",
+            name = "Hidden at bedtime",
+            enabled = true,
+            condition = Condition.DuringWindow(bedtime(startingOn = "2026-08-21").window),
+            effect = RuleEffect.Block(hidden = true),
+            target = RuleTarget.Apps(setOf(GAME)),
+        )
+        val result = PolicyEngine.evaluate(
+            policy = policy(
+                appRules = mapOf(GAME to AppRule.Blocked()),
+                contextRules = listOf(hiddenAtBedtime),
+            ),
+            installedPackages = ALL_PACKAGES,
+            usage = usage("2026-08-21"),
+            now = at("2026-08-22", "02:00"),
+        )
+
+        assertEquals(setOf(GAME), result.hide)
+        assertNull(result.suspend[GAME]?.liftsAt)
+    }
+
     // ---------- deferral ----------
 
     private fun budgetSpent(deviceState: DeviceState) = PolicyEngine.evaluate(

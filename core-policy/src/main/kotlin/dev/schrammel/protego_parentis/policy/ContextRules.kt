@@ -22,8 +22,17 @@ import kotlin.time.Duration.Companion.minutes
  * it returns rather than handing the intermediate shape to callers.
  */
 internal data class ContextOutcome(
-    /** Blocked outright while their rule applies, with the rule that did it. */
+    /**
+     * Blocked outright while their rule applies, with the rule that did it —
+     * of several, the one lifting last (see [ContextRules.evaluate]).
+     */
     val blocked: Map<PackageName, ContextRule>,
+    /**
+     * Of [blocked], the ones any active blocking rule hides. Kept apart from
+     * the one rule [blocked] names, since the rule lifting last need not be
+     * the one that asked for hiding.
+     */
+    val hidden: Set<PackageName> = emptySet(),
     /** Exempt from every limit while their rule applies. */
     val allowed: Set<PackageName>,
     /**
@@ -118,6 +127,8 @@ internal object ContextRules {
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val alwaysBlocked = LinkedHashMap<PackageName, ContextRule>()
+        val blockHidden = mutableSetOf<PackageName>()
+        val alwaysHidden = mutableSetOf<PackageName>()
         val allowed = mutableSetOf<PackageName>()
         val safetyExempt = mutableSetOf<PackageName>()
         var deviceBudget: WeeklyBudget? = null
@@ -128,12 +139,14 @@ internal object ContextRules {
             when (val effect = rule.effect) {
                 is RuleEffect.Block ->
                     resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
-                        blocked.putIfAbsent(pkg, rule)
+                        blocked[pkg] = liftingLast(blocked[pkg], rule, now)
+                        if (effect.hidden) blockHidden += pkg
                     }
 
                 is RuleEffect.AlwaysBlock ->
                     resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
-                        alwaysBlocked.putIfAbsent(pkg, rule)
+                        alwaysBlocked[pkg] = liftingLast(alwaysBlocked[pkg], rule, now)
+                        if (effect.hidden) alwaysHidden += pkg
                     }
 
                 is RuleEffect.Allow ->
@@ -172,8 +185,12 @@ internal object ContextRules {
         blocked.forEach { (pkg, rule) -> if (pkg !in allowed && pkg !in safetyExempt) effectiveBlocked[pkg] = rule }
         alwaysBlocked.forEach { (pkg, rule) -> if (pkg !in safetyExempt) effectiveBlocked[pkg] = rule }
 
+        val hidden = blockHidden.filterTo(mutableSetOf()) { it !in allowed && it !in safetyExempt } +
+            alwaysHidden.filter { it !in safetyExempt }
+
         return ContextOutcome(
             blocked = effectiveBlocked,
+            hidden = hidden,
             allowed = allowed,
             safetyExempt = safetyExempt,
             deviceBudget = deviceBudget,
@@ -266,6 +283,20 @@ internal object ContextRules {
      *    starts, which is a question about when a condition *begins* — a
      *    different traversal from this one, and not one anything needs yet.
      */
+    /**
+     * Of two rules blocking the same app, the one to report: whichever lifts
+     * last, with no known end beating any end. Only one rule per app reaches
+     * PolicyEngine, which then answers "when can I use this again" from it,
+     * so keeping the first match told a child a parent's standing block
+     * would lift when the bedtime it overlapped with did.
+     */
+    private fun liftingLast(current: ContextRule?, candidate: ContextRule, now: ZonedDateTime): ContextRule {
+        if (current == null) return candidate
+        val currentLifts = liftsAt(current.condition, now) ?: return current
+        val candidateLifts = liftsAt(candidate.condition, now) ?: return candidate
+        return if (candidateLifts.isAfter(currentLifts)) candidate else current
+    }
+
     fun liftsAt(condition: Condition, now: ZonedDateTime, depth: Int = 0): Instant? {
         if (depth > MAX_DEPTH) return null
 

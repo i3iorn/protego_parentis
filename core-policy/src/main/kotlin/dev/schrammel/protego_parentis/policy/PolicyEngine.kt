@@ -170,13 +170,9 @@ object PolicyEngine {
                     // A manual per-app block is an ordinary RuleEffect.Block
                     // rule now, the same as a scheduled one — AppRule.Blocked
                     // is no longer read here, so this is the one place hidden
-                    // apps are decided too. AlwaysBlock carries the same
-                    // hidden flag, for whichever of the two tiers this rule
-                    // turned out to be.
-                    val hidden = (rule.effect as? RuleEffect.Block)?.hidden
-                        ?: (rule.effect as? RuleEffect.AlwaysBlock)?.hidden
-                        ?: false
-                    if (hidden) hide += pkg
+                    // apps are decided too: hidden if any active blocking
+                    // rule says so, not only the one reported below.
+                    if (pkg in contextOutcome.hidden) hide += pkg
                     // #103: derived from the rule's own condition rather than
                     // assumed null. A window-based rule can say when it lifts;
                     // a Wi-Fi one still cannot, and null still means that.
