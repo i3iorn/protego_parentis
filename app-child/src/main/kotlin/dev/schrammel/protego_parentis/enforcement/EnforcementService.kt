@@ -330,8 +330,10 @@ class EnforcementService : Service() {
          * policy read, heartbeat, poll) every minute, day and night. Anything
          * that genuinely arrives as an event (a lock command, a rule push, an
          * install) rides the realtime stream or a broadcast and does not wait
-         * for the tick; five minutes of slack only affects the cadence of the
-         * periodic sweep and the notification refresh.
+         * for the tick. Two things do wait for it, and [TickWork.nextDelay]
+         * keeps the tick short for them: an active emergency's repeat, and
+         * rules reading Wi-Fi, a place, a nearby device or battery — nothing
+         * broadcasts those changes.
          */
         internal const val MAX_INTERVAL_MILLIS = 5 * 60_000L
 

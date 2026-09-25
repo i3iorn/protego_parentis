@@ -47,6 +47,23 @@ class TickWorkDelayTest {
         )
     }
 
+    /**
+     * Nothing broadcasts a Wi-Fi, place, Bluetooth or battery change, so a rule
+     * reading one only applies when a tick runs. Held to a minute — the
+     * cadence before the idle interval rose to five — while such rules exist.
+     */
+    @Test
+    fun `rules reading the surroundings keep the tick at a minute`() {
+        assertEquals(
+            TickWork.SURROUNDINGS_INTERVAL_MILLIS,
+            TickWork.nextDelay(null, now, emergencyActive = false, watchingSurroundings = true),
+        )
+        assertEquals(
+            TickWork.SOS_REPEAT_MILLIS,
+            TickWork.nextDelay(null, now, emergencyActive = true, watchingSurroundings = true),
+        )
+    }
+
     @Test
     fun `an emergency never makes a sooner change wait longer`() {
         assertEquals(
