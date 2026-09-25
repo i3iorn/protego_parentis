@@ -204,12 +204,20 @@ class SyncReceiver(
      * traffic, undecryptable, refused, a stranger offered for enrolment). Unlike
      * [pollNow] this does not re-run the whole replica-sync pass on every message
      * — that happens on the slow reconciliation poll to avoid redundant pushes.
+     *
+     * Deliberately does not move the poll cursor ([SyncConfigStore.lastPolledAt]).
+     * The stream connects to `/sse` with no `since`, so a message published
+     * while it was down is never replayed by it — only a poll fetches it. If
+     * this advanced the cursor, the first message to arrive after a reconnect
+     * would push it past the gap and the next poll would ask for nothing
+     * older, losing that message for good. A one-shot command (an answered
+     * request, bonus time, a lock) has nothing else to repair it. The poll
+     * re-fetching what the stream already delivered costs a download; the
+     * replay guard makes it a no-op. The same cursor also gates
+     * [pollNow]'s `minAgeMillis`, so stream traffic moving it would starve the
+     * tick's poll — and the replica maintenance that rides on it.
      */
-    fun receiveEnvelope(key: SyncKey, envelope: String): Boolean {
-        val applied = apply(key, envelope)
-        config.recordPolledAt(Instant.now())
-        return applied
-    }
+    fun receiveEnvelope(key: SyncKey, envelope: String): Boolean = apply(key, envelope)
 
     /**
      * Opens one envelope and acts on it.

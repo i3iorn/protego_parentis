@@ -184,6 +184,29 @@ class SyncReceiverTest {
         return order(chunks).map { receiver.receiveEnvelope(key, it) }.any { it }
     }
 
+    // ---------- the poll cursor ----------
+
+    /**
+     * The realtime stream connects with no `since`, so anything published while
+     * it was down is only ever fetched by a poll starting from this cursor. A
+     * stream delivery that moved it would skip that gap for good: the first
+     * message after a reconnect would carry the cursor past everything the
+     * stream never saw.
+     */
+    @Test
+    fun `a stream delivery leaves the poll cursor where the last poll left it`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        val child = keyPair()
+        enroll(child, SyncRole.CHILD, "Kid's phone")
+        val config = SyncConfigStore(context)
+        val lastPoll = Instant.parse("2026-09-25T08:00:00Z")
+        config.recordPolledAt(lastPoll)
+
+        deliver(message(child, SyncMessageType.HEARTBEAT, SyncRole.CHILD), child)
+
+        assertEquals(lastPoll, config.lastPolledAt())
+    }
+
     // ---------- applyVouch ----------
 
     @Test
