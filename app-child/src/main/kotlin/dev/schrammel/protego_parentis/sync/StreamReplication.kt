@@ -56,6 +56,9 @@ class StreamReplication(context: Context) {
         val id = ReplicationRules.streamId(
             seconds = Instant.now().epochSecond,
             unique = UUID.randomUUID().toString().take(ID_TAIL),
+            // Attributed sections name their author in the id, so a receiver
+            // can refuse anyone else writing under it (ReplicationRules.isAuthoredBy).
+            author = origin.takeIf { section == ReplicationRules.CHAT || section == ReplicationRules.AUDIT },
         )
         val root = "$section${ReplicationRules.SEPARATOR}$id"
         val withAuthor = fields + (FIELD_BY to origin)
@@ -114,6 +117,12 @@ data class StreamEntry(val id: String, val fields: Map<String, String>) {
 
     fun flag(field: String): Boolean = fields[field]?.toBooleanStrictOrNull() ?: false
 
-    /** The device that wrote it, or empty for an entry from an older build. */
-    val by: String get() = fields[StreamReplication.FIELD_BY].orEmpty()
+    /**
+     * The device that wrote it, or empty for an entry from an older build.
+     * Taken from the id when the id names its author, since receivers
+     * enforce that one; the stored field is only a claim.
+     */
+    val by: String
+        get() = ReplicationRules.authorOf("_${ReplicationRules.SEPARATOR}$id")
+            ?: fields[StreamReplication.FIELD_BY].orEmpty()
 }

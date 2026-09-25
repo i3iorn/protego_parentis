@@ -127,8 +127,9 @@ internal class ReplicaMaintainer(
         val incoming = StateCodec.decodeOps(message.field(FIELD_OPS))
         if (incoming.isEmpty()) return false
 
+        val nowSeconds = Instant.now().epochSecond
         val (authorised, unauthorised) = incoming.partition {
-            ReplicationRules.accepts(senderRole, it, senderId)
+            ReplicationRules.acceptsIncoming(senderRole, it, senderId, nowSeconds)
         }
         val (allowed, overCapacity) = withinCapacity(authorised)
         val refused = unauthorised + overCapacity
