@@ -192,7 +192,7 @@ class PolicyReplication(context: Context) {
      * enforces anything.
      *
      * Fixing [defaultChildId] only fixes what happens *next*: `onStateChanged`
-     * in [SyncReceiver] only re-pulls when a *new* op arrives, and a rule
+     * in [ReplicaMaintainer] only re-pulls when a *new* op arrives, and a rule
      * that has not changed since the bug was live generates no new op —
      * the replica already agrees with the parent bit for bit, so nothing
      * about it looks different to reconcile. Without a forced backfill, a

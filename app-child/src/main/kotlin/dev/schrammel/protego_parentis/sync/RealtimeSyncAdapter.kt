@@ -7,13 +7,12 @@ import dev.schrammel.protego_parentis.enforcement.RealtimeSync
 import dev.schrammel.protego_parentis.model.Heartbeat
 
 /**
- * [RealtimeSync], delegating to a [SyncCoordinator] this adapter owns.
+ * [RealtimeSync], delegating to the shared [SyncCoordinator] from [SyncGraph].
  *
  * A thin wrapper rather than `SyncCoordinator` implementing [RealtimeSync]
  * directly: several of `SyncCoordinator`'s own methods (`announceSelf`,
  * `publishHeartbeat`, `pollNow`) have default parameter values that dozens of
- * existing call sites — every screen that constructs its own `SyncCoordinator`
- * — rely on, and Kotlin forbids an overriding function from redeclaring a
+ * existing call sites — nearly every screen — rely on, and Kotlin forbids an overriding function from redeclaring a
  * default. Making `SyncCoordinator` itself the implementation would have meant
  * stripping those defaults from the class every one of those call sites uses,
  * to serve the one caller ([dev.schrammel.protego_parentis.AppRegistry]) that

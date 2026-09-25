@@ -37,7 +37,8 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  * managed phone's own edits go straight to the local store precisely so that
  * case never costs it its own rules; only a *remote* edit has anywhere else
  * to go. Local edits still reach the family — the existing push loop in
- * `SyncReceiver.keepReplicaCurrent` already carries them out.
+ * [dev.schrammel.protego_parentis.sync.ReplicaMaintainer.keepReplicaCurrent]
+ * already carries them out.
  */
 interface PolicyRuleStore : RuleWriteKind {
     fun read(): PolicySnapshot?

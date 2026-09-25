@@ -40,9 +40,9 @@ import java.time.Instant
  * [ChildCommandHandler], [RequestSyncHandler], [TelemetryInboundHandler], and
  * [ChatInboundHandler], one per message family. This class keeps only what
  * every message shares regardless of what it is: envelope reassembly,
- * decryption, replay admission, roster admission, dispatch, and the
- * replicated-state machinery ([applyStateOps] through [onStateChanged]) that
- * runs whether or not anything arrived at all.
+ * decryption, replay admission, roster admission, and dispatch. Replicated
+ * state — applying ops and keeping the replica current — is
+ * [ReplicaMaintainer]'s.
  *
  * [publisher] exists here only because a small number of inbound messages
  * produce an outbound one in response — a locate request answered with a

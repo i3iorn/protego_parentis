@@ -54,7 +54,7 @@ class EnforcementService : Service() {
     private val handler = Handler(worker.looper)
 
     /**
-     * Publishes SOS positions off the tick thread — see [repeatEmergency].
+     * Publishes SOS positions off the tick thread — see [TickWork]'s SOS repeat.
      * Single-threaded so fixes are sent in the order they were asked for.
      */
     private val locator = Executors.newSingleThreadExecutor { runnable ->
