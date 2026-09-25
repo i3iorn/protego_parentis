@@ -6,6 +6,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -48,6 +49,43 @@ class ReplicatedStateStoreTest {
     fun tearDown() = ReplicatedStateStore(context).forgetAll()
 
     private fun store() = ReplicatedStateStore(context)
+
+    // ---------- the decoded cache ----------
+
+    /**
+     * Reads are cached against the stored string, process-wide, because the
+     * replication helpers read once per record and each read used to decode
+     * the whole file. The cache is only worth having if a write through any
+     * instance is still seen by every other.
+     */
+    @Test
+    fun `a write through one instance is seen by another that already read`() {
+        val reader = store()
+        assertNull(reader.value("policy/dailyLimitMinutes"))
+
+        store().write("policy/dailyLimitMinutes", "60", "A", SyncRole.PARENT)
+
+        assertEquals("60", reader.value("policy/dailyLimitMinutes"))
+    }
+
+    @Test
+    fun `an unchanged file is decoded once, not once per read`() {
+        val store = store()
+        store.write("policy/dailyLimitMinutes", "60", "A", SyncRole.PARENT)
+
+        assertSame(store.entries, store().entries)
+    }
+
+    @Test
+    fun `forgetting everything is seen by a reader that already read`() {
+        val reader = store()
+        store().write("policy/dailyLimitMinutes", "60", "A", SyncRole.PARENT)
+        assertEquals("60", reader.value("policy/dailyLimitMinutes"))
+
+        store().forgetAll()
+
+        assertTrue(reader.entries.isEmpty())
+    }
 
     // ---------- the clock, which is where the silence was ----------
 

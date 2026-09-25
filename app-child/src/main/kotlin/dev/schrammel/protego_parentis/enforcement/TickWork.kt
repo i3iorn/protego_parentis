@@ -17,6 +17,7 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.Heartbeat
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.policy.ContextSignals
 import dev.schrammel.protego_parentis.rules.AppReviewStore
 import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.rules.SosStore
@@ -161,7 +162,23 @@ internal class TickWork(
         // stream that is down, not the primary path — see TICK_POLL_MIN_AGE_MILLIS.
         sync.pollNow(minAgeMillis = TICK_POLL_MIN_AGE_MILLIS)
 
-        return delayUntil(snapshot.enforcement.nextChangeAt, now)
+        return nextDelay(
+            snapshot.enforcement.nextChangeAt,
+            now,
+            emergencyActive = sos.isActive,
+            watchingSurroundings = watchingSurroundings(snapshot),
+        )
+    }
+
+    /**
+     * Whether this pass read anything no clock can predict — see
+     * [ContextSignals]. Place announcements count too: [announceArrivals]
+     * only notices an arrival when a tick runs.
+     */
+    private fun watchingSurroundings(snapshot: EnforcementSnapshot): Boolean {
+        if (ContextSignals.readsSurroundings(snapshot.policy.contextRules)) return true
+        val rules = AppRegistry.childStores.contextRules
+        return rules.announceArrivals && rules.places.isNotEmpty()
     }
 
     /**
@@ -267,8 +284,10 @@ internal class TickWork(
     /**
      * Keeps telling the parents while an emergency is running (LOC-3).
      *
-     * Every minute, with a fresh position each time. A single message that arrived
-     * while a phone was in a pocket would be the whole feature failing quietly.
+     * Every [SOS_REPEAT_MILLIS], with a fresh position each time. A single
+     * message that arrived while a phone was in a pocket would be the whole
+     * feature failing quietly. Only runs when a tick does, which is why
+     * [nextDelay] keeps ticks this close together while one is active.
      */
     private fun repeatEmergency(now: Instant) {
         if (!sos.isActive) return
@@ -347,24 +366,6 @@ internal class TickWork(
     /** -1 when the level cannot be read, which the parent's screen shows as unknown. */
     private fun batteryPercent(): Int = BatteryReader.percent(context) ?: -1
 
-    /**
-     * Sleeps until the engine says the decision would change, within bounds.
-     *
-     * The engine already computes the exact moment a limit bites or a warning is
-     * due, so there is no reason to wake every minute. With the screen off and
-     * nothing running, the next change is usually the 4am reset and we idle at the
-     * maximum interval instead of burning battery on pointless evaluations.
-     *
-     * Exact alarms would be the theoretical ideal, but `SCHEDULE_EXACT_ALARM` is a
-     * restricted permission that Play grants to alarm-clock apps, and a minute of
-     * slack on a screen-time warning does not justify that fight.
-     */
-    private fun delayUntil(nextChange: Instant?, now: Instant): Long {
-        if (nextChange == null) return MAX_INTERVAL_MILLIS
-        val millis = nextChange.toEpochMilli() - now.toEpochMilli()
-        return millis.coerceIn(MIN_INTERVAL_MILLIS, MAX_INTERVAL_MILLIS)
-    }
-
     private fun summarise(snapshot: EnforcementSnapshot): String {
         val budget = snapshot.enforcement.deviceBudget
         return when {
@@ -396,5 +397,51 @@ internal class TickWork(
 
         /** How often an unresolved emergency repeats itself to the parents. */
         const val SOS_REPEAT_MILLIS = 30_000L
+
+        /**
+         * The longest a surroundings-based rule waits to apply — the tick's
+         * cadence before the idle interval was raised to five minutes.
+         */
+        const val SURROUNDINGS_INTERVAL_MILLIS = 60_000L
+
+        /**
+         * How long to sleep before the next tick.
+         *
+         * Until the engine says the decision would change, within bounds. The
+         * engine already computes the exact moment a limit bites or a warning is
+         * due, so there is no reason to wake every minute. With the screen off
+         * and nothing running, the next change is usually the 4am reset and we
+         * idle at the maximum interval instead of burning battery on pointless
+         * evaluations.
+         *
+         * The engine's next-change moment knows nothing that isn't driven by the
+         * clock, so two things hold the sleep shorter:
+         * - an active emergency, to [SOS_REPEAT_MILLIS] — the repeat only runs
+         *   when a tick does;
+         * - rules that read the phone's surroundings (Wi-Fi, a place, a nearby
+         *   device, battery), or place announcements, to
+         *   [SURROUNDINGS_INTERVAL_MILLIS] — nothing broadcasts those changes,
+         *   so a tick is the only thing that notices them.
+         *
+         * Exact alarms would be the theoretical ideal, but `SCHEDULE_EXACT_ALARM`
+         * is a restricted permission that Play grants to alarm-clock apps, and a
+         * minute of slack on a screen-time warning does not justify that fight.
+         */
+        internal fun nextDelay(
+            nextChange: Instant?,
+            now: Instant,
+            emergencyActive: Boolean,
+            watchingSurroundings: Boolean = false,
+        ): Long {
+            var delay = if (nextChange == null) {
+                MAX_INTERVAL_MILLIS
+            } else {
+                (nextChange.toEpochMilli() - now.toEpochMilli())
+                    .coerceIn(MIN_INTERVAL_MILLIS, MAX_INTERVAL_MILLIS)
+            }
+            if (watchingSurroundings) delay = delay.coerceAtMost(SURROUNDINGS_INTERVAL_MILLIS)
+            if (emergencyActive) delay = delay.coerceAtMost(SOS_REPEAT_MILLIS)
+            return delay
+        }
     }
 }

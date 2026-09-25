@@ -224,11 +224,34 @@ class ReplicatedStateStore(context: Context) {
     fun forgetAll() = synchronized(LOCK) {
         prefs.edit { clear() }
         sharedClock = null
+        decoded = null
     }
 
-    private fun read(): Map<String, StateEntry> =
-        StateCodec.decodeOps(prefs.getString(KEY_ENTRIES, null))
-            .associate { it.path to it.toEntry() }
+    /**
+     * Every register, decoded — from [decoded] when the stored string is the
+     * one it was decoded from.
+     *
+     * [entries], [value], [children] and [idsUnder] all come through here, and
+     * the replication readers and writers call them once per record: a single
+     * poll used to decode this file — which also holds the chat, request and
+     * audit streams, so it is the largest store in the app — dozens of times.
+     * Keyed on the stored string itself, the way [dev.schrammel.protego_parentis.rules.DecodeCache]
+     * is, so it cannot serve stale data whichever instance or path wrote it:
+     * the decode is a pure function of that string.
+     */
+    private fun read(): Map<String, StateEntry> = synchronized(LOCK) {
+        val raw = prefs.getString(KEY_ENTRIES, null)
+        val cached = decoded
+        // Identity first: SharedPreferences hands back the same String until
+        // the value changes, so the common case never compares contents.
+        if (cached != null && (cached.raw === raw || cached.raw == raw)) {
+            cached.entries
+        } else {
+            StateCodec.decodeOps(raw)
+                .associate { it.path to it.toEntry() }
+                .also { decoded = Decoded(raw, it) }
+        }
+    }
 
     private fun commit(state: Map<String, StateEntry>, queue: List<StateOp>) {
         prefs.edit {
@@ -256,6 +279,16 @@ class ReplicatedStateStore(context: Context) {
         const val MAX_PENDING = 500
 
         val LOCK = Any()
+
+        /** The stored string and what it decodes to, as one value so the pair can't tear. */
+        private class Decoded(val raw: String?, val entries: Map<String, StateEntry>)
+
+        /**
+         * Process-wide rather than per instance: a dozen collaborators each
+         * construct their own store (see [clock]), and a per-instance cache
+         * would rarely stay warm. Only touched under [LOCK].
+         */
+        private var decoded: Decoded? = null
 
         /**
          * One clock for the process, built from disk the first time it is asked

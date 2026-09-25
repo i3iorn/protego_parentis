@@ -39,7 +39,7 @@ import java.util.concurrent.Executors
  * notification is not dismissible, and that is deliberate.
  *
  * The re-evaluation interval is driven by the engine's own `nextChangeAt` rather
- * than a fixed poll — see [delayUntil].
+ * than a fixed poll — see [TickWork.nextDelay].
  */
 class EnforcementService : Service() {
 
@@ -54,7 +54,7 @@ class EnforcementService : Service() {
     private val handler = Handler(worker.looper)
 
     /**
-     * Publishes SOS positions off the tick thread — see [repeatEmergency].
+     * Publishes SOS positions off the tick thread — see [TickWork]'s SOS repeat.
      * Single-threaded so fixes are sent in the order they were asked for.
      */
     private val locator = Executors.newSingleThreadExecutor { runnable ->
@@ -319,7 +319,7 @@ class EnforcementService : Service() {
     companion object {
         private const val TAG = "DementorService"
         private const val CHANNEL_ID = "enforcement"
-        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_ID = NotificationIds.ENFORCEMENT_SERVICE
 
         /**
          * Never sleep longer than this, so drift and missed events self-correct.
@@ -330,8 +330,10 @@ class EnforcementService : Service() {
          * policy read, heartbeat, poll) every minute, day and night. Anything
          * that genuinely arrives as an event (a lock command, a rule push, an
          * install) rides the realtime stream or a broadcast and does not wait
-         * for the tick; five minutes of slack only affects the cadence of the
-         * periodic sweep and the notification refresh.
+         * for the tick. Two things do wait for it, and [TickWork.nextDelay]
+         * keeps the tick short for them: an active emergency's repeat, and
+         * rules reading Wi-Fi, a place, a nearby device or battery — nothing
+         * broadcasts those changes.
          */
         internal const val MAX_INTERVAL_MILLIS = 5 * 60_000L
 

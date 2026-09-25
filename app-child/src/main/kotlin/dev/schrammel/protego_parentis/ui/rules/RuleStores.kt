@@ -13,6 +13,7 @@ import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.rules.AutoApprovalStore
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.MigratedRuleIds
 import dev.schrammel.protego_parentis.rules.PolicySnapshot
 import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
@@ -37,7 +38,8 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  * managed phone's own edits go straight to the local store precisely so that
  * case never costs it its own rules; only a *remote* edit has anywhere else
  * to go. Local edits still reach the family — the existing push loop in
- * `SyncReceiver.keepReplicaCurrent` already carries them out.
+ * [dev.schrammel.protego_parentis.sync.ReplicaMaintainer.keepReplicaCurrent]
+ * already carries them out.
  */
 interface PolicyRuleStore : RuleWriteKind {
     fun read(): PolicySnapshot?
@@ -60,8 +62,9 @@ class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore, Rule
     private val store = LocalPolicyStore(context)
     override fun read(): PolicySnapshot = store.snapshot()
     override fun write(snapshot: PolicySnapshot) {
+        // applySnapshot is one LocalPolicyStore transaction, which already
+        // kicks enforcement itself.
         store.applySnapshot(snapshot)
-        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 
@@ -301,18 +304,18 @@ fun appCatalog(context: Context, target: RuleScope): AppCatalog =
 // a legacy per-app block, per-category budget, or per-app budget. The id
 // scheme and the "find it in this rule list" lookup used to be hand-rolled
 // once per screen; centralised here so a change to either only has one place
-// to happen, not three that can quietly drift apart.
+// to happen, not three that can quietly drift apart. The id strings themselves
+// are MigratedRuleIds', shared with the migration that writes them.
 
 /** The well-known [ContextRule] id [pkg]'s migrated block rule uses. */
-fun blockRuleIdFor(pkg: PackageName): String = LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX + pkg.value
+fun blockRuleIdFor(pkg: PackageName): String = MigratedRuleIds.appBlock(pkg)
 
 /** Whether [pkg] has a block rule at [blockRuleIdFor], among [rules]. */
 fun isAppBlocked(pkg: PackageName, rules: List<ContextRule>): Boolean =
     rules.firstOrNull { it.id == blockRuleIdFor(pkg) }?.effect is RuleEffect.Block
 
 /** The well-known [ContextRule] id [categoryId]'s migrated budget rule uses. */
-fun categoryBudgetRuleIdFor(categoryId: String): String =
-    LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX + categoryId
+fun categoryBudgetRuleIdFor(categoryId: String): String = MigratedRuleIds.categoryBudget(categoryId)
 
 /** [categoryId]'s budget as its migrated [ContextRule] says it, among [rules], or null if there is none. */
 fun categoryBudgetMinutes(rules: List<ContextRule>, categoryId: String): Int? {
@@ -322,10 +325,10 @@ fun categoryBudgetMinutes(rules: List<ContextRule>, categoryId: String): Int? {
 }
 
 /** The well-known [ContextRule] id [pkg]'s migrated per-app budget rule uses. */
-fun appBudgetRuleIdFor(pkg: PackageName): String = LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX + pkg.value
+fun appBudgetRuleIdFor(pkg: PackageName): String = MigratedRuleIds.appBudget(pkg)
 
 /** The well-known [ContextRule] id the migrated bedtime schedule uses. */
-fun bedtimeRuleId(): String = LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX + ScheduleStore.BEDTIME_ID
+fun bedtimeRuleId(): String = MigratedRuleIds.schedule(ScheduleStore.BEDTIME_ID)
 
 /** Every migrated per-app budget among [rules], as the plain package-to-minutes map the UI wants. */
 fun appBudgetLimits(rules: List<ContextRule>): Map<String, Int> = rules.mapNotNull { rule ->

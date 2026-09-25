@@ -26,6 +26,7 @@ import dev.schrammel.protego_parentis.policy.reconcile.ReleaseResult
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
 import dev.schrammel.protego_parentis.rules.GrantStore
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.SosStore
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import dev.schrammel.protego_parentis.usage.InstalledApps
@@ -74,28 +75,11 @@ class EnforcementCoordinator(
     private val contextRules: ContextRuleStore = ContextRuleStore(context.applicationContext),
     private val recorder: UsageHistoryRecorder = UsageHistoryRecorder(collector, history),
     private val hygiene: PlatformHygiene = PlatformHygiene(context.applicationContext, port),
+    private val sosStore: SosStore = AppRegistry.childStores.sos,
 ) {
 
     private val appContext = context.applicationContext
     private val reconciler = PolicyReconciler(port, PackageName(appContext.packageName))
-
-    /** Hoisted off [evaluate]'s per-tick construction — cheap but pointless each pass. */
-    private val sosStore = AppRegistry.childStores.sos
-
-    /**
-     * Whether this phone is the device owner, asked once and remembered.
-     *
-     * [evaluate] asked [DevicePolicyPort.isDeviceOwner] twice per pass — two
-     * binder round-trips for a fact that cannot flip while this process runs
-     * short of [releaseDevice] itself relinquishing it, which clears the cache.
-     * A test that swaps in a fake port builds its own coordinator, so a cache
-     * per coordinator instance cannot go stale across fakes either.
-     */
-    @Volatile
-    private var cachedOwner: Boolean? = null
-
-    private fun ownerState(): Boolean =
-        cachedOwner ?: port.isDeviceOwner().also { cachedOwner = it }
 
     /**
      * Runs each migration once, before anything here ever reads a Policy — see
@@ -154,7 +138,6 @@ class EnforcementCoordinator(
      */
     fun releaseDevice(): ReleaseResult =
         DeviceReleaser(port, PackageName(appContext.packageName)).release()
-            .also { cachedOwner = null }
 
     /**
      * Returns null when usage access has not been granted — without it every
@@ -238,7 +221,13 @@ class EnforcementCoordinator(
         // messages) live behind [PlatformHygiene]: they are reads with side
         // effects on DevicePolicyPort, which is why they are not part of the
         // snapshot-building query itself.
-        val owner = ownerState()
+        // Asked fresh every pass, never remembered across passes: ownership
+        // can arrive while this service is already running — `adb shell dpm
+        // set-device-owner` is run against an installed app, and
+        // DementorDeviceAdminReceiver.onEnabled does not reach this instance —
+        // and a cached `false` would leave the phone unenforced until the
+        // process happened to restart. One binder call per tick.
+        val owner = port.isDeviceOwner()
         hygiene.apply(owner)
 
         val reconcile = if (owner) {

@@ -172,7 +172,7 @@ internal class ChildCommandHandler(
             subject = label,
             after = Audit.flag(blocked),
         )
-        AppRegistry.ruleMutationSink.rulesChanged()
+        // setBlocked is a LocalPolicyStore write, which kicks enforcement itself.
         // The app sat in "new arrivals" waiting on this; without a notification
         // the only way to learn it was reviewed is to notice it now works (or
         // does not) and go looking for why.
@@ -191,13 +191,12 @@ internal class ChildCommandHandler(
         val minutes = message.longField(FIELD_MINUTES)?.toInt()?.takeIf { it > 0 } ?: return false
         val target = SyncTargets.decode(message.field(FIELD_TARGET)) ?: return false
 
-        val policy = AppRegistry.childStores.policy.load()
         AppRegistry.childStores.grants.add(
             target = target,
             minutes = minutes,
             now = Instant.now(),
-            zone = policy.timeZone,
-            dayBoundaryHour = policy.dayBoundaryHour,
+            zone = AppRegistry.childStores.policy.timeZone,
+            dayBoundaryHour = AppRegistry.childStores.policy.dayBoundaryHour,
         )
         Audit.record(
             context = appContext,
@@ -227,7 +226,7 @@ internal class ChildCommandHandler(
         val incoming = PolicySnapshot.decode(message.field(FIELD_POLICY_JSON)) ?: return false
         val store = AppRegistry.childStores.policy
 
-        if (store.load().version != incoming.version) {
+        if (store.version != incoming.version) {
             Diagnostics.record(appContext, DiagnosticEvent.POLICY_UPDATE_CONFLICT)
             return false
         }
@@ -241,7 +240,8 @@ internal class ChildCommandHandler(
             actor = AuditActor.PARENT,
             action = AuditAction.RULES_REPLACED,
         )
-        AppRegistry.ruleMutationSink.rulesChanged()
+        // applySnapshot is a LocalPolicyStore transaction, which kicks
+        // enforcement itself.
         return true
     }
 

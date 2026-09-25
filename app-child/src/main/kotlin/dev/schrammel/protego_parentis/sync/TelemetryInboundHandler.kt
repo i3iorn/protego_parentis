@@ -223,7 +223,7 @@ internal class TelemetryInboundHandler(
      * The "as of" moment on a parent's dashboard means "when I last heard",
      * recorded here rather than derived from replicated ops, which carry a
      * logical clock and no wall-clock time at all. Called from
-     * [SyncReceiver.onStateChanged] whenever a telemetry op just arrived.
+     * [ReplicaMaintainer]'s `onStateChanged` whenever a telemetry op just arrived.
      */
     fun markSummaryHeard() {
         summaries.markHeard()

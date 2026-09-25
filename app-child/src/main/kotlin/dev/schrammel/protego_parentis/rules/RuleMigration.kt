@@ -31,7 +31,7 @@ internal object RuleMigration {
     fun scheduleRules(schedules: List<StoredSchedule>): List<ContextRule> = schedules.mapNotNull { stored ->
         val block = stored.toDomain() ?: return@mapNotNull null
         ContextRule(
-            id = "${LocalPolicyStore.MIGRATED_SCHEDULE_ID_PREFIX}${stored.id}",
+            id = MigratedRuleIds.schedule(stored.id),
             name = stored.name,
             enabled = stored.enabled,
             condition = Condition.DuringWindow(block.window),
@@ -59,7 +59,7 @@ internal object RuleMigration {
     /** One safety-exempt rule per exempt package. */
     fun exemptRules(context: Context, exemptPackages: Set<String>): List<ContextRule> = exemptPackages.map { pkg ->
         ContextRule(
-            id = "${LocalPolicyStore.MIGRATED_EXEMPT_ID_PREFIX}$pkg",
+            id = MigratedRuleIds.exempt(PackageName(pkg)),
             name = context.getString(R.string.rules_exempt_header),
             enabled = true,
             condition = Condition.Always,
@@ -72,7 +72,7 @@ internal object RuleMigration {
     fun appBudgetRules(context: Context, appLimits: Map<String, Int>): List<ContextRule> =
         appLimits.filterValues { it > 0 }.map { (pkg, minutes) ->
             ContextRule(
-                id = "${LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX}$pkg",
+                id = MigratedRuleIds.appBudget(PackageName(pkg)),
                 name = context.getString(R.string.app_limits_title),
                 enabled = true,
                 condition = Condition.Always,
@@ -91,7 +91,7 @@ internal object RuleMigration {
      */
     fun appBlockRules(context: Context, blockedPackages: Set<String>, hiddenPackages: Set<String>): List<ContextRule> {
         fun blockRule(pkg: String, hidden: Boolean) = ContextRule(
-            id = "${LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX}$pkg",
+            id = MigratedRuleIds.appBlock(PackageName(pkg)),
             name = context.getString(R.string.apps_title),
             enabled = true,
             condition = Condition.Always,
@@ -106,7 +106,7 @@ internal object RuleMigration {
     fun categoryBudgetRules(categories: List<StoredCategory>): List<ContextRule> =
         categories.filter { it.limitMinutes > 0 }.map { stored ->
             ContextRule(
-                id = "${LocalPolicyStore.MIGRATED_CATEGORY_BUDGET_ID_PREFIX}${stored.id}",
+                id = MigratedRuleIds.categoryBudget(stored.id),
                 name = stored.name,
                 enabled = true,
                 condition = Condition.Always,

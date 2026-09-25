@@ -55,7 +55,6 @@ class GoalCoordinator(context: Context) {
     }
 
     private fun today(now: Instant): LocalDate {
-        val policy = policyStore.load()
-        return PolicyClock.policyDay(now, policy.timeZone, policy.dayBoundaryHour)
+        return PolicyClock.policyDay(now, policyStore.timeZone, policyStore.dayBoundaryHour)
     }
 }

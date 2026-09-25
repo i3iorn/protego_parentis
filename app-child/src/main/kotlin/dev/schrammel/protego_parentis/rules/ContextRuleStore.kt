@@ -40,16 +40,6 @@ class ContextRuleStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    /**
-     * Decoded across instances and ticks — see [DecodeCache]. `rules` is read
-     * by the enforcement tick through [LocalPolicyStore.load] up to every
-     * fifteen seconds, and this store is constructed per call throughout the
-     * UI, so the cache lives on the raw stored string rather than on anything
-     * instance-scoped.
-     */
-    private val rulesCache = DecodeCache<List<ContextRule>>()
-    private val placesCache = DecodeCache<List<Place>>()
-
     // ---------- rules ----------
 
     var rules: List<ContextRule>
@@ -195,6 +185,12 @@ class ContextRuleStore(context: Context) {
     }
 
     private companion object {
+        // Shared across instances (see DecodeCache): screens and the per-poll
+        // replication classes each build their own store, so a cache held
+        // per instance would almost never be warm.
+        private val rulesCache = DecodeCache<List<ContextRule>>()
+        private val placesCache = DecodeCache<List<Place>>()
+
         const val KEY_ANNOUNCE_ARRIVALS = "announce_arrivals"
         const val FILE_NAME = "context_rules"
 

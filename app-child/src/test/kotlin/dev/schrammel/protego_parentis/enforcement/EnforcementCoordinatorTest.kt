@@ -79,8 +79,31 @@ class EnforcementCoordinatorTest {
         assertNotNull(snapshot.reconcile)
     }
 
+    /**
+     * The one real provisioning path — `adb shell dpm set-device-owner`,
+     * run against an app that is already installed and whose service is
+     * already running — grants ownership to a live coordinator. It used to
+     * remember the first answer for the life of the process, so a service
+     * that started before provisioning stayed monitor-only until something
+     * happened to restart it.
+     */
+    @Test
+    fun `ownership granted while running is enforced on the next pass`() {
+        grantUsageAccess()
+        val port = FakeDevicePolicyPort(owner = false)
+        val coordinator = EnforcementCoordinator(context, port = port)
+
+        assertTrue(coordinator.evaluate()!!.monitorOnly)
+
+        port.owner = true
+        val afterProvisioning = coordinator.evaluate()!!
+
+        assertFalse(afterProvisioning.monitorOnly)
+        assertNotNull(afterProvisioning.reconcile)
+    }
+
     /** A stand-in for `DevicePolicyManager` that does nothing but remember the answer it was told to give. */
-    private class FakeDevicePolicyPort(private val owner: Boolean) : DevicePolicyPort {
+    private class FakeDevicePolicyPort(var owner: Boolean) : DevicePolicyPort {
         private var supportMessages = SupportMessages(short = null, long = null)
         private var networkLogging = false
 

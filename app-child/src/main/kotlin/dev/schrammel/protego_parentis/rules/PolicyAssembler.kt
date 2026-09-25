@@ -6,7 +6,6 @@ import dev.schrammel.protego_parentis.model.BrowserPolicy
 import dev.schrammel.protego_parentis.model.Category
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.ChildId
-import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.InstallPolicy
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
@@ -17,19 +16,23 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * Builds the domain [Policy] from the stores behind [LocalPolicyStore].
  *
- * Separated so the assembly logic can be tested with fake sub-stores
- * without constructing a SharedPreferences-backed store — see the review's
- * "extract codecs to pure-JVM module" direction (the sub-stores themselves
- * are pure-JVM already; this completes the split of assembly from storage).
+ * Separates assembly (precedence between the per-app lists, defaults for an
+ * absent store) from storage. It is not pure-JVM: the sub-stores are
+ * SharedPreferences-backed and [SafetyAllowlist] needs a [Context], so tests
+ * of it still run under Robolectric.
  */
 internal object PolicyAssembler {
 
-    /** As [LocalPolicyStore.load] — reads the sub-stores through the given
-     *  references rather than constructing its own. */
+    /**
+     * As [LocalPolicyStore.load] — reads the sub-stores through the given
+     * references rather than constructing its own.
+     */
     fun assemble(
         appContext: Context,
         subStores: PolicySubStores,
         version: Long,
+        timeZone: ZoneId,
+        dayBoundaryHour: Int,
         childId: String,
         budgetMinutes: Int,
         categoryList: List<StoredCategory>,
@@ -43,7 +46,7 @@ internal object PolicyAssembler {
         return Policy(
             version = version,
             childId = ChildId(childId),
-            timeZone = ZoneId.systemDefault(),
+            timeZone = timeZone,
             deviceBudget = budgetOf(budgetMinutes),
             appRules = buildAppRules(appLimits, exemptPackages, blockedPackages, hiddenPackages),
             categories = categoryList.map(::toDomain),
@@ -56,7 +59,7 @@ internal object PolicyAssembler {
             installPolicy = subStores.policyStore?.installPolicy ?: InstallPolicy.NOTIFY,
             installWindowUntil = subStores.policyStore?.installWindowUntil,
             tamperProtection = subStores.policyStore?.tamperProtection ?: true,
-            dayBoundaryHour = Defaults.DAY_BOUNDARY_HOUR,
+            dayBoundaryHour = dayBoundaryHour,
         )
     }
 
@@ -66,8 +69,13 @@ internal object PolicyAssembler {
         blocked: Set<String>,
         hidden: Set<String>,
     ): Map<PackageName, AppRule> = buildMap {
+        // Per-app limits first, then exemptions on top: an exempt app ignores
+        // every limit, so being on both lists must resolve to exempt.
         limits.forEach { (pkg, mins) -> put(PackageName(pkg), AppRule.Budgeted(budgetOf(mins))) }
         exempt.forEach { put(PackageName(it), AppRule.AlwaysAllowed) }
+        // Last, so an explicit block wins over an exemption. "Ignores limits"
+        // and "is not on this phone" can both be set from different screens,
+        // and the more specific of the two has to be the one that survives.
         blocked.forEach { put(PackageName(it), AppRule.Blocked(hidden = false)) }
         hidden.forEach { put(PackageName(it), AppRule.Blocked(hidden = true)) }
     }
@@ -83,8 +91,10 @@ internal object PolicyAssembler {
     private fun budgetOf(minutes: Int): WeeklyBudget =
         if (minutes <= 0) WeeklyBudget.UNLIMITED else WeeklyBudget.flat(minutes.minutes)
 
-    /** The sub-stores this assembler reads from — passed in so this object
-     * never constructs its own, and tests can inject fakes. */
+    /**
+     * The sub-stores this assembler reads from — passed in so this object
+     * never constructs its own, and tests can inject fakes.
+     */
     data class PolicySubStores(
         val policyStore: LocalPolicyStore?,
         val scheduleStore: ScheduleStore?,

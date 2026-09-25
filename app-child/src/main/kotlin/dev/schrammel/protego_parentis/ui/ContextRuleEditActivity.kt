@@ -30,7 +30,7 @@ import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.policy.ContextRuleAuthoring
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.MigratedRuleIds
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
@@ -285,14 +285,15 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                             .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
                             val deleted = name
-                            contextRuleRuleStore(this@ContextRuleEditActivity, target).delete(ruleId)
+                            val store = contextRuleRuleStore(this@ContextRuleEditActivity, target)
+                            store.delete(ruleId)
                             Audit.record(
                                 context = this@ContextRuleEditActivity,
                                 actor = AuditActor.PARENT,
                                 action = AuditAction.CONTEXT_RULE_DELETED,
                                 subject = deleted,
                             )
-                            if (!target.isOwnDevice) toast(getString(R.string.context_delete_sent_remote))
+                            acknowledgeRuleWrite(store, R.string.context_delete_sent_remote)
                             finish()
                         }
                     },
@@ -595,13 +596,8 @@ class ContextRuleEditActivity : ParentGatedActivity() {
      * while it goes on enforcing regardless. Null for an ordinary rule, which
      * has no such shape to protect.
      */
-    private fun wellKnownSingleAppTarget(): RuleTarget.Apps? {
-        val budgetPkg = ruleId.removePrefix(LocalPolicyStore.MIGRATED_APP_BUDGET_ID_PREFIX)
-        if (budgetPkg != ruleId) return RuleTarget.Apps(setOf(PackageName(budgetPkg)))
-        val blockPkg = ruleId.removePrefix(LocalPolicyStore.MIGRATED_APP_BLOCK_ID_PREFIX)
-        if (blockPkg != ruleId) return RuleTarget.Apps(setOf(PackageName(blockPkg)))
-        return null
-    }
+    private fun wellKnownSingleAppTarget(): RuleTarget.Apps? =
+        MigratedRuleIds.singleAppOf(ruleId)?.let { RuleTarget.Apps(setOf(it)) }
 
     private fun save() {
         if (name.isBlank()) {

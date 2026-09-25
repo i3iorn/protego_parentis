@@ -67,4 +67,24 @@ class LocalPolicyStoreDefaultsTest {
 
         assertEquals(true, LocalPolicyStore(context).load().tamperProtection)
     }
+
+    /**
+     * [LocalPolicyStore.version], [LocalPolicyStore.timeZone] and
+     * [LocalPolicyStore.dayBoundaryHour] exist so the poll's version gate and
+     * the grant/visit paths don't build a whole [Policy] for one field. They
+     * are only safe to use if they always say what [LocalPolicyStore.load]
+     * would — the same "the two agree" property as above.
+     */
+    @Test
+    fun `the single-field getters agree with the assembled policy`() {
+        val store = store()
+        assertEquals(store.load().version, store.version)
+
+        store.dailyLimitMinutes = 45
+        val loaded = store.load()
+
+        assertEquals(loaded.version, store.version)
+        assertEquals(loaded.timeZone, store.timeZone)
+        assertEquals(loaded.dayBoundaryHour, store.dayBoundaryHour)
+    }
 }

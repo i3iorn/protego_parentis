@@ -91,8 +91,8 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
         // Keyed by the same policy day the budget resets on, not real midnight —
         // a lookup just after midnight but before the day-boundary hour must land
         // in yesterday's bucket, same as every other counter in the app.
-        val policy = AppRegistry.childStores.policy.load()
-        val today = PolicyClock.policyDay(Instant.now(), policy.timeZone, policy.dayBoundaryHour)
+        val policyStore = AppRegistry.childStores.policy
+        val today = PolicyClock.policyDay(Instant.now(), policyStore.timeZone, policyStore.dayBoundaryHour)
         AppRegistry.childStores.webActivity.record(today, hostnames, blocked)
         Log.d(TAG, "Counted a batch of $networkLogsCount events")
     }

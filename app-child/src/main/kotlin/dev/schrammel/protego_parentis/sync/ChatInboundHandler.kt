@@ -17,7 +17,7 @@ import dev.schrammel.protego_parentis.sync.core.deviceId
  * Family chat, both directions it can arrive by: as its own message
  * ([rememberChat], from a phone still on the older protocol) or as
  * replicated ops ([announceNewChat], called from
- * [SyncReceiver.onStateChanged] once a chat section op has landed). Kept
+ * [ReplicaMaintainer]'s `onStateChanged` once a chat section op has landed). Kept
  * together because both end in the same notification and both have to
  * re-derive the sender's name from the roster rather than trust the wire.
  */

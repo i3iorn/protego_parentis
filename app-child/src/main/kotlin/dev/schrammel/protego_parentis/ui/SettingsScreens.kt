@@ -290,11 +290,14 @@ class DeviceControlActivity : ParentGatedActivity() {
                         isChecked = store.installPolicy == InstallPolicy.GATED
                         setOnCheckedChangeListener { _, gated ->
                             val chosen = if (gated) InstallPolicy.GATED else InstallPolicy.NOTIFY
-                            store.installPolicy = chosen
-                            // Switching the gate off leaves no window behind, so
-                            // switching it back on is shut rather than
-                            // mysteriously open.
-                            if (!gated) store.installWindowUntil = null
+                            // One transaction, so one version bump and one
+                            // enforcement kick. Switching the gate off leaves no
+                            // window behind, so switching it back on is shut
+                            // rather than mysteriously open.
+                            store.atomically {
+                                store.installPolicy = chosen
+                                if (!gated) store.installWindowUntil = null
+                            }
                             Audit.record(
                                 context = this@DeviceControlActivity,
                                 actor = AuditActor.PARENT,

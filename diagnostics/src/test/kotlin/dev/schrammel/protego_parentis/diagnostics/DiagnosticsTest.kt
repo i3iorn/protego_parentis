@@ -50,4 +50,21 @@ class DiagnosticsTest {
 
         assertTrue(rendered.contains("SERVICE_STARTED"))
     }
+
+    /**
+     * The in-memory log is keyed on the stored string, not held
+     * unconditionally: Robolectric gives each test a fresh preference file in
+     * the same process, and an unkeyed cache served the previous test's
+     * entries to the next.
+     */
+    @Test
+    fun `a log replaced underneath the cache is read afresh`() {
+        Diagnostics.record(context, DiagnosticEvent.SERVICE_STARTED)
+        assertEquals(1, Diagnostics.entries(context).size)
+
+        context.getSharedPreferences("diagnostics", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+
+        assertEquals(emptyList<DiagnosticEntry>(), Diagnostics.entries(context))
+    }
 }

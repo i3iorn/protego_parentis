@@ -19,6 +19,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 /** Log tag, outside the companion so the reflection-based inventory test sees only KEY_ constants. */
 private const val TAG = "LocalPolicyStore"
@@ -65,15 +66,18 @@ data class BedtimeSetting(
  * working with the phone in airplane mode.
  *
  * Every setter that writes into this store's own SharedPreferences file bumps
- * the policy version, which is the signal the enforcement service uses to
- * notice a change and re-evaluate. Setters that delegate to a sibling store
- * instead — [webFilterProfile], [webFilterCustomHost], [browserPolicy],
- * [webFilterCountVisits], [goal], [disabledFeatures] — write into that
- * store's own file and do not bump this version; their callers are
- * responsible for triggering re-evaluation themselves (see e.g.
- * `WebFilterActivity`'s own calls to `AppRegistry.ruleMutationSink.rulesChanged()`).
- * [bedtime] is the one setter here that does neither: see its own doc
- * comment for why it triggers enforcement directly instead.
+ * the policy version and kicks enforcement itself (see [write]); several
+ * setters in a row belong in [atomically], which makes them one bump and one
+ * kick. Callers of those setters must not kick again — each extra kick is a
+ * `startForegroundService` round trip and can queue a second full evaluation.
+ * Setters that delegate to a sibling store instead — [webFilterProfile],
+ * [webFilterCustomHost], [browserPolicy], [webFilterCountVisits], [goal],
+ * [disabledFeatures] — write into that store's own file, bump nothing and
+ * kick nothing on their own, unless they run inside [atomically]; outside it,
+ * their callers trigger re-evaluation themselves (see e.g. `WebFilterActivity`'s
+ * own calls to `AppRegistry.ruleMutationSink.rulesChanged()`). [bedtime]
+ * writes [ScheduleStore] and kicks enforcement directly: see its own doc
+ * comment.
  *
  * TODO(M1): replace with Room + Firestore sync, keeping local as the read path.
  */
@@ -100,12 +104,28 @@ class LocalPolicyStore(context: Context) {
             contextRuleStore = contextRuleStore,
             webFilterStore = webFilterStore,
         ),
-        version = prefs.getLong(KEY_VERSION, INITIAL_VERSION),
+        version = version,
+        timeZone = timeZone,
+        dayBoundaryHour = dayBoundaryHour,
         childId = LOCAL_CHILD_ID,
         budgetMinutes = dailyLimitMinutes,
         categoryList = categories,
         networkBlocked = networkBlockedPackages,
     )
+
+    /**
+     * [load]'s `version`, `timeZone` and `dayBoundaryHour`, without building
+     * the [Policy]. [load] decodes several stores and asks the package manager
+     * for the safety allowlist; callers that only need to know whether the
+     * rules moved, or where the policy day starts, read these instead —
+     * [dev.schrammel.protego_parentis.sync.PolicyReplication.pushFromLocalPolicy]
+     * on every poll, and the grant/visit paths that only place a moment in a day.
+     */
+    val version: Long get() = prefs.getLong(KEY_VERSION, INITIAL_VERSION)
+
+    val timeZone: ZoneId get() = ZoneId.systemDefault()
+
+    val dayBoundaryHour: Int get() = Defaults.DAY_BOUNDARY_HOUR
 
     // ---------- device limit ----------
 
@@ -295,8 +315,6 @@ class LocalPolicyStore(context: Context) {
         )
         set(value) = write { putString(KEY_CATEGORIES, StoredCategory.listToJson(value)) }
 
-    private val categoriesCache = DecodeCache<List<StoredCategory>>()
-
     fun upsertCategory(category: StoredCategory) = synchronized(prefs) {
         categories = categories.filterNot { it.id == category.id } + category
     }
@@ -324,8 +342,6 @@ class LocalPolicyStore(context: Context) {
         set(value) = write {
             putString(KEY_APP_LIMITS, JSONObject(value.filterValues { it > 0 }).toString())
         }
-
-    private val appLimitsCache = DecodeCache<Map<String, Int>>()
 
     fun setAppLimit(packageName: String, minutes: Int) = synchronized(prefs) {
         appLimits = appLimits.toMutableMap().apply {
@@ -368,7 +384,8 @@ class LocalPolicyStore(context: Context) {
         get() = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
         set(value) = write { putStringSet(KEY_HIDDEN, value) }
 
-    fun setBlocked(packageName: String, blocked: Boolean) = synchronized(prefs) {
+    /** One transaction: two writes used to mean two version bumps and two enforcement kicks. */
+    fun setBlocked(packageName: String, blocked: Boolean) = atomically {
         blockedPackages = if (blocked) blockedPackages + packageName else blockedPackages - packageName
         if (blocked) hiddenPackages = hiddenPackages - packageName
     }
@@ -486,6 +503,12 @@ class LocalPolicyStore(context: Context) {
     }
 
     companion object {
+        // Shared across instances (see DecodeCache): screens and the per-poll
+        // replication classes each build their own store, so a cache held
+        // per instance would almost never be warm.
+        private val categoriesCache = DecodeCache<List<StoredCategory>>()
+        private val appLimitsCache = DecodeCache<Map<String, Int>>()
+
         const val FILE_NAME = "local_policy"
         const val INITIAL_VERSION = 1L
         const val LOCAL_CHILD_ID = "local"

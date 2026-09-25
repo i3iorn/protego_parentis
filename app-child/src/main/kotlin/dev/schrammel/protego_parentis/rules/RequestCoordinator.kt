@@ -260,9 +260,8 @@ class RequestCoordinator(
             .map { it.minutes }
 
     private fun startOfToday(now: Instant): Instant {
-        val policy = policyStore.load()
-        val day = PolicyClock.policyDay(now, policy.timeZone, policy.dayBoundaryHour)
-        return PolicyClock.dayStart(day, policy.timeZone, policy.dayBoundaryHour)
+        val day = PolicyClock.policyDay(now, policyStore.timeZone, policyStore.dayBoundaryHour)
+        return PolicyClock.dayStart(day, policyStore.timeZone, policyStore.dayBoundaryHour)
     }
 
     /**
@@ -276,9 +275,8 @@ class RequestCoordinator(
         startOfToday(now).minusMillis(WEEK_DAYS * MILLIS_PER_DAY)
 
     private fun endOfToday(now: Instant): Instant {
-        val policy = policyStore.load()
-        val day = PolicyClock.policyDay(now, policy.timeZone, policy.dayBoundaryHour)
-        return PolicyClock.dayEnd(day, policy.timeZone, policy.dayBoundaryHour)
+        val day = PolicyClock.policyDay(now, policyStore.timeZone, policyStore.dayBoundaryHour)
+        return PolicyClock.dayEnd(day, policyStore.timeZone, policyStore.dayBoundaryHour)
     }
 
     private companion object {

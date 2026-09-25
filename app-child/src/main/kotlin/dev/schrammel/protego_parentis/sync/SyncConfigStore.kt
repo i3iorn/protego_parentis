@@ -375,17 +375,28 @@ class SyncConfigStore(context: Context) {
         prefs.edit { putLong(KEY_LAST_DIGEST, at.toEpochMilli()) }
     }
 
-    private companion object {
+    internal companion object {
+        /**
+         * Drops the cached device id. Test-only: unlike the passphrase and
+         * name caches below it is keyed on nothing, so the first test to load
+         * a config would pin its [LocalDeviceId.useInTests] value for every
+         * later test in the process. Called from the test application's
+         * onCreate.
+         */
+        fun resetForTest() {
+            cachedDeviceId = null
+        }
+
         /** Process-wide: every screen builds its own store. */
         @Volatile
-        var cachedDeviceId: String? = null
+        private var cachedDeviceId: String? = null
 
         @Volatile
-        var cachedPassphrase: Pair<String, String>? = null
+        private var cachedPassphrase: Pair<String, String>? = null
 
         /** [String?] stored name to [String] resolved name — see [deviceName]. */
         @Volatile
-        var cachedDeviceName: Pair<String?, String>? = null
+        private var cachedDeviceName: Pair<String?, String>? = null
 
         const val FILE_NAME = "sync"
         const val SEPARATOR = ","
