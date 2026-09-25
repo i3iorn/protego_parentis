@@ -172,7 +172,7 @@ internal class ChildCommandHandler(
             subject = label,
             after = Audit.flag(blocked),
         )
-        AppRegistry.ruleMutationSink.rulesChanged()
+        // setBlocked is a LocalPolicyStore write, which kicks enforcement itself.
         // The app sat in "new arrivals" waiting on this; without a notification
         // the only way to learn it was reviewed is to notice it now works (or
         // does not) and go looking for why.
@@ -240,7 +240,8 @@ internal class ChildCommandHandler(
             actor = AuditActor.PARENT,
             action = AuditAction.RULES_REPLACED,
         )
-        AppRegistry.ruleMutationSink.rulesChanged()
+        // applySnapshot is a LocalPolicyStore transaction, which kicks
+        // enforcement itself.
         return true
     }
 

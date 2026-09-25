@@ -60,8 +60,9 @@ class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore, Rule
     private val store = LocalPolicyStore(context)
     override fun read(): PolicySnapshot = store.snapshot()
     override fun write(snapshot: PolicySnapshot) {
+        // applySnapshot is one LocalPolicyStore transaction, which already
+        // kicks enforcement itself.
         store.applySnapshot(snapshot)
-        AppRegistry.ruleMutationSink.rulesChanged()
     }
 }
 

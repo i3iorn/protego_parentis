@@ -66,15 +66,18 @@ data class BedtimeSetting(
  * working with the phone in airplane mode.
  *
  * Every setter that writes into this store's own SharedPreferences file bumps
- * the policy version, which is the signal the enforcement service uses to
- * notice a change and re-evaluate. Setters that delegate to a sibling store
- * instead — [webFilterProfile], [webFilterCustomHost], [browserPolicy],
- * [webFilterCountVisits], [goal], [disabledFeatures] — write into that
- * store's own file and do not bump this version; their callers are
- * responsible for triggering re-evaluation themselves (see e.g.
- * `WebFilterActivity`'s own calls to `AppRegistry.ruleMutationSink.rulesChanged()`).
- * [bedtime] is the one setter here that does neither: see its own doc
- * comment for why it triggers enforcement directly instead.
+ * the policy version and kicks enforcement itself (see [write]); several
+ * setters in a row belong in [atomically], which makes them one bump and one
+ * kick. Callers of those setters must not kick again — each extra kick is a
+ * `startForegroundService` round trip and can queue a second full evaluation.
+ * Setters that delegate to a sibling store instead — [webFilterProfile],
+ * [webFilterCustomHost], [browserPolicy], [webFilterCountVisits], [goal],
+ * [disabledFeatures] — write into that store's own file, bump nothing and
+ * kick nothing on their own, unless they run inside [atomically]; outside it,
+ * their callers trigger re-evaluation themselves (see e.g. `WebFilterActivity`'s
+ * own calls to `AppRegistry.ruleMutationSink.rulesChanged()`). [bedtime]
+ * writes [ScheduleStore] and kicks enforcement directly: see its own doc
+ * comment.
  *
  * TODO(M1): replace with Room + Firestore sync, keeping local as the read path.
  */
@@ -381,7 +384,8 @@ class LocalPolicyStore(context: Context) {
         get() = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
         set(value) = write { putStringSet(KEY_HIDDEN, value) }
 
-    fun setBlocked(packageName: String, blocked: Boolean) = synchronized(prefs) {
+    /** One transaction: two writes used to mean two version bumps and two enforcement kicks. */
+    fun setBlocked(packageName: String, blocked: Boolean) = atomically {
         blockedPackages = if (blocked) blockedPackages + packageName else blockedPackages - packageName
         if (blocked) hiddenPackages = hiddenPackages - packageName
     }
