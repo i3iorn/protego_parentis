@@ -1,5 +1,7 @@
-# Build output
+# Build output. app-child/release/ is where Android Studio's "Generate Signed
+# App Bundle or APK" writes by default, outside build/.
 build/
+app-child/release/
 .gradle/
 .kotlin/
 
