@@ -528,25 +528,26 @@ class RequestNotifier(context: Context) {
         const val CHANNEL_SOS = "sos"
 
         // Fixed ids: a second request replaces the first rather than stacking up.
-        const val NOTIFICATION_INCOMING = 3
-        const val NOTIFICATION_DECISION = 4
-        const val NOTIFICATION_NEW_APP = 5
-        const val NOTIFICATION_SILENT = 6
-        const val NOTIFICATION_LOCKED = 7
-        const val NOTIFICATION_LOCATED = 8
-        const val NOTIFICATION_AUTO_APPROVED = 9
-        const val NOTIFICATION_PLACE = 10
-        const val NOTIFICATION_SOS = 11
-        const val NOTIFICATION_SOS_CLEARED = 12
-        const val NOTIFICATION_CHAT = 13
-        const val NOTIFICATION_DEVICE_PENDING = 14
-        const val NOTIFICATION_DEVICE_ADDED = 15
-        const val NOTIFICATION_DEVICE_REMOVED = 16
-        const val NOTIFICATION_FAMILY_DISBANDED = 17
-        const val NOTIFICATION_BONUS = 18
-        const val NOTIFICATION_RULE_CHANGED = 19
-        const val NOTIFICATION_APP_DECIDED = 20
-        const val NOTIFICATION_AUDIT_TAMPER = 21
-        const val NOTIFICATION_UPDATE_AVAILABLE = 22
+        // The numbers live in NotificationIds, with every other poster's.
+        const val NOTIFICATION_INCOMING = NotificationIds.INCOMING
+        const val NOTIFICATION_DECISION = NotificationIds.DECISION
+        const val NOTIFICATION_NEW_APP = NotificationIds.NEW_APP
+        const val NOTIFICATION_SILENT = NotificationIds.SILENT
+        const val NOTIFICATION_LOCKED = NotificationIds.LOCKED
+        const val NOTIFICATION_LOCATED = NotificationIds.LOCATED
+        const val NOTIFICATION_AUTO_APPROVED = NotificationIds.AUTO_APPROVED
+        const val NOTIFICATION_PLACE = NotificationIds.PLACE
+        const val NOTIFICATION_SOS = NotificationIds.SOS
+        const val NOTIFICATION_SOS_CLEARED = NotificationIds.SOS_CLEARED
+        const val NOTIFICATION_CHAT = NotificationIds.CHAT
+        const val NOTIFICATION_DEVICE_PENDING = NotificationIds.DEVICE_PENDING
+        const val NOTIFICATION_DEVICE_ADDED = NotificationIds.DEVICE_ADDED
+        const val NOTIFICATION_DEVICE_REMOVED = NotificationIds.DEVICE_REMOVED
+        const val NOTIFICATION_FAMILY_DISBANDED = NotificationIds.FAMILY_DISBANDED
+        const val NOTIFICATION_BONUS = NotificationIds.BONUS
+        const val NOTIFICATION_RULE_CHANGED = NotificationIds.RULE_CHANGED
+        const val NOTIFICATION_APP_DECIDED = NotificationIds.APP_DECIDED
+        const val NOTIFICATION_AUDIT_TAMPER = NotificationIds.AUDIT_TAMPER
+        const val NOTIFICATION_UPDATE_AVAILABLE = NotificationIds.UPDATE_AVAILABLE
     }
 }

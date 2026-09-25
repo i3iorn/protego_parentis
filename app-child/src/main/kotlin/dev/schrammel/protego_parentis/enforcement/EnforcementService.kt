@@ -319,7 +319,7 @@ class EnforcementService : Service() {
     companion object {
         private const val TAG = "DementorService"
         private const val CHANNEL_ID = "enforcement"
-        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_ID = NotificationIds.ENFORCEMENT_SERVICE
 
         /**
          * Never sleep longer than this, so drift and missed events self-correct.

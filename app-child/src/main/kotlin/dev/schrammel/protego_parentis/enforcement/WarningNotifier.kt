@@ -97,6 +97,6 @@ class WarningNotifier(context: Context) {
         const val KEY_DAY = "day"
         const val KEY_LEVEL = "level"
         const val CHANNEL_ID = "warnings"
-        const val NOTIFICATION_ID = 2
+        const val NOTIFICATION_ID = NotificationIds.WARNING
     }
 }
