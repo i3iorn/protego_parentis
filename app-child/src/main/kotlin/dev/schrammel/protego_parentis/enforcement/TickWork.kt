@@ -147,6 +147,9 @@ internal class TickWork(
         runCatching { announceArrivals() }
             .onFailure { Log.w(TAG, "Could not check saved places", it) }
 
+        runCatching { refreshPlaceFix(snapshot) }
+            .onFailure { Log.w(TAG, "Could not refresh the place fix", it) }
+
         runCatching { publishBrowsing(snapshot.usage.snapshot.policyDay) }
             .onFailure { Log.w(TAG, "Could not send the browsing summary", it) }
 
@@ -168,6 +171,18 @@ internal class TickWork(
             emergencyActive = sos.isActive,
             watchingSurroundings = watchingSurroundings(snapshot),
         )
+    }
+
+    /**
+     * Keeps a usable location for place rules and arrival alerts (#290),
+     * only while something actually uses a saved place. See
+     * [ContextProvider.refreshPlacesFixIfStale] for the budget.
+     */
+    private fun refreshPlaceFix(snapshot: EnforcementSnapshot) {
+        val rules = AppRegistry.childStores.contextRules
+        if (rules.places.isEmpty()) return
+        if (!rules.announceArrivals && !ContextSignals.readsPlaces(snapshot.policy.contextRules)) return
+        ContextProvider(context).refreshPlacesFixIfStale()
     }
 
     /**
