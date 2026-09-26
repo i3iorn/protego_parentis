@@ -22,6 +22,13 @@ object ContextRuleFormat {
     /** The first build that reads V2 rules. */
     const val V2_MIN_VERSION = "1.2.0"
 
+    /**
+     * The most actions one rule may have. Storage reads an action count
+     * before the actions themselves, and this bounds what a corrupt count can
+     * ask a reader to look for.
+     */
+    const val MAX_ACTIONS = 32
+
     fun needsV2(rule: ContextRule): Boolean =
         rule.actions.size > 1 || rule.exceptWhen != null || usesV2Condition(rule.condition)
 

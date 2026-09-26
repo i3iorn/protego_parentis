@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RecurringWindow
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
@@ -224,5 +225,54 @@ class ContextRuleCodecTest {
         assertNull(ContextRuleCodec.decodeEffectFromString("not json"))
         assertNull(ContextRuleCodec.decodeTargetFromString("not json"))
         assertNull(ContextRuleCodec.decodeConditionFromString(null))
+    }
+
+    // ---------- V2 ----------
+
+    @Test
+    fun `an at-least group round-trips`() {
+        val condition = Condition.AtLeast(
+            2,
+            listOf(Condition.OnWifi("HomeNet"), Condition.AtPlace(PlaceId("place-1")), Condition.BatteryBelow(20)),
+        )
+
+        assertEquals(condition, ContextRuleCodec.decodeCondition(ContextRuleCodec.encodeCondition(condition)))
+    }
+
+    @Test
+    fun `an at-least count below one does not decode`() {
+        val json = JSONObject("""{"kind":"atLeast","value":0,"parts":[{"kind":"always"}]}""")
+
+        assertNull(ContextRuleCodec.decodeCondition(json))
+    }
+
+    @Test
+    fun `a group with a part this build cannot read is unreadable as a whole`() {
+        // Dropping the unknown part would turn "at school and <something new>"
+        // into just "at school", which blocks far more than was written.
+        val json = JSONObject("""{"kind":"allOf","parts":[{"kind":"wifi","value":"School"},{"kind":"fromTheFuture"}]}""")
+
+        assertNull(ContextRuleCodec.decodeCondition(json))
+    }
+
+    @Test
+    fun `a list of actions round-trips`() {
+        val actions = listOf(
+            RuleAction(RuleEffect.Block(hidden = true), RuleTarget.Categories(setOf(CategoryId("games")))),
+            RuleAction(RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)), RuleTarget.Everything),
+            RuleAction(RuleEffect.Allow, RuleTarget.Apps(setOf(PackageName("com.example.homework")))),
+        )
+
+        assertEquals(actions, ContextRuleCodec.decodeActions(ContextRuleCodec.encodeActions(actions)))
+    }
+
+    @Test
+    fun `no actions, or one unreadable action, decodes to null`() {
+        assertNull(ContextRuleCodec.decodeActions(JSONArray()))
+        assertNull(ContextRuleCodec.decodeActions(null))
+
+        val oneBad = ContextRuleCodec.encodeActions(listOf(RuleAction(RuleEffect.Allow, RuleTarget.Everything)))
+            .put(JSONObject("""{"effect":{"kind":"fromTheFuture"},"target":{"kind":"everything"}}"""))
+        assertNull(ContextRuleCodec.decodeActions(oneBad))
     }
 }

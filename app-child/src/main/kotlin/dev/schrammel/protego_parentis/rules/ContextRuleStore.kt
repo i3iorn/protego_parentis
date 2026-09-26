@@ -6,6 +6,8 @@ import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Place
 import dev.schrammel.protego_parentis.model.PlaceId
+import dev.schrammel.protego_parentis.model.RuleAction
+import dev.schrammel.protego_parentis.policy.ContextRuleFormat
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -85,13 +87,14 @@ class ContextRuleStore(context: Context) {
      */
     fun deletePlace(id: PlaceId) = synchronized(prefs) {
         places = places.filterNot { it.id == id }
-        rules = rules.filterNot { mentionsPlace(it.condition, id) }
+        rules = rules.filterNot { mentionsPlace(it.activeWhen, id) }
     }
 
     private fun mentionsPlace(condition: Condition, id: PlaceId): Boolean = when (condition) {
         is Condition.AtPlace -> condition.place == id
         is Condition.AllOf -> condition.conditions.any { mentionsPlace(it, id) }
         is Condition.AnyOf -> condition.conditions.any { mentionsPlace(it, id) }
+        is Condition.AtLeast -> condition.conditions.any { mentionsPlace(it, id) }
         is Condition.Not -> mentionsPlace(condition.condition, id)
         else -> false
     }
@@ -106,8 +109,16 @@ class ContextRuleStore(context: Context) {
                     put(KEY_NAME, rule.name)
                     put(KEY_ENABLED, rule.enabled)
                     put(KEY_CONDITION, ContextRuleCodec.encodeCondition(rule.condition))
-                    put(KEY_EFFECT, ContextRuleCodec.encodeEffect(rule.effect))
-                    put(KEY_TARGET, ContextRuleCodec.encodeTarget(rule.target))
+                    if (ContextRuleFormat.needsV2(rule)) {
+                        // No effect/target keys, so a build from before V2
+                        // drops this rule rather than enforcing part of it.
+                        put(KEY_FORMAT, FORMAT_V2)
+                        put(KEY_ACTIONS, ContextRuleCodec.encodeActions(rule.actions))
+                        rule.exceptWhen?.let { put(KEY_EXCEPT, ContextRuleCodec.encodeCondition(it)) }
+                    } else {
+                        put(KEY_EFFECT, ContextRuleCodec.encodeEffect(rule.effect))
+                        put(KEY_TARGET, ContextRuleCodec.encodeTarget(rule.target))
+                    }
                 }
             },
         ).toString()
@@ -118,20 +129,38 @@ class ContextRuleStore(context: Context) {
 
         return (0 until array.length()).mapNotNull { index ->
             val json = array.optJSONObject(index) ?: return@mapNotNull null
-            runCatching {
-                ContextRule(
-                    id = json.optString(KEY_ID),
-                    name = json.optString(KEY_NAME),
-                    enabled = json.optBoolean(KEY_ENABLED, true),
-                    condition = json.optJSONObject(KEY_CONDITION)
-                        ?.let(ContextRuleCodec::decodeCondition) ?: Condition.Always,
-                    effect = json.optJSONObject(KEY_EFFECT)?.let(ContextRuleCodec::decodeEffect)
-                        ?: return@mapNotNull null,
-                    target = json.optJSONObject(KEY_TARGET)?.let(ContextRuleCodec::decodeTarget)
-                        ?: return@mapNotNull null,
-                )
-            }.getOrNull()
+            runCatching { decodeRule(json) }.getOrNull()
         }
+    }
+
+    /**
+     * One rule, or null if any part of it can't be read. An unreadable
+     * condition used to fall back to Always, which turned a rule meant for
+     * school hours into one that never switched off.
+     */
+    private fun decodeRule(json: JSONObject): ContextRule? {
+        val condition = json.optJSONObject(KEY_CONDITION)?.let(ContextRuleCodec::decodeCondition) ?: return null
+        val v2 = json.optInt(KEY_FORMAT, 1) >= FORMAT_V2
+        val actions = if (v2) {
+            ContextRuleCodec.decodeActions(json.optJSONArray(KEY_ACTIONS)) ?: return null
+        } else {
+            val effect = json.optJSONObject(KEY_EFFECT)?.let(ContextRuleCodec::decodeEffect) ?: return null
+            val target = json.optJSONObject(KEY_TARGET)?.let(ContextRuleCodec::decodeTarget) ?: return null
+            listOf(RuleAction(effect, target))
+        }
+        val exceptWhen = if (v2 && json.has(KEY_EXCEPT)) {
+            json.optJSONObject(KEY_EXCEPT)?.let(ContextRuleCodec::decodeCondition) ?: return null
+        } else {
+            null
+        }
+        return ContextRule(
+            id = json.optString(KEY_ID),
+            name = json.optString(KEY_NAME),
+            enabled = json.optBoolean(KEY_ENABLED, true),
+            condition = condition,
+            actions = actions,
+            exceptWhen = exceptWhen,
+        )
     }
 
     private fun encodePlaces(places: List<Place>): String =
@@ -202,6 +231,10 @@ class ContextRuleStore(context: Context) {
         const val KEY_CONDITION = "condition"
         const val KEY_EFFECT = "effect"
         const val KEY_TARGET = "target"
+        const val KEY_FORMAT = "format"
+        const val KEY_ACTIONS = "actions"
+        const val KEY_EXCEPT = "except"
+        const val FORMAT_V2 = 2
         const val KEY_LAT = "lat"
         const val KEY_LON = "lon"
         const val KEY_RADIUS = "radius"
