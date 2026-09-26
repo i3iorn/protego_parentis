@@ -191,6 +191,17 @@ internal object TamperRestrictions {
     const val NO_ADD_USER = "no_add_user"
 
     /**
+     * Stops the default dialer and SMS app being changed (#293).
+     *
+     * Whatever holds those roles is on the safety allowlist, exempt from every
+     * rule, so choosing an app as the default SMS app would otherwise exempt
+     * it. `UserManager.DISALLOW_CONFIG_DEFAULT_APPS`, API 34; older platforms
+     * ignore an unknown restriction, which is why the allowlist also only
+     * accepts system apps for those roles.
+     */
+    const val NO_CONFIG_DEFAULT_APPS = "no_config_default_apps"
+
+    /**
      * Stops the app's own data being cleared from Settings.
      *
      * Without it the whole product is four taps from gone: clearing storage takes
@@ -235,6 +246,7 @@ internal object TamperRestrictions {
         NO_CONFIG_PRIVATE_DNS,
         NO_CONFIG_VPN,
         NO_ADD_USER,
+        NO_CONFIG_DEFAULT_APPS,
     )
 
     /** Everything a locked-down provisioned device carries. */

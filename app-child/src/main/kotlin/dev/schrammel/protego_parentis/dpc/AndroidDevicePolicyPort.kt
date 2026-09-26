@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
@@ -60,6 +61,10 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
     }
 
     override fun addUserRestriction(key: String) {
+        // Added in API 34. Skipped below it rather than passed to a platform
+        // that has never heard of it: the reconciler adds restrictions in a
+        // loop, and one refused key must not stop the rest being applied.
+        if (key == NO_CONFIG_DEFAULT_APPS && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
         dpm.addUserRestriction(admin, key)
     }
 
@@ -237,5 +242,8 @@ class AndroidDevicePolicyPort(context: Context) : DevicePolicyPort {
 
     private companion object {
         const val TAG = "DementorPort"
+
+        /** UserManager.DISALLOW_CONFIG_DEFAULT_APPS, spelled out so this compiles against no API-34 symbol. */
+        const val NO_CONFIG_DEFAULT_APPS = "no_config_default_apps"
     }
 }

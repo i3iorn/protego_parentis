@@ -4,8 +4,10 @@ import android.app.Application
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.content.pm.ResolveInfo
 import android.provider.AlarmClock
+import android.telecom.TelecomManager
 import dev.schrammel.protego_parentis.model.PackageName
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -68,5 +70,39 @@ class SafetyAllowlistTest {
         handles(AlarmClock.ACTION_SHOW_ALARMS, "com.example.alarmwithbrowser", system = false)
 
         assertFalse(PackageName("com.example.alarmwithbrowser") in SafetyAllowlist.of(app))
+    }
+
+    // ---------- default dialer (#293) ----------
+
+    private fun installAsDefaultDialer(pkg: String, system: Boolean) {
+        shadowOf(app.packageManager).installPackage(
+            PackageInfo().apply {
+                packageName = pkg
+                applicationInfo = ApplicationInfo().apply {
+                    packageName = pkg
+                    flags = if (system) ApplicationInfo.FLAG_SYSTEM else 0
+                }
+            },
+        )
+        shadowOf(app.getSystemService(TelecomManager::class.java)).setDefaultDialerPackage(pkg)
+    }
+
+    @Test
+    fun `the phone's own dialer is allowed`() {
+        installAsDefaultDialer("com.android.dialer", system = true)
+
+        assertTrue(PackageName("com.android.dialer") in SafetyAllowlist.of(app))
+    }
+
+    /**
+     * Whoever holds the phone chooses the default dialer, and everything here
+     * is exempt from every rule: an installed dialer with chat built in must
+     * not escape bedtime by being made the default.
+     */
+    @Test
+    fun `an installed app made the default dialer is not allowed`() {
+        installAsDefaultDialer("com.example.chattydialer", system = false)
+
+        assertFalse(PackageName("com.example.chattydialer") in SafetyAllowlist.of(app))
     }
 }
