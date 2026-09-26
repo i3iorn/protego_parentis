@@ -2,6 +2,7 @@ package dev.schrammel.protego_parentis.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -481,14 +482,45 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         ) { ssid -> onPicked(Condition.OnWifi(ssid)) }
     }
 
+    /**
+     * Offers this phone's paired devices to pick from (#289), falling back to
+     * typing an address. Only when editing this phone's own rules: on a
+     * parent's phone editing a child's, the devices paired *here* say nothing
+     * about the child's phone.
+     */
     private fun chooseDevice(onPicked: (Condition) -> Unit) {
         requestBluetoothIfNeeded()
+        val paired = if (target.isOwnDevice && hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+            pairedDevices()
+        } else {
+            emptyList()
+        }
+        if (paired.isEmpty()) {
+            enterDeviceAddress(onPicked)
+            return
+        }
+        menu(
+            R.string.context_choose_device,
+            paired.map { (name, address) ->
+                "$name ($address)" to { onPicked(Condition.NearDevice(DeviceTag(address))) }
+            } + (getString(R.string.context_device_enter_address) to { enterDeviceAddress(onPicked) }),
+        )
+    }
+
+    private fun enterDeviceAddress(onPicked: (Condition) -> Unit) {
         promptForText(
             R.string.context_choose_device,
             R.string.context_device_hint,
             message = getString(R.string.context_device_explainer),
-        ) { tag -> onPicked(Condition.NearDevice(DeviceTag(tag))) }
+        ) { tag -> onPicked(Condition.NearDevice(DeviceTag(tag.trim().uppercase()))) }
     }
+
+    @SuppressLint("MissingPermission")
+    private fun pairedDevices(): List<Pair<String, String>> = runCatching {
+        getSystemService(BluetoothManager::class.java)?.adapter?.bondedDevices.orEmpty()
+            .map { (it.name ?: it.address) to it.address }
+            .sortedBy { it.first.lowercase() }
+    }.getOrDefault(emptyList())
 
     private fun chooseEffect() {
         if (!canEdit) return

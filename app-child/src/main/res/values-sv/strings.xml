@@ -172,7 +172,8 @@
     <string name="context_wifi_hint">Nätverkets namn</string>
     <string name="context_choose_device">Nära en enhet</string>
     <string name="context_device_hint">Bluetooth-adress</string>
-    <string name="context_device_explainer">Telefonen räknar en enhet som nära när den är parkopplad och ansluten via Bluetooth. Parkoppla den andra telefonen först och klistra sedan in dess Bluetooth-adress här.</string>
+    <string name="context_device_enter_address">Ange en adress i stället</string>
+    <string name="context_device_explainer">Telefonen räknar en enhet som nära medan den är ansluten via Bluetooth — en bil, hörlurar eller en annan telefon. Parkoppla den först och klistra sedan in dess Bluetooth-adress här.</string>
     <string name="context_choose_battery">Batterinivå</string>
     <string name="context_choose_budget">Sätt en annan daglig gräns</string>
     <string name="context_choose_categories">Vissa kategorier</string>
