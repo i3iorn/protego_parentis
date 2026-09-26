@@ -1375,4 +1375,6 @@
     <string name="rules_tutorial_target_category">a category (for example, “Social” or “Games”)</string>
     <string name="rules_tutorial_target_everything">everything</string>
     <string name="rules_tutorial_target_everything_except">everything, except a few chosen apps</string>
+    <!-- What a locked screen shows instead of a notification's content (#292). -->
+    <string name="notification_locked_placeholder">Unlock to see this notification.</string>
 </resources>

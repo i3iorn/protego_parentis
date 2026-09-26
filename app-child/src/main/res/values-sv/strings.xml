@@ -1354,4 +1354,6 @@
     <string name="rules_tutorial_target_category">en kategori (till exempel “Sociala medier” eller “Spel”)</string>
     <string name="rules_tutorial_target_everything">allt</string>
     <string name="rules_tutorial_target_everything_except">allt, utom några få valda appar</string>
+    <!-- What a locked screen shows instead of a notification's content (#292). -->
+    <string name="notification_locked_placeholder">Lås upp för att se aviseringen.</string>
 </resources>
