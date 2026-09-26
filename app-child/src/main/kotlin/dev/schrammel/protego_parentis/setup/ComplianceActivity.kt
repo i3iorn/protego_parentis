@@ -105,8 +105,9 @@ class ComplianceActivity : DementorActivity() {
 
         val pairing = PairingStore(this).load()
         if (!pairing.isComplete) {
-            // Not fatal: setup still completes and the app falls back to manual
-            // code entry. Blocking here would strand the device half-provisioned.
+            // Not fatal: setup still completes, and the family is joined by hand
+            // afterwards, as it is today even when the details are complete
+            // (#278). Blocking here would strand the device half-provisioned.
             Log.w("DementorSetup", "Continuing without complete pairing details")
         }
 

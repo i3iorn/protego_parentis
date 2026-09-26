@@ -48,7 +48,8 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
         PairingStore(context).save(pairing)
 
         if (!pairing.isComplete) {
-            // Recoverable: the compliance screen falls back to manual code entry.
+            // Not a failure: joining the family is done by hand afterwards
+            // either way (#278).
             Log.w(TAG, "Provisioning finished without complete pairing details")
         }
         Log.i(TAG, "Provisioning complete, paired=${pairing.isComplete}")
