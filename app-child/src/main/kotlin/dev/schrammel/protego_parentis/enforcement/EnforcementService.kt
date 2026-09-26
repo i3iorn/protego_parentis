@@ -84,6 +84,13 @@ class EnforcementService : Service() {
                     .onSuccess { earned -> earned?.let(goalNotifier::notifyEarned) }
                     .onFailure { Log.w(TAG, "Could not check goals on unlock", it) }
             }
+            // The tick is a Handler delay, and Handler time stops while the
+            // phone sleeps. A limit or bedtime that began while it slept would
+            // otherwise leave its apps open after unlock for whatever was left
+            // of that delay — up to MAX_INTERVAL_MILLIS. Unlocking is when it
+            // starts to matter, so evaluate now.
+            handler.removeCallbacks(tick)
+            handler.post(tick)
         }
     }
 
