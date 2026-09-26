@@ -260,22 +260,30 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                             .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
-                            val deleted = name
-                            val store = contextRuleRuleStore(this@ContextRuleEditActivity, target)
-                            store.delete(ruleId)
-                            Audit.record(
-                                context = this@ContextRuleEditActivity,
-                                actor = AuditActor.PARENT,
-                                action = AuditAction.CONTEXT_RULE_DELETED,
-                                subject = deleted,
-                            )
-                            acknowledgeRuleWrite(store, R.string.context_delete_sent_remote)
-                            finish()
+                            confirmDialog(
+                                name.ifBlank { getString(R.string.context_delete) },
+                                getString(R.string.context_delete_confirm),
+                                R.string.context_delete,
+                            ) { delete() }
                         }
                     },
                 )
             }
         }
+    }
+
+    private fun delete() {
+        val deleted = name
+        val store = contextRuleRuleStore(this, target)
+        store.delete(ruleId)
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.CONTEXT_RULE_DELETED,
+            subject = deleted,
+        )
+        acknowledgeRuleWrite(store, R.string.context_delete_sent_remote)
+        finish()
     }
 
     // ---------- condition tree ----------

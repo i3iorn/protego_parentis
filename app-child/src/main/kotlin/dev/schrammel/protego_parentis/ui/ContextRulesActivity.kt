@@ -99,55 +99,6 @@ class ContextRulesActivity : ParentGatedActivity() {
         container.addView(caption(getString(R.string.context_explainer)))
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
-        // What works right now, stated up front — only meaningful for this
-        // device's own sensors.
-        if (capabilities != null) {
-            container.addView(title(getString(R.string.context_sources_header), R.style.TextAppearance_Dementor_Section))
-            container.addView(
-                caption(
-                    getString(
-                        if (capabilities.canReadLocation) R.string.context_wifi_ready else R.string.context_wifi_blocked,
-                    ),
-                ),
-            )
-            container.addView(
-                caption(
-                    getString(
-                        if (capabilities.canReadLocation) R.string.context_place_ready else R.string.context_place_blocked,
-                    ),
-                ),
-            )
-            container.addView(
-                caption(
-                    getString(
-                        if (capabilities.canReadNearbyDevices) {
-                            R.string.context_near_ready
-                        } else {
-                            R.string.context_near_blocked
-                        },
-                    ),
-                ),
-            )
-        }
-
-        container.addView(
-            Button(this).apply {
-                setText(R.string.context_manage_places)
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                    .apply { topMargin = dimen(R.dimen.space_md) }
-                setOnClickListener {
-                    startActivity(PlacesActivity.intent(this@ContextRulesActivity, target.childId))
-                }
-            },
-        )
-
-        container.addView(
-            actionButton().apply {
-                setText(R.string.context_tutorial_open)
-                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@ContextRulesActivity)) }
-            },
-        )
-
         // #106: the daily limit is a rule like any other now, but it keeps a
         // fixed spot rather than being buried in the list below — see this
         // class's own doc comment for why.
@@ -222,6 +173,57 @@ class ContextRulesActivity : ParentGatedActivity() {
                         startActivity(ContextRuleEditActivity.intent(this@ContextRulesActivity, childId = target.childId))
                     }
                 },
+            )
+        }
+
+        // Below the rules rather than above them: the rules are what this
+        // screen is opened for, and places, the tutorial and sensor status are
+        // the setup around them.
+        container.addView(
+            Button(this).apply {
+                setText(R.string.context_manage_places)
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                    .apply { topMargin = dimen(R.dimen.space_md) }
+                setOnClickListener {
+                    startActivity(PlacesActivity.intent(this@ContextRulesActivity, target.childId))
+                }
+            },
+        )
+
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_tutorial_open)
+                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@ContextRulesActivity)) }
+            },
+        )
+
+        // What the sensors can read is only meaningful for this device's own.
+        if (capabilities != null) {
+            container.addView(title(getString(R.string.context_sources_header), R.style.TextAppearance_Dementor_Section))
+            container.addView(
+                caption(
+                    getString(
+                        if (capabilities.canReadLocation) R.string.context_wifi_ready else R.string.context_wifi_blocked,
+                    ),
+                ),
+            )
+            container.addView(
+                caption(
+                    getString(
+                        if (capabilities.canReadLocation) R.string.context_place_ready else R.string.context_place_blocked,
+                    ),
+                ),
+            )
+            container.addView(
+                caption(
+                    getString(
+                        if (capabilities.canReadNearbyDevices) {
+                            R.string.context_near_ready
+                        } else {
+                            R.string.context_near_blocked
+                        },
+                    ),
+                ),
             )
         }
     }

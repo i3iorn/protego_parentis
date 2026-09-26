@@ -29,6 +29,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.shadows.ShadowDialog
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -107,8 +108,23 @@ class CategoryEditActivityTest {
 
         val activity = activity(id = "games-id")
         clickButton(activity, "Delete category")
+        answerLatestDialog(android.content.DialogInterface.BUTTON_POSITIVE)
 
         assertTrue(store().categories.isEmpty())
+    }
+
+    @Test
+    fun `cancelling the delete confirmation keeps the category`() {
+        store().categories = listOf(
+            StoredCategory(id = "games-id", name = "Games", limitMinutes = 60, packages = emptySet()),
+        )
+
+        val activity = activity(id = "games-id")
+        clickButton(activity, "Delete category")
+
+        assertEquals("nothing is deleted before the question is answered", 1, store().categories.size)
+        answerLatestDialog(android.content.DialogInterface.BUTTON_NEGATIVE)
+        assertEquals(1, store().categories.size)
     }
 
     @Test
@@ -188,12 +204,20 @@ class CategoryEditActivityTest {
 
         val activity = activity(id = "games-id")
         clickButton(activity, "Delete category")
+        answerLatestDialog(android.content.DialogInterface.BUTTON_POSITIVE)
 
         assertTrue(rules().rules.none { it.id == "migrated-category-budget-games-id" })
     }
 
     private fun nameField(activity: CategoryEditActivity): EditText? =
         findAll(activity.window.decorView) { it is EditText }.filterIsInstance<EditText>().firstOrNull()
+
+    private fun answerLatestDialog(which: Int) {
+        // confirmDialog builds an appcompat AlertDialog, which ShadowAlertDialog
+        // does not track; ShadowDialog sees every Dialog.
+        val dialog = ShadowDialog.getLatestDialog() as? androidx.appcompat.app.AlertDialog
+        requireNotNull(dialog) { "expected a delete confirmation" }.getButton(which).performClick()
+    }
 
     private fun clickButton(activity: CategoryEditActivity, text: String) {
         requireNotNull(findButton(activity, text)) { "no button titled \"$text\" was rendered" }.performClick()

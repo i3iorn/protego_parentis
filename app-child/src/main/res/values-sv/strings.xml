@@ -210,6 +210,9 @@
     <string name="context_choose_everything_except">Allt utom vissa appar</string>
     <string name="context_save">Spara regeln</string>
     <string name="context_delete">Ta bort regeln</string>
+    <string name="context_delete_confirm">Regeln slutar gälla direkt, på alla telefoner som har den. Det går inte att ångra.</string>
+    <string name="category_delete_confirm">Kategorin och dess gräns tas bort. Apparna finns kvar och följer de andra reglerna. Det går inte att ångra.</string>
+    <string name="auto_delete_confirm">Förfrågningar som det här svaret besvarade automatiskt väntar på en förälder igen. Det går inte att ångra.</string>
     <string name="context_save_sent_remote">Skickat — gäller när barnets telefon synkroniserar.</string>
     <string name="context_delete_sent_remote">Skickat — barnets telefon tar bort regeln när den synkroniserar.</string>
     <string name="context_blackout_title">Blockera allt, utan undantag?</string>
@@ -406,7 +409,7 @@
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>
     <string name="rules_group_limits_info_title">Om “Hur mycket”</string>
-    <string name="rules_group_limits_info_body">Kategorier grupperar appar för att dela en daglig gräns. Appgränser sätter ett tak för en enskild app. Appkontroll låter dig tillåta eller blockera specifika appar helt, och visar appar som just kommit. Webbfiltret och webbaktiviteten styr surfning på den här enheten.</string>
+    <string name="rules_group_limits_info_body">Kategorier grupperar appar för att dela en daglig gräns. Appgränser sätter ett tak för en enskild app. Appkontroll låter dig tillåta eller blockera specifika appar helt, och visar appar som just kommit. Webbfiltret styr surfning på den här enheten. Webbaktivitet, listan över besökta sidor, finns på startskärmen.</string>
     <string name="rules_group_day">Hur dagen fungerar</string>
     <string name="rules_group_day_info_title">Om “Hur dagen fungerar”</string>
     <string name="rules_group_day_info_body">Regler slår ihop den dagliga gränsen, tidsfönster och plats- eller Wi-Fi-baserade villkor till en och samma regelmotor, så du kan säga saker som “blockera spel efter 21” eller “bara det nödvändigaste i skolan.” Platser håller de platser regler kan hänvisa till. Bonustid lägger till extra minuter bara för idag.</string>

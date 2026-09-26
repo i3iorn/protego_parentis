@@ -245,20 +245,11 @@ class CategoryEditActivity : ParentGatedActivity() {
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                             .apply { topMargin = dimen(R.dimen.space_sm) }
                         setOnClickListener {
-                            policyRuleStore(this@CategoryEditActivity, target).deleteCategory(categoryId)
-                            // Otherwise a budget rule survives naming a
-                            // category that no longer exists — harmless to
-                            // PolicyEngine, which only builds a status for
-                            // categories still in the list, but confusing
-                            // clutter on the unified rules screen.
-                            contextRuleRuleStore(this@CategoryEditActivity, target).delete(ruleId(categoryId))
-                            Audit.record(
-                                context = this@CategoryEditActivity,
-                                actor = AuditActor.PARENT,
-                                action = AuditAction.CATEGORY_DELETED,
-                                subject = existing.name,
-                            )
-                            finish()
+                            confirmDialog(
+                                existing.name,
+                                getString(R.string.category_delete_confirm),
+                                R.string.category_delete,
+                            ) { deleteCategory(existing.name) }
                         }
                     },
                 )
@@ -266,6 +257,22 @@ class CategoryEditActivity : ParentGatedActivity() {
         }
 
         return content
+    }
+
+    private fun deleteCategory(name: String) {
+        policyRuleStore(this, target).deleteCategory(categoryId)
+        // Otherwise a budget rule survives naming a category that no longer
+        // exists — harmless to PolicyEngine, which only builds a status for
+        // categories still in the list, but confusing clutter on the unified
+        // rules screen.
+        contextRuleRuleStore(this, target).delete(ruleId(categoryId))
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.CATEGORY_DELETED,
+            subject = name,
+        )
+        finish()
     }
 
     private fun save() {
