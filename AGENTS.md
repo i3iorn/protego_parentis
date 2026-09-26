@@ -56,8 +56,17 @@ should pay for.
 
 If Gradle can't reach `dl.google.com`/`repo.maven.apache.org` (a blocked-network
 sandbox), that's an environment network policy, not a build misconfiguration —
-say so rather than trying to work around it, and verify changes by reading
-rather than compiling.
+say so rather than trying to work around it.
+
+When only Google's repository (`dl.google.com`) is out of reach, the pure-JVM
+modules — `core-model`, `core-policy`, `core-provisioning`, `core-sync` — can
+still be built and tested on their own, from Maven Central alone:
+
+    ./gradlew -p jvm-only test
+
+That covers the policy engine, the sync protocol and the wire formats. The
+Android modules still need the full build; say which of your changes were
+verified this way and which only by reading.
 
 ## Versioning — bump on every PR
 

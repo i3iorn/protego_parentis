@@ -326,7 +326,9 @@ internal class TickWork(
         val saved = rules.places
         if (saved.isEmpty()) return
 
-        val inside = ContextProvider(context).current(saved).insidePlaces
+        // Unknown is not "outside": skipping the pass keeps the last answer
+        // rather than reporting a departure nobody made.
+        val inside = ContextProvider(context).placesIfKnown(saved) ?: return
         places.transitions(saved, inside).forEach { transition ->
             Audit.record(
                 context = context,

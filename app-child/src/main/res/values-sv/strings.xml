@@ -151,6 +151,7 @@
     <string name="context_edit_title">Regel</string>
     <string name="context_name_hint">Namn, till exempel Inga spel i skolan</string>
     <string name="context_name_required">Ge regeln ett namn.</string>
+    <string name="context_well_known_target_locked">Den här regeln kom från en appgräns eller en appblockering, och dess mål måste vara just den appen för att regeln ska fortsätta synas där — villkor och effekt går fortfarande att ändra här. Gör en separat regel för att täcka fler appar.</string>
     <string name="context_enabled">Regeln är på</string>
     <string name="context_when_header">När</string>
     <string name="context_when_info_title">Om “När”</string>
@@ -979,6 +980,7 @@
     <string name="audit_place_added">En förälder lade till platsen %1$s</string>
     <string name="audit_sos_raised">Ett nödläge utlöstes</string>
     <string name="audit_sos_cleared">Nödläget avslutades</string>
+    <string name="audit_app_uninstalled_by_child">Avinstallerade den blockerade appen %1$s</string>
 
     <!-- Vad integritetsskärmen nu måste säga. -->
     <string name="privacy_location_header">Var du är</string>
@@ -1148,6 +1150,8 @@
     <string name="chat_status_days_ago">%1$s · %2$d d sedan</string>
 
     <string name="home_cannot_open">Den appen går inte att öppna härifrån.</string>
+    <string name="home_tap_to_uninstall">Tryck för att avinstallera</string>
+    <string name="home_cannot_uninstall">Den appen gick inte att avinstallera härifrån.</string>
 
     <string name="pin_create_child">Förälder: välj en PIN-kod. Den är din, inte deras — du behöver den för att ändra någon regel på den här telefonen.</string>
     <string name="pin_create_child_warning">Skriv in den själv och behåll den för dig själv. Varje gräns på telefonen är bara så skyddad som den här koden, och appen kan inte i efterhand avgöra vem som valde den.</string>
