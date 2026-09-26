@@ -17,6 +17,7 @@ import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
+import dev.schrammel.protego_parentis.policy.ContextRuleFormat
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.bedtimeRuleId
@@ -73,19 +74,28 @@ class ContextRulesActivity : ParentGatedActivity() {
             val rules = contextRuleRuleStore(this, target).read()
             val places = placeRuleStore(this, target).read()
             val capabilities = if (target.isOwnDevice) ContextProvider(this).capabilities() else null
-            Triple(rules, places, capabilities)
-        }) { (rules, places, capabilities) ->
-            render(rules, places, capabilities)
+            Loaded(rules, places, capabilities, RuleVersionWarning.read(this))
+        }) { loaded ->
+            render(loaded.rules, loaded.places, loaded.capabilities, loaded.versions)
         }
     }
+
+    private class Loaded(
+        val rules: List<ContextRule>,
+        val places: List<PlaceRef>,
+        val capabilities: ContextCapabilities?,
+        val versions: ContextRuleFormat.MixedVersions?,
+    )
 
     private fun render(
         rules: List<ContextRule>,
         places: List<PlaceRef>,
         capabilities: ContextCapabilities?,
+        versions: ContextRuleFormat.MixedVersions?,
     ) {
         container.removeAllViews()
         container.addView(title(getString(R.string.context_title), R.style.TextAppearance_Dementor_Title))
+        ruleVersionBanner(versions) { startActivity(FamilyDevicesActivity.intent(this)) }?.let(container::addView)
         container.addView(caption(getString(R.string.context_explainer)))
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 

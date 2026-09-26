@@ -6,7 +6,9 @@ import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -60,5 +62,23 @@ class ContextRuleFormatTest {
         assertFalse(ContextRuleFormat.supportsV2(null))
         assertFalse(ContextRuleFormat.supportsV2(""))
         assertFalse(ContextRuleFormat.supportsV2("dev"))
+    }
+
+    @Test
+    fun `a family where every phone reads v2 has nothing to warn about`() {
+        assertNull(ContextRuleFormat.mixedVersions(listOf("Kid" to "1.2.0", "Mum" to "1.3.1"), listOf(rule())))
+        assertNull(ContextRuleFormat.mixedVersions(emptyList(), listOf(rule())))
+    }
+
+    @Test
+    fun `older or silent phones are named, and v2 rules make it urgent`() {
+        val phones = listOf("Kid" to "1.1.10", "Mum" to "1.2.0", "Dad" to null)
+        val v2 = rule(exceptWhen = Condition.OnWifi("Home"))
+
+        assertEquals(
+            ContextRuleFormat.MixedVersions(listOf("Kid", "Dad"), v2RulesAtRisk = false),
+            ContextRuleFormat.mixedVersions(phones, listOf(rule())),
+        )
+        assertEquals(true, ContextRuleFormat.mixedVersions(phones, listOf(rule(), v2))?.v2RulesAtRisk)
     }
 }
