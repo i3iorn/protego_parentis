@@ -294,10 +294,12 @@ connected over Bluetooth*, not a BLE scan — much cheaper, and good enough for
 The adversary is a motivated teenager holding the device, with unlimited time and
 no need for tooling. That shapes several decisions:
 
-- **The PIN throttles.** Four digits is ten thousand combinations, and without a
-  lockout they can simply be tapped in. Failures persist across restarts and the
-  lockout is measured against `SystemClock.elapsedRealtime()`, because the wall
-  clock is settable by the person being locked out.
+- **The PIN throttles.** Six digits is a million combinations, and without a
+  lockout even that is only a matter of time for someone with nothing else to
+  do. After three free attempts each failure doubles the wait, up to 30 minutes,
+  and the verifier itself refuses attempts while it runs. Failures persist across
+  restarts and the lockout is measured against `SystemClock.elapsedRealtime()`,
+  because the wall clock is settable by the person being locked out.
 - **Every parent-only screen checks the session**, not just the entry point.
   Gating only the rules screen left the recents list as a way back into an
   already-unlocked settings screen.
