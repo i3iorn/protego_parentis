@@ -34,8 +34,10 @@ class ContextProviderPlacesTest {
             accuracy = 10f
             time = System.currentTimeMillis() - ageMillis
         }
-        shadowOf(app.getSystemService(LocationManager::class.java))
-            .setLastKnownLocation(LocationManager.GPS_PROVIDER, location)
+        shadowOf(app.getSystemService(LocationManager::class.java)).apply {
+            setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+            setLastKnownLocation(LocationManager.GPS_PROVIDER, location)
+        }
     }
 
     @Test
