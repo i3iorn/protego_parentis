@@ -1,0 +1,30 @@
+# Weekly dependency updates (#282). Library pins in gradle/libs.versions.toml
+# had drifted years behind while targetSdk kept moving; this keeps them in view.
+#
+# Grouped so a week's AndroidX or Kotlin releases arrive as one PR each rather
+# than a dozen. Every PR still has to bump app-child's versionCode (AGENTS.md;
+# the Version bump check in test.yml enforces it) before it can merge.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+      kotlin-and-agp:
+        patterns: ["org.jetbrains.kotlin*", "com.android.*"]
+      test:
+        patterns: ["junit:*", "org.robolectric:*", "org.json:*"]
+
+  # Keeps third-party actions current, including once they are pinned to
+  # commit SHAs (#283): Dependabot updates the SHA and its version comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
