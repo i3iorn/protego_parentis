@@ -7,14 +7,11 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.context.ContextCapabilities
 import dev.schrammel.protego_parentis.context.ContextProvider
-import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Defaults
-import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
@@ -294,85 +291,12 @@ class ContextRulesActivity : ParentGatedActivity() {
         }
 
     /** The rule as a sentence, which is how a parent thinks about it. */
-    private fun describe(rule: ContextRule, places: List<PlaceRef>): String {
-        val what = when (val effect = rule.effect) {
-            is RuleEffect.Block -> getString(R.string.context_effect_block)
-            is RuleEffect.Allow -> getString(R.string.context_effect_allow)
-            is RuleEffect.AlwaysBlock -> getString(R.string.context_effect_always_block)
-            is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
-            is RuleEffect.SetBudget ->
-                getString(R.string.context_effect_budget, formatDuration(effect.budget.default))
-        }
-        val who = when (val ruleTarget = rule.target) {
-            is RuleTarget.Everything -> getString(R.string.context_target_everything)
-            is RuleTarget.Apps -> describeApps(ruleTarget.packages)
-            is RuleTarget.Categories -> describeCategories(ruleTarget.categories)
-            is RuleTarget.Mixed ->
-                getString(R.string.context_target_mixed, describeApps(ruleTarget.packages), describeCategories(ruleTarget.categories))
-            is RuleTarget.EverythingExcept ->
-                getString(R.string.context_target_everything_except, describeApps(ruleTarget.packages))
-        }
-        return getString(R.string.context_rule_summary, describeCondition(rule.condition, places), what, who)
-    }
-
-    private fun describeApps(packages: Set<PackageName>): String =
-        resources.getQuantityString(R.plurals.rules_category_apps, packages.size, packages.size)
-
-    private fun describeCategories(categories: Set<CategoryId>): String = categories
-        .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
-        .joinToString(", ")
-        .ifBlank { getString(R.string.context_target_categories) }
-
-    private fun describeCondition(condition: Condition, places: List<PlaceRef>): String = when (condition) {
-        is Condition.Always -> getString(R.string.context_when_always)
-        is Condition.OnWifi -> getString(R.string.context_when_wifi, condition.ssid)
-        is Condition.NearDevice -> getString(R.string.context_when_near, condition.tag.value)
-        is Condition.AtPlace -> getString(
-            R.string.context_when_place,
-            places.firstOrNull { it.id == condition.place }?.name
-                ?: getString(R.string.context_place_unknown),
-        )
-
-        is Condition.BatteryBelow -> getString(R.string.context_when_battery, condition.percent)
-
-        // #101. Phrased from the same day and time vocabulary a schedule uses,
-        // because to a parent this *is* a schedule — one written as a rule.
-        // A rule carrying this can arrive by replication from a phone that
-        // already speaks #72's language before this screen offers to create
-        // one, and a condition it could not describe would read as a rule that
-        // applies for no stated reason.
-        is Condition.DuringWindow -> getString(
-            if (condition.window.parityAnchor == null) {
-                R.string.context_when_window
-            } else {
-                R.string.context_when_window_alternating
-            },
-            DayPicker.describe(this, condition.window.days),
-            getString(
-                R.string.schedules_window,
-                formatTime(condition.window.start),
-                formatTime(condition.window.end),
-            ),
-        )
-
-        // #102. Same wording as the dedicated device budget's own screens use
-        // for "minutes used", since to a parent this is that same daily limit,
-        // just expressed as a rule.
-        is Condition.AllowanceSpent -> getString(R.string.context_when_allowance_spent, condition.minutes)
-
-        is Condition.Not -> getString(
-            R.string.context_when_not,
-            describeCondition(condition.condition, places),
-        )
-
-        is Condition.AllOf -> condition.conditions
-            .joinToString(getString(R.string.context_join_and)) { describeCondition(it, places) }
-            .ifBlank { getString(R.string.context_when_always) }
-
-        is Condition.AnyOf -> condition.conditions
-            .joinToString(getString(R.string.context_join_or)) { describeCondition(it, places) }
-            .ifBlank { getString(R.string.context_when_never) }
-    }
+    private fun describe(rule: ContextRule, places: List<PlaceRef>): String =
+        RuleDescriber(
+            activity = this,
+            placeName = { id -> places.firstOrNull { it.id == id }?.name },
+            categoryName = { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name },
+        ).rule(rule)
 
     private fun title(text: String, appearance: Int) = TextView(this).apply {
         this.text = text

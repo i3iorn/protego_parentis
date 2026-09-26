@@ -40,13 +40,18 @@ object ContextRuleAuthoring {
      */
     fun looksLikeTotalBlackout(rule: ContextRule, otherRules: List<ContextRule>): Boolean {
         if (!rule.enabled) return false
-        if (rule.target != RuleTarget.Everything) return false
-        if (rule.condition != Condition.Always) return false
-        val others = otherRules.filterNot { it.id == rule.id }
-        return when (rule.effect) {
-            is RuleEffect.Block -> others.none { it.enabled && it.effect is RuleEffect.Allow }
-            is RuleEffect.AlwaysBlock -> others.none { it.enabled && it.effect is RuleEffect.SafetyExempt }
-            else -> false
+        if (rule.condition != Condition.Always || rule.exceptWhen != null) return false
+        // The rule's own other actions count as carve-outs too: "block
+        // everything, allow the phone app" in one rule is not a blackout.
+        val carveOuts = rule.actions.map { it.effect } +
+            otherRules.filter { it.enabled && it.id != rule.id }.flatMap { other -> other.actions.map { it.effect } }
+        return rule.actions.any { action ->
+            action.target == RuleTarget.Everything && when (action.effect) {
+                // SafetyExempt frees a plain block as well as Allow does.
+                is RuleEffect.Block -> carveOuts.none { it is RuleEffect.Allow || it is RuleEffect.SafetyExempt }
+                is RuleEffect.AlwaysBlock -> carveOuts.none { it is RuleEffect.SafetyExempt }
+                else -> false
+            }
         }
     }
 }

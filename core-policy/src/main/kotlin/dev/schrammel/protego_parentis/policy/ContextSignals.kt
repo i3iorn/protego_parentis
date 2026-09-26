@@ -16,7 +16,7 @@ import dev.schrammel.protego_parentis.model.ContextRule
 object ContextSignals {
 
     fun readsSurroundings(rules: List<ContextRule>): Boolean =
-        rules.any { it.enabled && readsSurroundings(it.condition) }
+        rules.any { it.enabled && readsSurroundings(it.activeWhen) }
 
     /**
      * Whether an enabled rule depends on being at a saved place — the one
@@ -24,7 +24,7 @@ object ContextSignals {
      * only one worth spending a location fix on.
      */
     fun readsPlaces(rules: List<ContextRule>): Boolean =
-        rules.any { it.enabled && readsPlaces(it.condition) }
+        rules.any { it.enabled && readsPlaces(it.activeWhen) }
 
     private fun readsPlaces(condition: Condition): Boolean = when (condition) {
         is Condition.AtPlace -> true
@@ -37,6 +37,7 @@ object ContextSignals {
         -> false
         is Condition.AllOf -> condition.conditions.any(::readsPlaces)
         is Condition.AnyOf -> condition.conditions.any(::readsPlaces)
+        is Condition.AtLeast -> condition.conditions.any(::readsPlaces)
         is Condition.Not -> readsPlaces(condition.condition)
     }
 
@@ -58,6 +59,7 @@ object ContextSignals {
 
         is Condition.AllOf -> condition.conditions.any(::readsSurroundings)
         is Condition.AnyOf -> condition.conditions.any(::readsSurroundings)
+        is Condition.AtLeast -> condition.conditions.any(::readsSurroundings)
         is Condition.Not -> readsSurroundings(condition.condition)
     }
 }

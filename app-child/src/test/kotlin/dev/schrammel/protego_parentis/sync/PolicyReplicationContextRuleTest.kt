@@ -6,6 +6,8 @@ import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.PlaceId
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.rules.ContextRuleStore
@@ -13,6 +15,7 @@ import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -158,17 +161,18 @@ class PolicyReplicationContextRuleTest {
     }
 
     @Test
-    fun `a rule whose condition has not replicated yet falls back to Always rather than being excluded`() {
+    fun `a rule whose condition has not replicated yet is excluded, not read as Always`() {
+        // Always would make an allow or safety-exempt rule apply everywhere
+        // until its real condition arrived.
         val ops = listOf(
             op("R1", "name", "No games at dinner", lamport = 1, origin = "AAAA"),
-            op("R1", "effect", """{"kind":"block"}""", lamport = 1, origin = "AAAA"),
+            op("R1", "effect", """{"kind":"allow"}""", lamport = 1, origin = "AAAA"),
             op("R1", "target", """{"kind":"everything"}""", lamport = 1, origin = "AAAA"),
         )
 
         store().receive(ops)
 
-        val rule = replication().readContextRules(childId).singleOrNull()
-        assertEquals(Condition.Always, rule?.condition)
+        assertTrue(replication().readContextRules(childId).isEmpty())
     }
 
     // ---------- round trip ----------
@@ -225,6 +229,87 @@ class PolicyReplicationContextRuleTest {
         replication().pullContextRulesIntoLocal(childId)
 
         assertEquals(listOf(rule), ContextRuleStore(context).rules)
+    }
+
+    // ---------- V2 rules ----------
+
+    private val v2Rule = ContextRule(
+        id = "R1",
+        name = "School",
+        enabled = true,
+        condition = Condition.AtLeast(1, listOf(Condition.OnWifi("School"), Condition.AtPlace(PlaceId("school")))),
+        actions = listOf(
+            RuleAction(RuleEffect.Block(), RuleTarget.Categories(setOf(CategoryId("games")))),
+            RuleAction(RuleEffect.Allow, RuleTarget.Apps(setOf(PackageName("com.example.homework")))),
+        ),
+        exceptWhen = Condition.BatteryBelow(10),
+    )
+
+    private fun fieldsOf(ruleId: String) = store().children("policy/${childId.value}/contextRules/$ruleId")
+
+    @Test
+    fun `a v2 rule round-trips`() {
+        replication().writeContextRules(listOf(v2Rule), childId)
+
+        assertEquals(listOf(v2Rule), replication().readContextRules(childId))
+    }
+
+    @Test
+    fun `a v2 rule carries no v1 effect or target, so an older build drops it`() {
+        replication().writeContextRules(listOf(v2Rule), childId)
+
+        val fields = fieldsOf("R1")
+        assertFalse("effect" in fields)
+        assertFalse("target" in fields)
+        assertEquals("2", fields["format"])
+    }
+
+    @Test
+    fun `a rule going back to one action leaves no v2 fields behind`() {
+        replication().writeContextRules(listOf(v2Rule), childId)
+        val simple = ContextRule("R1", "School", true, Condition.OnWifi("School"), RuleEffect.Block(), RuleTarget.Everything)
+
+        replication().writeContextRules(listOf(simple), childId)
+
+        assertEquals(listOf(simple), replication().readContextRules(childId))
+        val fields = fieldsOf("R1")
+        assertTrue(fields.keys.none { it == "format" || it == "except" || it == "actionCount" || it.startsWith("action_") })
+    }
+
+    @Test
+    fun `dropping an action clears its fields`() {
+        replication().writeContextRules(listOf(v2Rule), childId)
+        val fewer = v2Rule.copy(actions = v2Rule.actions.take(1), exceptWhen = null, condition = Condition.AtLeast(1, listOf(Condition.Always)))
+
+        replication().writeContextRules(listOf(fewer), childId)
+
+        assertEquals(listOf(fewer), replication().readContextRules(childId))
+        assertFalse("action_1_effect" in fieldsOf("R1"))
+    }
+
+    @Test
+    fun `a v2 rule with an action still missing is excluded whole`() {
+        val ops = listOf(
+            op("R1", "name", "School", lamport = 1, origin = "AAAA"),
+            op("R1", "condition", """{"kind":"always"}""", lamport = 1, origin = "AAAA"),
+            op("R1", "format", "2", lamport = 1, origin = "AAAA"),
+            op("R1", "actionCount", "2", lamport = 1, origin = "AAAA"),
+            op("R1", "action_0_effect", """{"kind":"block"}""", lamport = 1, origin = "AAAA"),
+            op("R1", "action_0_target", """{"kind":"everything"}""", lamport = 1, origin = "AAAA"),
+        )
+
+        store().receive(ops)
+
+        assertTrue(replication().readContextRules(childId).isEmpty())
+    }
+
+    @Test
+    fun `the local store keeps a v2 rule through pull and push`() {
+        replication().writeContextRules(listOf(v2Rule), childId)
+
+        replication().pullContextRulesIntoLocal(childId)
+
+        assertEquals(listOf(v2Rule), ContextRuleStore(context).rules)
     }
 
     private fun seededRandom() = kotlin.random.Random(42)

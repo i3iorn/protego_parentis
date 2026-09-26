@@ -7,6 +7,7 @@ import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
@@ -178,6 +179,33 @@ class ContextRulesActivityTest {
             "starters should be hidden once the family has any rule of their own",
             findText(activity, context.getString(R.string.rules_bedtime_name)),
         )
+    }
+
+    @Test
+    fun `a rule with an exception and several actions reads as one sentence`() {
+        rules().upsert(
+            ContextRule(
+                id = "v2",
+                name = "School",
+                enabled = true,
+                condition = Condition.OnWifi("School"),
+                actions = listOf(
+                    RuleAction(RuleEffect.Block(), RuleTarget.Everything),
+                    RuleAction(RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)), RuleTarget.Everything),
+                ),
+                exceptWhen = Condition.BatteryBelow(10),
+            ),
+        )
+
+        val activity = activity()
+
+        val summary = findAll(activity.window.decorView) { it is TextView }
+            .map { (it as TextView).text.toString() }
+            .firstOrNull { it.contains("School") && it.contains("→") }
+        requireNotNull(summary) { "no summary line was rendered for the rule" }
+        assertTrue(summary, summary.contains(context.getString(R.string.context_effect_block)))
+        assertTrue(summary, summary.contains(context.getString(R.string.context_join_actions).trim()))
+        assertTrue(summary, summary.contains("10"))
     }
 
     private fun findText(activity: android.app.Activity, text: String): View? =

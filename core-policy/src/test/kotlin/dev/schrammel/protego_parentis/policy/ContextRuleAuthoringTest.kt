@@ -3,11 +3,14 @@ package dev.schrammel.protego_parentis.policy
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
+import dev.schrammel.protego_parentis.model.WeeklyBudget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * [ContextRuleAuthoring.looksLikeTotalBlackout] draws its blackout line
@@ -103,5 +106,51 @@ class ContextRuleAuthoringTest {
             false,
             ContextRuleAuthoring.looksLikeTotalBlackout(overrideEverything, otherRules = listOf(allowRule, exemptRule)),
         )
+    }
+
+    @Test
+    fun `a block-everything action is not a blackout when the same rule allows something back`() {
+        val rule = ContextRule(
+            id = "lockdown-with-phone",
+            name = "Lockdown",
+            enabled = true,
+            condition = Condition.Always,
+            actions = listOf(
+                RuleAction(RuleEffect.Block(), RuleTarget.Everything),
+                RuleAction(RuleEffect.Allow, RuleTarget.Apps(setOf(PackageName("com.example.homework")))),
+            ),
+        )
+
+        assertEquals(false, ContextRuleAuthoring.looksLikeTotalBlackout(rule, otherRules = emptyList()))
+    }
+
+    @Test
+    fun `a block-everything action among others is still a blackout with no carve-out`() {
+        val rule = ContextRule(
+            id = "lockdown-and-limit",
+            name = "Lockdown",
+            enabled = true,
+            condition = Condition.Always,
+            actions = listOf(
+                RuleAction(RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)), RuleTarget.Everything),
+                RuleAction(RuleEffect.Block(), RuleTarget.Everything),
+            ),
+        )
+
+        assertTrue(ContextRuleAuthoring.looksLikeTotalBlackout(rule, otherRules = emptyList()))
+    }
+
+    @Test
+    fun `a rule with an exception is not an unconditional blackout`() {
+        val rule = ContextRule(
+            id = "lockdown-except-home",
+            name = "Lockdown",
+            enabled = true,
+            condition = Condition.Always,
+            actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Everything)),
+            exceptWhen = Condition.OnWifi("Home"),
+        )
+
+        assertEquals(false, ContextRuleAuthoring.looksLikeTotalBlackout(rule, otherRules = emptyList()))
     }
 }
