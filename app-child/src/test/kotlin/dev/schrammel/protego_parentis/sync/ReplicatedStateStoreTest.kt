@@ -421,4 +421,33 @@ class ReplicatedStateStoreTest {
         assertTrue(receiveDone.await(5, java.util.concurrent.TimeUnit.SECONDS))
         assertEquals("45", store().value("policy/SELF/dailyLimitMinutes"))
     }
+
+    // ---------- stored a section at a time (#291) ----------
+
+    private val prefs get() = context.getSharedPreferences("replicated_state", Context.MODE_PRIVATE)
+
+    @Test
+    fun `a chat write leaves the stored audit section untouched`() {
+        store().write("audit/1700000000-a/action", "LOCKED", "A", SyncRole.PARENT)
+        val auditBefore = prefs.getString("section:audit", null)
+
+        store().write("chat/1700000001-b/text", "hello", "A", SyncRole.PARENT)
+
+        assertSame(auditBefore, prefs.getString("section:audit", null))
+        assertEquals("hello", store().value("chat/1700000001-b/text"))
+        assertEquals("LOCKED", store().value("audit/1700000000-a/action"))
+    }
+
+    @Test
+    fun `a replica stored whole by an older build is moved into sections on first read`() {
+        val legacy = listOf(
+            StateOp("chat/1700000001-b/text", "hello", 2L, "A"),
+            StateOp("policy/x/limit", "30", 3L, "A"),
+        )
+        prefs.edit().putString("entries", StateCodec.encodeOps(legacy)).commit()
+
+        assertEquals("hello", store().value("chat/1700000001-b/text"))
+        assertEquals("30", store().value("policy/x/limit"))
+        assertNull(prefs.getString("entries", null))
+    }
 }
