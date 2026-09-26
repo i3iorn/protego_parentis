@@ -207,6 +207,9 @@
     <string name="context_choose_everything_except">Everything except some apps</string>
     <string name="context_save">Save rule</string>
     <string name="context_delete">Delete rule</string>
+    <string name="context_delete_confirm">This rule stops applying straight away, on every phone that has it. This can’t be undone.</string>
+    <string name="category_delete_confirm">The category and its limit are removed. Its apps stay installed and fall back to the other rules. This can’t be undone.</string>
+    <string name="auto_delete_confirm">Requests that this answered automatically will wait for a parent again. This can’t be undone.</string>
     <string name="context_save_sent_remote">Sent — takes effect once the child\'s phone syncs.</string>
     <string name="context_delete_sent_remote">Sent — the child\'s phone drops the rule once it syncs.</string>
     <string name="context_blackout_title">Block everything, with no exception?</string>

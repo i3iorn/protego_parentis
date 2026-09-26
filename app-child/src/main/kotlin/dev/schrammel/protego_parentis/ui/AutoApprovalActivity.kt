@@ -221,7 +221,13 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
                         setText(R.string.auto_delete)
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                             .apply { topMargin = dimen(R.dimen.space_sm) }
-                        setOnClickListener { delete() }
+                        setOnClickListener {
+                            confirmDialog(
+                                existing?.name.orEmpty().ifBlank { getString(R.string.auto_delete) },
+                                getString(R.string.auto_delete_confirm),
+                                R.string.auto_delete,
+                            ) { delete() }
+                        }
                     },
                 )
             }

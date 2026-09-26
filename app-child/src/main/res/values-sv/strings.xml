@@ -210,6 +210,9 @@
     <string name="context_choose_everything_except">Allt utom vissa appar</string>
     <string name="context_save">Spara regeln</string>
     <string name="context_delete">Ta bort regeln</string>
+    <string name="context_delete_confirm">Regeln slutar gälla direkt, på alla telefoner som har den. Det går inte att ångra.</string>
+    <string name="category_delete_confirm">Kategorin och dess gräns tas bort. Apparna finns kvar och följer de andra reglerna. Det går inte att ångra.</string>
+    <string name="auto_delete_confirm">Förfrågningar som det här svaret besvarade automatiskt väntar på en förälder igen. Det går inte att ångra.</string>
     <string name="context_save_sent_remote">Skickat — gäller när barnets telefon synkroniserar.</string>
     <string name="context_delete_sent_remote">Skickat — barnets telefon tar bort regeln när den synkroniserar.</string>
     <string name="context_blackout_title">Blockera allt, utan undantag?</string>
