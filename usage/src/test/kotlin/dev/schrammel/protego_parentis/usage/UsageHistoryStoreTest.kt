@@ -5,12 +5,14 @@ import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import java.io.File
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.minutes
 
@@ -117,5 +119,36 @@ class UsageHistoryStoreTest {
         store.clear()
 
         assertTrue(store.all().isEmpty())
+    }
+
+    // ---------- sealed at rest (#276) ----------
+
+    /** Stands in for the keystore, which Robolectric doesn't have: reversible, and obviously not the JSON. */
+    private fun sealingStore() = UsageHistoryStore(
+        context,
+        seal = { plain -> plain.reversed() },
+        open = { sealed -> sealed.reversed() },
+    )
+
+    private val file get() = File(context.filesDir, "usage-history.json")
+
+    @Test
+    fun `history is written sealed, and reads back`() {
+        sealingStore().record(snapshot(LocalDate.parse("2026-08-21"), pkg = "com.example.chat", pkgMinutes = 30))
+
+        assertFalse(file.readText().contains("com.example.chat"))
+        assertEquals(30.minutes, sealingStore().all().single().byPackage[PackageName("com.example.chat")])
+    }
+
+    @Test
+    fun `an unsealed file from an older build is still read, and sealed on the next write`() {
+        UsageHistoryStore(context, seal = { null }, open = { null })
+            .record(snapshot(LocalDate.parse("2026-08-21"), pkg = "com.example.chat", pkgMinutes = 30))
+        assertTrue(file.readText().contains("com.example.chat"))
+
+        sealingStore().record(snapshot(LocalDate.parse("2026-08-22")))
+
+        assertEquals(2, sealingStore().all().size)
+        assertFalse(file.readText().contains("com.example.chat"))
     }
 }

@@ -34,6 +34,7 @@ kotlin {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-policy"))
+    implementation(project(":security"))
     implementation(libs.androidx.core.ktx)
     testImplementation(libs.junit)
     testImplementation(libs.json)

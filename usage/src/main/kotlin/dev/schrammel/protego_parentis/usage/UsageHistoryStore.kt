@@ -5,6 +5,7 @@ import android.util.Log
 import dev.schrammel.protego_parentis.model.Defaults
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.UsageSnapshot
+import dev.schrammel.protego_parentis.security.SecretVault
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -23,7 +24,18 @@ import kotlin.time.Duration.Companion.milliseconds
  * [UsageStatsManager][android.app.usage.UsageStatsManager], so it stays correct to
  * the minute and never has to be rewritten.
  */
-class UsageHistoryStore(context: Context) {
+class UsageHistoryStore(
+    context: Context,
+    /**
+     * Seals the file at rest (#276). Which apps a child used and for how long,
+     * day by day, is exactly as readable by an `adb pull` on a rooted phone as
+     * the family passphrase SecretVault already protects. Null means sealing is
+     * unavailable (no usable keystore): the history is then written as before,
+     * because losing it would be worse than the sandbox-only protection it had.
+     */
+    private val seal: (String) -> String? = SecretVault::seal,
+    private val open: (String) -> String? = SecretVault::open,
+) {
 
     private val file = File(context.applicationContext.filesDir, FILE_NAME)
 
@@ -65,7 +77,13 @@ class UsageHistoryStore(context: Context) {
         if (!file.exists()) return emptyList()
         val stamp = file.lastModified()
         if (cachedStamp == stamp) return cachedValue
-        val raw = runCatching { file.readText() }.getOrNull() ?: return emptyList()
+        val stored = runCatching { file.readText() }.getOrNull() ?: return emptyList()
+        // Unsealed files from before #276 are still read; the next write seals them.
+        val raw = if (stored.startsWith(SEALED_PREFIX)) {
+            open(stored.removePrefix(SEALED_PREFIX)) ?: return emptyList()
+        } else {
+            stored
+        }
         val root = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyList()
         val days = root.optJSONArray(KEY_DAYS) ?: return emptyList()
 
@@ -78,14 +96,16 @@ class UsageHistoryStore(context: Context) {
     }
 
     private fun write(days: List<UsageSnapshot>) {
-        val root = JSONObject().put(KEY_DAYS, JSONArray(days.map(::toJson)))
+        val json = JSONObject().put(KEY_DAYS, JSONArray(days.map(::toJson))).toString()
+        val content = seal(json)?.let { SEALED_PREFIX + it }
+            ?: json.also { Log.w(TAG, "Keystore unavailable; usage history written unsealed") }
         runCatching {
             // Write to a temporary file and swap: a process kill mid-write would
             // otherwise leave truncated JSON and lose the entire history.
             val temp = File(file.parentFile, "$FILE_NAME.tmp")
-            temp.writeText(root.toString())
+            temp.writeText(content)
             if (!temp.renameTo(file)) {
-                file.writeText(root.toString())
+                file.writeText(content)
                 temp.delete()
             }
         }.onFailure { Log.w(TAG, "Could not write usage history", it) }
@@ -141,6 +161,7 @@ class UsageHistoryStore(context: Context) {
     private companion object {
         const val TAG = "DementorHistory"
         const val FILE_NAME = "usage-history.json"
+        const val SEALED_PREFIX = "sealed:"
 
         const val KEY_DAYS = "days"
         const val KEY_DATE = "date"
