@@ -6,11 +6,9 @@ import android.app.admin.DnsEvent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.PersistableBundle
 import android.util.Log
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.policy.PolicyClock
-import dev.schrammel.protego_parentis.provisioning.ProvisioningPayload
 import java.time.Instant
 
 /**
@@ -30,29 +28,12 @@ class DementorDeviceAdminReceiver : DeviceAdminReceiver() {
     /**
      * Fired once, after the setup wizard has installed us as device owner.
      *
-     * The admin extras bundle is the only channel that survives provisioning, so
-     * the pairing token travels in it. Persist immediately: this callback does not
-     * fire again, and without the token the device cannot find its family.
+     * The admin extras bundle is deliberately not read (#278): the family is
+     * joined afterwards, in JoinFamilyActivity, and a credential kept here with
+     * nothing to use it would only be something to leak.
      */
     override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
-        val extras = intent.getParcelableExtra(
-            DevicePolicyManager.EXTRA_PROVISIONING_ADMIN_EXTRAS_BUNDLE,
-            PersistableBundle::class.java,
-        )
-
-        val pairing = PairingDetails(
-            token = extras?.getString(ProvisioningPayload.ADMIN_EXTRA_PAIRING_TOKEN),
-            familyId = extras?.getString(ProvisioningPayload.ADMIN_EXTRA_FAMILY_ID),
-            childId = extras?.getString(ProvisioningPayload.ADMIN_EXTRA_CHILD_ID),
-        )
-        PairingStore(context).save(pairing)
-
-        if (!pairing.isComplete) {
-            // Not a failure: joining the family is done by hand afterwards
-            // either way (#278).
-            Log.w(TAG, "Provisioning finished without complete pairing details")
-        }
-        Log.i(TAG, "Provisioning complete, paired=${pairing.isComplete}")
+        Log.i(TAG, "Provisioning complete")
     }
 
     /**

@@ -3,7 +3,6 @@ package dev.schrammel.protego_parentis.setup
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import android.util.TypedValue
 import android.view.ViewGroup
@@ -17,7 +16,6 @@ import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.ui.DementorActivity
 import androidx.core.content.edit
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.dpc.PairingStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.PinLock
 import dev.schrammel.protego_parentis.security.RoleStore
@@ -33,8 +31,8 @@ import dev.schrammel.protego_parentis.ui.styleAs
  * the teen's attention on a fresh device, so the monitoring disclosure lives here
  * rather than being buried in a settings screen nobody opens.
  *
- * The pairing details provisioning saved are only checked here, not used: see
- * #278. Permission grants (usage access, notifications, battery exemption) are
+ * Joining the family is not part of this screen; that happens afterwards in
+ * JoinFamilyActivity (#278). Permission grants (usage access, notifications, battery exemption) are
  * asked for afterwards, from Home, through PermissionsActivity.
  *
  * TODO(M3): let the teen choose their display name and avatar — it is their phone.
@@ -102,14 +100,6 @@ class ComplianceActivity : DementorActivity() {
 
     private fun onAcknowledged() {
         DisclosureRecord(this).markAcknowledged()
-
-        val pairing = PairingStore(this).load()
-        if (!pairing.isComplete) {
-            // Not fatal: setup still completes, and the family is joined by hand
-            // afterwards, as it is today even when the details are complete
-            // (#278). Blocking here would strand the device half-provisioned.
-            Log.w("DementorSetup", "Continuing without complete pairing details")
-        }
 
         // A device that has just been provisioned as device owner is, by
         // definition, the phone with the limits. Asking whose phone it is after
