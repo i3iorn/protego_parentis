@@ -153,3 +153,13 @@ fun ConditionDraft.Group.setNegated(path: List<Int>, negated: Boolean): Conditio
 fun ConditionDraft.Group.setMode(path: List<Int>, mode: GroupMode): ConditionDraft.Group = update(path) { node ->
     (node as? ConditionDraft.Group)?.copy(mode = mode) ?: node
 }
+
+/**
+ * Whether any "at least N" group here has fewer than N conditions, which can
+ * never hold. Usually left behind by removing rows after choosing N; the
+ * editor refuses to save it rather than quietly store a rule that never fires.
+ */
+fun ConditionDraft.Group.hasImpossibleAtLeast(): Boolean {
+    val own = (mode as? GroupMode.AtLeast)?.let { it.count > children.size } ?: false
+    return own || children.any { it is ConditionDraft.Group && it.hasImpossibleAtLeast() }
+}

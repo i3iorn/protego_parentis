@@ -3,7 +3,9 @@ package dev.schrammel.protego_parentis.policy
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PlaceId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConditionDraftTest {
@@ -105,5 +107,15 @@ class ConditionDraftTest {
         assertEquals(1, draft.groupDepthAt(emptyList()))
         assertEquals(2, draft.groupDepthAt(listOf(0)))
         assertEquals(2, draft.groupDepthAt(listOf(0, 0)))
+    }
+
+    @Test
+    fun `an at-least group asking for more than it has is impossible, however deep`() {
+        val two = listOf(ConditionDraft.Leaf(school), ConditionDraft.Leaf(low))
+        assertFalse(ConditionDraft.Group(GroupMode.AtLeast(2), two).hasImpossibleAtLeast())
+        assertTrue(ConditionDraft.Group(GroupMode.AtLeast(3), two).hasImpossibleAtLeast())
+        assertTrue(
+            ConditionDraft.Group(children = listOf(ConditionDraft.Group(GroupMode.AtLeast(3), two))).hasImpossibleAtLeast(),
+        )
     }
 }

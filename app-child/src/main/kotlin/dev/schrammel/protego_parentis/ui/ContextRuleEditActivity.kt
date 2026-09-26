@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -17,7 +18,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.CategoryId
@@ -27,11 +27,25 @@ import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceRef
 import dev.schrammel.protego_parentis.model.RecurringWindow
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
+import dev.schrammel.protego_parentis.policy.ConditionDraft
 import dev.schrammel.protego_parentis.policy.ContextRuleAuthoring
+import dev.schrammel.protego_parentis.policy.ContextRuleFormat
+import dev.schrammel.protego_parentis.policy.GroupMode
+import dev.schrammel.protego_parentis.policy.add
+import dev.schrammel.protego_parentis.policy.groupDepthAt
+import dev.schrammel.protego_parentis.policy.hasImpossibleAtLeast
+import dev.schrammel.protego_parentis.policy.nodeAt
+import dev.schrammel.protego_parentis.policy.remove
+import dev.schrammel.protego_parentis.policy.setMode
+import dev.schrammel.protego_parentis.policy.setNegated
+import dev.schrammel.protego_parentis.policy.toCondition
+import dev.schrammel.protego_parentis.policy.update
 import dev.schrammel.protego_parentis.rules.MigratedRuleIds
+import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
@@ -54,6 +68,11 @@ import kotlin.time.Duration.Companion.minutes
  * The three parts are chosen separately rather than offered as a list of preset
  * rules, because the useful combinations are family-specific. "Block games on the
  * school Wi-Fi" and "let homework run freely at Grandma's" are the same shape.
+ *
+ * "When" is a tree: rows and nested groups, each group combining its rows as
+ * all, any or at least N, and any row or group negatable ([ConditionDraft]).
+ * An optional "except when" clause switches the rule off while it holds, and a
+ * rule can have several "do this, to that" actions.
  */
 class ContextRuleEditActivity : ParentGatedActivity() {
 
@@ -63,21 +82,17 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private var ruleId: String = ""
     private var name: String = ""
     private var enabled: Boolean = true
-    private var negate: Boolean = false
-    private var condition: Condition = Condition.Always
 
-    /**
-     * Extra conditions beyond [condition] (#87) — empty for the common case of
-     * a rule with just one. Combined with [condition] via [combineAll] only at
-     * save time ([combinedCondition]); [Condition.AllOf]/[Condition.AnyOf]
-     * themselves never appear as [condition] while this screen is open.
-     */
-    private var extraConditions: MutableList<Condition> = mutableListOf()
+    /** "When", as the editable tree the screen draws. Its root's NOT is the "invert" checkbox. */
+    private var whenDraft = ConditionDraft.Group()
 
-    /** Whether [condition] plus [extraConditions] must all hold, or any one of them. */
-    private var combineAll: Boolean = true
-    private var effect: RuleEffect = RuleEffect.Block()
-    private var ruleTarget: RuleTarget = RuleTarget.Everything
+    /** "Except when", or null while the rule has no exception. */
+    private var exceptDraft: ConditionDraft.Group? = null
+
+    private var actions: MutableList<RuleAction> = mutableListOf(DEFAULT_ACTION)
+
+    /** Which of [actions] the app picker is choosing a target for. */
+    private var pickingForAction: Int = 0
 
     /**
      * Set just before [pickApps] launches for "everything except some apps," so
@@ -91,12 +106,24 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         val picked = AppPickerActivity.resultFrom(result.data)
+        val index = pickingForAction
+        val current = actions.getOrNull(index) ?: return@registerForActivityResult
         if (pickingExcept) {
-            ruleTarget = RuleTarget.EverythingExcept(picked.map(::PackageName).toSet())
+            actions[index] = current.copy(target = RuleTarget.EverythingExcept(picked.map(::PackageName).toSet()))
         } else if (picked.isNotEmpty()) {
-            ruleTarget = mergedTarget(picked.map(::PackageName).toSet(), ruleTarget.targetCategories())
+            actions[index] = current.copy(
+                target = mergedTarget(picked.map(::PackageName).toSet(), current.target.targetCategories()),
+            )
         }
         render()
+    }
+
+    private val describer by lazy {
+        RuleDescriber(
+            activity = this,
+            placeName = { id -> places().firstOrNull { it.id == id }?.name },
+            categoryName = { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name },
+        )
     }
 
     override fun supportsReadOnly() = true
@@ -111,31 +138,9 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         ruleId = existing?.id ?: UUID.randomUUID().toString()
         name = existing?.name.orEmpty()
         enabled = existing?.enabled ?: true
-        effect = existing?.effect ?: RuleEffect.Block()
-        ruleTarget = existing?.target ?: RuleTarget.Everything
-        // A negated condition is stored wrapped; unwrap so the toggle reflects it.
-        // A combined one (#87) is stored as one AllOf/AnyOf; unwrap that too, into
-        // the first part plus whatever else it was combining, so editing a rule
-        // built from more than one condition round-trips through the same rows
-        // that built it, rather than showing one condition and silently losing
-        // the rest.
-        val stored = existing?.condition ?: Condition.Always
-        negate = stored is Condition.Not
-        when (val unwrapped = if (stored is Condition.Not) stored.condition else stored) {
-            is Condition.AllOf -> {
-                combineAll = true
-                condition = unwrapped.conditions.firstOrNull() ?: Condition.Always
-                extraConditions = unwrapped.conditions.drop(1).toMutableList()
-            }
-
-            is Condition.AnyOf -> {
-                combineAll = false
-                condition = unwrapped.conditions.firstOrNull() ?: Condition.Always
-                extraConditions = unwrapped.conditions.drop(1).toMutableList()
-            }
-
-            else -> condition = unwrapped
-        }
+        actions = existing?.actions?.toMutableList() ?: mutableListOf(DEFAULT_ACTION)
+        whenDraft = ConditionDraft.fromCondition(existing?.condition ?: Condition.Always)
+        exceptDraft = existing?.exceptWhen?.let(ConditionDraft::fromCondition)
 
         container = contentColumn()
         showColumn(container)
@@ -184,72 +189,44 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 R.string.context_when_info_body,
             ),
         )
-        container.addView(
-            choice(describeCondition(condition)) {
-                chooseCondition(condition) { picked -> condition = picked; render() }
-            },
-        )
-
-        // #87: a second condition and beyond, combined with this first one —
-        // not just with each other — by either needing every one of them or
-        // just one. Placed directly under the conditions rather than between
-        // the first one and "invert" below: this picker and that condition
-        // row are not two separate settings, one governs how all the rows
-        // above it are combined, first one included.
-        if (extraConditions.isNotEmpty()) {
-            container.addView(
-                choice(getString(if (combineAll) R.string.context_combine_all else R.string.context_combine_any)) {
-                    menu(
-                        R.string.context_combine_header,
-                        listOf(
-                            getString(R.string.context_combine_all) to { combineAll = true; render() },
-                            getString(R.string.context_combine_any) to { combineAll = false; render() },
-                        ),
-                    )
-                },
-            )
-            extraConditions.forEachIndexed { index, extra ->
-                container.addView(
-                    LinearLayout(this).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                        addView(
-                            choice(describeCondition(extra)) {
-                                chooseCondition(extra) { picked -> extraConditions[index] = picked; render() }
-                            }.apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) },
-                        )
-                        addView(
-                            Button(this@ContextRuleEditActivity).apply {
-                                setText(R.string.context_remove_condition)
-                                isEnabled = canEdit
-                                setOnClickListener { extraConditions.removeAt(index); render() }
-                            },
-                        )
-                    },
-                )
-            }
-        }
-        container.addView(
-            choice(getString(R.string.context_add_condition)) {
-                chooseCondition(null) { picked -> extraConditions.add(picked); render() }
-            },
-        )
-        // Below every condition row rather than under the first one: this
-        // negates the combined result of all of them (see [combinedCondition]),
-        // not just the row directly above it.
+        renderGroup(container, whenSlot, emptyList())
+        // Under the whole tree rather than the first row: this negates the
+        // root group, so everything above it.
         container.addView(
             CheckBox(this).apply {
                 setText(R.string.context_invert)
-                isChecked = negate
+                isChecked = whenDraft.negated
                 isEnabled = canEdit
                 setOnCheckedChangeListener { _, checked ->
-                    negate = checked
+                    whenDraft = whenDraft.setNegated(emptyList(), checked)
                     render()
                 }
             },
         )
 
-        // ---- do what ----
+        // ---- except when ----
+        container.addView(
+            headingWithInfo(
+                heading(getString(R.string.context_except_header), R.style.TextAppearance_Dementor_Section),
+                R.string.context_except_info_title,
+                R.string.context_except_info_body,
+            ),
+        )
+        if (exceptDraft == null) {
+            container.addView(
+                choice(getString(R.string.context_add_exception)) {
+                    chooseCondition(null) { picked ->
+                        exceptDraft = ConditionDraft.Group(children = listOf(ConditionDraft.Leaf(picked)))
+                        render()
+                    }
+                },
+            )
+        } else {
+            renderGroup(container, exceptSlot, emptyList())
+            container.addView(choice(getString(R.string.context_remove_exception)) { exceptDraft = null; render() })
+        }
+
+        // ---- do what, to whom ----
         container.addView(
             headingWithInfo(
                 heading(getString(R.string.context_do_header), R.style.TextAppearance_Dementor_Section),
@@ -257,17 +234,15 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 R.string.context_do_info_body,
             ),
         )
-        container.addView(choice(describeEffect()) { chooseEffect() })
-
-        // ---- to whom ----
-        container.addView(
-            headingWithInfo(
-                heading(getString(R.string.context_to_header), R.style.TextAppearance_Dementor_Section),
-                R.string.context_to_info_title,
-                R.string.context_to_info_body,
-            ),
-        )
-        container.addView(choice(describeTarget()) { chooseTarget() })
+        actions.forEachIndexed { index, action -> container.addView(actionRow(index, action)) }
+        if (actions.size < ContextRuleFormat.MAX_ACTIONS) {
+            container.addView(
+                choice(getString(R.string.context_add_action)) {
+                    actions.add(DEFAULT_ACTION)
+                    render()
+                },
+            )
+        }
 
         if (canEdit) {
             container.addView(
@@ -300,6 +275,154 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                     },
                 )
             }
+        }
+    }
+
+    // ---------- condition tree ----------
+
+    /** Where a tree being drawn lives, so a row can read and replace the whole tree it belongs to. */
+    private class DraftSlot(val get: () -> ConditionDraft.Group?, val set: (ConditionDraft.Group) -> Unit)
+
+    private val whenSlot = DraftSlot({ whenDraft }, { whenDraft = it })
+    private val exceptSlot = DraftSlot({ exceptDraft }, { exceptDraft = it })
+
+    private fun DraftSlot.edit(change: (ConditionDraft.Group) -> ConditionDraft.Group) {
+        get()?.let { set(change(it)) }
+        render()
+    }
+
+    /**
+     * Draws the group at [path] and everything under it. A nested group gets
+     * its own header row (how it combines, NOT, remove) and is indented, so
+     * which rows belong to which group is visible at a glance.
+     */
+    private fun renderGroup(into: LinearLayout, slot: DraftSlot, path: List<Int>) {
+        val tree = slot.get() ?: return
+        val group = tree.nodeAt(path) as? ConditionDraft.Group ?: return
+        val isRoot = path.isEmpty()
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+            if (!isRoot) setPadding(dimen(R.dimen.space_lg), 0, 0, 0)
+        }
+
+        if (!isRoot) {
+            box.addView(
+                horizontalRow(
+                    choice(modeLabel(group)) { chooseMode(slot, path) },
+                    notToggle(group.negated) { checked -> slot.edit { it.setNegated(path, checked) } },
+                    removeButton(R.string.context_remove_group) { slot.edit { it.remove(path) } },
+                ),
+            )
+        } else if (group.children.size > 1) {
+            box.addView(choice(modeLabel(group)) { chooseMode(slot, path) })
+        }
+
+        group.children.forEachIndexed { index, child ->
+            val childPath = path + index
+            when (child) {
+                is ConditionDraft.Leaf -> box.addView(
+                    horizontalRow(
+                        choice(describer.condition(child.condition)) {
+                            chooseCondition(child.condition) { picked ->
+                                slot.edit { current ->
+                                    current.update(childPath) { (it as ConditionDraft.Leaf).copy(condition = picked) }
+                                }
+                            }
+                        },
+                        notToggle(child.negated) { checked -> slot.edit { it.setNegated(childPath, checked) } },
+                        removeButton(R.string.context_remove_condition) { slot.edit { it.remove(childPath) } },
+                    ),
+                )
+
+                is ConditionDraft.Group -> renderGroup(box, slot, childPath)
+            }
+        }
+
+        box.addView(
+            choice(getString(R.string.context_add_condition)) {
+                chooseCondition(null) { picked -> slot.edit { it.add(path, ConditionDraft.Leaf(picked)) } }
+            },
+        )
+        if (tree.groupDepthAt(path) < ConditionDraft.MAX_GROUP_DEPTH) {
+            box.addView(
+                choice(getString(R.string.context_add_group)) {
+                    chooseCondition(null) { picked ->
+                        slot.edit { it.add(path, ConditionDraft.Group(children = listOf(ConditionDraft.Leaf(picked)))) }
+                    }
+                },
+            )
+        }
+        into.addView(box)
+    }
+
+    private fun modeLabel(group: ConditionDraft.Group): String = when (val mode = group.mode) {
+        GroupMode.All -> getString(R.string.context_combine_all)
+        GroupMode.Any -> getString(R.string.context_combine_any)
+        is GroupMode.AtLeast -> getString(R.string.context_combine_at_least, mode.count)
+    }
+
+    /**
+     * All, any, or "at least N" for every N strictly between them: at least 1
+     * is any and at least all of them is all, and are offered as those.
+     */
+    private fun chooseMode(slot: DraftSlot, path: List<Int>) {
+        if (!canEdit) return
+        val group = slot.get()?.nodeAt(path) as? ConditionDraft.Group ?: return
+        val options = buildList {
+            add(getString(R.string.context_combine_all) to { slot.edit { it.setMode(path, GroupMode.All) } })
+            add(getString(R.string.context_combine_any) to { slot.edit { it.setMode(path, GroupMode.Any) } })
+            (2 until group.children.size).forEach { count ->
+                add(
+                    getString(R.string.context_combine_at_least, count) to {
+                        slot.edit { it.setMode(path, GroupMode.AtLeast(count)) }
+                    },
+                )
+            }
+        }
+        menu(R.string.context_combine_header, options)
+    }
+
+    private fun notToggle(checked: Boolean, onChange: (Boolean) -> Unit) = CheckBox(this).apply {
+        setText(R.string.context_row_not)
+        isChecked = checked
+        isEnabled = canEdit
+        setOnCheckedChangeListener { _, value -> onChange(value) }
+    }
+
+    private fun removeButton(textRes: Int, onClick: () -> Unit) = Button(this).apply {
+        setText(textRes)
+        isEnabled = canEdit
+        setOnClickListener { onClick() }
+    }
+
+    /** [main] takes the spare width; everything after it keeps its own size. */
+    private fun horizontalRow(main: View, vararg rest: View) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        addView(main.apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) })
+        rest.forEach { addView(it) }
+    }
+
+    // ---------- actions ----------
+
+    /** One "do this, to that" pair. Only the first carries the "To" info button, so it isn't repeated. */
+    private fun actionRow(index: Int, action: RuleAction) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        if (index > 0) setPadding(0, dimen(R.dimen.space_md), 0, 0)
+        addView(choice(describer.effect(action.effect)) { chooseEffect(index) })
+        val toHeading = heading(getString(R.string.context_to_header), R.style.TextAppearance_Dementor_Caption)
+        addView(
+            if (index == 0) {
+                headingWithInfo(toHeading, R.string.context_to_info_title, R.string.context_to_info_body)
+            } else {
+                toHeading
+            },
+        )
+        addView(choice(describer.target(action.target)) { chooseTarget(index) })
+        if (actions.size > 1) {
+            addView(removeButton(R.string.context_remove_action) { actions.removeAt(index); render() })
         }
     }
 
@@ -522,22 +645,32 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             .sortedBy { it.first.lowercase() }
     }.getOrDefault(emptyList())
 
-    private fun chooseEffect() {
+    private fun setEffect(index: Int, effect: RuleEffect) {
+        actions.getOrNull(index)?.let { actions[index] = it.copy(effect = effect) }
+        render()
+    }
+
+    private fun setTarget(index: Int, ruleTarget: RuleTarget) {
+        actions.getOrNull(index)?.let { actions[index] = it.copy(target = ruleTarget) }
+        render()
+    }
+
+    private fun chooseEffect(index: Int) {
         if (!canEdit) return
         menu(
             R.string.context_do_header,
             listOf(
-                getString(R.string.context_effect_block) to { effect = RuleEffect.Block(); render() },
-                getString(R.string.context_effect_allow) to { effect = RuleEffect.Allow; render() },
-                getString(R.string.context_effect_always_block) to { effect = RuleEffect.AlwaysBlock(); render() },
-                getString(R.string.context_choose_safety_exempt) to { effect = RuleEffect.SafetyExempt; render() },
-                getString(R.string.context_choose_budget) to { askForBudget(effect) },
+                getString(R.string.context_effect_block) to { setEffect(index, RuleEffect.Block()) },
+                getString(R.string.context_effect_allow) to { setEffect(index, RuleEffect.Allow) },
+                getString(R.string.context_effect_always_block) to { setEffect(index, RuleEffect.AlwaysBlock()) },
+                getString(R.string.context_choose_safety_exempt) to { setEffect(index, RuleEffect.SafetyExempt) },
+                getString(R.string.context_choose_budget) to { askForBudget(index) },
             ),
         )
     }
 
-    private fun askForBudget(current: RuleEffect?) {
-        val existingMinutes = (current as? RuleEffect.SetBudget)
+    private fun askForBudget(index: Int) {
+        val existingMinutes = (actions.getOrNull(index)?.effect as? RuleEffect.SetBudget)
             ?.budget?.default?.inWholeMinutes?.toInt()
         sliderDialog(
             title = R.string.context_choose_budget,
@@ -545,42 +678,39 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             initialProgress = LimitSlider.progressFor(existingMinutes ?: DEFAULT_BUDGET_MINUTES),
             format = { formatLimit(LimitSlider.minutesFor(it)) },
         ) { progress ->
-            effect = RuleEffect.SetBudget(
-                WeeklyBudget.flat(LimitSlider.minutesFor(progress).minutes),
-            )
-            render()
+            setEffect(index, RuleEffect.SetBudget(WeeklyBudget.flat(LimitSlider.minutesFor(progress).minutes)))
         }
     }
 
-    private fun chooseTarget() {
+    private fun chooseTarget(index: Int) {
         if (!canEdit) return
+        val current = actions.getOrNull(index)?.target ?: return
         menu(
             R.string.context_to_header,
             listOf(
-                getString(R.string.context_target_everything) to {
-                    ruleTarget = RuleTarget.Everything
-                    render()
-                },
-                getString(R.string.context_choose_categories) to { chooseCategories() },
+                getString(R.string.context_target_everything) to { setTarget(index, RuleTarget.Everything) },
+                getString(R.string.context_choose_categories) to { chooseCategories(index) },
                 getString(R.string.context_choose_apps) to {
                     pickingExcept = false
+                    pickingForAction = index
                     pickApps.launch(
                         AppPickerActivity.intent(
                             this,
                             getString(R.string.context_choose_apps),
-                            ruleTarget.targetApps().map { it.value },
+                            current.targetApps().map { it.value },
                             target.childId,
                         ),
                     )
                 },
                 getString(R.string.context_choose_everything_except) to {
                     pickingExcept = true
-                    val current = (ruleTarget as? RuleTarget.EverythingExcept)?.packages.orEmpty()
+                    pickingForAction = index
+                    val except = (current as? RuleTarget.EverythingExcept)?.packages.orEmpty()
                     pickApps.launch(
                         AppPickerActivity.intent(
                             this,
                             getString(R.string.context_choose_everything_except),
-                            current.map { it.value },
+                            except.map { it.value },
                             target.childId,
                         ),
                     )
@@ -589,13 +719,14 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         )
     }
 
-    private fun chooseCategories() {
+    private fun chooseCategories(index: Int) {
+        val current = actions.getOrNull(index)?.target ?: return
         val categories = policyRuleStore(this, target).categories()
         if (categories.isEmpty()) {
             toast(getString(R.string.rules_no_categories))
             return
         }
-        val selected = ruleTarget.targetCategories().map { it.value }
+        val selected = current.targetCategories().map { it.value }
         val checked = categories.map { it.id in selected }.toBooleanArray()
         val chosen = selected.toMutableSet()
 
@@ -604,13 +735,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             .setMultiChoiceItems(
                 categories.map { it.name }.toTypedArray(),
                 checked,
-            ) { _, index, isChecked ->
-                val id = categories[index].id
+            ) { _, position, isChecked ->
+                val id = categories[position].id
                 if (isChecked) chosen += id else chosen -= id
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                ruleTarget = mergedTarget(ruleTarget.targetApps(), chosen.map(::CategoryId).toSet())
-                render()
+                setTarget(index, mergedTarget(current.targetApps(), chosen.map(::CategoryId).toSet()))
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -637,29 +767,59 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             return
         }
         wellKnownSingleAppTarget()?.let { locked ->
-            if (ruleTarget != locked) {
+            if (actions.size != 1 || actions.single().target != locked) {
                 toast(getString(R.string.context_well_known_target_locked))
                 return
             }
+        }
+        if (whenDraft.hasImpossibleAtLeast() || exceptDraft?.hasImpossibleAtLeast() == true) {
+            toast(getString(R.string.context_at_least_impossible))
+            return
         }
         val rule = ContextRule(
             id = ruleId,
             name = name.trim(),
             enabled = enabled,
-            condition = combinedCondition(),
-            effect = effect,
-            target = ruleTarget,
+            condition = whenDraft.toCondition(),
+            actions = actions.toList(),
+            exceptWhen = exceptDraft?.toCondition(),
         )
-        if (ContextRuleAuthoring.looksLikeTotalBlackout(rule, contextRuleRuleStore(this, target).read())) {
-            val bodyRes = if (rule.effect is RuleEffect.AlwaysBlock) {
-                R.string.context_blackout_body_always_block
-            } else {
-                R.string.context_blackout_body
-            }
-            confirmDialog(R.string.context_blackout_title, bodyRes, R.string.context_save) { commit(rule) }
-            return
+        confirmOlderPhones(rule) { confirmBlackout(rule) { commit(rule) } }
+    }
+
+    /**
+     * Warns before saving a V2 rule (see [ContextRuleFormat]) while any phone
+     * in the family has not said it runs a build that reads one: an older
+     * build ignores the rule, and can delete it when a parent edits rules on
+     * it.
+     */
+    private fun confirmOlderPhones(rule: ContextRule, then: () -> Unit) {
+        if (!ContextRuleFormat.needsV2(rule)) return then()
+        val older = RosterStore(this).devices.filterNot { ContextRuleFormat.supportsV2(it.appVersion) }
+        if (older.isEmpty()) return then()
+        confirmDialog(
+            R.string.context_older_phones_title,
+            getString(
+                R.string.context_older_phones_body,
+                older.joinToString(", ") { it.name },
+                ContextRuleFormat.V2_MIN_VERSION,
+            ),
+            R.string.context_save,
+            then,
+        )
+    }
+
+    private fun confirmBlackout(rule: ContextRule, then: () -> Unit) {
+        if (!ContextRuleAuthoring.looksLikeTotalBlackout(rule, contextRuleRuleStore(this, target).read())) return then()
+        val alwaysBlocksEverything = rule.actions.any {
+            it.effect is RuleEffect.AlwaysBlock && it.target == RuleTarget.Everything
         }
-        commit(rule)
+        val bodyRes = if (alwaysBlocksEverything) {
+            R.string.context_blackout_body_always_block
+        } else {
+            R.string.context_blackout_body
+        }
+        confirmDialog(R.string.context_blackout_title, bodyRes, R.string.context_save, then)
     }
 
     private fun commit(rule: ContextRule) {
@@ -705,93 +865,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun hasPermission(permission: String) =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-    // ---------- descriptions ----------
-
-    /**
-     * One condition, as a phrase — never negated here even when [negate] is
-     * set, since #87 lets [negate] apply to a whole group of these rather than
-     * to just the first one; the "Invert" checkbox is the one place that's said.
-     */
-    private fun describeCondition(current: Condition): String = when (current) {
-        is Condition.Always -> getString(R.string.context_when_always)
-        is Condition.OnWifi -> getString(R.string.context_when_wifi, current.ssid)
-        is Condition.NearDevice -> getString(R.string.context_when_near, current.tag.value)
-        is Condition.AtPlace -> getString(
-            R.string.context_when_place,
-            places().firstOrNull { it.id == current.place }?.name
-                ?: getString(R.string.context_place_unknown),
-        )
-
-        is Condition.BatteryBelow -> getString(R.string.context_when_battery, current.percent)
-
-        is Condition.DuringWindow -> getString(
-            if (current.window.parityAnchor == null) {
-                R.string.context_when_window
-            } else {
-                R.string.context_when_window_alternating
-            },
-            DayPicker.describe(this, current.window.days),
-            getString(
-                R.string.schedules_window,
-                formatTime(current.window.start),
-                formatTime(current.window.end),
-            ),
-        )
-
-        is Condition.AllowanceSpent -> getString(R.string.context_when_allowance_spent, current.minutes)
-
-        is Condition.Not -> getString(R.string.context_when_not, describeCondition(current.condition))
-
-        is Condition.AllOf -> current.conditions
-            .joinToString(getString(R.string.context_join_and)) { describeCondition(it) }
-            .ifBlank { getString(R.string.context_when_always) }
-
-        is Condition.AnyOf -> current.conditions
-            .joinToString(getString(R.string.context_join_or)) { describeCondition(it) }
-            .ifBlank { getString(R.string.context_when_never) }
-    }
-
-    /**
-     * [condition] plus [extraConditions], combined the way [combineAll] and
-     * [negate] say they should be — the single [Condition] this rule actually
-     * saves and evaluates against.
-     */
-    private fun combinedCondition(): Condition {
-        val parts = listOf(condition) + extraConditions
-        val combined: Condition = when {
-            parts.size == 1 -> parts.single()
-            combineAll -> Condition.AllOf(parts)
-            else -> Condition.AnyOf(parts)
-        }
-        return if (negate) Condition.Not(combined) else combined
-    }
-
-    private fun describeEffect(): String = when (val current = effect) {
-        is RuleEffect.Block -> getString(R.string.context_effect_block)
-        is RuleEffect.Allow -> getString(R.string.context_effect_allow)
-        is RuleEffect.AlwaysBlock -> getString(R.string.context_effect_always_block)
-        is RuleEffect.SafetyExempt -> getString(R.string.context_effect_safety_exempt)
-        is RuleEffect.SetBudget ->
-            getString(R.string.context_effect_budget, formatDuration(current.budget.default))
-    }
-
-    private fun describeTarget(): String = when (val current = ruleTarget) {
-        is RuleTarget.Everything -> getString(R.string.context_target_everything)
-        is RuleTarget.Apps -> describeApps(current.packages)
-        is RuleTarget.Categories -> describeCategories(current.categories)
-        is RuleTarget.Mixed ->
-            getString(R.string.context_target_mixed, describeApps(current.packages), describeCategories(current.categories))
-        is RuleTarget.EverythingExcept ->
-            getString(R.string.context_target_everything_except, describeApps(current.packages))
-    }
-
-    private fun describeApps(packages: Set<PackageName>): String =
-        resources.getQuantityString(R.plurals.rules_category_apps, packages.size, packages.size)
-
-    private fun describeCategories(categories: Set<CategoryId>): String = categories
-        .mapNotNull { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name }
-        .joinToString(", ")
-        .ifBlank { getString(R.string.context_target_categories) }
+    // ---------- targets ----------
 
     /** [RuleTarget]'s apps, whichever variant is carrying them — see [mergedTarget]. */
     private fun RuleTarget.targetApps(): Set<PackageName> = when (this) {
@@ -850,6 +924,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         private const val DEFAULT_BATTERY_PERCENT = 20
         private const val MAX_BATTERY_PERCENT = 100
         private const val DEFAULT_ALLOWANCE_MINUTES = 60
+        private val DEFAULT_ACTION = RuleAction(RuleEffect.Block(), RuleTarget.Everything)
         private val DEFAULT_WINDOW_DAYS = setOf(java.time.DayOfWeek.MONDAY)
         private val DEFAULT_WINDOW_START: LocalTime = LocalTime.of(8, 0)
         private val DEFAULT_WINDOW_END: LocalTime = LocalTime.of(15, 0)
