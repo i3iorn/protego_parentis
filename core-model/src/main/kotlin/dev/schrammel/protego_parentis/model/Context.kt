@@ -195,6 +195,19 @@ sealed interface Condition {
 
     data class AnyOf(val conditions: List<Condition>) : Condition
 
+    /**
+     * At least [count] of [conditions] hold: "any two of these three".
+     *
+     * [count] of 1 is [AnyOf] and [count] equal to the list's size is
+     * [AllOf]; both stay as their own shapes, since older app versions read
+     * those and not this one.
+     */
+    data class AtLeast(val count: Int, val conditions: List<Condition>) : Condition {
+        init {
+            require(count >= 1) { "at least 1 condition has to hold, or the group means nothing" }
+        }
+    }
+
     data class Not(val condition: Condition) : Condition
 }
 
@@ -251,7 +264,7 @@ sealed interface RuleEffect {
     data object SafetyExempt : RuleEffect
 
     /**
-     * Replaces the allowance for whatever [ContextRule.target] resolves to:
+     * Replaces the allowance for whatever its [RuleAction.target] resolves to:
      * the whole device under [RuleTarget.Everything], one or more apps under
      * [RuleTarget.Apps] (or the app half of a [RuleTarget.Mixed]), one or more
      * categories under [RuleTarget.Categories] (or its category half). With
@@ -297,6 +310,9 @@ sealed interface RuleTarget {
     data class EverythingExcept(val packages: Set<PackageName>) : RuleTarget
 }
 
+/** One "do this, to that" line of a rule. */
+data class RuleAction(val effect: RuleEffect, val target: RuleTarget)
+
 /**
  * A rule that only applies in some circumstances.
  *
@@ -304,17 +320,48 @@ sealed interface RuleTarget {
  * These sit on top for the cases a clock cannot express: block games on the school
  * network, let homework apps run freely at home, tighten the allowance anywhere
  * that is not one of those.
+ *
+ * A rule applies while [condition] holds and [exceptWhen], if set, does not
+ * ([activeWhen]). While it applies, every one of [actions] does. The
+ * exception is kept apart from [condition] rather than folded into it, so the
+ * editor can show it as the separate clause the parent wrote.
  */
 data class ContextRule(
     val id: String,
     val name: String,
     val enabled: Boolean,
     val condition: Condition,
-    val effect: RuleEffect,
-    val target: RuleTarget,
+    val actions: List<RuleAction>,
+    val exceptWhen: Condition? = null,
 ) {
+    /** A rule with one action, the only shape a rule could have before V2. */
+    constructor(
+        id: String,
+        name: String,
+        enabled: Boolean,
+        condition: Condition,
+        effect: RuleEffect,
+        target: RuleTarget,
+    ) : this(id, name, enabled, condition, listOf(RuleAction(effect, target)))
+
     init {
         require(id.isNotBlank()) { "a rule needs an id" }
         require(name.isNotBlank()) { "a rule needs a name to show on the block screen" }
+        require(actions.isNotEmpty()) { "a rule needs something to do" }
     }
+
+    /**
+     * The first action's effect and target.
+     *
+     * Only for code that handles rules which have exactly one action by
+     * construction, such as the per-app block or the daily limit the app
+     * creates itself. Anything that reads arbitrary rules goes through
+     * [actions].
+     */
+    val effect: RuleEffect get() = actions.first().effect
+    val target: RuleTarget get() = actions.first().target
+
+    /** When this rule applies, with [exceptWhen] folded in. */
+    val activeWhen: Condition
+        get() = exceptWhen?.let { Condition.AllOf(listOf(condition, Condition.Not(it))) } ?: condition
 }
