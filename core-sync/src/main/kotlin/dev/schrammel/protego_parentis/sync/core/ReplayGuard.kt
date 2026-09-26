@@ -98,10 +98,23 @@ object ReplayGuard {
         else -> FRESHNESS_WINDOW
     }
 
-    fun admit(message: SyncMessage, now: Instant, seen: Collection<SeenMessage>): Admission {
+    fun admit(
+        message: SyncMessage,
+        now: Instant,
+        seen: Collection<SeenMessage>,
+        /**
+         * The newest send time of any message this device has ever admitted
+         * (#273). Those times come from other devices' clocks, so turning this
+         * device's clock back cannot lower it, and freshness is measured from
+         * whichever is later. Without it, winding the clock back to when an old
+         * command was sent made that command fresh again.
+         */
+        trustedFloor: Instant? = null,
+    ): Admission {
         if (seen.any { it.id == message.id }) return Admission.Reject(RejectReason.ALREADY_SEEN)
 
-        val age = now.toEpochMilli() - message.sentAt.toEpochMilli()
+        val reference = if (trustedFloor != null && trustedFloor.isAfter(now)) trustedFloor else now
+        val age = reference.toEpochMilli() - message.sentAt.toEpochMilli()
         if (age > freshnessFor(message.type).inWholeMilliseconds) {
             return Admission.Reject(RejectReason.TOO_OLD)
         }
