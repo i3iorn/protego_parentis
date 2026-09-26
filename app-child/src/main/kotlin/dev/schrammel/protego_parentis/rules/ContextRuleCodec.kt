@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RecurringWindow
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
@@ -37,8 +38,11 @@ import kotlin.time.Duration.Companion.minutes
  * object — does not move. The `*ToString`/`*FromString` wrappers exist only
  * for replication, where a register's value has to be a string.
  *
- * A [Condition] is `{"kind": "...", ...}`, with `AllOf`/`AnyOf`/`Not` nesting
- * further conditions under `parts`. Deliberately open-ended: adding a new
+ * A [Condition] is `{"kind": "...", ...}`, with `AllOf`/`AnyOf`/`AtLeast`/`Not`
+ * nesting further conditions under `parts`. A condition with any part this
+ * build can't read is unreadable as a whole: dropping just that part would
+ * quietly change what the rest means, loosening an AllOf or tightening an
+ * AnyOf. Deliberately open-ended: adding a new
  * condition kind — a future `Xor`, say — is a new `KIND` constant and a new
  * branch in each function below, never a change to this shape or to what is
  * already on the wire, whether that wire is local storage or replication.
@@ -109,6 +113,12 @@ internal object ContextRuleCodec {
                 put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
             }
 
+            is Condition.AtLeast -> {
+                put(KEY_KIND, AT_LEAST)
+                put(KEY_VALUE, condition.count)
+                put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
+            }
+
             is Condition.Not -> {
                 put(KEY_KIND, NOT)
                 put(KEY_PARTS, JSONArray(listOf(encodeCondition(condition.condition))))
@@ -122,10 +132,10 @@ internal object ContextRuleCodec {
         if (depth > MAX_CONDITION_DEPTH) return null
 
         val value = json.optString(KEY_VALUE)
-        fun parts(): List<Condition> {
+        fun parts(): List<Condition>? {
             val array = json.optJSONArray(KEY_PARTS) ?: return emptyList()
-            return (0 until array.length()).mapNotNull { index ->
-                array.optJSONObject(index)?.let { decodeCondition(it, depth + 1) }
+            return (0 until array.length()).map { index ->
+                array.optJSONObject(index)?.let { decodeCondition(it, depth + 1) } ?: return null
             }
         }
 
@@ -141,9 +151,12 @@ internal object ContextRuleCodec {
             ALLOWANCE_SPENT -> json.optInt(KEY_VALUE, -1)
                 .takeIf { it >= 0 }
                 ?.let(Condition::AllowanceSpent)
-            ALL_OF -> Condition.AllOf(parts())
-            ANY_OF -> Condition.AnyOf(parts())
-            NOT -> parts().firstOrNull()?.let(Condition::Not)
+            ALL_OF -> parts()?.let(Condition::AllOf)
+            ANY_OF -> parts()?.let(Condition::AnyOf)
+            AT_LEAST -> json.optInt(KEY_VALUE, 0).takeIf { it >= 1 }?.let { count ->
+                parts()?.let { Condition.AtLeast(count, it) }
+            }
+            NOT -> parts()?.singleOrNull()?.let(Condition::Not)
             else -> null
         }
     }
@@ -264,6 +277,31 @@ internal object ContextRuleCodec {
         }
     }
 
+    fun encodeAction(action: RuleAction): JSONObject = JSONObject().apply {
+        put(KEY_EFFECT, encodeEffect(action.effect))
+        put(KEY_TARGET, encodeTarget(action.target))
+    }
+
+    fun decodeAction(json: JSONObject): RuleAction? {
+        val effect = json.optJSONObject(KEY_EFFECT)?.let(::decodeEffect) ?: return null
+        val target = json.optJSONObject(KEY_TARGET)?.let(::decodeTarget) ?: return null
+        return RuleAction(effect, target)
+    }
+
+    fun encodeActions(actions: List<RuleAction>): JSONArray = JSONArray(actions.map(::encodeAction))
+
+    /**
+     * Every action, or null if there are none or any one can't be read. A
+     * rule missing one of its actions would still look whole on screen while
+     * enforcing less than the parent wrote.
+     */
+    fun decodeActions(array: JSONArray?): List<RuleAction>? {
+        if (array == null || array.length() == 0) return null
+        return (0 until array.length()).map { index ->
+            array.optJSONObject(index)?.let(::decodeAction) ?: return null
+        }
+    }
+
     // ---------- string wrappers, for a replicated register's value ----------
 
     fun encodeConditionToString(condition: Condition): String = encodeCondition(condition).toString()
@@ -291,6 +329,8 @@ internal object ContextRuleCodec {
     private const val KEY_END = "endMinute"
     private const val KEY_PARITY_ANCHOR = "parityAnchorEpochDay"
     private const val KEY_HIDDEN = "hidden"
+    private const val KEY_EFFECT = "effect"
+    private const val KEY_TARGET = "target"
 
     private const val MINUTES_PER_DAY = 24 * 60
     private const val SECONDS_PER_MINUTE = 60
@@ -304,6 +344,7 @@ internal object ContextRuleCodec {
     private const val ALLOWANCE_SPENT = "allowanceSpent"
     private const val ALL_OF = "allOf"
     private const val ANY_OF = "anyOf"
+    private const val AT_LEAST = "atLeast"
     private const val NOT = "not"
 
     private const val BLOCK = "block"

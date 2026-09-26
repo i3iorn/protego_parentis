@@ -180,7 +180,7 @@ object PolicyEngine {
                         Reason.ContextRuleActive(
                             ruleId = rule.id,
                             ruleName = rule.name,
-                            liftsAt = ContextRules.liftsAt(rule.condition, nowZdt),
+                            liftsAt = ContextRules.liftsAt(rule.activeWhen, nowZdt),
                         ),
                     )
                 }
@@ -374,7 +374,7 @@ object PolicyEngine {
         // — waking for a rule that cannot fire is battery spent on nothing.
         val ruleWindows = policy.contextRules
             .filter { it.enabled }
-            .flatMap { ContextRules.windowsIn(it.condition) }
+            .flatMap { ContextRules.windowsIn(it.activeWhen) }
         ScheduleResolver.nextWindowEdgeAfter(ruleWindows, nowZdt)?.let(candidates::add)
         liveGrants.forEach { candidates += it.expiresAt }
         // Otherwise an installation window would stay open until the next tick for

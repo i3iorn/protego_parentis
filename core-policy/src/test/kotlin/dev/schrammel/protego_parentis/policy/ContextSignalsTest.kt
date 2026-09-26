@@ -5,6 +5,7 @@ import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RecurringWindow
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import org.junit.Assert.assertFalse
@@ -96,5 +97,22 @@ class ContextSignalsTest {
     @Test
     fun `a disabled place rule does not read places`() {
         assertFalse(ContextSignals.readsPlaces(listOf(rule(Condition.AtPlace(PlaceId("school")), enabled = false))))
+    }
+
+    @Test
+    fun `a place only in the exception, or in an at-least group, still counts`() {
+        val except = ContextRule(
+            id = "r-except",
+            name = "Rule",
+            enabled = true,
+            condition = Condition.Always,
+            actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Everything)),
+            exceptWhen = Condition.AtPlace(PlaceId("home")),
+        )
+        assertTrue(ContextSignals.readsPlaces(listOf(except)))
+        assertTrue(ContextSignals.readsSurroundings(listOf(except)))
+
+        val atLeast = Condition.AtLeast(1, listOf(Condition.AtPlace(PlaceId("school"))))
+        assertTrue(ContextSignals.readsPlaces(listOf(rule(atLeast))))
     }
 }

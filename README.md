@@ -263,9 +263,29 @@ is and what it is near. A rule reads as a sentence: **when this, do that, to
 those.**
 
 - **When** — always, on a named Wi-Fi network, at a saved place, near a paired
-  Bluetooth device. Any of them can be inverted, and they compose with and/or.
-- **Do** — block, allow freely, or replace the daily limit.
-- **To** — everything, some categories (following nesting), or some apps.
+  Bluetooth device, below a battery level, in a time window, or after some
+  minutes of use. Conditions combine as all, any or *at least N* of them, can
+  be nested in groups, and any single condition or group can be negated.
+- **Except when** (optional) — the rule switches off while this holds, even
+  if "when" does. Built the same way as "when".
+- **Do … to …** — one or more actions, each an effect (block, always block,
+  allow freely, exempt entirely, or set a limit) and a target (everything,
+  everything except some apps, some categories following nesting, or some
+  apps). Every action of an active rule applies.
+
+> [!WARNING]
+> **Update every phone in the family to 1.2.0 before using the new rule
+> features.** Rules with several actions, an exception or an *at least N*
+> group are ignored by older versions, and an older child's phone deletes
+> them on its next sync. The app shows a warning on the home screen and the
+> rules list of every updated phone until all of them report 1.2.0 or later.
+
+Rules with several actions, an exception or an *at least N* group need app
+version 1.2.0 or later on every phone in the family. Older versions ignore
+them and can delete them: an older child's phone republishes its own rule
+list on every sync, which removes rules it couldn't read. The
+editor warns before saving one while any family phone hasn't reported a
+version that reads them.
 
 Resolution rules, both chosen so a parent cannot open a hole by accident: an
 **allow beats a block**, and where several rules set a limit the **tightest

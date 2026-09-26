@@ -48,9 +48,12 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  * list Contextual rules already edits remotely, so a remote target gets a
  * direct door to [PlacesActivity] rather than losing them along with the
  * toggle. Rows that genuinely cannot work remotely at all — the web filter,
- * web activity, the goal, and requests — still only appear when [target] is
+ * the goal, and requests — still only appear when [target] is
  * this device's own; [render] adds a caption saying so rather than omitting
  * them silently.
+ *
+ * Web activity is not here: it is a report, not a limit, and the managed
+ * phone's home screen already links it for anyone to read.
  */
 class RulesActivity : ParentGatedActivity() {
 
@@ -119,14 +122,6 @@ class RulesActivity : ParentGatedActivity() {
                         row(R.string.rules_row_web, R.string.rules_row_web_detail) {
                             startActivity(WebFilterActivity.intent(this@RulesActivity))
                         },
-                    )
-                }
-                if (target.isOwnDevice && enabled(Feature.WEB_ACTIVITY)) {
-                    add(
-                        row(
-                            R.string.rules_row_web_activity,
-                            R.string.rules_row_web_activity_detail,
-                        ) { startActivity(WebActivityActivity.intent(this@RulesActivity)) },
                     )
                 }
             },

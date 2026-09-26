@@ -1,13 +1,15 @@
 package dev.schrammel.protego_parentis.ui
 
-import android.app.AlertDialog
+import android.content.DialogInterface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.PackageName
+import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RecurringWindow
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.ContextRule
@@ -16,6 +18,10 @@ import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.ParentSession
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.RosterStore
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Vouch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -25,7 +31,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import org.robolectric.shadows.ShadowAlertDialog
+import org.robolectric.shadows.ShadowDialog
 import java.time.DayOfWeek
 import java.time.LocalTime
 import kotlin.time.Duration.Companion.minutes
@@ -61,6 +67,8 @@ class ContextRuleEditActivityTest {
 
     @After
     fun tearDown() {
+        RosterStore(context).forgetAll()
+        store().rules = emptyList()
         LocalDeviceId.useInTests(null)
         ParentSession.lock()
     }
@@ -367,9 +375,8 @@ class ContextRuleEditActivityTest {
         // Not written yet — the confirmation dialog has to be answered first.
         assertTrue(store().rules.none { it.name == "Lockdown" })
 
-        val dialog = ShadowAlertDialog.getLatestAlertDialog()
-        requireNotNull(dialog) { "expected a confirmation dialog before saving a total blackout rule" }
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        requireNotNull(latestDialog()) { "expected a confirmation dialog before saving a total blackout rule" }
+            .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
 
         assertTrue(store().rules.any { it.name == "Lockdown" })
     }
@@ -396,6 +403,117 @@ class ContextRuleEditActivityTest {
 
         assertTrue(store().rules.any { it.name == "Lockdown except homework" })
     }
+
+    // ---------- V2: groups, exceptions, several actions ----------
+
+    private val v2Rule = ContextRule(
+        id = "v2-rule",
+        name = "School",
+        enabled = true,
+        condition = Condition.AllOf(
+            listOf(
+                Condition.OnWifi("School"),
+                Condition.AtLeast(2, listOf(Condition.BatteryBelow(20), Condition.AllowanceSpent(60), Condition.AtPlace(PlaceId("p")))),
+            ),
+        ),
+        actions = listOf(
+            RuleAction(RuleEffect.Block(), RuleTarget.Everything),
+            RuleAction(RuleEffect.Allow, RuleTarget.Apps(setOf(PackageName("com.example.homework")))),
+        ),
+        exceptWhen = Condition.Not(Condition.BatteryBelow(10)),
+    )
+
+    @Test
+    fun `a rule with groups, an exception and several actions survives an unrelated edit`() {
+        store().upsert(v2Rule)
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "v2-rule"),
+        ).setup().get()
+
+        renameField(activity)?.setText("School (renamed)")
+        clickButton(activity, "Save rule")
+
+        assertEquals(v2Rule.copy(name = "School (renamed)"), store().rules.single { it.id == "v2-rule" })
+    }
+
+    @Test
+    fun `adding an action saves a second action`() {
+        store().upsert(
+            ContextRule("one-action", "Wifi", true, Condition.OnWifi("School"), RuleEffect.Allow, RuleTarget.Everything),
+        )
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "one-action"),
+        ).setup().get()
+
+        clickButton(activity, context.getString(R.string.context_add_action))
+        clickButton(activity, "Save rule")
+
+        val saved = store().rules.single { it.id == "one-action" }
+        assertEquals(
+            listOf(
+                RuleAction(RuleEffect.Allow, RuleTarget.Everything),
+                RuleAction(RuleEffect.Block(), RuleTarget.Everything),
+            ),
+            saved.actions,
+        )
+    }
+
+    @Test
+    fun `saving a v2 rule warns while a family phone hasn't said it can read one`() {
+        RosterStore(context).enrol(Vouch(id = DeviceId("CHILD1"), name = "Kid's phone", role = SyncRole.CHILD, publicKey = "key"))
+        store().upsert(v2Rule)
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "v2-rule"),
+        ).setup().get()
+
+        renameField(activity)?.setText("School (renamed)")
+        clickButton(activity, "Save rule")
+
+        assertEquals("School", store().rules.single { it.id == "v2-rule" }.name)
+        requireNotNull(latestDialog()) { "expected the older-phones warning" }
+            .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        assertEquals("School (renamed)", store().rules.single { it.id == "v2-rule" }.name)
+    }
+
+    @Test
+    fun `no warning once every family phone runs a build that reads v2`() {
+        val roster = RosterStore(context)
+        roster.enrol(Vouch(id = DeviceId("CHILD1"), name = "Kid's phone", role = SyncRole.CHILD, publicKey = "key"))
+        roster.observed(DeviceId("CHILD1"), name = null, at = java.time.Instant.now(), appVersion = "1.2.0")
+        store().upsert(v2Rule)
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "v2-rule"),
+        ).setup().get()
+
+        renameField(activity)?.setText("School (renamed)")
+        clickButton(activity, "Save rule")
+
+        assertEquals("School (renamed)", store().rules.single { it.id == "v2-rule" }.name)
+    }
+
+    @Test
+    fun `deleting a rule asks first`() {
+        store().upsert(ContextRule("to-delete", "Wifi", true, Condition.OnWifi("School"), RuleEffect.Allow, RuleTarget.Everything))
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "to-delete"),
+        ).setup().get()
+
+        clickButton(activity, context.getString(R.string.context_delete))
+        assertTrue("nothing is deleted before the question is answered", store().rules.any { it.id == "to-delete" })
+
+        requireNotNull(latestDialog()) { "expected a delete confirmation" }
+            .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        assertTrue(store().rules.none { it.id == "to-delete" })
+    }
+
+    /** confirmDialog builds an appcompat AlertDialog, which ShadowAlertDialog does not track. */
+    private fun latestDialog(): androidx.appcompat.app.AlertDialog? =
+        ShadowDialog.getLatestDialog() as? androidx.appcompat.app.AlertDialog
 
     private fun renameField(activity: ContextRuleEditActivity): android.widget.EditText? =
         findAll(activity.window.decorView) { it is android.widget.EditText }

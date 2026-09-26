@@ -9,6 +9,7 @@ import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RecurringWindow
+import dev.schrammel.protego_parentis.model.RuleAction
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
@@ -727,5 +728,109 @@ class ContextRulesTest {
         val outcome = evaluate(rules, DeviceContext(wifiSsid = school))
 
         assertEquals(listOf("at school"), outcome.activeRules.map { it.name })
+    }
+
+    // ---------- V2: several actions, except-when, at-least ----------
+
+    @Test
+    fun `at least n of a group holds once that many of its conditions do`() {
+        val twoOfThree = Condition.AtLeast(2, listOf(Condition.OnWifi(school), Condition.AtPlace(schoolPlace), Condition.NearDevice(dadsPhone)))
+
+        assertFalse(holds(twoOfThree, DeviceContext(wifiSsid = school)))
+        assertTrue(holds(twoOfThree, DeviceContext(wifiSsid = school, insidePlaces = setOf(schoolPlace))))
+        assertTrue(
+            holds(
+                twoOfThree,
+                DeviceContext(wifiSsid = school, insidePlaces = setOf(schoolPlace), nearbyDevices = setOf(dadsPhone)),
+            ),
+        )
+    }
+
+    @Test
+    fun `at least more than there are conditions never holds`() {
+        assertFalse(holds(Condition.AtLeast(3, listOf(Condition.Always, Condition.Always)), DeviceContext.UNKNOWN))
+    }
+
+    @Test
+    fun `every action of an active rule applies`() {
+        val rules = listOf(
+            ContextRule(
+                id = "r-both",
+                name = "school",
+                enabled = true,
+                condition = Condition.OnWifi(school),
+                actions = listOf(
+                    RuleAction(RuleEffect.Block(), RuleTarget.Apps(setOf(GAME))),
+                    RuleAction(RuleEffect.SetBudget(WeeklyBudget.flat(30.minutes)), RuleTarget.Everything),
+                    RuleAction(RuleEffect.Allow, RuleTarget.Apps(setOf(HOMEWORK))),
+                ),
+            ),
+        )
+
+        val outcome = evaluate(rules, DeviceContext(wifiSsid = school))
+
+        assertEquals(setOf(GAME), outcome.blocked.keys)
+        assertEquals(WeeklyBudget.flat(30.minutes), outcome.deviceBudget)
+        assertEquals(setOf(HOMEWORK), outcome.allowed)
+        assertTrue(evaluate(rules, DeviceContext(wifiSsid = home)).blocked.isEmpty())
+    }
+
+    @Test
+    fun `an except-when clause switches the rule off while it holds`() {
+        val rules = listOf(
+            ContextRule(
+                id = "r-except",
+                name = "bedtime",
+                enabled = true,
+                condition = Condition.Always,
+                actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Apps(setOf(GAME)))),
+                exceptWhen = Condition.AtPlace(schoolPlace),
+            ),
+        )
+
+        assertEquals(setOf(GAME), evaluate(rules, DeviceContext.UNKNOWN).blocked.keys)
+        assertTrue(evaluate(rules, DeviceContext(insidePlaces = setOf(schoolPlace))).blocked.isEmpty())
+    }
+
+    @Test
+    fun `an except-when window still wakes enforcement at its edges`() {
+        val lunch = window(startingOn = "2026-08-21", start = "12:00", end = "13:00")
+        val rule = ContextRule(
+            id = "r-lunch",
+            name = "school",
+            enabled = true,
+            condition = Condition.Always,
+            actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Everything)),
+            exceptWhen = lunch,
+        )
+
+        assertEquals(listOf(lunch.window), ContextRules.windowsIn(rule.activeWhen))
+    }
+
+    @Test
+    fun `a window rule with an exception still reports when its window ends`() {
+        val schoolHours = window(startingOn = "2026-08-21", start = "08:00", end = "15:00")
+        val rule = ContextRule(
+            id = "r-school",
+            name = "school",
+            enabled = true,
+            condition = schoolHours,
+            actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Everything)),
+            exceptWhen = Condition.AtPlace(schoolPlace),
+        )
+
+        // The exception can only lift the block earlier than the window's end,
+        // which is the safe direction to be wrong in.
+        assertEquals(
+            ContextRules.liftsAt(schoolHours, zdt("2026-08-21", "10:00")),
+            ContextRules.liftsAt(rule.activeWhen, zdt("2026-08-21", "10:00")),
+        )
+    }
+
+    @Test
+    fun `at least n promises no end`() {
+        val schoolHours = window(startingOn = "2026-08-21", start = "08:00", end = "15:00")
+
+        assertNull(ContextRules.liftsAt(Condition.AtLeast(1, listOf(schoolHours)), zdt("2026-08-21", "10:00")))
     }
 }

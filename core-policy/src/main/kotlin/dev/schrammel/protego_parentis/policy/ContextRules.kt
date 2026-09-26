@@ -123,7 +123,7 @@ internal object ContextRules {
          */
         deviceUsage: Duration,
     ): ContextOutcome {
-        val active = rules.filter { it.enabled && holds(it.condition, context, now, deviceUsage) }
+        val active = rules.filter { it.enabled && holds(it.activeWhen, context, now, deviceUsage) }
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val alwaysBlocked = LinkedHashMap<PackageName, ContextRule>()
@@ -135,25 +135,25 @@ internal object ContextRules {
         val appBudgets = HashMap<PackageName, WeeklyBudget>()
         val categoryBudgets = HashMap<CategoryId, WeeklyBudget>()
 
-        active.forEach { rule ->
-            when (val effect = rule.effect) {
+        for (rule in active) for (action in rule.actions) {
+            when (val effect = action.effect) {
                 is RuleEffect.Block ->
-                    resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
+                    resolve(action.target, hierarchy, installedPackages).forEach { pkg ->
                         blocked[pkg] = liftingLast(blocked[pkg], rule, now)
                         if (effect.hidden) blockHidden += pkg
                     }
 
                 is RuleEffect.AlwaysBlock ->
-                    resolve(rule.target, hierarchy, installedPackages).forEach { pkg ->
+                    resolve(action.target, hierarchy, installedPackages).forEach { pkg ->
                         alwaysBlocked[pkg] = liftingLast(alwaysBlocked[pkg], rule, now)
                         if (effect.hidden) alwaysHidden += pkg
                     }
 
                 is RuleEffect.Allow ->
-                    allowed += resolve(rule.target, hierarchy, installedPackages)
+                    allowed += resolve(action.target, hierarchy, installedPackages)
 
                 is RuleEffect.SafetyExempt ->
-                    safetyExempt += resolve(rule.target, hierarchy, installedPackages)
+                    safetyExempt += resolve(action.target, hierarchy, installedPackages)
 
                 is RuleEffect.SetBudget ->
                     // Everything means the shared device-wide pool, exactly as
@@ -162,10 +162,10 @@ internal object ContextRules {
                     // reading of its own — nothing authors one, and "each
                     // installed app but these gets its own allowance" is a
                     // different feature from either pool this resolves.
-                    if (rule.target is RuleTarget.Everything) {
+                    if (action.target is RuleTarget.Everything) {
                         deviceBudget = tightest(deviceBudget, effect.budget, now.dayOfWeek)
                     } else {
-                        val (apps, categories) = namedIn(rule.target)
+                        val (apps, categories) = namedIn(action.target)
                         apps.forEach { pkg ->
                             appBudgets[pkg] = tightest(appBudgets[pkg], effect.budget, now.dayOfWeek)
                         }
@@ -248,6 +248,9 @@ internal object ContextRules {
             is Condition.AnyOf ->
                 condition.conditions.any { holds(it, context, now, deviceUsage, depth + 1) }
 
+            is Condition.AtLeast ->
+                condition.conditions.count { holds(it, context, now, deviceUsage, depth + 1) } >= condition.count
+
             is Condition.Not -> !holds(condition.condition, context, now, deviceUsage, depth + 1)
         }
     }
@@ -294,8 +297,8 @@ internal object ContextRules {
      */
     private fun liftingLast(current: ContextRule?, candidate: ContextRule, now: ZonedDateTime): ContextRule {
         if (current == null) return candidate
-        val currentLifts = liftsAt(current.condition, now) ?: return current
-        val candidateLifts = liftsAt(candidate.condition, now) ?: return candidate
+        val currentLifts = liftsAt(current.activeWhen, now) ?: return current
+        val candidateLifts = liftsAt(candidate.activeWhen, now) ?: return candidate
         return if (candidateLifts.isAfter(currentLifts)) candidate else current
     }
 
@@ -308,7 +311,9 @@ internal object ContextRules {
             is Condition.AllOf ->
                 condition.conditions.mapNotNull { liftsAt(it, now, depth + 1) }.minOrNull()
 
-            is Condition.AnyOf -> null
+            // Same reason as AnyOf: a branch not holding now can start later
+            // and keep the count met past any end computed from the others.
+            is Condition.AnyOf, is Condition.AtLeast -> null
             is Condition.Not -> null
 
             // The day boundary is the real end, but this function has no policy
@@ -344,6 +349,7 @@ internal object ContextRules {
             is Condition.DuringWindow -> listOf(condition.window)
             is Condition.AllOf -> condition.conditions.flatMap { windowsIn(it, depth + 1) }
             is Condition.AnyOf -> condition.conditions.flatMap { windowsIn(it, depth + 1) }
+            is Condition.AtLeast -> condition.conditions.flatMap { windowsIn(it, depth + 1) }
             is Condition.Not -> windowsIn(condition.condition, depth + 1)
 
             is Condition.Always,
