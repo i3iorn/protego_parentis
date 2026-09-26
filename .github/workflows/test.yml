@@ -103,9 +103,14 @@ jobs:
   # from the last one. A job of its own rather than a step above: it needs
   # the full history instead of a shallow clone, no JDK, and should say
   # "forgot the bump" separately from "a test failed".
+  #
+  # Dependabot's PRs are exempt (#282): it can't bump the version itself, and
+  # a library update belongs to whatever release next goes out, which carries
+  # its own bump. Keyed on the PR's author rather than github.actor, so a
+  # human pushing to a Dependabot branch doesn't change the answer.
   version-bump:
     name: Version bump
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     steps:
