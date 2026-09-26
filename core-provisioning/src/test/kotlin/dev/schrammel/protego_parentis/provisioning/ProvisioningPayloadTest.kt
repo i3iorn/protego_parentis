@@ -12,16 +12,12 @@ class ProvisioningPayloadTest {
         adminComponent: String = "dev.schrammel.protego_parentis/.dpc.DementorDeviceAdminReceiver",
         apkDownloadUrl: String = "https://dl.dementorwatch.app/dpc/1.0.0.apk",
         signatureChecksum: String = "gJD2YwtOiWJHkSMkkIfLRlj-quNqG1fb6v100QmzM9w",
-        pairingToken: String = "pair_abc123",
         wifiSsid: String? = null,
         wifiPassword: String? = null,
     ) = ProvisioningPayload(
         adminComponent = adminComponent,
         apkDownloadUrl = apkDownloadUrl,
         signatureChecksum = signatureChecksum,
-        pairingToken = pairingToken,
-        familyId = "fam_1",
-        childId = "child_1",
         wifiSsid = wifiSsid,
         wifiPassword = wifiPassword,
     )
@@ -52,14 +48,10 @@ class ProvisioningPayloadTest {
     }
 
     @Test
-    fun `pairing details travel in the admin extras bundle`() {
-        @Suppress("UNCHECKED_CAST")
-        val bundle = payload().toExtras()[ProvisioningPayload.EXTRA_ADMIN_EXTRAS_BUNDLE]
-            as Map<String, String>
-
-        assertEquals("pair_abc123", bundle[ProvisioningPayload.ADMIN_EXTRA_PAIRING_TOKEN])
-        assertEquals("fam_1", bundle[ProvisioningPayload.ADMIN_EXTRA_FAMILY_ID])
-        assertEquals("child_1", bundle[ProvisioningPayload.ADMIN_EXTRA_CHILD_ID])
+    fun `no family credential travels in the payload`() {
+        // #278: nothing on the phone reads one, so a QR carrying it would leave
+        // a credential lying around for no purpose.
+        assertFalse(payload().toQrJson().contains("PROVISIONING_ADMIN_EXTRAS_BUNDLE"))
     }
 
     @Test
@@ -81,19 +73,18 @@ class ProvisioningPayloadTest {
     // ---------- json ----------
 
     @Test
-    fun `the qr json is a single object containing the nested bundle`() {
+    fun `the qr json is a single object`() {
         val json = payload().toQrJson()
 
         assertTrue(json.startsWith("{"))
         assertTrue(json.endsWith("}"))
         assertTrue(json.contains("\"android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME\""))
-        assertTrue(json.contains("\"dev.schrammel.protego_parentis.PAIRING_TOKEN\":\"pair_abc123\""))
         assertTrue(json.contains("\"android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED\":true"))
     }
 
     @Test
     fun `json escapes characters that would break the payload`() {
-        val json = payload(pairingToken = "a\"b\\c").toQrJson()
+        val json = payload(wifiSsid = "a\"b\\c").toQrJson()
 
         assertTrue(json.contains("""a\"b\\c"""))
     }
@@ -127,11 +118,6 @@ class ProvisioningPayloadTest {
         assertThrows(IllegalArgumentException::class.java) {
             payload(adminComponent = "dev.schrammel.protego_parentis.DementorDeviceAdminReceiver")
         }
-    }
-
-    @Test
-    fun `a blank pairing token is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) { payload(pairingToken = "  ") }
     }
 
     @Test

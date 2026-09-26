@@ -2,8 +2,8 @@
 # had drifted years behind while targetSdk kept moving; this keeps them in view.
 #
 # Grouped so a week's AndroidX or Kotlin releases arrive as one PR each rather
-# than a dozen. Every PR still has to bump app-child's versionCode (AGENTS.md;
-# the Version bump check in test.yml enforces it) before it can merge.
+# than a dozen. These PRs are exempt from test.yml's Version bump check; the
+# next release's own bump covers them (AGENTS.md).
 version: 2
 updates:
   - package-ecosystem: gradle

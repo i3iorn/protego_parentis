@@ -85,7 +85,9 @@ Skip the bump only for a change that touches no `app-child`-reachable code at
 all (docs, CI config, tests, the store listing). When in doubt, bump it.
 `test.yml`'s "Version bump" job enforces this on every PR: it fails when a
 file outside `src/test/`, `docs/`, `.github/`, `.claude/`, `play/` or a `.md`
-changed and `versionCode` did not go up.
+changed and `versionCode` did not go up. Dependabot's PRs are exempt: it
+can't bump the version, and the next PR that does covers its update. Before
+tagging a release, check that `versionCode` is above the last release's.
 
 ## Releasing (not a PR concern, but relevant context)
 

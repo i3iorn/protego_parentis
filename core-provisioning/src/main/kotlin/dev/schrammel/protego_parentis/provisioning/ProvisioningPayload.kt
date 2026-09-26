@@ -12,6 +12,10 @@ import java.util.Base64
  * A wrong checksum fails provisioning *silently* — the wizard simply moves on —
  * so the value is validated here and should be pinned in CI against the release
  * signing certificate.
+ *
+ * It carries no family credential (#278). Joining the family happens after
+ * setup, in JoinFamilyActivity; a join code riding along in the admin extras
+ * is for QR provisioning (#274) to add once it is built.
  */
 data class ProvisioningPayload(
     /** `package/fully.qualified.ReceiverClass`, the app's `DeviceAdminReceiver`. */
@@ -20,10 +24,6 @@ data class ProvisioningPayload(
     val apkDownloadUrl: String,
     /** URL-safe base64 of the signing certificate, unpadded. See [SignatureChecksum]. */
     val signatureChecksum: String,
-    /** Single-use token that binds this device to a family on first launch. */
-    val pairingToken: String,
-    val familyId: String,
-    val childId: String,
     val wifiSsid: String? = null,
     val wifiPassword: String? = null,
     val wifiSecurityType: String? = null,
@@ -45,7 +45,6 @@ data class ProvisioningPayload(
         require(SignatureChecksum.isWellFormed(signatureChecksum)) {
             "signature checksum must be unpadded URL-safe base64, was '$signatureChecksum'"
         }
-        require(pairingToken.isNotBlank()) { "pairing token is required" }
         require(wifiPassword == null || wifiSsid != null) {
             "a wifi password without an SSID cannot be used"
         }
@@ -68,14 +67,6 @@ data class ProvisioningPayload(
         wifiSsid?.let { put(EXTRA_WIFI_SSID, it) }
         wifiPassword?.let { put(EXTRA_WIFI_PASSWORD, it) }
         wifiSecurityType?.let { put(EXTRA_WIFI_SECURITY_TYPE, it) }
-        put(
-            EXTRA_ADMIN_EXTRAS_BUNDLE,
-            mapOf(
-                ADMIN_EXTRA_PAIRING_TOKEN to pairingToken,
-                ADMIN_EXTRA_FAMILY_ID to familyId,
-                ADMIN_EXTRA_CHILD_ID to childId,
-            ),
-        )
     }
 
     /** The string that gets encoded into the QR image. */
@@ -88,8 +79,6 @@ data class ProvisioningPayload(
             "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION"
         const val EXTRA_SIGNATURE_CHECKSUM =
             "android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM"
-        const val EXTRA_ADMIN_EXTRAS_BUNDLE =
-            "android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE"
         const val EXTRA_LEAVE_SYSTEM_APPS =
             "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED"
         const val EXTRA_SKIP_ENCRYPTION =
@@ -97,11 +86,6 @@ data class ProvisioningPayload(
         const val EXTRA_WIFI_SSID = "android.app.extra.PROVISIONING_WIFI_SSID"
         const val EXTRA_WIFI_PASSWORD = "android.app.extra.PROVISIONING_WIFI_PASSWORD"
         const val EXTRA_WIFI_SECURITY_TYPE = "android.app.extra.PROVISIONING_WIFI_SECURITY_TYPE"
-
-        /** Our own keys inside the admin extras bundle, read back on first launch. */
-        const val ADMIN_EXTRA_PAIRING_TOKEN = "dev.schrammel.protego_parentis.PAIRING_TOKEN"
-        const val ADMIN_EXTRA_FAMILY_ID = "dev.schrammel.protego_parentis.FAMILY_ID"
-        const val ADMIN_EXTRA_CHILD_ID = "dev.schrammel.protego_parentis.CHILD_ID"
     }
 }
 
