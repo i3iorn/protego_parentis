@@ -180,6 +180,10 @@
     <string name="context_remove_action">Remove this action</string>
     <string name="context_older_phones_title">Some phones won’t use this rule yet</string>
     <string name="context_older_phones_body">%1$s run an older version of the app, or haven’t said which version they run. Older versions ignore rules with several actions, an exception or an “at least” group, and can delete them: an older child’s phone does so on its next sync. Update every phone to %2$s or later first.</string>
+    <string name="rules_version_mixed_title">⚠ Update every phone before using the new rule features</string>
+    <string name="rules_version_mixed_body">%1$s may be running an app version older than %2$s. Rules with several actions, an exception or an “at least” group only work on %2$s or later. An older child’s phone ignores them, and deletes them on its next sync. Update every phone in the family first.</string>
+    <string name="rules_version_risk_title">⚠ Rules are about to be lost: update every phone now</string>
+    <string name="rules_version_risk_body">This family already has rules that need %2$s or later, and %1$s may be running an older version. An older child’s phone does not enforce those rules, and deletes them on its next sync. Update every phone in the family now, then check that the rules are still there.</string>
     <string name="context_do_header">Do this</string>
     <string name="context_do_info_title">About “Do this”</string>
     <string name="context_do_info_body">What the rule does while its condition holds. Block stops the target outright. Allow exempts it from every other rule and budget — an allow always beats a block from a different rule. Always block is one tier stronger: it survives an allow rule elsewhere, for the app or two a plain block is not enough to pin down. Exempt entirely is stronger still: it beats an always block too, and it also reaches network and DNS blocking, the same tier as the built-in safety allowlist. Set a limit replaces the target’s own daily allowance; when two rules set a limit for the same target, the tighter one wins.</string>

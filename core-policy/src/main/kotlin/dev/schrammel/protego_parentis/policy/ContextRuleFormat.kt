@@ -71,6 +71,21 @@ object ContextRuleFormat {
         return true
     }
 
+    /**
+     * The family's phones that may not read V2 rules, from [phones] (a name
+     * and last reported version for each), or null when every one does.
+     *
+     * [v2RulesAtRisk] is the urgent case: a V2 rule already exists in
+     * [rules], and an older child's phone deletes it on its next sync.
+     */
+    fun mixedVersions(phones: List<Pair<String, String?>>, rules: List<ContextRule>): MixedVersions? {
+        val older = phones.filterNot { (_, version) -> supportsV2(version) }.map { (name, _) -> name }
+        if (older.isEmpty()) return null
+        return MixedVersions(olderPhones = older, v2RulesAtRisk = rules.any(::needsV2))
+    }
+
+    data class MixedVersions(val olderPhones: List<String>, val v2RulesAtRisk: Boolean)
+
     /** "1.2.0", or "1.2.0-debug": the numeric part before any suffix. */
     private fun parse(versionName: String?): List<Int>? {
         val numeric = versionName?.trim()?.substringBefore('-')?.takeIf(String::isNotEmpty) ?: return null

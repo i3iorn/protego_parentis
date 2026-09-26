@@ -273,6 +273,13 @@ those.**
   everything except some apps, some categories following nesting, or some
   apps). Every action of an active rule applies.
 
+> [!WARNING]
+> **Update every phone in the family to 1.2.0 before using the new rule
+> features.** Rules with several actions, an exception or an *at least N*
+> group are ignored by older versions, and an older child's phone deletes
+> them on its next sync. The app shows a warning on the home screen and the
+> rules list of every updated phone until all of them report 1.2.0 or later.
+
 Rules with several actions, an exception or an *at least N* group need app
 version 1.2.0 or later on every phone in the family. Older versions ignore
 them and can delete them: an older child's phone republishes its own rule

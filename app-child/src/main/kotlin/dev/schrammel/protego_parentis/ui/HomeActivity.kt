@@ -204,7 +204,9 @@ class HomeActivity : DementorActivity() {
     private fun renderFamilyBanner() {
         val holder = findViewById<LinearLayout>(R.id.family_banner)
         holder.removeAllViews()
-        Background.load(this, { FamilyStatus.read(this) }) { snapshot ->
+        Background.load(this, { FamilyStatus.read(this) to RuleVersionWarning.read(this) }) { (snapshot, versions) ->
+            ruleVersionBanner(versions) { startActivity(FamilyDevicesActivity.intent(this)) }
+                ?.let(holder::addView)
             familyBanner(snapshot) { startActivity(FamilyDevicesActivity.intent(this)) }
                 ?.let(holder::addView)
         }

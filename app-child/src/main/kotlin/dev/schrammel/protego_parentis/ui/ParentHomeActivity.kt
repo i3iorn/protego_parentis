@@ -119,7 +119,9 @@ class ParentHomeActivity : ParentRoleActivity() {
         // family that is fine, wait for news that there is nothing to report.
         val banner = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(banner)
-        Background.load(this, { FamilyStatus.read(this) }) { snapshot ->
+        Background.load(this, { FamilyStatus.read(this) to RuleVersionWarning.read(this) }) { (snapshot, versions) ->
+            ruleVersionBanner(versions) { startActivity(FamilyDevicesActivity.intent(this)) }
+                ?.let(banner::addView)
             familyBanner(snapshot) { startActivity(FamilyDevicesActivity.intent(this)) }
                 ?.let(banner::addView)
         }

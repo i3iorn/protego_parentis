@@ -18,6 +18,10 @@ import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.ParentSession
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.RosterStore
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.SyncRole
+import dev.schrammel.protego_parentis.sync.core.Vouch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,6 +60,8 @@ class ContextRulesActivityTest {
 
     @After
     fun tearDown() {
+        RosterStore(context).forgetAll()
+        rules().rules = emptyList()
         LocalDeviceId.useInTests(null)
         ParentSession.lock()
     }
@@ -206,6 +212,52 @@ class ContextRulesActivityTest {
         assertTrue(summary, summary.contains(context.getString(R.string.context_effect_block)))
         assertTrue(summary, summary.contains(context.getString(R.string.context_join_actions).trim()))
         assertTrue(summary, summary.contains("10"))
+    }
+
+    // ---------- mixed app versions ----------
+
+    private fun enrolParent(version: String?) {
+        val roster = RosterStore(context)
+        roster.enrol(Vouch(id = DeviceId("PARENT1"), name = "Mum's phone", role = SyncRole.PARENT, publicKey = "key"))
+        version?.let { roster.observed(DeviceId("PARENT1"), name = null, at = java.time.Instant.now(), appVersion = it) }
+    }
+
+    @Test
+    fun `a family with an older phone is warned on the rules screen`() {
+        enrolParent(version = "1.1.10")
+
+        val activity = activity()
+
+        assertNotNull(findText(activity, context.getString(R.string.rules_version_mixed_title)))
+    }
+
+    @Test
+    fun `the warning turns urgent once a rule needs the newer version`() {
+        enrolParent(version = null)
+        rules().upsert(
+            ContextRule(
+                id = "v2",
+                name = "School",
+                enabled = true,
+                condition = Condition.OnWifi("School"),
+                actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Everything)),
+                exceptWhen = Condition.BatteryBelow(10),
+            ),
+        )
+
+        val activity = activity()
+
+        assertNotNull(findText(activity, context.getString(R.string.rules_version_risk_title)))
+    }
+
+    @Test
+    fun `no warning once every phone reports the newer version`() {
+        enrolParent(version = "1.2.0")
+
+        val activity = activity()
+
+        assertNull(findText(activity, context.getString(R.string.rules_version_mixed_title)))
+        assertNull(findText(activity, context.getString(R.string.rules_version_risk_title)))
     }
 
     private fun findText(activity: android.app.Activity, text: String): View? =
