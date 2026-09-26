@@ -14,8 +14,10 @@ import dev.schrammel.protego_parentis.model.ContextRule
  * AllOf/AnyOf/Not tree, only the old editor showed them flat.
  *
  * Anything else is V2, and is written so that an older build drops it rather
- * than half-enforcing it. The editor uses [supportsV2] to warn a parent before
- * saving a V2 rule that some phone in the family would ignore.
+ * than half-enforcing it. Dropping it is not harmless: an older child's phone
+ * republishes its own rule list on every sync, which deletes rules it could
+ * not read. So the editor uses [supportsV2] to warn a parent before saving a
+ * V2 rule while any phone in the family might be older.
  */
 object ContextRuleFormat {
 

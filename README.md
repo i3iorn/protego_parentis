@@ -275,7 +275,8 @@ those.**
 
 Rules with several actions, an exception or an *at least N* group need app
 version 1.2.0 or later on every phone in the family. Older versions ignore
-them, and can delete them when a parent edits rules on the older phone. The
+them and can delete them: an older child's phone republishes its own rule
+list on every sync, which removes rules it couldn't read. The
 editor warns before saving one while any family phone hasn't reported a
 version that reads them.
 
