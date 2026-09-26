@@ -11,6 +11,7 @@ import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.model.DeviceContext
@@ -124,24 +125,59 @@ class ContextProvider(context: Context) {
             .mapTo(mutableSetOf()) { it.id }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun lastKnownLocation(): Location? = runCatching {
-        val manager = appContext.getSystemService(LocationManager::class.java) ?: return null
-        // Network first: far cheaper, and accurate enough for a place with the
-        // minimum radius the model enforces (100m).
-        listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
-            .mapNotNull { provider ->
-                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
-            }
-            .maxByOrNull { it.time }
+    private fun lastKnownLocation(): Location? =
+        newestFix()
             // A fix from before the staleness bound is worse than no fix at all: it
             // would report "inside" or "outside" a place from a position that may no
             // longer be true, which is a misfire rather than the lag this function's
             // own doc comment promises.
             ?.takeIf { System.currentTimeMillis() - it.time <= MAX_LOCATION_AGE_MILLIS }
+
+    /**
+     * The newest fix the phone has, however old: network, GPS, the passive
+     * provider (whatever any other app last obtained) and our own last
+     * request. Network first in spirit: far cheaper, and accurate enough for
+     * a place with the minimum radius the model enforces (100m).
+     */
+    @SuppressLint("MissingPermission")
+    private fun newestFix(): Location? = runCatching {
+        val manager = appContext.getSystemService(LocationManager::class.java) ?: return null
+        listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+            .mapNotNull { provider ->
+                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+            }
+            .plus(listOfNotNull(ownFix))
+            .maxByOrNull { it.time }
     }.getOrElse {
         Log.d(TAG, "Could not read a location", it)
         null
+    }
+
+    /**
+     * Asks for one low-power fix of our own when the newest is stale (#290).
+     *
+     * Places used to be judged only from fixes other apps happened to ask
+     * for, and a quiet phone often had none from the last half hour: a place
+     * rule then read "not there" — lifting "block games at school" at school.
+     * The caller only asks while a rule or the arrival alerts use places, and
+     * [PlaceFixPolicy] limits it to one network (not GPS) fix per quarter
+     * hour. Returns at once; the answer is used from the next pass.
+     */
+    @SuppressLint("MissingPermission")
+    fun refreshPlacesFixIfStale() {
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) return
+        val now = SystemClock.elapsedRealtime()
+        val fixAge = newestFix()?.let { System.currentTimeMillis() - it.time }
+        val sinceRequest = lastRequestElapsed?.let { now - it }
+        if (!PlaceFixPolicy.shouldRequest(fixAge, sinceRequest)) return
+        runCatching {
+            val manager = appContext.getSystemService(LocationManager::class.java) ?: return
+            if (!manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) return
+            lastRequestElapsed = now
+            manager.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, { it.run() }) { location ->
+                if (location != null) ownFix = location
+            }
+        }.onFailure { Log.d(TAG, "Could not ask for a place fix", it) }
     }
 
     private fun within(location: Location, place: Place): Boolean {
@@ -181,11 +217,14 @@ class ContextProvider(context: Context) {
             val adapter = manager.adapter ?: return emptySet()
             if (!adapter.isEnabled) return emptySet()
 
+            // GATT is Bluetooth LE only; a car, a headset or a phone connected
+            // the ordinary way is known only from BluetoothConnections (#289).
             manager.getConnectedDevices(BluetoothProfile.GATT)
                 .plus(manager.getConnectedDevices(BluetoothProfile.GATT_SERVER))
                 .mapNotNullTo(mutableSetOf()) { device ->
                     device.address?.let(::DeviceTag)
                 }
+                .plus(BluetoothConnections.connected().map(::DeviceTag))
         }.getOrElse {
             Log.d(TAG, "Could not read connected devices", it)
             emptySet()
@@ -206,6 +245,13 @@ class ContextProvider(context: Context) {
 
         /** Beyond this age a last-known fix is treated as no fix at all. */
         const val MAX_LOCATION_AGE_MILLIS = 30 * 60 * 1000L
+
+        /** Process-wide, like the fix itself: every tick builds its own provider. */
+        @Volatile
+        var ownFix: Location? = null
+
+        @Volatile
+        var lastRequestElapsed: Long? = null
 
         /** The most a fix's own accuracy may widen a place's radius by. */
         const val MAX_ACCURACY_METRES = 150f

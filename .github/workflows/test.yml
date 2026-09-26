@@ -68,6 +68,21 @@ jobs:
       - name: Run every unit test
         run: ./gradlew test --stacktrace
 
+      # Line coverage for the pure-JVM modules, the only ones with Kover
+      # applied so far (#284). Report-only: read it to pick what to test
+      # next; nothing fails on a number yet.
+      - name: Coverage report
+        run: ./gradlew koverHtmlReport koverXmlReport --stacktrace
+
+      - name: Keep the coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            **/build/reports/kover/
+          retention-days: 14
+          if-no-files-found: ignore
+
       # The console output says which test failed; these say what it
       # expected. Kept only on failure, since a green run's reports are of no
       # interest and this repository has hundreds of them.

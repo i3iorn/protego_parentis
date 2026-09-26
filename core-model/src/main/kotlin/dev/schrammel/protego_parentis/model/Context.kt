@@ -6,7 +6,11 @@ value class PlaceId(val value: String) {
     override fun toString(): String = value
 }
 
-/** A device the phone can recognise being near — a parent's phone, a beacon. */
+/**
+ * A Bluetooth device, by address, that the phone can see it is connected to —
+ * a car, headphones, a watch. Connected, not merely in range: there is no scan
+ * (#289).
+ */
 @JvmInline
 value class DeviceTag(val value: String) {
     override fun toString(): String = value
@@ -140,7 +144,7 @@ sealed interface Condition {
     /** Connected to a Wi-Fi network with this exact name. */
     data class OnWifi(val ssid: String) : Condition
 
-    /** A known device is within range. */
+    /** A known Bluetooth device is connected (classic or LE). */
     data class NearDevice(val tag: DeviceTag) : Condition
 
     /** Inside a saved place. */

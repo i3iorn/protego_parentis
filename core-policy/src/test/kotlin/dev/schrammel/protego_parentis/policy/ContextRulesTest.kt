@@ -87,6 +87,14 @@ class ContextRulesTest {
         assertFalse(holds(Condition.OnWifi(school), DeviceContext.UNKNOWN))
     }
 
+    /** #289: the platform reports addresses in upper case; a parent may have typed one in lower. */
+    @Test
+    fun `a proximity condition matches a Bluetooth address in any case`() {
+        val connected = DeviceContext(nearbyDevices = setOf(DeviceTag("A4:C1:38:0F:22:9B")))
+
+        assertTrue(holds(Condition.NearDevice(DeviceTag("a4:c1:38:0f:22:9b")), connected))
+    }
+
     @Test
     fun `a proximity condition holds when the device is in range`() {
         val near = DeviceContext(nearbyDevices = setOf(dadsPhone))

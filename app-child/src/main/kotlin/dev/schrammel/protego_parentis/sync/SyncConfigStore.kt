@@ -289,10 +289,23 @@ class SyncConfigStore(context: Context) {
             .orEmpty()
 
     fun rememberSeen(seen: List<SeenMessage>) {
+        val newest = seen.maxOfOrNull { it.sentAt.epochSecond }
         prefs.edit {
             putString(KEY_SEEN, seen.joinToString(SEPARATOR) { "${it.id}$SEEN_AT${it.sentAt.epochSecond}" })
+            // Only ever raised: see replayFloor.
+            if (newest != null && newest > prefs.getLong(KEY_REPLAY_FLOOR, 0L)) putLong(KEY_REPLAY_FLOOR, newest)
         }
     }
+
+    /**
+     * The newest send time of any message ever admitted here (#273), for
+     * [dev.schrammel.protego_parentis.sync.core.ReplayGuard.admit]'s
+     * trustedFloor. Kept apart from the seen list, which forgets entries after
+     * a day, because the floor has to outlast a phone that was quiet for longer
+     * than that before its clock was wound back.
+     */
+    fun replayFloor(): Instant? =
+        prefs.getLong(KEY_REPLAY_FLOOR, 0L).takeIf { it > 0L }?.let(Instant::ofEpochSecond)
 
     private fun decodeSeen(raw: String): SeenMessage? {
         val at = raw.lastIndexOf(SEEN_AT)
@@ -421,6 +434,7 @@ class SyncConfigStore(context: Context) {
 
         const val KEY_DEVICE_NAME = "device_name"
         const val KEY_SEEN = "seen_ids"
+        const val KEY_REPLAY_FLOOR = "replay_floor"
         const val KEY_LAST_POLL = "last_poll"
         const val KEY_LAST_HEARTBEAT = "last_heartbeat"
         const val KEY_LAST_ANNOUNCE = "last_announce"

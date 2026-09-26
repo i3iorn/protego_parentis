@@ -337,6 +337,20 @@ class PolicyReconcilerTest {
         assertTrue(TamperRestrictions.NO_CONTROL_APPS in port.restrictions)
     }
 
+    /**
+     * The default dialer and SMS app are exempt from every rule, so under
+     * lockdown the person holding the phone must not be able to choose them
+     * (#293).
+     */
+    @Test
+    fun `lockdown stops the default apps being changed`() {
+        val port = FakeDevicePolicyPort()
+        PolicyReconciler(port, SELF)
+            .reconcile(policy().copy(tamperProtection = true), enforcement())
+
+        assertTrue(TamperRestrictions.NO_CONFIG_DEFAULT_APPS in port.restrictions)
+    }
+
     /** The rest of the lockdown does come off, which is the point of the switch. */
     @Test
     fun `turning lockdown off lifts everything that restricts the phone`() {

@@ -169,7 +169,8 @@
     <string name="context_wifi_hint">Network name</string>
     <string name="context_choose_device">Near a device</string>
     <string name="context_device_hint">Bluetooth address</string>
-    <string name="context_device_explainer">The phone counts a device as near when it is paired and connected over Bluetooth. Pair the other phone first, then paste its Bluetooth address here.</string>
+    <string name="context_device_enter_address">Enter an address instead</string>
+    <string name="context_device_explainer">The phone counts a device as near while it is connected over Bluetooth — a car, headphones, or another phone. Pair it first, then paste its Bluetooth address here.</string>
     <string name="context_choose_battery">Battery level</string>
     <string name="context_choose_budget">Set a different daily limit</string>
     <string name="context_choose_categories">Some categories</string>
@@ -1375,4 +1376,6 @@
     <string name="rules_tutorial_target_category">a category (for example, “Social” or “Games”)</string>
     <string name="rules_tutorial_target_everything">everything</string>
     <string name="rules_tutorial_target_everything_except">everything, except a few chosen apps</string>
+    <!-- What a locked screen shows instead of a notification's content (#292). -->
+    <string name="notification_locked_placeholder">Unlock to see this notification.</string>
 </resources>

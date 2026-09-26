@@ -516,6 +516,30 @@ class RequestNotifier(context: Context) {
                 .setAutoCancel(!ongoing)
                 .setOngoing(ongoing)
                 .setContentIntent(destination)
+                .apply { lockScreenVisibility(channel, kind) }
+                .build(),
+        )
+    }
+
+    /**
+     * What a locked screen shows (#292). Nothing here is only the reader's
+     * business on their own phone — chat, arrivals, requests, new apps —
+     * so the lock screen gets a generic line and the content waits for an
+     * unlock, whatever the device's own "sensitive notifications" setting is.
+     * An emergency is the exception: it has to be readable by whoever picks
+     * the phone up.
+     */
+    private fun NotificationCompat.Builder.lockScreenVisibility(channel: String, kind: NotificationKind) {
+        if (kind == NotificationKind.EMERGENCY) {
+            setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            return
+        }
+        setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+        setPublicVersion(
+            NotificationCompat.Builder(appContext, channel)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(appContext.getString(R.string.app_name))
+                .setContentText(appContext.getString(R.string.notification_locked_placeholder))
                 .build(),
         )
     }

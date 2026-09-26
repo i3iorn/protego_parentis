@@ -23,11 +23,18 @@ object SafetyAllowlist {
         // screen precisely when everything else is blocked.
         add(PackageName(context.packageName))
 
+        // The default dialer and SMS app, but only when they are system apps
+        // (#293). Whoever holds the phone chooses the defaults, and this list
+        // is exempt from every rule, so a third-party app made the default SMS
+        // app would otherwise escape bedtime and every budget. Lockdown also
+        // stops the defaults being changed on API 34+.
         context.getSystemService(TelecomManager::class.java)
             ?.defaultDialerPackage
+            ?.takeIf { isSystemApp(context, it) }
             ?.let { add(PackageName(it)) }
 
         Telephony.Sms.getDefaultSmsPackage(context)
+            ?.takeIf { isSystemApp(context, it) }
             ?.let { add(PackageName(it)) }
 
         // The alarm clock. Without this, the first support ticket is "my kid
@@ -51,6 +58,11 @@ object SafetyAllowlist {
                     .map { it.packageName }
             }.getOrDefault(emptyList())
         }
+
+    private fun isSystemApp(context: Context, pkg: String): Boolean = runCatching {
+        val info = context.packageManager.getApplicationInfo(pkg, PackageManager.ApplicationInfoFlags.of(0L))
+        info.flags and SYSTEM_FLAGS != 0
+    }.getOrDefault(false)
 
     private fun isInstalled(context: Context, pkg: String): Boolean =
         context.packageManager.getLaunchIntentForPackage(pkg) != null

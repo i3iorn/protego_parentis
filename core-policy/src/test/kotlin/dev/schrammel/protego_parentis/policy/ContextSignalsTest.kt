@@ -74,4 +74,27 @@ class ContextSignalsTest {
     fun `no rules at all reads nothing`() {
         assertFalse(ContextSignals.readsSurroundings(emptyList()))
     }
+
+    // ---------- places (#290) ----------
+
+    @Test
+    fun `a place rule, however nested, reads places`() {
+        val nested = Condition.AllOf(listOf(window, Condition.Not(Condition.AtPlace(PlaceId("home")))))
+
+        assertTrue(ContextSignals.readsPlaces(listOf(rule(nested))))
+    }
+
+    @Test
+    fun `other surroundings do not read places`() {
+        assertFalse(
+            ContextSignals.readsPlaces(
+                listOf(rule(Condition.OnWifi("School")), rule(Condition.BatteryBelow(20)), rule(window)),
+            ),
+        )
+    }
+
+    @Test
+    fun `a disabled place rule does not read places`() {
+        assertFalse(ContextSignals.readsPlaces(listOf(rule(Condition.AtPlace(PlaceId("school")), enabled = false))))
+    }
 }

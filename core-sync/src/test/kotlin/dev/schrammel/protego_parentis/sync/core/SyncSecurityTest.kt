@@ -224,6 +224,40 @@ class ReplayGuardTest {
         )
     }
 
+    /**
+     * #273: the person holding the phone can wind its clock back to when an
+     * old command was sent. The newest send time this device has already
+     * admitted came from other phones' clocks, so it stays put, and an old
+     * command is still old against it.
+     */
+    @Test
+    fun `winding the clock back does not make an old command fresh again`() {
+        val sentLastWeek = now.minusSeconds(7 * 24 * 60 * 60)
+        val woundBackTo = sentLastWeek.plusSeconds(60)
+
+        assertEquals(
+            Admission.Reject(RejectReason.TOO_OLD),
+            ReplayGuard.admit(message(id = "old", sentAt = sentLastWeek), woundBackTo, emptySet(), trustedFloor = now),
+        )
+    }
+
+    @Test
+    fun `with the clock wound back, a genuinely new message is still accepted`() {
+        val woundBackTo = now.minusSeconds(7 * 24 * 60 * 60)
+
+        assertTrue(
+            ReplayGuard.admit(message(id = "new", sentAt = now.plusSeconds(30)), woundBackTo, emptySet(), trustedFloor = now)
+                .isAccepted,
+        )
+    }
+
+    @Test
+    fun `a floor behind the clock changes nothing`() {
+        val threeHoursAgo = now.minusSeconds(3 * 60 * 60)
+
+        assertTrue(ReplayGuard.admit(message(), now, emptySet(), trustedFloor = threeHoursAgo).isAccepted)
+    }
+
     @Test
     fun `a replayed message is still refused, whatever its age`() {
         // The longer window is safe only because this stays true.

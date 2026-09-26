@@ -25,9 +25,11 @@ data class PairingDetails(
  * with [SecretVault] first, the same as [dev.schrammel.protego_parentis.sync.SyncConfigStore]'s
  * passphrase — `SecretVault.seal` is a local, synchronous keystore call, not
  * I/O, so it costs nothing the commit-write constraint above can't afford.
- * If sealing fails, the token is simply not stored: `ComplianceActivity`
- * already has a documented fallback to manual code entry for exactly this
- * case, the same one an incomplete pairing from any other cause takes.
+ * If sealing fails, the token is simply not stored.
+ *
+ * Nothing reads these details yet beyond checking they are complete (#278):
+ * joining the family is done separately, by hand, in JoinFamilyActivity. They
+ * are kept for QR provisioning (#274), which is what would supply them.
  */
 class PairingStore(context: Context) {
 
@@ -69,7 +71,7 @@ class PairingStore(context: Context) {
         return prefs.getString(KEY_TOKEN_SEALED, null)?.let(SecretVault::open)
     }
 
-    /** Called once the token has been redeemed with the server; it is single-use. */
+    /** For the join flow to call once it has used the token (#274); nothing does yet. */
     fun clearToken() {
         prefs.edit {
             remove(KEY_TOKEN_SEALED)

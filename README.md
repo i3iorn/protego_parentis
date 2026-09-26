@@ -284,10 +284,14 @@ Three things about how context is read:
   location because it never receives one.
 
 Android treats a Wi-Fi network name as a location signal, so reading the SSID
-needs the location permission. Places use the last known fix rather than waking
-the GPS, so a rule lags rather than costing battery. Proximity means *paired and
-connected over Bluetooth*, not a BLE scan — much cheaper, and good enough for
-"is a parent's phone with them".
+needs the location permission. Places use the newest fix any app already has,
+and never wake the GPS. Only while a rule or arrival alerts use a saved place,
+and the newest fix is over 15 minutes old, the app asks for one network fix of
+its own, at most once a quarter hour. Proximity means *connected over
+Bluetooth* (classic or LE), not a BLE scan — much cheaper, and right for "while
+the phone is in the car" or "with their headphones on". Two phones that are
+merely paired are rarely connected, so "near a parent's phone" works only while
+something keeps them connected.
 
 ## Security model
 

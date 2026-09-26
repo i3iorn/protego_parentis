@@ -19,6 +19,28 @@ object ContextSignals {
         rules.any { it.enabled && readsSurroundings(it.condition) }
 
     /**
+     * Whether an enabled rule depends on being at a saved place — the one
+     * signal the app has to go and fetch rather than read (#290), so the
+     * only one worth spending a location fix on.
+     */
+    fun readsPlaces(rules: List<ContextRule>): Boolean =
+        rules.any { it.enabled && readsPlaces(it.condition) }
+
+    private fun readsPlaces(condition: Condition): Boolean = when (condition) {
+        is Condition.AtPlace -> true
+        is Condition.OnWifi,
+        is Condition.NearDevice,
+        is Condition.BatteryBelow,
+        Condition.Always,
+        is Condition.DuringWindow,
+        is Condition.AllowanceSpent,
+        -> false
+        is Condition.AllOf -> condition.conditions.any(::readsPlaces)
+        is Condition.AnyOf -> condition.conditions.any(::readsPlaces)
+        is Condition.Not -> readsPlaces(condition.condition)
+    }
+
+    /**
      * Exhaustive on purpose: a new condition kind has to decide here whether
      * a clock can predict it, rather than silently defaulting to "yes".
      */

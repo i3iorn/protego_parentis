@@ -17,6 +17,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.context.BluetoothConnections
 import dev.schrammel.protego_parentis.context.PlaceWatcher
 import dev.schrammel.protego_parentis.diagnostics.CrashCapture
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
@@ -69,6 +70,7 @@ class EnforcementService : Service() {
     private lateinit var requestNotifier: RequestNotifier
     private lateinit var sos: SosStore
     private lateinit var places: PlaceWatcher
+    private var stopWatchingBluetooth: (() -> Unit)? = null
 
     /**
      * Fires when the device is unlocked. Registered at runtime because implicit
@@ -230,6 +232,8 @@ class EnforcementService : Service() {
             },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        // Classic Bluetooth connections, for "near a device" rules (#289).
+        stopWatchingBluetooth = BluetoothConnections.watch(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -275,6 +279,7 @@ class EnforcementService : Service() {
         runCatching { unregisterReceiver(onUnlocked) }
         runCatching { unregisterReceiver(onPackagesChanged) }
         runCatching { unregisterReceiver(onShutdown) }
+        stopWatchingBluetooth?.invoke()
         super.onDestroy()
     }
 

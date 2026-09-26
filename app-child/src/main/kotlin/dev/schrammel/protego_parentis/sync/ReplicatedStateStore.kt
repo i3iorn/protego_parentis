@@ -10,6 +10,7 @@ import dev.schrammel.protego_parentis.sync.core.StateDigest
 import dev.schrammel.protego_parentis.sync.core.StateEntry
 import dev.schrammel.protego_parentis.sync.core.StateMerge
 import dev.schrammel.protego_parentis.sync.core.StateOp
+import dev.schrammel.protego_parentis.sync.core.StateShards
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import java.time.Instant
 
@@ -142,7 +143,7 @@ class ReplicatedStateStore(context: Context) {
 
         val lamport = clock.tick()
         val ops = changed.map { (path, value) -> StateOp(path, value, lamport, origin) }
-        commit(StateMerge.apply(current, ops), queue = pending + ops)
+        commit(StateMerge.apply(current, ops), touched = StateShards.sectionsOf(ops.map { it.path }), queue = pending + ops)
         return ops
     }
 
@@ -161,7 +162,7 @@ class ReplicatedStateStore(context: Context) {
             prefs.edit { putLong(KEY_CLOCK, clock.value) }
             return emptyList()
         }
-        commit(StateMerge.apply(current, novel), queue = pending)
+        commit(StateMerge.apply(current, novel), touched = StateShards.sectionsOf(novel.map { it.path }), queue = pending)
         return novel
     }
 
@@ -207,7 +208,7 @@ class ReplicatedStateStore(context: Context) {
         val current = read()
         val stale = current.keys.filter { ReplicationRules.isPrunable(it, nowSeconds) }
         if (stale.isEmpty()) return 0
-        commit(current - stale.toSet(), queue = pending)
+        commit(current - stale.toSet(), touched = StateShards.sectionsOf(stale), queue = pending)
         return stale.size
     }
 
@@ -225,37 +226,61 @@ class ReplicatedStateStore(context: Context) {
         prefs.edit { clear() }
         sharedClock = null
         decoded = null
+        sectionCache.clear()
     }
 
     /**
-     * Every register, decoded — from [decoded] when the stored string is the
-     * one it was decoded from.
+     * The whole replica, rebuilt from one stored string per section (#291).
      *
-     * [entries], [value], [children] and [idsUnder] all come through here, and
-     * the replication readers and writers call them once per record: a single
-     * poll used to decode this file — which also holds the chat, request and
-     * audit streams, so it is the largest store in the app — dozens of times.
-     * Keyed on the stored string itself, the way [dev.schrammel.protego_parentis.rules.DecodeCache]
-     * is, so it cannot serve stale data whichever instance or path wrote it:
-     * the decode is a pure function of that string.
+     * Each section's decode is cached against the string it came from, and
+     * the merged map against the set of strings, the way
+     * [dev.schrammel.protego_parentis.rules.DecodeCache] is: SharedPreferences
+     * hands back the same String until a value changes, so an unchanged
+     * replica costs one map copy of its keys and no decoding, and a change
+     * re-decodes only the sections it touched. A store from before #291 kept
+     * everything under one key; the first read moves it into sections.
      */
     private fun read(): Map<String, StateEntry> = synchronized(LOCK) {
-        val raw = prefs.getString(KEY_ENTRIES, null)
-        val cached = decoded
-        // Identity first: SharedPreferences hands back the same String until
-        // the value changes, so the common case never compares contents.
-        if (cached != null && (cached.raw === raw || cached.raw == raw)) {
-            cached.entries
-        } else {
-            StateCodec.decodeOps(raw)
-                .associate { it.path to it.toEntry() }
-                .also { decoded = Decoded(raw, it) }
+        migrateSingleString()
+        val raws = prefs.all
+            .filterKeys { it.startsWith(KEY_SECTION_PREFIX) }
+            .mapKeys { it.key.removePrefix(KEY_SECTION_PREFIX) }
+            .mapValues { it.value as? String }
+        decoded?.let { cached ->
+            if (cached.raws.size == raws.size && raws.all { (section, raw) -> cached.raws[section] === raw }) {
+                return@synchronized cached.entries
+            }
+        }
+        sectionCache.keys.retainAll(raws.keys)
+        val merged = HashMap<String, StateEntry>()
+        raws.forEach { (section, raw) ->
+            val hit = sectionCache[section]?.takeIf { it.raw === raw }
+            val entries = hit?.entries
+                ?: StateShards.decodeSection(raw).also { sectionCache[section] = Section(raw, it) }
+            merged.putAll(entries)
+        }
+        decoded = Decoded(raws, merged)
+        merged
+    }
+
+    /** Moves a replica stored whole under [KEY_ENTRIES] (before #291) into sections. */
+    private fun migrateSingleString() {
+        val legacy = prefs.getString(KEY_ENTRIES, null) ?: return
+        val state = StateCodec.decodeOps(legacy).associate { it.path to it.toEntry() }
+        prefs.edit {
+            StateShards.encode(state, StateShards.sectionsOf(state.keys)).forEach { (section, raw) ->
+                if (raw != null) putString(KEY_SECTION_PREFIX + section, raw)
+            }
+            remove(KEY_ENTRIES)
         }
     }
 
-    private fun commit(state: Map<String, StateEntry>, queue: List<StateOp>) {
+    /** Rewrites only the sections in [touched]. */
+    private fun commit(state: Map<String, StateEntry>, touched: Set<String>, queue: List<StateOp>) {
         prefs.edit {
-            putString(KEY_ENTRIES, StateCodec.encodeOps(StateMerge.opsOf(state)))
+            StateShards.encode(state, touched).forEach { (section, raw) ->
+                if (raw == null) remove(KEY_SECTION_PREFIX + section) else putString(KEY_SECTION_PREFIX + section, raw)
+            }
             putLong(KEY_CLOCK, clock.value)
         }
         writePending(queue)
@@ -267,7 +292,9 @@ class ReplicatedStateStore(context: Context) {
 
     private companion object {
         const val FILE_NAME = "replicated_state"
+        /** The whole replica in one string, before #291. Read once, to migrate. */
         const val KEY_ENTRIES = "entries"
+        const val KEY_SECTION_PREFIX = "section:"
         const val KEY_PENDING = "pending"
         const val KEY_CLOCK = "clock"
 
@@ -281,7 +308,9 @@ class ReplicatedStateStore(context: Context) {
         val LOCK = Any()
 
         /** The stored string and what it decodes to, as one value so the pair can't tear. */
-        private class Decoded(val raw: String?, val entries: Map<String, StateEntry>)
+        private class Decoded(val raws: Map<String, String?>, val entries: Map<String, StateEntry>)
+        private class Section(val raw: String?, val entries: Map<String, StateEntry>)
+        private val sectionCache = HashMap<String, Section>()
 
         /**
          * Process-wide rather than per instance: a dozen collaborators each

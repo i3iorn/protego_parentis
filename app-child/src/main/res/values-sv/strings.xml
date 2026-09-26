@@ -172,7 +172,8 @@
     <string name="context_wifi_hint">Nätverkets namn</string>
     <string name="context_choose_device">Nära en enhet</string>
     <string name="context_device_hint">Bluetooth-adress</string>
-    <string name="context_device_explainer">Telefonen räknar en enhet som nära när den är parkopplad och ansluten via Bluetooth. Parkoppla den andra telefonen först och klistra sedan in dess Bluetooth-adress här.</string>
+    <string name="context_device_enter_address">Ange en adress i stället</string>
+    <string name="context_device_explainer">Telefonen räknar en enhet som nära medan den är ansluten via Bluetooth — en bil, hörlurar eller en annan telefon. Parkoppla den först och klistra sedan in dess Bluetooth-adress här.</string>
     <string name="context_choose_battery">Batterinivå</string>
     <string name="context_choose_budget">Sätt en annan daglig gräns</string>
     <string name="context_choose_categories">Vissa kategorier</string>
@@ -1354,4 +1355,6 @@
     <string name="rules_tutorial_target_category">en kategori (till exempel “Sociala medier” eller “Spel”)</string>
     <string name="rules_tutorial_target_everything">allt</string>
     <string name="rules_tutorial_target_everything_except">allt, utom några få valda appar</string>
+    <!-- What a locked screen shows instead of a notification's content (#292). -->
+    <string name="notification_locked_placeholder">Lås upp för att se aviseringen.</string>
 </resources>

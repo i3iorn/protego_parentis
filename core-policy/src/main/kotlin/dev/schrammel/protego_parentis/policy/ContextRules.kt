@@ -224,7 +224,9 @@ internal object ContextRules {
             // every Wi-Fi condition rather than passing them.
             is Condition.OnWifi -> context.wifiSsid == condition.ssid
 
-            is Condition.NearDevice -> condition.tag in context.nearbyDevices
+            // A Bluetooth address, typed by a parent in whatever case they
+            // copied it, compared with one the platform reports in upper case.
+            is Condition.NearDevice -> context.nearbyDevices.any { it.value.equals(condition.tag.value, ignoreCase = true) }
 
             is Condition.AtPlace -> condition.place in context.insidePlaces
 

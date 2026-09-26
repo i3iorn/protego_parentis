@@ -274,7 +274,7 @@ class SyncReceiver(
 
     /** Refuses a message that decrypted fine but is too old, too new, or already seen. */
     private fun admitReplay(message: SyncMessage, now: Instant, seen: List<SeenMessage>): Boolean {
-        val admission = ReplayGuard.admit(message, now, seen)
+        val admission = ReplayGuard.admit(message, now, seen, trustedFloor = config.replayFloor())
         if (admission is Admission.Reject) {
             Log.w(TAG, "Refused message ${message.id}: ${admission.reason}")
             Diagnostics.record(
