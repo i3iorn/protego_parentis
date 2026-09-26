@@ -217,11 +217,14 @@ class ContextProvider(context: Context) {
             val adapter = manager.adapter ?: return emptySet()
             if (!adapter.isEnabled) return emptySet()
 
+            // GATT is Bluetooth LE only; a car, a headset or a phone connected
+            // the ordinary way is known only from BluetoothConnections (#289).
             manager.getConnectedDevices(BluetoothProfile.GATT)
                 .plus(manager.getConnectedDevices(BluetoothProfile.GATT_SERVER))
                 .mapNotNullTo(mutableSetOf()) { device ->
                     device.address?.let(::DeviceTag)
                 }
+                .plus(BluetoothConnections.connected().map(::DeviceTag))
         }.getOrElse {
             Log.d(TAG, "Could not read connected devices", it)
             emptySet()
