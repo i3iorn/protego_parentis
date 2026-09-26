@@ -408,7 +408,7 @@
     <string name="limits_title">Limits</string>
     <string name="rules_group_limits">How much</string>
     <string name="rules_group_limits_info_title">About “How much”</string>
-    <string name="rules_group_limits_info_body">Categories group apps to share one daily limit. App limits set a cap for one app on its own. App control lets you allow or block specific apps outright, and shows apps that just arrived. The web filter and web activity list govern browsing on this device itself.</string>
+    <string name="rules_group_limits_info_body">Categories group apps to share one daily limit. App limits set a cap for one app on its own. App control lets you allow or block specific apps outright, and shows apps that just arrived. The web filter governs browsing on this device itself. Web activity, the list of sites visited, is on the home screen.</string>
     <string name="rules_group_day">How the day works</string>
     <string name="rules_group_day_info_title">About “How the day works”</string>
     <string name="rules_group_day_info_body">Rules combines the daily limit, time windows, and location- or Wi-Fi-based conditions into one rule engine, so you can say things like “block games after 9pm” or “nothing but the essentials at school.” Places holds the locations rules can refer to. Bonus time adds extra minutes for today only.</string>

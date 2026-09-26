@@ -409,7 +409,7 @@
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>
     <string name="rules_group_limits_info_title">Om “Hur mycket”</string>
-    <string name="rules_group_limits_info_body">Kategorier grupperar appar för att dela en daglig gräns. Appgränser sätter ett tak för en enskild app. Appkontroll låter dig tillåta eller blockera specifika appar helt, och visar appar som just kommit. Webbfiltret och webbaktiviteten styr surfning på den här enheten.</string>
+    <string name="rules_group_limits_info_body">Kategorier grupperar appar för att dela en daglig gräns. Appgränser sätter ett tak för en enskild app. Appkontroll låter dig tillåta eller blockera specifika appar helt, och visar appar som just kommit. Webbfiltret styr surfning på den här enheten. Webbaktivitet, listan över besökta sidor, finns på startskärmen.</string>
     <string name="rules_group_day">Hur dagen fungerar</string>
     <string name="rules_group_day_info_title">Om “Hur dagen fungerar”</string>
     <string name="rules_group_day_info_body">Regler slår ihop den dagliga gränsen, tidsfönster och plats- eller Wi-Fi-baserade villkor till en och samma regelmotor, så du kan säga saker som “blockera spel efter 21” eller “bara det nödvändigaste i skolan.” Platser håller de platser regler kan hänvisa till. Bonustid lägger till extra minuter bara för idag.</string>
