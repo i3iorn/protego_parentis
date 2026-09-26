@@ -43,6 +43,16 @@ internal fun Activity.biometricSetting(onChanged: () -> Unit): LinearLayout {
 
         addView(captionText(getString(R.string.biometric_body)))
 
+        // Not offered on the managed phone at all. Android cannot tell one
+        // enrolled finger from another, and the fingers enrolled on a child's
+        // own phone are the child's, so here it was a bypass of the PIN
+        // behind a warning. Turned off if an earlier build left it on.
+        if (onChildDevice) {
+            if (gate.isEnabled) gate.disable()
+            addView(bodyText(getString(R.string.biometric_child_unavailable)))
+            return@apply
+        }
+
         when (gate.availability()) {
             BiometricAvailability.NOT_ENROLLED -> {
                 addView(bodyText(getString(R.string.biometric_none)))
@@ -58,14 +68,6 @@ internal fun Activity.biometricSetting(onChanged: () -> Unit): LinearLayout {
                 addView(bodyText(getString(R.string.biometric_invalidated)))
 
             BiometricAvailability.READY -> Unit
-        }
-
-        // The warning that makes this safe to offer at all on a managed phone.
-        // Android cannot tell one enrolled finger from another, so on the child's
-        // own device the child's finger opens this — which is exactly the thing a
-        // parent turning it on needs to have been told, before they turn it on.
-        if (onChildDevice) {
-            addView(bodyText(getString(R.string.biometric_warning_child)))
         }
 
         addView(

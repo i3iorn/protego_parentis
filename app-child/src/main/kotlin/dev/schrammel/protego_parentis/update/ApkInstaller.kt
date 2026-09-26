@@ -39,6 +39,10 @@ object ApkInstaller {
     fun installSilently(context: Context, apkFile: File, versionName: String) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            // Pinned so the session can only update this app. Without it, a
+            // device owner's session installs whatever package the APK holds,
+            // as a new app, with no prompt — see ApkIdentity.
+            setAppPackageName(context.packageName)
             // Device owner already installs unattended without this — see the
             // class doc comment — but stating it explicitly where the API
             // allows leaves nothing here for the platform default to decide.

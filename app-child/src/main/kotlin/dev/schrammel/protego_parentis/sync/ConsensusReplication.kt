@@ -177,7 +177,8 @@ class ConsensusReplication(context: Context) {
 
             ConsensusKind.VOUCH_PARENT -> {
                 val pending = roster.pending.firstOrNull { it.id == proposal.target } ?: return tombstone(proposal.id)
-                val approved = roster.approve(pending.id, pending.name) ?: return tombstone(proposal.id)
+                val approved = roster.approve(pending.id, pending.name, expectedRole = SyncRole.PARENT)
+                    ?: return tombstone(proposal.id)
                 publisher.publishVouch(approved)
             }
 
@@ -223,7 +224,10 @@ class ConsensusReplication(context: Context) {
         val alreadyKnown = roster.devices.any { it.id == proposal.target }
         if (!alreadyKnown) {
             val pending = roster.pending.firstOrNull { it.id == proposal.target } ?: return false
-            roster.approve(pending.id, pending.name)
+            // Approved as a child, so enrolled only as one: a candidate that
+            // has since announced a different role waits here, unenrolled,
+            // rather than becoming a parent on the strength of child approvals.
+            roster.approve(pending.id, pending.name, expectedRole = SyncRole.CHILD) ?: return false
         }
         state.writeAll(
             mapOf("${path(proposal.id)}/$FIELD_ENROLLED/$origin" to APPROVED),

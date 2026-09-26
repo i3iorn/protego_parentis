@@ -57,6 +57,7 @@ object UpdateChecker {
         source: UpdateSource = UpdateClient(),
         isDeviceOwner: (Context) -> Boolean = { EnforcementCoordinator(it).isDeviceOwner() },
         installSilently: (Context, File, String) -> Unit = ApkInstaller::installSilently,
+        isOurs: (Context, File) -> Boolean = ApkIdentity::isOurs,
         pendingUpdateStore: PendingUpdateStore = PendingUpdateStore(context),
         notifier: RequestNotifier = RequestNotifier(context),
     ): UpdateOutcome {
@@ -70,6 +71,11 @@ object UpdateChecker {
         val apkFile = File(context.cacheDir, "update-${manifest.versionCode}.apk")
         if (!source.downloadApk(manifest, apkFile)) {
             Diagnostics.record(context, DiagnosticEvent.UPDATE_DOWNLOAD_FAILED)
+            return UpdateOutcome.DOWNLOAD_FAILED
+        }
+        if (!isOurs(context, apkFile)) {
+            apkFile.delete()
+            Diagnostics.record(context, DiagnosticEvent.UPDATE_REJECTED)
             return UpdateOutcome.DOWNLOAD_FAILED
         }
 

@@ -46,8 +46,13 @@ class PinVerifier(
     /**
      * Checks [pin] against the stored hash, recording the attempt either way
      * and a [DiagnosticEvent.PIN_FAILED] line when it did not match.
+     *
+     * Refused without checking while a lockout runs. The throttle used to be
+     * enforced only by PinActivity asking first, so the next caller that
+     * forgot to would have handed out unlimited guesses at full speed.
      */
     fun verify(pin: String): Boolean {
+        if (attempts.isLockedOut) return false
         val matched = lock.verify(pin)
         if (matched) {
             attempts.recordSuccess()

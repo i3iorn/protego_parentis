@@ -127,6 +127,12 @@ enum class DiagnosticEvent {
 
     /** A verified update finished installing. */
     UPDATE_INSTALLED,
+
+    /**
+     * A downloaded update matched its checksum but was not this app: another
+     * package, or signed by another key. Refused before any installer saw it.
+     */
+    UPDATE_REJECTED,
 }
 
 /**

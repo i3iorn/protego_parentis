@@ -83,6 +83,21 @@ class PinVerifierTest {
         assertTrue(verifier.lockoutRemaining() > Duration.ZERO)
     }
 
+    /**
+     * The lockout is the verifier's own, not something each screen has to
+     * remember to ask about first: even the right PIN is refused until it
+     * runs out.
+     */
+    @Test
+    fun `the correct pin is refused while locked out`() {
+        PinLock(context).set("123456")
+        val verifier = verifier()
+        repeat(4) { verifier.verify("000000") }
+        assertTrue(verifier.lockoutRemaining() > Duration.ZERO)
+
+        assertFalse(verifier.verify("123456"))
+    }
+
     @Test
     fun `a biometric success clears an existing lockout without checking a pin`() {
         PinLock(context).set("123456")

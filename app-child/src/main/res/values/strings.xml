@@ -854,7 +854,7 @@
     <string name="biometric_header">Fingerprint or face</string>
     <string name="biometric_enable">Allow fingerprint or face instead of the PIN</string>
     <string name="biometric_body">A quicker way in for whoever holds this phone. The PIN keeps working, and stays the way back in if this stops working.</string>
-    <string name="biometric_warning_child">Careful on this phone. Any fingerprint or face registered on it will open the rules — including your child\'s, because it is their phone. Leave this off unless only a parent is registered here.</string>
+    <string name="biometric_child_unavailable">Not available on this phone. Any fingerprint or face registered here would open the rules, and the ones registered on your child\'s phone are your child\'s. Use the PIN.</string>
     <string name="biometric_none">No fingerprint or face is registered on this phone yet. Add one in the phone\'s own settings first.</string>
     <string name="biometric_unsupported">This phone has no fingerprint or face reader the app can rely on.</string>
     <string name="biometric_invalidated">Turned off by the phone, because the registered fingerprints or faces changed. Use the PIN, then turn it on again if you still want it.</string>

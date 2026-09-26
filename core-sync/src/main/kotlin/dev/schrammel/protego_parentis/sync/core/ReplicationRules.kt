@@ -231,6 +231,57 @@ object ReplicationRules {
             mayWriteConsensusField(op.path, op.value, writerId)
 
     /**
+     * [accepts], plus the checks only an op arriving from another device needs.
+     *
+     * Still decided from the op, its sender and the time alone, never from
+     * what this replica already holds, for the reason [accepts] gives.
+     */
+    fun acceptsIncoming(role: SyncRole?, op: StateOp, writerId: DeviceId, nowSeconds: Long): Boolean =
+        accepts(role, op, writerId) &&
+            isAuthoredBy(op, writerId) &&
+            isNotFromTheFuture(op.path, nowSeconds)
+
+    /**
+     * Whether a [CHAT] or [AUDIT] op really comes from the device it names.
+     *
+     * Both sections are shown with who wrote each entry, and that attribution
+     * is read from the op's origin. Authorisation, though, is by the device
+     * that *sent* the op, so an enrolled device could otherwise send a line
+     * whose origin is someone else's, shown as theirs. So an op here has to
+     * be first-hand: its origin is its sender.
+     *
+     * An id made by this build also names its author ([streamId]), and then
+     * only that author may write anything under it. That stops one member
+     * overwriting another's message. Older ids have no author in them and
+     * keep only the first-hand rule, so a family part-way through updating
+     * still sees each other's messages.
+     *
+     * The cost is that a third device can no longer relay these sections
+     * during repair; the author's own digest exchange carries them instead.
+     */
+    fun isAuthoredBy(op: StateOp, writerId: DeviceId): Boolean {
+        val section = op.path.substringBefore(SEPARATOR)
+        if (section != CHAT && section != AUDIT) return true
+        if (op.origin != writerId.value) return false
+        val author = authorOf(op.path) ?: return true
+        return author == writerId.value
+    }
+
+    /**
+     * Whether a stream entry's id claims a creation time no honest clock
+     * could have produced yet. An id dated years ahead is never pruned, so
+     * enough of them fill a section's capacity for good.
+     */
+    fun isNotFromTheFuture(path: String, nowSeconds: Long): Boolean {
+        if (modeOf(path) != ReplicationMode.RECENT) return true
+        val created = createdAt(path) ?: return true
+        return created <= nowSeconds + MAX_FUTURE_SKEW_SECONDS
+    }
+
+    /** A clock this far ahead is wrong, not early. */
+    const val MAX_FUTURE_SKEW_SECONDS = 24L * 60 * 60
+
+    /**
      * Whether [path] falls under the policy subtree owned by [writerId].
      *
      * The child id is the path's second segment — `policy/<childId>/…` — so a
@@ -278,9 +329,18 @@ object ReplicationRules {
         return segments.all { it.isNotEmpty() && it != "." && it != ".." }
     }
 
-    /** Whether an op is worth considering at all, before asking who sent it. */
+    /**
+     * Whether an op is worth considering at all, before asking who sent it.
+     *
+     * The logical clock is bounded too. [LamportClock.observe] ignores anything
+     * above [LamportClock.CEILING], so an op stamped beyond it would win every
+     * later merge on its path while no honest replica's clock could ever catch
+     * up: one write pinning a value, or a consensus field, for good.
+     */
     fun isWellFormed(op: StateOp): Boolean =
-        isWellFormedPath(op.path) && (op.value?.length ?: 0) <= MAX_VALUE_LENGTH
+        isWellFormedPath(op.path) &&
+            (op.value?.length ?: 0) <= MAX_VALUE_LENGTH &&
+            op.lamport in 0..LamportClock.CEILING
 
     /**
      * How many registers one section may hold.
@@ -384,7 +444,16 @@ object ReplicationRules {
      * whether an entry is still current without holding its value — which is
      * what lets both the digest and local pruning work on paths alone.
      */
-    fun streamId(seconds: Long, unique: String): String = "$seconds-$unique"
+    fun streamId(seconds: Long, unique: String, author: String? = null): String =
+        if (author == null) "$seconds-$unique" else "$seconds-$unique$AUTHOR_MARK$author"
+
+    /** The author an id made by [streamId] names, or null for an older id. */
+    fun authorOf(path: String): String? =
+        path.split(SEPARATOR).getOrNull(1)
+            ?.substringAfter(AUTHOR_MARK, missingDelimiterValue = "")
+            ?.takeIf(String::isNotEmpty)
+
+    private const val AUTHOR_MARK = '@'
 
     /** The creation second encoded in a stream path's id, or null. */
     fun createdAt(path: String): Long? {
