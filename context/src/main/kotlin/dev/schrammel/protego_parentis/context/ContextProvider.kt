@@ -99,12 +99,25 @@ class ContextProvider(context: Context) {
      * battery cost for a question that rarely changes. A stale fix means a rule
      * lags rather than misfires.
      */
-    @SuppressLint("MissingPermission")
-    private fun insidePlaces(places: List<Place>): Set<dev.schrammel.protego_parentis.model.PlaceId> {
-        if (places.isEmpty()) return emptySet()
-        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) return emptySet()
+    private fun insidePlaces(places: List<Place>): Set<dev.schrammel.protego_parentis.model.PlaceId> =
+        placesIfKnown(places).orEmpty()
 
-        val location = lastKnownLocation() ?: return emptySet()
+    /**
+     * [insidePlaces], but null when the phone cannot say where it is: no
+     * permission, or no fix younger than [MAX_LOCATION_AGE_MILLIS].
+     *
+     * The rules can treat "don't know" as "not there"; announcing arrivals
+     * cannot. A phone lying still at home overnight, with nothing else asking
+     * for a location, ages out of its last fix, and reading that as "outside
+     * every place" told the parents their child had left home, and later that
+     * they had arrived again, without anyone moving.
+     */
+    @SuppressLint("MissingPermission")
+    fun placesIfKnown(places: List<Place>): Set<dev.schrammel.protego_parentis.model.PlaceId>? {
+        if (places.isEmpty()) return emptySet()
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) return null
+
+        val location = lastKnownLocation() ?: return null
 
         return places
             .filter { place -> within(location, place) }
