@@ -26,6 +26,30 @@ object ContextSignals {
     fun readsPlaces(rules: List<ContextRule>): Boolean =
         rules.any { it.enabled && readsPlaces(it.activeWhen) }
 
+    /**
+     * Whether an enabled rule depends on a glucose level, which the app has to
+     * fetch from Nightscout rather than read, so the fetch only happens while
+     * something needs it.
+     */
+    fun readsGlucose(rules: List<ContextRule>): Boolean =
+        rules.any { it.enabled && readsGlucose(it.activeWhen) }
+
+    private fun readsGlucose(condition: Condition): Boolean = when (condition) {
+        is Condition.GlucoseBelow, is Condition.GlucoseAbove, is Condition.GlucoseStale -> true
+        is Condition.AllOf -> condition.conditions.any(::readsGlucose)
+        is Condition.AnyOf -> condition.conditions.any(::readsGlucose)
+        is Condition.AtLeast -> condition.conditions.any(::readsGlucose)
+        is Condition.Not -> readsGlucose(condition.condition)
+        Condition.Always,
+        is Condition.OnWifi,
+        is Condition.NearDevice,
+        is Condition.AtPlace,
+        is Condition.BatteryBelow,
+        is Condition.DuringWindow,
+        is Condition.AllowanceSpent,
+        -> false
+    }
+
     private fun readsPlaces(condition: Condition): Boolean = when (condition) {
         is Condition.AtPlace -> true
         is Condition.OnWifi,
@@ -34,6 +58,9 @@ object ContextSignals {
         Condition.Always,
         is Condition.DuringWindow,
         is Condition.AllowanceSpent,
+        is Condition.GlucoseBelow,
+        is Condition.GlucoseAbove,
+        is Condition.GlucoseStale,
         -> false
         is Condition.AllOf -> condition.conditions.any(::readsPlaces)
         is Condition.AnyOf -> condition.conditions.any(::readsPlaces)
@@ -50,6 +77,9 @@ object ContextSignals {
         is Condition.NearDevice,
         is Condition.AtPlace,
         is Condition.BatteryBelow,
+        is Condition.GlucoseBelow,
+        is Condition.GlucoseAbove,
+        is Condition.GlucoseStale,
         -> true
 
         Condition.Always,

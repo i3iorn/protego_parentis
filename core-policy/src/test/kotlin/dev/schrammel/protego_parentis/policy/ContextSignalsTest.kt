@@ -115,4 +115,13 @@ class ContextSignalsTest {
         val atLeast = Condition.AtLeast(1, listOf(Condition.AtPlace(PlaceId("school"))))
         assertTrue(ContextSignals.readsPlaces(listOf(rule(atLeast))))
     }
+
+    @Test
+    fun `glucose conditions are fetched surroundings, and only they read glucose`() {
+        val low = rule(Condition.AnyOf(listOf(Condition.OnWifi("School"), Condition.GlucoseBelow(72))))
+        assertTrue(ContextSignals.readsGlucose(listOf(low)))
+        assertTrue(ContextSignals.readsSurroundings(listOf(rule(Condition.GlucoseStale(30)))))
+        assertFalse(ContextSignals.readsGlucose(listOf(rule(Condition.OnWifi("School")))))
+        assertFalse(ContextSignals.readsGlucose(listOf(rule(Condition.GlucoseAbove(200), enabled = false))))
+    }
 }

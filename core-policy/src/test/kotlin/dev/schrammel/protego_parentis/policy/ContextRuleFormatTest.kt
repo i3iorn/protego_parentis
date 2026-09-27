@@ -76,9 +76,43 @@ class ContextRuleFormatTest {
         val v2 = rule(exceptWhen = Condition.OnWifi("Home"))
 
         assertEquals(
-            ContextRuleFormat.MixedVersions(listOf("Kid", "Dad"), v2RulesAtRisk = false),
+            ContextRuleFormat.MixedVersions(listOf("Kid", "Dad"), rulesAtRisk = false, version = ContextRuleFormat.V2_MIN_VERSION),
             ContextRuleFormat.mixedVersions(phones, listOf(rule())),
         )
-        assertEquals(true, ContextRuleFormat.mixedVersions(phones, listOf(rule(), v2))?.v2RulesAtRisk)
+        assertEquals(true, ContextRuleFormat.mixedVersions(phones, listOf(rule(), v2))?.rulesAtRisk)
+    }
+
+    // ---------- glucose (1.3.0) ----------
+
+    private val low = Condition.GlucoseBelow(72)
+
+    @Test
+    fun `a glucose rule needs 1_3_0 and the v2 storage shape`() {
+        assertEquals(ContextRuleFormat.GLUCOSE_MIN_VERSION, ContextRuleFormat.requiredVersion(rule(condition = low)))
+        assertEquals(
+            ContextRuleFormat.GLUCOSE_MIN_VERSION,
+            ContextRuleFormat.requiredVersion(rule(exceptWhen = Condition.Not(Condition.GlucoseStale(30)))),
+        )
+        // Stored without effect/target even with one action, so a build before
+        // 1.2.0 drops it instead of reading the unknown condition as Always.
+        assertTrue(ContextRuleFormat.needsV2(rule(condition = Condition.AnyOf(listOf(Condition.Always, low)))))
+    }
+
+    @Test
+    fun `plain and v2 rules need what they needed before`() {
+        assertEquals(null, ContextRuleFormat.requiredVersion(rule()))
+        assertEquals(ContextRuleFormat.V2_MIN_VERSION, ContextRuleFormat.requiredVersion(rule(exceptWhen = Condition.Always)))
+    }
+
+    @Test
+    fun `a phone on 1_2_x puts a glucose rule at risk`() {
+        val phones = listOf("Kid" to "1.2.2", "Mum" to "1.3.0")
+
+        assertEquals(
+            ContextRuleFormat.MixedVersions(listOf("Kid"), rulesAtRisk = true, version = ContextRuleFormat.GLUCOSE_MIN_VERSION),
+            ContextRuleFormat.mixedVersions(phones, listOf(rule(condition = low))),
+        )
+        // Without a glucose rule, 1.2.2 is new enough for everything else.
+        assertEquals(null, ContextRuleFormat.mixedVersions(phones, listOf(rule(exceptWhen = Condition.Always))))
     }
 }

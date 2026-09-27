@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceContext
 import dev.schrammel.protego_parentis.model.DeviceTag
+import dev.schrammel.protego_parentis.model.GlucoseReading
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.PlaceId
 import dev.schrammel.protego_parentis.model.RecurringWindow
@@ -832,5 +833,43 @@ class ContextRulesTest {
         val schoolHours = window(startingOn = "2026-08-21", start = "08:00", end = "15:00")
 
         assertNull(ContextRules.liftsAt(Condition.AtLeast(1, listOf(schoolHours)), zdt("2026-08-21", "10:00")))
+    }
+
+    // ---------- glucose ----------
+
+    private fun reading(mgdl: Int, minutesAgo: Long) =
+        DeviceContext(glucose = GlucoseReading(mgdl, midweek.toInstant().minusSeconds(minutesAgo * 60)))
+
+    @Test
+    fun `a fresh reading below the level holds, one at or above it does not`() {
+        assertTrue(holds(Condition.GlucoseBelow(72), reading(65, minutesAgo = 3)))
+        assertFalse(holds(Condition.GlucoseBelow(72), reading(72, minutesAgo = 3)))
+        assertTrue(holds(Condition.GlucoseAbove(234), reading(250, minutesAgo = 3)))
+        assertFalse(holds(Condition.GlucoseAbove(234), reading(120, minutesAgo = 3)))
+    }
+
+    @Test
+    fun `an old reading or none at all is not a level`() {
+        assertFalse(holds(Condition.GlucoseBelow(72), reading(40, minutesAgo = GlucoseReading.FRESH_FOR_MINUTES)))
+        assertFalse(holds(Condition.GlucoseBelow(72), DeviceContext.UNKNOWN))
+        assertFalse(holds(Condition.GlucoseAbove(100), DeviceContext.UNKNOWN))
+    }
+
+    @Test
+    fun `a reading dated far in the future is not trusted`() {
+        assertFalse(holds(Condition.GlucoseBelow(72), reading(40, minutesAgo = -60)))
+    }
+
+    @Test
+    fun `no reading for long enough is stale, and so is never having had one`() {
+        assertTrue(holds(Condition.GlucoseStale(30), DeviceContext.UNKNOWN))
+        assertTrue(holds(Condition.GlucoseStale(30), reading(100, minutesAgo = 30)))
+        assertFalse(holds(Condition.GlucoseStale(30), reading(100, minutesAgo = 10)))
+    }
+
+    @Test
+    fun `glucose conditions promise no end`() {
+        assertNull(ContextRules.liftsAt(Condition.GlucoseBelow(72), midweek))
+        assertNull(ContextRules.liftsAt(Condition.GlucoseStale(30), midweek))
     }
 }
