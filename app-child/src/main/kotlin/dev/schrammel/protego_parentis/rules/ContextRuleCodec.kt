@@ -103,6 +103,22 @@ internal object ContextRuleCodec {
                 put(KEY_VALUE, condition.minutes.coerceIn(0, MAX_MINUTES.toInt()))
             }
 
+            // mg/dL, as Nightscout stores it; conversion is display-only.
+            is Condition.GlucoseBelow -> {
+                put(KEY_KIND, GLUCOSE_BELOW)
+                put(KEY_VALUE, condition.mgdl)
+            }
+
+            is Condition.GlucoseAbove -> {
+                put(KEY_KIND, GLUCOSE_ABOVE)
+                put(KEY_VALUE, condition.mgdl)
+            }
+
+            is Condition.GlucoseStale -> {
+                put(KEY_KIND, GLUCOSE_STALE)
+                put(KEY_VALUE, condition.minutes)
+            }
+
             is Condition.AllOf -> {
                 put(KEY_KIND, ALL_OF)
                 put(KEY_PARTS, JSONArray(condition.conditions.map(::encodeCondition)))
@@ -151,6 +167,12 @@ internal object ContextRuleCodec {
             ALLOWANCE_SPENT -> json.optInt(KEY_VALUE, -1)
                 .takeIf { it >= 0 }
                 ?.let(Condition::AllowanceSpent)
+            GLUCOSE_BELOW -> json.optInt(KEY_VALUE, 0).takeIf { it in Condition.GLUCOSE_RANGE }
+                ?.let(Condition::GlucoseBelow)
+            GLUCOSE_ABOVE -> json.optInt(KEY_VALUE, 0).takeIf { it in Condition.GLUCOSE_RANGE }
+                ?.let(Condition::GlucoseAbove)
+            GLUCOSE_STALE -> json.optInt(KEY_VALUE, 0).takeIf { it in 5..MINUTES_PER_DAY }
+                ?.let(Condition::GlucoseStale)
             ALL_OF -> parts()?.let(Condition::AllOf)
             ANY_OF -> parts()?.let(Condition::AnyOf)
             AT_LEAST -> json.optInt(KEY_VALUE, 0).takeIf { it >= 1 }?.let { count ->
@@ -345,6 +367,9 @@ internal object ContextRuleCodec {
     private const val ALL_OF = "allOf"
     private const val ANY_OF = "anyOf"
     private const val AT_LEAST = "atLeast"
+    private const val GLUCOSE_BELOW = "glucoseBelow"
+    private const val GLUCOSE_ABOVE = "glucoseAbove"
+    private const val GLUCOSE_STALE = "glucoseStale"
     private const val NOT = "not"
 
     private const val BLOCK = "block"

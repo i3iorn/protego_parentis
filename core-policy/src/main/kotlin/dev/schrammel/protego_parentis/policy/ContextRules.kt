@@ -4,6 +4,7 @@ import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.DeviceContext
+import dev.schrammel.protego_parentis.model.GlucoseReading
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
@@ -11,6 +12,7 @@ import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import java.time.Instant
 import java.time.ZonedDateTime
+import java.time.Duration as JavaDuration
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -242,6 +244,15 @@ internal object ContextRules {
 
             is Condition.AllowanceSpent -> deviceUsage >= condition.minutes.minutes
 
+            // Fail closed like every other sensor: no fresh reading, no level.
+            is Condition.GlucoseBelow -> freshGlucose(context, now)?.let { it < condition.mgdl } ?: false
+            is Condition.GlucoseAbove -> freshGlucose(context, now)?.let { it > condition.mgdl } ?: false
+            is Condition.GlucoseStale -> {
+                val reading = context.glucose
+                reading == null ||
+                    JavaDuration.between(reading.at, now.toInstant()).toMinutes() >= condition.minutes
+            }
+
             is Condition.AllOf ->
                 condition.conditions.all { holds(it, context, now, deviceUsage, depth + 1) }
 
@@ -322,6 +333,9 @@ internal object ContextRules {
             // answer for the dedicated device-budget path this mirrors.
             is Condition.AllowanceSpent -> null
 
+            // A level can change on the next reading; nothing here can promise when.
+            is Condition.GlucoseBelow, is Condition.GlucoseAbove, is Condition.GlucoseStale -> null
+
             is Condition.Always,
             is Condition.OnWifi,
             is Condition.NearDevice,
@@ -358,8 +372,20 @@ internal object ContextRules {
             is Condition.AtPlace,
             is Condition.BatteryBelow,
             is Condition.AllowanceSpent,
+            is Condition.GlucoseBelow,
+            is Condition.GlucoseAbove,
+            is Condition.GlucoseStale,
             -> emptyList()
         }
+    }
+
+    /** The reading's level if it is recent enough to be the level now, else null. */
+    private fun freshGlucose(context: DeviceContext, now: ZonedDateTime): Int? {
+        val reading = context.glucose ?: return null
+        val age = JavaDuration.between(reading.at, now.toInstant())
+        // A reading dated ahead of this phone's clock is not trusted either.
+        if (age.isNegative && age.abs().toMinutes() > GlucoseReading.FRESH_FOR_MINUTES) return null
+        return reading.mgdl.takeIf { age.toMinutes() < GlucoseReading.FRESH_FOR_MINUTES }
     }
 
     /** The packages a target covers, following category nesting. */

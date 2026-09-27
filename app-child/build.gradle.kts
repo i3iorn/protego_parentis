@@ -75,8 +75,8 @@ android {
         applicationId = "dev.schrammel.protego_parentis"
         minSdk = 33
         targetSdk = 37
-        versionCode = 49
-        versionName = "1.2.2"
+        versionCode = 50
+        versionName = "1.3.0"
     }
 
     signingConfigs {

@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.context.ContextCapabilities
 import dev.schrammel.protego_parentis.context.ContextProvider
 import dev.schrammel.protego_parentis.model.Condition
@@ -308,6 +309,7 @@ class ContextRulesActivity : ParentGatedActivity() {
             activity = this,
             placeName = { id -> places.firstOrNull { it.id == id }?.name },
             categoryName = { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name },
+            glucoseUnit = NightscoutStore(this).units,
         ).rule(rule)
 
     private fun title(text: String, appearance: Int) = TextView(this).apply {

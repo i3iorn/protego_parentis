@@ -265,6 +265,11 @@
             android:parentActivityName=".ui.ContextRulesActivity" />
 
         <activity
+            android:name=".ui.NightscoutActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.RulesActivity" />
+
+        <activity
             android:name=".ui.PlaceAlertsActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />

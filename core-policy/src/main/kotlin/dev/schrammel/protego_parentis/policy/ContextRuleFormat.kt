@@ -24,6 +24,9 @@ object ContextRuleFormat {
     /** The first build that reads V2 rules. */
     const val V2_MIN_VERSION = "1.2.0"
 
+    /** The first build that reads glucose conditions. */
+    const val GLUCOSE_MIN_VERSION = "1.3.0"
+
     /**
      * The most actions one rule may have. Storage reads an action count
      * before the actions themselves, and this bounds what a corrupt count can
@@ -31,16 +34,43 @@ object ContextRuleFormat {
      */
     const val MAX_ACTIONS = 32
 
+    /**
+     * Whether [rule] has to be stored in the V2 shape: without the V1
+     * effect/target fields, so a build before [V2_MIN_VERSION] drops it.
+     *
+     * Every condition kind added after V1 counts, glucose included: a build
+     * before 1.2.0 reads a condition it doesn't know as Always, which would
+     * turn "block games while glucose is high" into "block games".
+     */
     fun needsV2(rule: ContextRule): Boolean =
-        rule.actions.size > 1 || rule.exceptWhen != null || usesV2Condition(rule.condition)
+        rule.actions.size > 1 || rule.exceptWhen != null || usesNewCondition(rule.condition)
 
-    private fun usesV2Condition(condition: Condition, depth: Int = 0): Boolean {
+    /**
+     * The oldest app version that reads [rule] correctly, or null for a V1
+     * rule every version reads.
+     */
+    fun requiredVersion(rule: ContextRule): String? = when {
+        usesGlucose(rule.condition) || rule.exceptWhen?.let(::usesGlucose) == true -> GLUCOSE_MIN_VERSION
+        needsV2(rule) -> V2_MIN_VERSION
+        else -> null
+    }
+
+    private fun usesNewCondition(condition: Condition): Boolean =
+        anyIn(condition) { it is Condition.AtLeast || isGlucose(it) }
+
+    private fun usesGlucose(condition: Condition): Boolean = anyIn(condition, test = ::isGlucose)
+
+    private fun isGlucose(condition: Condition) =
+        condition is Condition.GlucoseBelow || condition is Condition.GlucoseAbove || condition is Condition.GlucoseStale
+
+    private fun anyIn(condition: Condition, depth: Int = 0, test: (Condition) -> Boolean): Boolean {
         if (depth > ContextRules.MAX_DEPTH) return false
+        if (test(condition)) return true
         return when (condition) {
-            is Condition.AtLeast -> true
-            is Condition.AllOf -> condition.conditions.any { usesV2Condition(it, depth + 1) }
-            is Condition.AnyOf -> condition.conditions.any { usesV2Condition(it, depth + 1) }
-            is Condition.Not -> usesV2Condition(condition.condition, depth + 1)
+            is Condition.AtLeast -> condition.conditions.any { anyIn(it, depth + 1, test) }
+            is Condition.AllOf -> condition.conditions.any { anyIn(it, depth + 1, test) }
+            is Condition.AnyOf -> condition.conditions.any { anyIn(it, depth + 1, test) }
+            is Condition.Not -> anyIn(condition.condition, depth + 1, test)
             Condition.Always,
             is Condition.OnWifi,
             is Condition.NearDevice,
@@ -48,21 +78,24 @@ object ContextRuleFormat {
             is Condition.BatteryBelow,
             is Condition.DuringWindow,
             is Condition.AllowanceSpent,
+            is Condition.GlucoseBelow,
+            is Condition.GlucoseAbove,
+            is Condition.GlucoseStale,
             -> false
         }
     }
 
     /**
-     * Whether a phone reporting [versionName] reads V2 rules.
+     * Whether a phone reporting [versionName] is at least [required].
      *
      * False for a version that is missing or doesn't parse: a phone that has
      * never said what it runs is treated as old, since the cost of a needless
      * warning is a tap and the cost of a missing one is a rule that silently
      * does nothing.
      */
-    fun supportsV2(versionName: String?): Boolean {
+    fun supports(versionName: String?, required: String): Boolean {
         val version = parse(versionName) ?: return false
-        val minimum = parse(V2_MIN_VERSION) ?: return false
+        val minimum = parse(required) ?: return false
         for (i in 0 until maxOf(version.size, minimum.size)) {
             val a = version.getOrElse(i) { 0 }
             val b = minimum.getOrElse(i) { 0 }
@@ -71,20 +104,38 @@ object ContextRuleFormat {
         return true
     }
 
+    fun supportsV2(versionName: String?): Boolean = supports(versionName, V2_MIN_VERSION)
+
     /**
-     * The family's phones that may not read V2 rules, from [phones] (a name
-     * and last reported version for each), or null when every one does.
+     * What the family's phones ([phones], a name and last reported version
+     * each) are missing, or null when nothing.
      *
-     * [v2RulesAtRisk] is the urgent case: a V2 rule already exists in
-     * [rules], and an older child's phone deletes it on its next sync.
+     * Urgent ([MixedVersions.rulesAtRisk]) when a rule in [rules] needs a
+     * version some phone hasn't reported, since an older child's phone
+     * deletes it on its next sync; [MixedVersions.version] is then the
+     * newest version any rule needs. Otherwise a reminder while any phone is
+     * below [V2_MIN_VERSION], before anyone writes such a rule.
      */
     fun mixedVersions(phones: List<Pair<String, String?>>, rules: List<ContextRule>): MixedVersions? {
-        val older = phones.filterNot { (_, version) -> supportsV2(version) }.map { (name, _) -> name }
+        fun below(required: String) = phones.filterNot { (_, version) -> supports(version, required) }.map { it.first }
+
+        val needed = rules.mapNotNull(::requiredVersion).maxWithOrNull(::compareVersions)
+        if (needed != null) {
+            val atRisk = below(needed)
+            if (atRisk.isNotEmpty()) return MixedVersions(atRisk, rulesAtRisk = true, version = needed)
+        }
+        val older = below(V2_MIN_VERSION)
         if (older.isEmpty()) return null
-        return MixedVersions(olderPhones = older, v2RulesAtRisk = rules.any(::needsV2))
+        return MixedVersions(older, rulesAtRisk = false, version = V2_MIN_VERSION)
     }
 
-    data class MixedVersions(val olderPhones: List<String>, val v2RulesAtRisk: Boolean)
+    data class MixedVersions(val olderPhones: List<String>, val rulesAtRisk: Boolean, val version: String)
+
+    private fun compareVersions(a: String, b: String): Int = when {
+        a == b -> 0
+        supports(a, b) -> 1
+        else -> -1
+    }
 
     /** "1.2.0", or "1.2.0-debug": the numeric part before any suffix. */
     private fun parse(versionName: String?): List<Int>? {

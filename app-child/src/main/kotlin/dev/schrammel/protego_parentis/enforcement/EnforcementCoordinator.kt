@@ -5,6 +5,7 @@ import android.util.Log
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.context.ContextProvider
 import dev.schrammel.protego_parentis.context.NavigationWatcher
+import dev.schrammel.protego_parentis.glucose.GlucoseSource
 import dev.schrammel.protego_parentis.diagnostics.DiagnosticEvent
 import dev.schrammel.protego_parentis.diagnostics.Diagnostics
 import dev.schrammel.protego_parentis.dpc.AndroidDevicePolicyPort
@@ -190,6 +191,8 @@ class EnforcementCoordinator(
         // rules simply not apply.
         val surroundings = runCatching { contextProvider.current(contextRules.places) }
             .getOrDefault(DeviceContext.UNKNOWN)
+            // The newest stored reading, never a fetch: see GlucoseSource.
+            .copy(glucose = runCatching { GlucoseSource.latest(appContext) }.getOrNull())
 
         val enforcement = PolicyEngine.evaluate(
             policy = policy,

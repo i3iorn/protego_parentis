@@ -57,7 +57,7 @@ internal fun Activity.ruleVersionBanner(
 ): View? {
     if (warning == null) return null
     val names = warning.olderPhones.joinToString(", ")
-    val (titleRes, bodyRes, colorRes) = if (warning.v2RulesAtRisk) {
+    val (titleRes, bodyRes, colorRes) = if (warning.rulesAtRisk) {
         Triple(R.string.rules_version_risk_title, R.string.rules_version_risk_body, R.color.state_critical)
     } else {
         Triple(R.string.rules_version_mixed_title, R.string.rules_version_mixed_body, R.color.state_warning)
@@ -70,7 +70,7 @@ internal fun Activity.ruleVersionBanner(
                 setTextColor(ContextCompat.getColor(context, colorRes))
             },
         )
-        addView(captionText(getString(bodyRes, names, ContextRuleFormat.V2_MIN_VERSION)))
+        addView(captionText(getString(bodyRes, names, warning.version)))
         addView(
             actionButton().apply {
                 setText(R.string.family_open_devices)

@@ -1,5 +1,7 @@
 package dev.schrammel.protego_parentis.model
 
+import java.time.Instant
+
 /** A saved place, identified only by an id once it reaches the rules. */
 @JvmInline
 value class PlaceId(val value: String) {
@@ -122,10 +124,31 @@ data class DeviceContext(
     val nearbyDevices: Set<DeviceTag> = emptySet(),
     val insidePlaces: Set<PlaceId> = emptySet(),
     val batteryPercent: Int? = null,
+    /** The newest glucose reading this phone has, or null if it has none. */
+    val glucose: GlucoseReading? = null,
 ) {
     companion object {
         /** Nothing known: no Wi-Fi, nothing nearby, nowhere recognised. */
         val UNKNOWN = DeviceContext()
+    }
+}
+
+/**
+ * One glucose reading, from the family's own Nightscout server.
+ *
+ * Always in mg/dL, the unit Nightscout itself stores; conversion to mmol/L is
+ * only ever for display. [at] is when the sensor took the reading, not when
+ * this phone fetched it, so a server that stopped receiving data reads as
+ * stale rather than current.
+ */
+data class GlucoseReading(val mgdl: Int, val at: Instant) {
+    companion object {
+        /**
+         * How old a reading may be and still count as the current level. A
+         * CGM reports every five minutes; three missed readings is the point
+         * where "below 4.0" is a guess about now rather than a fact.
+         */
+        const val FRESH_FOR_MINUTES = 15L
     }
 }
 
@@ -191,6 +214,35 @@ sealed interface Condition {
         }
     }
 
+    /**
+     * The current glucose level is under [mgdl]. Never holds without a
+     * reading from the last [GlucoseReading.FRESH_FOR_MINUTES] minutes: an
+     * old number is not the level now. [GlucoseStale] is how a rule handles
+     * that case.
+     */
+    data class GlucoseBelow(val mgdl: Int) : Condition {
+        init {
+            require(mgdl in GLUCOSE_RANGE) { "a glucose level must be between 20 and 600 mg/dL" }
+        }
+    }
+
+    /** The current glucose level is over [mgdl]. Freshness as [GlucoseBelow]. */
+    data class GlucoseAbove(val mgdl: Int) : Condition {
+        init {
+            require(mgdl in GLUCOSE_RANGE) { "a glucose level must be between 20 and 600 mg/dL" }
+        }
+    }
+
+    /**
+     * No glucose reading from the last [minutes] minutes, including never
+     * having had one: no internet, Nightscout down, a sensor change.
+     */
+    data class GlucoseStale(val minutes: Int) : Condition {
+        init {
+            require(minutes in 5..24 * 60) { "a gap must be between 5 minutes and a day" }
+        }
+    }
+
     data class AllOf(val conditions: List<Condition>) : Condition
 
     data class AnyOf(val conditions: List<Condition>) : Condition
@@ -209,6 +261,11 @@ sealed interface Condition {
     }
 
     data class Not(val condition: Condition) : Condition
+
+    companion object {
+        /** What a CGM can report, in mg/dL. */
+        val GLUCOSE_RANGE = 20..600
+    }
 }
 
 /** What a contextual rule does while it applies. */
