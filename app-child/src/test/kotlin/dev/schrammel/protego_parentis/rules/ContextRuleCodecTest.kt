@@ -275,4 +275,17 @@ class ContextRuleCodecTest {
             .put(JSONObject("""{"effect":{"kind":"fromTheFuture"},"target":{"kind":"everything"}}"""))
         assertNull(ContextRuleCodec.decodeActions(oneBad))
     }
+
+    @Test
+    fun `glucose conditions round-trip in mg per dL`() {
+        listOf(Condition.GlucoseBelow(72), Condition.GlucoseAbove(234), Condition.GlucoseStale(30)).forEach {
+            assertEquals(it, ContextRuleCodec.decodeCondition(ContextRuleCodec.encodeCondition(it)))
+        }
+    }
+
+    @Test
+    fun `a glucose level outside what a sensor reports does not decode`() {
+        assertNull(ContextRuleCodec.decodeCondition(JSONObject("""{"kind":"glucoseBelow","value":5}""")))
+        assertNull(ContextRuleCodec.decodeCondition(JSONObject("""{"kind":"glucoseStale","value":0}""")))
+    }
 }

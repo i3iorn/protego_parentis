@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.glucose.GlucoseSource
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.context.BatteryReader
 import dev.schrammel.protego_parentis.context.ContextProvider
@@ -148,6 +149,7 @@ internal class TickWork(
             .onFailure { Log.w(TAG, "Could not check saved places", it) }
 
         runCatching { refreshPlaceFix(snapshot) }
+        runCatching { refreshGlucose(snapshot) }
             .onFailure { Log.w(TAG, "Could not refresh the place fix", it) }
 
         runCatching { publishBrowsing(snapshot.usage.snapshot.policyDay) }
@@ -183,6 +185,12 @@ internal class TickWork(
         if (rules.places.isEmpty()) return
         if (!rules.announceArrivals && !ContextSignals.readsPlaces(snapshot.policy.contextRules)) return
         ContextProvider(context).refreshPlacesFixIfStale()
+    }
+
+    /** Starts a Nightscout fetch if a rule reads glucose and the last one is old enough. */
+    private fun refreshGlucose(snapshot: EnforcementSnapshot) {
+        if (!ContextSignals.readsGlucose(snapshot.policy.contextRules)) return
+        GlucoseSource.refreshIfDue(context)
     }
 
     /**

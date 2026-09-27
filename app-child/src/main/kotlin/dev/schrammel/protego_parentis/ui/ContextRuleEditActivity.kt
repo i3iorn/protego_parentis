@@ -802,15 +802,15 @@ class ContextRuleEditActivity : ParentGatedActivity() {
      * it.
      */
     private fun confirmOlderPhones(rule: ContextRule, then: () -> Unit) {
-        if (!ContextRuleFormat.needsV2(rule)) return then()
-        val older = RosterStore(this).devices.filterNot { ContextRuleFormat.supportsV2(it.appVersion) }
+        val required = ContextRuleFormat.requiredVersion(rule) ?: return then()
+        val older = RosterStore(this).devices.filterNot { ContextRuleFormat.supports(it.appVersion, required) }
         if (older.isEmpty()) return then()
         confirmDialog(
             R.string.context_older_phones_title,
             getString(
                 R.string.context_older_phones_body,
                 older.joinToString(", ") { it.name },
-                ContextRuleFormat.V2_MIN_VERSION,
+                required,
             ),
             R.string.context_save,
             then,
