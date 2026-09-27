@@ -105,4 +105,34 @@ class SafetyAllowlistTest {
 
         assertFalse(PackageName("com.example.chattydialer") in SafetyAllowlist.of(app))
     }
+
+    // ---------- diabetes apps ----------
+
+    private fun install(pkg: String) {
+        shadowOf(app.packageManager).installPackage(
+            PackageInfo().apply {
+                packageName = pkg
+                applicationInfo = ApplicationInfo().apply { packageName = pkg }
+            },
+        )
+    }
+
+    @Test
+    fun `an installed CGM or pump app is allowed, whichever regional build it is`() {
+        install("com.freestylelibre.app.gb")
+        install("com.dexcom.g7")
+        install("info.nightscout.androidaps")
+
+        val allowed = SafetyAllowlist.of(app)
+        assertTrue(PackageName("com.freestylelibre.app.gb") in allowed)
+        assertTrue(PackageName("com.dexcom.g7") in allowed)
+        assertTrue(PackageName("info.nightscout.androidaps") in allowed)
+    }
+
+    @Test
+    fun `a name that only starts with a vendor's letters is not a diabetes app`() {
+        assertTrue(SafetyAllowlist.isDiabetesApp("com.eveningoutpost.dexdrip"))
+        assertFalse(SafetyAllowlist.isDiabetesApp("com.dexcomgames.fun"))
+        assertFalse(SafetyAllowlist.isDiabetesApp("com.example.game"))
+    }
 }

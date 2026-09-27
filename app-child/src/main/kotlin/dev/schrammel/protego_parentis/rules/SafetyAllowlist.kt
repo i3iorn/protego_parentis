@@ -46,7 +46,27 @@ object SafetyAllowlist {
         // registers no such activity.
         addAll(alarmApps(context).map(::PackageName))
         addAll(CLOCK_PACKAGES.filter { isInstalled(context, it) }.map(::PackageName))
+
+        // Diabetes apps: a CGM reader or a pump controller blocked by bedtime
+        // is a medical risk, not a screen-time decision. Matched by vendor
+        // namespace because each ships many regional builds
+        // (com.freestylelibre.app.gb, com.dexcom.g6.region3.mgdl, ...). Not
+        // limited to Play installs: AndroidAPS and xDrip+ are sideloaded by
+        // design. A sideloaded look-alike under one of these names is still
+        // reported to the parents as a new app, like any other install.
+        addAll(diabetesApps(context).map(::PackageName))
     }
+
+    private fun diabetesApps(context: Context): List<String> = runCatching {
+        context.packageManager
+            .getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0L))
+            .map { it.packageName }
+            .filter(::isDiabetesApp)
+    }.getOrDefault(emptyList())
+
+    /** Whether [pkg] belongs to one of [DIABETES_PACKAGES], exactly or as a regional build of it. */
+    internal fun isDiabetesApp(pkg: String): Boolean =
+        DIABETES_PACKAGES.any { pkg == it || pkg.startsWith("$it.") }
 
     private fun alarmApps(context: Context): Set<String> =
         listOf(AlarmClock.ACTION_SHOW_ALARMS, AlarmClock.ACTION_SET_ALARM).flatMapTo(mutableSetOf()) { action ->
@@ -68,6 +88,27 @@ object SafetyAllowlist {
         context.packageManager.getLaunchIntentForPackage(pkg) != null
 
     private const val SYSTEM_FLAGS = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+
+    /**
+     * Vendor namespaces and apps, each confirmed against a Play Store listing
+     * or the project's own documentation:
+     *  - com.dexcom: Dexcom G6/G7, Follow and Clarity.
+     *  - com.freestylelibre.app / com.freestylelibre3.app: FreeStyle
+     *    LibreLink and Libre 3, one build per country.
+     *  - com.eveningoutpost.dexdrip: xDrip+.
+     *  - tk.glucodata: Juggluco.
+     *  - info.nightscout.androidaps: AndroidAPS, which controls a pump.
+     * Apps not listed here (CamAPS FX, Medtronic, Omnipod, the newer "Libre"
+     * app) can still be exempted by a parent with a safety-exempt rule.
+     */
+    private val DIABETES_PACKAGES = listOf(
+        "com.dexcom",
+        "com.freestylelibre.app",
+        "com.freestylelibre3.app",
+        "com.eveningoutpost.dexdrip",
+        "tk.glucodata",
+        "info.nightscout.androidaps",
+    )
 
     private val CLOCK_PACKAGES = listOf(
         "com.google.android.deskclock",
