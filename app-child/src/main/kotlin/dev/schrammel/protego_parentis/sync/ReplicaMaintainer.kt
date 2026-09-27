@@ -71,11 +71,6 @@ internal class ReplicaMaintainer(
             // same one — so each publishes what it trusts and they converge,
             // rather than a vouch having to be timed to land after an approval.
             roster.push()
-            // Every parent's device runs this independently and lands on the
-            // same outcome — see ConsensusReplication.commitIfReady. Only a
-            // parent has anything to check: the managed phone is not a party
-            // to any of the four decisions.
-            commitReadyConsensusProposals()
         }
         publisher.publishPendingOps()
 
@@ -86,26 +81,6 @@ internal class ReplicaMaintainer(
             state.prune(now.epochSecond)
             publisher.publishDigest()
             config.recordDigestAt(now)
-        }
-    }
-
-    /**
-     * Commits every consensus proposal this replica can see has reached its
-     * threshold — unanimous approval, or an uncancelled timer.
-     *
-     * Every parent's device does this independently, and that is by design:
-     * see [ConsensusReplication.commitIfReady] for why more than one device
-     * acting on the same proposal is harmless.
-     *
-     * Stops the moment a disband commits: it wipes this phone's own family
-     * membership, so nothing left in the list is still this replica's to act
-     * on.
-     */
-    private fun commitReadyConsensusProposals() {
-        val consensus = ConsensusReplication(appContext)
-        for (proposal in consensus.proposals()) {
-            val committed = consensus.commitIfReady(proposal, publisher)
-            if (committed && proposal.kind == ConsensusKind.DISBAND_FAMILY) return
         }
     }
 

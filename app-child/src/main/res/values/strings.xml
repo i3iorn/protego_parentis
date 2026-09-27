@@ -835,8 +835,7 @@
     <string name="devices_role_parent">a parent\'s phone</string>
     <string name="devices_approve">Approve</string>
     <string name="devices_approve_body">Approve only if the fingerprint %1$s is showing on that phone. It will be trusted as %2$s.</string>
-    <string name="devices_enrol_child_body">Approve only if the fingerprint %1$s is showing on that phone. A second managed phone is not trusted on one parent\'s say-so: every parent needs to do the same on their own phone before it is admitted.</string>
-    <string name="devices_awaiting_family">Approved here. Waiting for the rest of the family to do the same.</string>
+    <string name="devices_enrol_child_body">Approve only if the fingerprint %1$s is showing on that phone. This trusts it on this phone only: every parent approves a second managed phone on their own phone.</string>
     <string name="devices_reject">Not mine</string>
     <string name="devices_row_detail">%1$s · %2$s</string>
     <string name="devices_name_hint">Mum\'s phone, Dad\'s phone…</string>

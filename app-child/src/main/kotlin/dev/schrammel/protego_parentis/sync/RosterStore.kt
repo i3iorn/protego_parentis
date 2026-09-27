@@ -76,10 +76,10 @@ class RosterStore(context: Context) {
      * Enrols a pending device, with the role and key it last announced.
      *
      * [expectedRole] is for callers that approved a device *as* something —
-     * a consensus proposal to enrol a child, say. A pending entry's role is
-     * whatever the device most recently claimed ([notice] replaces it), so
-     * without this a candidate approved as a child could announce itself as
-     * a parent before the approval committed and be enrolled as one.
+     * a parent approving a second managed phone, say. A pending entry's role
+     * is whatever the device most recently claimed ([notice] replaces it), so
+     * without this a candidate shown as a child could announce itself as a
+     * parent while the dialog was open and be enrolled as one.
      */
     fun approve(
         id: DeviceId,
