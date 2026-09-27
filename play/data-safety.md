@@ -125,12 +125,30 @@ devices on your network" reads alarmingly until it is described:
 - The passphrase is never transmitted, here or anywhere.
 - No permission beyond `INTERNET` is needed for this, and none was added for it.
 
+## Glucose from Nightscout — health data read, not collected
+
+Since 1.3.0 a parent can connect the managed phone to the family's own
+Nightscout server so rules can react to blood glucose (`NightscoutActivity`,
+`GlucoseSource`). The phone fetches the newest reading from that server and keeps
+it on the phone; the reading is not sent to the other phones, to us, or anywhere
+else. Google's form defines collection as transmitting data *off* the device, so
+this is not declared as Health → collected.
+
+Two things to re-check before each submission, since they would change that:
+- whether anything that reveals a level leaves the phone (today only a rule's
+  *name* can, if a parent names a rule after a level and it shows as active);
+- whether Google's definition still treats data downloaded to and kept on the
+  device as not collected.
+
+The access token is stored sealed on the phone (`NightscoutStore`, `SecretVault`)
+and sent only to the server the parent entered, over HTTPS.
+
 ## Do NOT declare
 
 These are worth listing so nobody adds them by mistake — none is collected and
 none is accessible to the app:
 
-Name · Email address · Phone number · Address · Financial info · Health · Photos ·
+Name · Email address · Phone number · Address · Financial info · Photos ·
 Videos · Audio · Files and docs · Calendar · Contacts · Call logs · SMS ·
 Search history · Installed app *inventory sent off the device* (the list is read
 on the device and never transmitted) · Crash logs · Diagnostics · Advertising ID ·

@@ -511,6 +511,30 @@ class ContextRuleEditActivityTest {
         assertTrue(store().rules.none { it.id == "to-delete" })
     }
 
+    @Test
+    fun `a glucose rule survives an unrelated edit and describes its level`() {
+        val rule = ContextRule(
+            id = "low",
+            name = "Low",
+            enabled = true,
+            condition = Condition.AnyOf(listOf(Condition.GlucoseBelow(72), Condition.GlucoseStale(30))),
+            actions = listOf(RuleAction(RuleEffect.SafetyExempt, RuleTarget.Everything)),
+        )
+        store().upsert(rule)
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context, "low"),
+        ).setup().get()
+
+        // No unit is known on this phone, so both are shown.
+        assertTrue(findAllText(activity.window.decorView).any { it.contains("72 mg/dL") && it.contains("mmol/L") })
+
+        renameField(activity)?.setText("Low (renamed)")
+        clickButton(activity, "Save rule")
+
+        assertEquals(rule.copy(name = "Low (renamed)"), store().rules.single { it.id == "low" })
+    }
+
     /** confirmDialog builds an appcompat AlertDialog, which ShadowAlertDialog does not track. */
     private fun latestDialog(): androidx.appcompat.app.AlertDialog? =
         ShadowDialog.getLatestDialog() as? androidx.appcompat.app.AlertDialog

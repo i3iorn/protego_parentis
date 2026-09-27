@@ -3,6 +3,7 @@ package dev.schrammel.protego_parentis.ui
 import android.app.Activity
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.format.formatDuration
+import dev.schrammel.protego_parentis.glucose.GlucoseUnit
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
@@ -23,6 +24,8 @@ internal class RuleDescriber(
     private val activity: Activity,
     private val placeName: (PlaceId) -> String?,
     private val categoryName: (CategoryId) -> String?,
+    /** The family's unit, if this phone knows it; both units are shown when it doesn't. */
+    private val glucoseUnit: GlucoseUnit? = null,
 ) {
 
     /** The whole rule as one sentence: when, except when, then every action. */
@@ -76,6 +79,12 @@ internal class RuleDescriber(
         )
 
         is Condition.AllowanceSpent -> activity.getString(R.string.context_when_allowance_spent, current.minutes)
+
+        is Condition.GlucoseBelow ->
+            activity.getString(R.string.context_when_glucose_below, activity.glucoseText(current.mgdl, glucoseUnit))
+        is Condition.GlucoseAbove ->
+            activity.getString(R.string.context_when_glucose_above, activity.glucoseText(current.mgdl, glucoseUnit))
+        is Condition.GlucoseStale -> activity.getString(R.string.context_when_glucose_stale, current.minutes)
 
         is Condition.Not -> activity.getString(R.string.context_when_not, condition(current.condition, nested = true))
 

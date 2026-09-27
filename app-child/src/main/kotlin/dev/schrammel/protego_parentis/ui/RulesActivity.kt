@@ -166,6 +166,15 @@ class RulesActivity : ParentGatedActivity() {
                         )
                     }
                 }
+                // The phone that enforces glucose rules is the one that reads
+                // Nightscout, so the connection is only set up standing at it.
+                if (target.isOwnDevice && enabled(Feature.CONTEXT_RULES)) {
+                    add(
+                        row(R.string.rules_row_nightscout, R.string.rules_row_nightscout_detail) {
+                            startActivity(NightscoutActivity.intent(this@RulesActivity))
+                        },
+                    )
+                }
                 if (target.isOwnDevice && enabled(Feature.GOALS)) {
                     add(
                         row(R.string.rules_row_goal, R.string.rules_row_goal_detail) {

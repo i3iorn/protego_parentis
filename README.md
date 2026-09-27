@@ -266,6 +266,13 @@ those.**
   Bluetooth device, below a battery level, in a time window, or after some
   minutes of use. Conditions combine as all, any or *at least N* of them, can
   be nested in groups, and any single condition or group can be negated.
+- **Blood glucose** (1.3.0) — below or above a level, or no reading for N
+  minutes, read from the family's own Nightscout server on the managed phone
+  (Rules → Glucose from Nightscout, with a read-only token). A level only counts
+  while the reading is under 15 minutes old; otherwise the level conditions are
+  false and "no reading" is the way to write a rule for the gap. Readings never
+  leave the phone. Known CGM and pump apps (Dexcom, FreeStyle Libre, xDrip+,
+  Juggluco, AndroidAPS) are on the built-in safety list and can't be blocked.
 - **Except when** (optional) — the rule switches off while this holds, even
   if "when" does. Built the same way as "when".
 - **Do … to …** — one or more actions, each an effect (block, always block,

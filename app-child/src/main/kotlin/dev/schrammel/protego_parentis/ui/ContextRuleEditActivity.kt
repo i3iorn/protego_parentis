@@ -17,6 +17,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
+import dev.schrammel.protego_parentis.glucose.GlucoseUnit
+import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
@@ -123,6 +125,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             activity = this,
             placeName = { id -> places().firstOrNull { it.id == id }?.name },
             categoryName = { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name },
+            glucoseUnit = NightscoutStore(this).units,
         )
     }
 
@@ -457,6 +460,9 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             add(getString(R.string.context_choose_battery) to { askForBattery(current, onPicked) })
             add(getString(R.string.context_choose_window) to { askForWindow(current, onPicked) })
             add(getString(R.string.context_choose_allowance) to { askForAllowance(current, onPicked) })
+            add(getString(R.string.context_choose_glucose_below) to { askForGlucose(current, below = true, onPicked) })
+            add(getString(R.string.context_choose_glucose_above) to { askForGlucose(current, below = false, onPicked) })
+            add(getString(R.string.context_choose_glucose_stale) to { askForGlucoseStale(current, onPicked) })
         }
         menu(R.string.context_when_header, options)
     }
@@ -593,6 +599,56 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             initialProgress = LimitSlider.progressFor(existing),
             format = { formatLimit(LimitSlider.minutesFor(it)) },
         ) { progress -> onPicked(Condition.AllowanceSpent(LimitSlider.minutesFor(progress))) }
+    }
+
+    /**
+     * A glucose level, typed in the family's unit. On a phone that doesn't
+     * know the unit (a parent's, or one not yet connected to Nightscout) the
+     * unit is asked first rather than guessed: 4 and 72 are both plausible
+     * levels, in different units.
+     */
+    private fun askForGlucose(current: Condition?, below: Boolean, onPicked: (Condition) -> Unit) {
+        val unit = NightscoutStore(this).units
+        if (unit == null) {
+            menu(
+                R.string.glucose_unit_title,
+                listOf(
+                    getString(R.string.glucose_unit_mmol) to { askForGlucose(current, below, GlucoseUnit.MMOL_L, onPicked) },
+                    getString(R.string.glucose_unit_mgdl) to { askForGlucose(current, below, GlucoseUnit.MG_DL, onPicked) },
+                ),
+            )
+        } else {
+            askForGlucose(current, below, unit, onPicked)
+        }
+    }
+
+    private fun askForGlucose(current: Condition?, below: Boolean, unit: GlucoseUnit, onPicked: (Condition) -> Unit) {
+        val existing = (current as? Condition.GlucoseBelow)?.mgdl?.takeIf { below }
+            ?: (current as? Condition.GlucoseAbove)?.mgdl?.takeIf { !below }
+        promptForText(
+            if (below) R.string.context_choose_glucose_below else R.string.context_choose_glucose_above,
+            if (unit == GlucoseUnit.MMOL_L) R.string.glucose_hint_mmol else R.string.glucose_hint_mgdl,
+            prefill = existing?.let { unit.format(it) }.orEmpty(),
+        ) { text ->
+            val mgdl = unit.parse(text)
+            if (mgdl == null) {
+                toast(getString(R.string.glucose_invalid))
+            } else {
+                onPicked(if (below) Condition.GlucoseBelow(mgdl) else Condition.GlucoseAbove(mgdl))
+            }
+        }
+        if (target.isOwnDevice && !NightscoutStore(this).isConfigured) toast(getString(R.string.glucose_not_connected))
+    }
+
+    /** How long without a reading counts as "no data": 5 minutes to 4 hours, in 5-minute steps. */
+    private fun askForGlucoseStale(current: Condition?, onPicked: (Condition) -> Unit) {
+        val existing = (current as? Condition.GlucoseStale)?.minutes ?: DEFAULT_GLUCOSE_STALE_MINUTES
+        sliderDialog(
+            title = R.string.context_choose_glucose_stale,
+            max = MAX_GLUCOSE_STALE_STEPS,
+            initialProgress = (existing / GLUCOSE_STALE_STEP - 1).coerceIn(0, MAX_GLUCOSE_STALE_STEPS),
+            format = { getString(R.string.context_when_glucose_stale, (it + 1) * GLUCOSE_STALE_STEP) },
+        ) { progress -> onPicked(Condition.GlucoseStale((progress + 1) * GLUCOSE_STALE_STEP)) }
     }
 
     /**
@@ -932,6 +988,9 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         private const val DEFAULT_BATTERY_PERCENT = 20
         private const val MAX_BATTERY_PERCENT = 100
         private const val DEFAULT_ALLOWANCE_MINUTES = 60
+        private const val DEFAULT_GLUCOSE_STALE_MINUTES = 30
+        private const val GLUCOSE_STALE_STEP = 5
+        private const val MAX_GLUCOSE_STALE_STEPS = 47
         private val DEFAULT_ACTION = RuleAction(RuleEffect.Block(), RuleTarget.Everything)
         private val DEFAULT_WINDOW_DAYS = setOf(java.time.DayOfWeek.MONDAY)
         private val DEFAULT_WINDOW_START: LocalTime = LocalTime.of(8, 0)
