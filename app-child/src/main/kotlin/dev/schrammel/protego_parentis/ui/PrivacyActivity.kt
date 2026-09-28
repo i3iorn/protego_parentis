@@ -311,6 +311,7 @@ class DiagnosticsActivity : DementorActivity() {
             UpdateOutcome.UP_TO_DATE -> R.string.update_up_to_date
             UpdateOutcome.CHECK_FAILED -> R.string.update_check_failed
             UpdateOutcome.DOWNLOAD_FAILED -> R.string.update_download_failed
+            UpdateOutcome.REJECTED -> R.string.update_rejected
             UpdateOutcome.INSTALLED_SILENTLY -> R.string.update_installed_silently
             UpdateOutcome.DOWNLOADED_PENDING_CONFIRMATION -> R.string.update_ready_generic
         },

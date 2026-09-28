@@ -110,7 +110,7 @@ class UpdateCheckerTest {
             isOurs = { _, _ -> false },
         )
 
-        assertEquals(UpdateOutcome.DOWNLOAD_FAILED, outcome)
+        assertEquals(UpdateOutcome.REJECTED, outcome)
         assertFalse(installCalled)
     }
 

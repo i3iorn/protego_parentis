@@ -317,6 +317,7 @@
     <string name="update_up_to_date">Redan senaste versionen.</string>
     <string name="update_check_failed">Kunde inte nå uppdateringsflödet. Försök igen senare.</string>
     <string name="update_download_failed">En nyare version hittades, men nedladdningen kunde inte verifieras. Försök igen senare.</string>
+    <string name="update_rejected">En nyare version hittades, men den är inte signerad som den här appen, så den installerades inte.</string>
     <string name="update_installed_silently">Uppdaterad. Appen startar om sig själv nu.</string>
     <string name="update_ready_generic">En nyare version har laddats ner och verifierats.</string>
     <string name="update_ready">Version %1$s är nedladdad och verifierad.</string>

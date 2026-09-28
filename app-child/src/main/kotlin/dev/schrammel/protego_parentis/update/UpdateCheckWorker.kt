@@ -28,6 +28,10 @@ class UpdateCheckWorker(
         // worth another attempt on WorkManager's own backoff schedule rather
         // than waiting a full day for the next periodic run.
         UpdateOutcome.DOWNLOAD_FAILED -> Result.retry()
+        // Not retried: it verified, so a retry downloads the same wrong APK,
+        // over and over on the backoff schedule. The next daily run checks
+        // again, by which time the release may have been fixed.
+        UpdateOutcome.REJECTED,
         UpdateOutcome.UP_TO_DATE,
         UpdateOutcome.CHECK_FAILED,
         UpdateOutcome.INSTALLED_SILENTLY,

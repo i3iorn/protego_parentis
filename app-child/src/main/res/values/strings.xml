@@ -316,6 +316,7 @@
     <string name="update_up_to_date">Already on the latest version.</string>
     <string name="update_check_failed">Could not reach the update feed. Try again later.</string>
     <string name="update_download_failed">A newer version was found, but the download failed to verify. Try again later.</string>
+    <string name="update_rejected">A newer version was found, but it isn\'t signed as this app, so it wasn\'t installed.</string>
     <string name="update_installed_silently">Updated. The app is restarting itself now.</string>
     <string name="update_ready_generic">A newer version has been downloaded and verified.</string>
     <string name="update_ready">Version %1$s is downloaded and verified.</string>
