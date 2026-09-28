@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.rules
 
 import dev.schrammel.protego_parentis.enforcement.NotificationKind
+import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.rules.RuleReach.LOCAL_ONLY
 import dev.schrammel.protego_parentis.rules.RuleReach.NOT_A_RULE
 import dev.schrammel.protego_parentis.rules.RuleReach.PARENT
@@ -104,6 +105,12 @@ class RulesInventoryTest {
         "KEY_CONDITION=condition" to PARENT,
         "KEY_EFFECT=effect" to PARENT,
         "KEY_TARGET=target" to PARENT,
+        // Rules V2 (#301): a rule with several actions or an "except when"
+        // stores them in these instead of effect/target, and replicates them
+        // the same way, so they're exactly as reachable.
+        "KEY_FORMAT=format" to PARENT,
+        "KEY_ACTIONS=actions" to PARENT,
+        "KEY_EXCEPT=except" to PARENT,
         "KEY_ANNOUNCE_ARRIVALS=announce_arrivals" to PENDING,
         // A parent can rename, resize or remove a place from any phone, so
         // the list and its radius are Parent — but not where it is.
@@ -140,6 +147,26 @@ class RulesInventoryTest {
         "KEY_START=startMinute" to PARENT,
         "KEY_END=endMinute" to PARENT,
         "KEY_PARITY_ANCHOR=parityAnchorEpochDay" to PARENT,
+        // A block's "hide the app too" flag, which replaced AppRule.Blocked's.
+        "KEY_HIDDEN=hidden" to PARENT,
+        // One action of a V2 rule: its effect and target, as in a V1 rule.
+        "KEY_EFFECT=effect" to PARENT,
+        "KEY_TARGET=target" to PARENT,
+    )
+
+    // Glucose from Nightscout (#304). The server and its read-only token are
+    // set on the managed phone and never replicated: the token is sealed and
+    // is only useful where the fetch happens. The rest is what the phone
+    // last read, not a rule.
+    private val nightscout = mapOf(
+        "KEY_URL=url" to LOCAL_ONLY,
+        "KEY_TOKEN_SEALED=token_sealed" to LOCAL_ONLY,
+        "KEY_UNITS=units" to NOT_A_RULE,
+        "KEY_UNITS_CHECKED=units_checked_at" to NOT_A_RULE,
+        "KEY_MGDL=mgdl" to NOT_A_RULE,
+        "KEY_READ_AT=read_at" to NOT_A_RULE,
+        "KEY_ATTEMPT=attempt_at" to NOT_A_RULE,
+        "KEY_PROBLEM=problem" to NOT_A_RULE,
     )
 
     // #42 closed this store: all nine fields ride PolicySnapshot now, the same
@@ -198,6 +225,7 @@ class RulesInventoryTest {
         Triple("WebFilterStore", WebFilterStore::class.java, webFilter),
         Triple("AutoApprovalStore", AutoApprovalStore::class.java, autoApproval),
         Triple("GoalStore", GoalStore::class.java, goals),
+        Triple("NightscoutStore", NightscoutStore::class.java, nightscout),
     )
 
     // ---------- stores whose settings are enum entries ----------
