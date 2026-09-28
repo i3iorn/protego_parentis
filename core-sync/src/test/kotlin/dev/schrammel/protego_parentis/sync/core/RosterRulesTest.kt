@@ -155,6 +155,57 @@ class RosterRulesTest {
 
     // ---------- helpers ----------
 
+    /**
+     * Who may send each message type, written out in full. The `when` in
+     * [RosterRules.expectedSender] makes a new type state a sender; this makes
+     * changing an existing one (say, letting the managed phone send LOCK_NOW)
+     * a deliberate edit here too rather than a one-line slip.
+     */
+    @Test
+    fun `every message type has the sender role it was designed for`() {
+        val child = SyncRole.CHILD
+        val parent = SyncRole.PARENT
+        val expected = mapOf(
+            SyncMessageType.REQUEST_RAISED to child,
+            SyncMessageType.HEARTBEAT to child,
+            SyncMessageType.APP_INSTALLED to child,
+            SyncMessageType.DAILY_SUMMARY to child,
+            SyncMessageType.DEVICE_STOPPING to child,
+            SyncMessageType.REQUEST_AUTO_APPROVED to child,
+            SyncMessageType.LOCATION_REPORT to child,
+            SyncMessageType.PLACE_TRANSITION to child,
+            SyncMessageType.SOS_RAISED to child,
+            SyncMessageType.SOS_CLEARED to child,
+            SyncMessageType.WEB_SUMMARY to child,
+            SyncMessageType.POLICY_SNAPSHOT to child,
+            SyncMessageType.APP_INVENTORY to child,
+            SyncMessageType.DIAGNOSTICS_REPORT to child,
+            SyncMessageType.REQUEST_DECIDED to parent,
+            SyncMessageType.BONUS_GRANTED to parent,
+            SyncMessageType.APP_DECIDED to parent,
+            SyncMessageType.LOCK_NOW to parent,
+            SyncMessageType.LOCATE_REQUEST to parent,
+            SyncMessageType.POLICY_REQUESTED to parent,
+            SyncMessageType.POLICY_UPDATED to parent,
+            SyncMessageType.APP_INVENTORY_REQUESTED to parent,
+            SyncMessageType.PLACE_CREATE_REQUESTED to parent,
+            SyncMessageType.DIAGNOSTICS_REQUESTED to parent,
+            SyncMessageType.DEVICE_VOUCHED to parent,
+            SyncMessageType.DEVICE_REVOKED to parent,
+            SyncMessageType.FAMILY_DISBANDED to parent,
+            SyncMessageType.DEVICE_ANNOUNCE to null,
+            SyncMessageType.STATE_OPS to null,
+            SyncMessageType.STATE_DIGEST to null,
+            SyncMessageType.STATE_REPAIR to null,
+            SyncMessageType.CHAT_MESSAGE to null,
+        )
+
+        assertEquals(SyncMessageType.entries.toSet(), expected.keys)
+        SyncMessageType.entries.forEach { type ->
+            assertEquals(type.name, expected.getValue(type), RosterRules.expectedSender(type))
+        }
+    }
+
     private fun signed(
         keys: KeyPair,
         type: SyncMessageType,

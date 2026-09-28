@@ -31,6 +31,12 @@ enum class UpdateOutcome {
     /** A newer release exists, but its APK failed to download or verify. */
     DOWNLOAD_FAILED,
 
+    /**
+     * A newer release's APK downloaded intact but isn't this app, or isn't
+     * signed by our key. Downloading it again gets the same file.
+     */
+    REJECTED,
+
     /** Downloaded, verified, and applied without anyone's confirmation. */
     INSTALLED_SILENTLY,
 
@@ -76,7 +82,7 @@ object UpdateChecker {
         if (!isOurs(context, apkFile)) {
             apkFile.delete()
             Diagnostics.record(context, DiagnosticEvent.UPDATE_REJECTED)
-            return UpdateOutcome.DOWNLOAD_FAILED
+            return UpdateOutcome.REJECTED
         }
 
         return if (isDeviceOwner(context)) {

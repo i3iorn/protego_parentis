@@ -152,7 +152,7 @@ replicate it so a sibling phone on an older build keeps working. Still all 11
 fields Parent — a family can still reach a schedule this way, just not
 through any UI that writes it any more.
 
-## ContextRuleStore — `context_rules` · 11 Parent, 1 Pending
+## ContextRuleStore — `context_rules` · 14 Parent, 1 Pending
 
 Contextual rules and the places they refer to, in one store — and, as of
 [#72](https://github.com/i3iorn/dementor_watch/issues/72)'s rule-engine
@@ -167,8 +167,13 @@ what `exempt_packages` above used to mean — and, like every effect and
 condition kind, is carried by `ContextRuleCodec`'s existing `KEY_KIND` below
 rather than a field of its own.
 
-`rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`, `places`,
-`radius`
+`rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`, `format`,
+`actions`, `except`, `places`, `radius`
+
+`format`, `actions` and `except` are Rules V2 (#301): a rule with several
+actions or an "except when" stores them there instead of in `effect`/`target`,
+so an older build drops it rather than half-reading it. They replicate the
+same way the rest of a rule does.
 
 [#41](https://github.com/i3iorn/dementor_watch/issues/41) closed the rule half
 of this store the way [#40](https://github.com/i3iorn/dementor_watch/issues/40)
@@ -215,7 +220,7 @@ in the direction that matters most — the managed phone never sends one out.
 direction, scoped to place creation alone; see `PlaceRef`'s own doc
 comment.
 
-## ContextRuleCodec — `kind`/`value`/`parts`/`minutes`/`partsCategories`/`days`/`startMinute`/`endMinute`/`parityAnchorEpochDay` · 9 Parent
+## ContextRuleCodec — `kind`/`value`/`parts`/`minutes`/`partsCategories`/`days`/`startMinute`/`endMinute`/`parityAnchorEpochDay`/`hidden`/`effect`/`target` · 12 Parent
 
 Not a `SharedPreferences`-backed store — the JSON codec `ContextRuleStore` and
 `PolicyReplication` share for a rule's `condition`/`effect`/`target`, extracted
@@ -237,6 +242,19 @@ expressed as a condition, and classifying it any other way would mean a
 window being remotely reachable or not depending on which of two ways a
 parent happened to write it. Stored as ISO day numbers, minutes-of-day and an
 epoch day so nothing depends on a locale or a device's clock format.
+
+`hidden` is a block's "hide the app too" flag, which replaced
+`AppRule.Blocked`'s. `effect` and `target` are one action of a V2 rule, encoded
+exactly as a V1 rule's are.
+
+## NightscoutStore — `nightscout` · 2 Local only, 6 Not a rule
+
+Local only: `url`, `token_sealed`. The family's Nightscout server and its
+read-only token are set on the managed phone, which does the fetching, and
+are never replicated. The token is sealed with `SecretVault`.
+
+Not a rule: `units`, `units_checked_at`, `mgdl`, `read_at`, `attempt_at`,
+`problem`. What the phone last read from the server, and when it tried.
 
 ## WebFilterStore — `web_filter` · 9 Parent
 

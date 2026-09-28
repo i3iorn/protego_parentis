@@ -41,9 +41,6 @@ object ReplicationRules {
     /** The shared, append-only history. */
     const val AUDIT = "audit"
 
-    /** Proposals for the handful of decisions that need every parent's agreement. */
-    const val CONSENSUS = "consensus"
-
     /**
      * Whether a device of [role], identified as [writerId], may write [path].
      *
@@ -126,19 +123,11 @@ object ReplicationRules {
             // Both sides record, and neither may rewrite: see [isAppendOnly].
             AUDIT -> role != null
 
-            // A proposal and its approvals are a parent-only conversation. The
-            // managed phone has no vote in whether its own family disbands, a
-            // parent leaves, another parent joins, or a second managed phone is
-            // admitted — these are decisions about the family's structure, not
-            // its rules, and the child is not a party to them. Which specific
-            // fields a parent may write is narrower still — see
-            // [mayWriteConsensusField].
-            CONSENSUS -> role == SyncRole.PARENT
-
-            // An unknown section from a newer build. Refused rather than
-            // allowed: a path this build cannot reason about is a path it
-            // cannot police, and storing it would let a future section be
-            // written by whoever got there first.
+            // An unknown section from a newer build, or one this build
+            // retired, such as "consensus". Refused rather than allowed: a
+            // path this build cannot reason about is a path it cannot
+            // police, and storing it would let a future section be written
+            // by whoever got there first.
             else -> false
         }
     }
@@ -160,36 +149,6 @@ object ReplicationRules {
 
             else -> true
         }
-    }
-
-    /**
-     * Whether [writerId] may write [value] to a CONSENSUS [path].
-     *
-     * Both self-attested registers work the same way: `consensus/<id>/approvals/<parentId>`
-     * and `consensus/<id>/enrolled/<parentId>` may only be set to a live value
-     * by the parent each names. For approvals, otherwise one parent approving
-     * on every other parent's behalf would make unanimity mean nothing. For
-     * enrolled, otherwise one parent could claim another parent's device had
-     * finished enrolling a second managed phone when it had not, firing that
-     * proposal's cleanup before every parent's own roster actually held it —
-     * see `ConsensusReplication.commitIfReady` in app-child.
-     *
-     * A tombstone is deliberately exempt from both. Committing a proposal
-     * clears its whole subtree, including every register on it, and that has
-     * to be doable by whichever device notices the threshold was met — not
-     * only by each attesting parent's own device, which might never be
-     * reachable again once its attestation has already served its purpose. A
-     * tombstone can only retract a claim, never fabricate one, so letting any
-     * parent write one costs nothing the self-attestation rule above exists
-     * to prevent: it cannot be used to forge an attestation, only to help
-     * retire one that has already counted.
-     */
-    fun mayWriteConsensusField(path: String, value: String?, writerId: DeviceId?): Boolean {
-        if (path.substringBefore(SEPARATOR) != CONSENSUS) return true
-        if (value == null) return true
-        val segments = path.split(SEPARATOR)
-        if (segments.size < 4 || segments[2] !in SELF_ATTESTED_FIELDS) return true
-        return writerId != null && segments[3] == writerId.value
     }
 
     /**
@@ -227,8 +186,7 @@ object ReplicationRules {
     fun accepts(role: SyncRole?, op: StateOp, writerId: DeviceId? = null): Boolean =
         isWellFormed(op) &&
             mayWrite(role, op.path, writerId) &&
-            mayWriteRequestField(role, op.path) &&
-            mayWriteConsensusField(op.path, op.value, writerId)
+            mayWriteRequestField(role, op.path)
 
     /**
      * [accepts], plus the checks only an op arriving from another device needs.
@@ -335,7 +293,7 @@ object ReplicationRules {
      * The logical clock is bounded too. [LamportClock.observe] ignores anything
      * above [LamportClock.CEILING], so an op stamped beyond it would win every
      * later merge on its path while no honest replica's clock could ever catch
-     * up: one write pinning a value, or a consensus field, for good.
+     * up: one write pinning a value for good.
      */
     fun isWellFormed(op: StateOp): Boolean =
         isWellFormedPath(op.path) &&
@@ -360,12 +318,6 @@ object ReplicationRules {
         TELEMETRY -> 500
         REQUESTS, CHAT -> 20_000
         AUDIT -> 50_000
-        // A handful of these ever exist at once — the fixed set is four kinds
-        // of decision, each family raises them rarely, and a resolved one is
-        // tombstoned. Sized well above any real family for the same reason as
-        // ROSTER: this bounds a hostile device inventing proposals, not
-        // anything a real one would come close to.
-        CONSENSUS -> 2_000
         else -> 0
     }
 
@@ -399,12 +351,7 @@ object ReplicationRules {
 
     fun modeOf(path: String): ReplicationMode =
         when (path.substringBefore(SEPARATOR)) {
-            // An open proposal has to keep being repaired until every replica
-            // agrees on it — a stale approval count is exactly the kind of
-            // disagreement the digest exists to find. Unlike a chat message or
-            // a request, there is no point in its life where it is safe to stop
-            // comparing it just because it has aged.
-            POLICY, ROSTER, CONSENSUS -> ReplicationMode.CONVERGING
+            POLICY, ROSTER -> ReplicationMode.CONVERGING
             REQUESTS, CHAT, AUDIT -> ReplicationMode.RECENT
             else -> ReplicationMode.VOLATILE
         }
@@ -484,23 +431,4 @@ object ReplicationRules {
     private const val FIELD_DECIDED_BY = "decidedBy"
     private const val FIELD_DECIDED_AT = "decidedAt"
     private const val FIELD_NOTE = "note"
-
-    /** The subpath under a proposal holding one register per approving parent. */
-    const val FIELD_APPROVALS = "approvals"
-
-    /**
-     * The subpath under an [ConsensusKind.ENROL_CHILD] proposal holding one
-     * register per parent that has completed its own local enrolment of the
-     * target — see `ConsensusReplication.commitIfReady` in app-child.
-     *
-     * A different fact from [FIELD_APPROVALS]: approving means "I agree to
-     * this," enrolled means "I have done it." Enrolling a second managed
-     * device has no broadcast that could tell a parent's device what another
-     * parent's device did locally, so this register is how each device tells
-     * the rest of the family it finished its own part.
-     */
-    const val FIELD_ENROLLED = "enrolled"
-
-    /** Consensus subpaths only a device may write about itself. */
-    private val SELF_ATTESTED_FIELDS = setOf(FIELD_APPROVALS, FIELD_ENROLLED)
 }

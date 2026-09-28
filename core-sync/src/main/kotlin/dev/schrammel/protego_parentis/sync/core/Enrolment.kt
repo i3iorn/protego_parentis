@@ -79,10 +79,9 @@ object Enrolment {
      * remotely would let one compromised parent phone introduce a device that
      * receives every rule and every position.
      *
-     * A second managed phone is admitted a different way entirely — held until
-     * every current parent independently confirms it, via `ConsensusKind.ENROL_CHILD`
-     * in app-child — which still never routes through a vouch. This function's
-     * refusal is unconditional and unaffected by that mechanism existing.
+     * A second managed phone is admitted a different way entirely: each parent
+     * compares its fingerprint and approves it on their own phone, which never
+     * routes through a vouch. This function's refusal is unconditional.
      */
     fun shouldAccept(vouch: Vouch, selfId: DeviceId): Boolean = when {
         !vouch.isConsistent() -> false

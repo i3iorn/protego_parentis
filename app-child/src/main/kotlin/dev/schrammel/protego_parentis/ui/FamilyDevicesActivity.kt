@@ -13,10 +13,7 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.RoleStore
-import dev.schrammel.protego_parentis.sync.ConsensusKind
-import dev.schrammel.protego_parentis.sync.ConsensusReplication
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
@@ -55,19 +52,16 @@ import dev.schrammel.protego_parentis.sync.versionsDiffer
  * parent this screen never offers to approve again.
  *
  * A pending device claiming to be a second managed phone is a different story
- * (#45): tapping Approve there never admits it on this phone's own say-so.
- * It raises (or joins) a [ConsensusKind.ENROL_CHILD] proposal instead, which
- * only takes effect once every current parent has independently done the
- * same — see that proposal kind's own doc comment for why one parent's
- * approval alone was never enough to admit a device that receives every
- * rule and every position.
+ * (#45): approving it admits it on this phone only, and is never vouched to
+ * the rest of the family. Each parent compares the fingerprint and approves
+ * it on their own phone, so one compromised parent phone can't add a device
+ * that receives every rule and every position.
  */
 class FamilyDevicesActivity : ParentGatedActivity() {
 
     private lateinit var roster: RosterStore
     private lateinit var config: SyncConfigStore
     private lateinit var sync: SyncCoordinator
-    private lateinit var consensus: ConsensusReplication
     private lateinit var column: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +69,6 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         roster = RosterStore(this)
         config = SyncConfigStore(this)
         sync = SyncGraph.get(this)
-        consensus = ConsensusReplication(this)
         column = contentColumn()
         showColumn(column)
     }
@@ -191,11 +184,6 @@ class FamilyDevicesActivity : ParentGatedActivity() {
     /**
      * A device asking to join, with the two facts needed to decide: what it calls
      * itself, and the fingerprint to check against its own screen.
-     *
-     * A CHILD-claimed candidate this device has already approved (raised or
-     * joined its [ConsensusKind.ENROL_CHILD] proposal) shows a waiting state
-     * instead of the Approve/Reject row — there is nothing further for this
-     * parent to decide until the rest of the family catches up.
      */
     private fun pendingCard(device: PendingDevice): LinearLayout = card {
         addView(
@@ -207,43 +195,33 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         addView(statRow(getString(R.string.devices_role), roleName(device.role)))
         addView(statRow(getString(R.string.devices_fingerprint), device.id.value))
 
-        val selfId = LocalDeviceId.current()?.let(::DeviceId)
-        val alreadyApprovedByThisDevice = device.role == SyncRole.CHILD && selfId != null &&
-            consensus.proposals().any {
-                it.kind == ConsensusKind.ENROL_CHILD && it.target == device.id && selfId in it.approvals
-            }
-
-        if (alreadyApprovedByThisDevice) {
-            addView(captionText(getString(R.string.devices_awaiting_family)))
-        } else {
-            addView(
-                LinearLayout(this@FamilyDevicesActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
-                        topMargin = dimen(R.dimen.space_sm)
-                    }
-                    addView(
-                        Button(context).apply {
-                            setText(R.string.devices_approve)
-                            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
-                                marginEnd = dimen(R.dimen.space_xs)
-                            }
-                            setOnClickListener { confirmApprove(device) }
-                        },
-                    )
-                    addView(
-                        Button(context).apply {
-                            setText(R.string.devices_reject)
-                            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
-                            setOnClickListener {
-                                roster.reject(device.id)
-                                render()
-                            }
-                        },
-                    )
-                },
-            )
-        }
+        addView(
+            LinearLayout(this@FamilyDevicesActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                    topMargin = dimen(R.dimen.space_sm)
+                }
+                addView(
+                    Button(context).apply {
+                        setText(R.string.devices_approve)
+                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
+                            marginEnd = dimen(R.dimen.space_xs)
+                        }
+                        setOnClickListener { confirmApprove(device) }
+                    },
+                )
+                addView(
+                    Button(context).apply {
+                        setText(R.string.devices_reject)
+                        layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                        setOnClickListener {
+                            roster.reject(device.id)
+                            render()
+                        }
+                    },
+                )
+            },
+        )
     }
 
     /**
@@ -336,8 +314,7 @@ class FamilyDevicesActivity : ParentGatedActivity() {
      * The confirmation restates the fingerprint, so the last thing seen before
      * tapping yes is the thing that was supposed to be checked.
      *
-     * A CHILD candidate never takes this path to admission — see
-     * [confirmEnrolChild].
+     * A CHILD candidate takes [confirmEnrolChild] instead.
      */
     private fun confirmApprove(device: PendingDevice) {
         if (device.role == SyncRole.CHILD) {
@@ -394,21 +371,10 @@ class FamilyDevicesActivity : ParentGatedActivity() {
 
     /**
      * A CHILD candidate's "Approve" button, kept apart from [confirmApprove]
-     * because it can never do what that one does. This never calls
-     * [RosterStore.approve] directly and never offers to rename the
-     * candidate — a name typed here would only ever apply to this device's
-     * own roster entry, since each parent independently enrols the candidate
-     * from its own locally-observed [PendingDevice.name] once every current
-     * parent has done the same (see [ConsensusKind.ENROL_CHILD]), and a
-     * field that looked editable but did not actually rename the device
-     * everywhere would be worse than no field at all.
-     *
-     * Tapping Approve either raises a new [ConsensusKind.ENROL_CHILD]
-     * proposal naming this candidate, or — if another parent already raised
-     * one — adds this parent's own approval to it. Either way this device's
-     * own eventual enrolment of the candidate happens later, once every
-     * current parent has independently reached the same point; nothing here
-     * admits it on the spot.
+     * because it admits the phone here and never vouches for it: each parent
+     * approves a second managed phone on their own phone (see
+     * [Enrolment.shouldAccept]). No rename field either, since a name typed
+     * here would only ever apply to this phone's roster.
      */
     private fun confirmEnrolChild(device: PendingDevice) {
         val content = LinearLayout(this).apply {
@@ -422,18 +388,17 @@ class FamilyDevicesActivity : ParentGatedActivity() {
             .setTitle(R.string.devices_approve)
             .setView(content)
             .setPositiveButton(R.string.devices_approve) { _, _ ->
-                val existing = consensus.proposals().firstOrNull {
-                    it.kind == ConsensusKind.ENROL_CHILD && it.target == device.id
-                }
-                val proposalId = existing?.id ?: consensus.propose(ConsensusKind.ENROL_CHILD, target = device.id)
-                if (proposalId != null) {
-                    consensus.approve(proposalId)
+                // Approved as a child, so enrolled only as one: a candidate
+                // that re-announced as a parent while the dialog was open is
+                // left pending rather than trusted as a parent.
+                val approved = roster.approve(device.id, device.name, expectedRole = SyncRole.CHILD)
+                if (approved != null) {
                     Audit.record(
                         context = this,
                         actor = AuditActor.PARENT,
                         action = AuditAction.DEVICE_APPROVED,
-                        subject = device.name.ifBlank { device.id.value },
-                        after = device.role.name,
+                        subject = approved.name,
+                        after = approved.role.name,
                     )
                 }
                 render()
