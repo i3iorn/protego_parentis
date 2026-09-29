@@ -314,7 +314,13 @@ Android treats a Wi-Fi network name as a location signal, so reading the SSID
 needs the location permission. Places use the newest fix any app already has,
 and never wake the GPS. Only while a rule or arrival alerts use a saved place,
 and the newest fix is over 15 minutes old, the app asks for one network fix of
-its own, at most once a quarter hour. Proximity means *connected over
+its own, at most once a quarter hour.
+
+Arriving at or leaving a place takes two fixes at least a minute apart that
+agree, so driving past a place neither triggers its rules nor sends an alert.
+While a place is waiting on that second fix, the app asks for one network fix a
+minute instead of waiting for the quarter hour, so an arrival counts within a
+couple of minutes. Proximity means *connected over
 Bluetooth* (classic or LE), not a BLE scan — much cheaper, and right for "while
 the phone is in the car" or "with their headphones on". Two phones that are
 merely paired are rarely connected, so "near a parent's phone" works only while

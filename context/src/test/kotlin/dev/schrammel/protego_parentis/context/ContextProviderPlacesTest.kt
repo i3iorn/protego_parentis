@@ -75,4 +75,34 @@ class ContextProviderPlacesTest {
     fun `without the location permission the answer is unknown`() {
         assertNull(ContextProvider(app).placesIfKnown(listOf(home)))
     }
+
+    @Test
+    fun `passing through a place is not being there`() {
+        grantLocation()
+        val provider = ContextProvider(app)
+        fixAt(57.7089, 11.9746, ageMillis = 3 * 60_000L)
+        provider.placesIfKnown(listOf(home))
+
+        fixAt(home.latitude, home.longitude, ageMillis = 2 * 60_000L)
+        assertEquals(emptySet<PlaceId>(), provider.placesIfKnown(listOf(home)))
+        // The same fix on the next check is not a second reading.
+        assertEquals(emptySet<PlaceId>(), provider.placesIfKnown(listOf(home)))
+
+        fixAt(57.7089, 11.9746)
+        assertEquals(emptySet<PlaceId>(), provider.placesIfKnown(listOf(home)))
+    }
+
+    @Test
+    fun `two fixes inside a minute apart are an arrival`() {
+        grantLocation()
+        val provider = ContextProvider(app)
+        fixAt(57.7089, 11.9746, ageMillis = 3 * 60_000L)
+        provider.placesIfKnown(listOf(home))
+
+        fixAt(home.latitude, home.longitude, ageMillis = 2 * 60_000L)
+        provider.placesIfKnown(listOf(home))
+        fixAt(home.latitude, home.longitude)
+
+        assertEquals(setOf(home.id), provider.placesIfKnown(listOf(home)))
+    }
 }
