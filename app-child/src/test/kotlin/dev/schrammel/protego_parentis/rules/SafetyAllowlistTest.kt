@@ -27,6 +27,11 @@ class SafetyAllowlistTest {
 
     private val app: Application get() = RuntimeEnvironment.getApplication()
 
+    // addResolveInfoForIntent is deprecated in favour of registering an
+    // activity and an intent filter. Kept because it's the one way to set
+    // exactly the ResolveInfo, system flag included, that SafetyAllowlist
+    // filters on.
+    @Suppress("DEPRECATION")
     private fun handles(action: String, pkg: String, system: Boolean = true) {
         val info = ResolveInfo().apply {
             activityInfo = ActivityInfo().apply {
