@@ -17,6 +17,8 @@ import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.model.DeviceContext
 import dev.schrammel.protego_parentis.model.DeviceTag
 import dev.schrammel.protego_parentis.model.Place
+import dev.schrammel.protego_parentis.model.PlaceDwell
+import dev.schrammel.protego_parentis.model.PlaceReading
 
 /** Which of the context sources this phone is currently able to read. */
 data class ContextCapabilities(
@@ -107,6 +109,10 @@ class ContextProvider(context: Context) {
      * [insidePlaces], but null when the phone cannot say where it is: no
      * permission, or no fix younger than [MAX_LOCATION_AGE_MILLIS].
      *
+     * The places the phone counts as inside once confirmed, not what the
+     * newest fix alone says: arriving or leaving takes two fixes at least a
+     * minute apart (see [PlaceDwell]), so driving past a place is neither.
+     *
      * The rules can treat "don't know" as "not there"; announcing arrivals
      * cannot. A phone lying still at home overnight, with nothing else asking
      * for a location, ages out of its last fix, and reading that as "outside
@@ -120,9 +126,11 @@ class ContextProvider(context: Context) {
 
         val location = lastKnownLocation() ?: return null
 
-        return places
-            .filter { place -> within(location, place) }
-            .mapTo(mutableSetOf()) { it.id }
+        val reading = PlaceReading(
+            inside = places.filter { place -> within(location, place) }.mapTo(mutableSetOf()) { it.id },
+            fixTimeMillis = location.time,
+        )
+        return PlaceDwellStore(appContext).advance(reading, places.mapTo(mutableSetOf()) { it.id }).confirmed
     }
 
     private fun lastKnownLocation(): Location? =
@@ -161,7 +169,8 @@ class ContextProvider(context: Context) {
      * rule then read "not there" — lifting "block games at school" at school.
      * The caller only asks while a rule or the arrival alerts use places, and
      * [PlaceFixPolicy] limits it to one network (not GPS) fix per quarter
-     * hour. Returns at once; the answer is used from the next pass.
+     * hour, or one a minute while a place is confirming. Returns at once; the
+     * answer is used from the next pass.
      */
     @SuppressLint("MissingPermission")
     fun refreshPlacesFixIfStale() {
@@ -169,7 +178,8 @@ class ContextProvider(context: Context) {
         val now = SystemClock.elapsedRealtime()
         val fixAge = newestFix()?.let { System.currentTimeMillis() - it.time }
         val sinceRequest = lastRequestElapsed?.let { now - it }
-        if (!PlaceFixPolicy.shouldRequest(fixAge, sinceRequest)) return
+        val confirming = PlaceDwellStore(appContext).current().awaitingConfirmation
+        if (!PlaceFixPolicy.shouldRequest(fixAge, sinceRequest, confirming)) return
         runCatching {
             val manager = appContext.getSystemService(LocationManager::class.java) ?: return
             if (!manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) return

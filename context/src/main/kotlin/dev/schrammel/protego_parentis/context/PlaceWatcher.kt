@@ -17,7 +17,10 @@ data class PlaceTransition(
  * No geofencing API and no Play Services: this app has never depended on them, and
  * "which of these circles is the phone inside" is a distance calculation the
  * context provider already does for the rules. Comparing this tick's answer with
- * the last one turns it into arrivals and departures for nothing extra.
+ * the last one turns it into arrivals and departures for nothing extra. That
+ * answer is already confirmed over two fixes (see
+ * [dev.schrammel.protego_parentis.model.PlaceDwell]), so passing a place is
+ * neither.
  *
  * The cost is that transitions are noticed on the enforcement tick rather than the
  * moment they happen, so an arrival can be a few minutes late. For "did they get

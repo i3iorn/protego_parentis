@@ -29,4 +29,16 @@ class PlaceFixPolicyTest {
     fun `an ask that produced nothing is not retried on every tick`() {
         assertFalse(PlaceFixPolicy.shouldRequest(fixAgeMillis = null, sinceLastRequestMillis = 1 * minute))
     }
+
+    @Test
+    fun `while a place is confirming, a fix older than a minute asks again`() {
+        assertTrue(PlaceFixPolicy.shouldRequest(fixAgeMillis = 2 * minute, sinceLastRequestMillis = 2 * minute, confirming = true))
+        assertFalse(PlaceFixPolicy.shouldRequest(fixAgeMillis = 2 * minute, sinceLastRequestMillis = 2 * minute))
+    }
+
+    @Test
+    fun `confirming still waits a minute between asks and for the fix to age`() {
+        assertFalse(PlaceFixPolicy.shouldRequest(fixAgeMillis = 2 * minute, sinceLastRequestMillis = 30_000L, confirming = true))
+        assertFalse(PlaceFixPolicy.shouldRequest(fixAgeMillis = 30_000L, sinceLastRequestMillis = 2 * minute, confirming = true))
+    }
 }
