@@ -341,11 +341,17 @@ Re-point the home Rules row to the list; rename the hub; delete the inner
 `strings.xml` (+ `values-sv`). Tests: extend `HomeSectionsTest`; add a test that
 the child Rules destination resolves to the rules list.
 
-**Phase B — Rules dashboard.**
-Header summary, grouping, status chips, paused section, sort/search. New
-`RulesDashboard`/`RuleCard` rendering in `ui/rules`; pure grouping logic as data
-(testable like `HomeSections`). Files: `ContextRulesActivity.kt`, new
-`RuleSections.kt` + tests, `RulesActivity.kt` (promote status), `strings.xml`.
+**Phase B — Rules dashboard. ✅ Done (1.5.0), except search/sort and "Active now".**
+Header summary, grouping, status chips, paused section. Grouping is pure data
+(`RuleSections.kt`, tested like `HomeSections`); the device-status card moved to
+a shared helper and is now shown at the top of the list. `ContextRulesActivity`,
+`RuleSections.kt` + tests, `DeviceStatusCard.kt`, `RulesActivity.kt`,
+`strings.xml`, `res/drawable/chip.xml`.
+
+Deferred within B: **search/sort** over the rules, and **"Active now"** — the
+latter would need `EnforcementCoordinator.evaluate()` on every screen open,
+which replays a full day of usage for one status word. Revisit when there is a
+cheap cached snapshot to read instead.
 
 **Phase C — Structured rule card & describer.**
 Evolve `RuleDescriber` to emit structured parts (kind, when, then, for) and a

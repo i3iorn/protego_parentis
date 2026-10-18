@@ -102,7 +102,7 @@
 
     <!-- Regler som beror på omgivningen. -->
     <string name="context_title">Regler</string>
-    <string name="context_explainer">Regler som bara gäller på vissa platser, eller nära något. Den dagliga gränsen och läggdags fungerar som vanligt; de här ligger ovanpå.</string>
+    <string name="context_explainer">Den dagliga gränsen, läggdags och regler för var, när eller hur telefonen används.</string>
     <string name="context_sources_header">Vad telefonen kan känna av</string>
     <string name="context_wifi_ready">Wi-Fi-nätverk: tillgängligt.</string>
     <string name="context_wifi_blocked">Wi-Fi-nätverk: inte tillgängligt. Android kräver platsbehörighet för att avslöja ett nätverksnamn. Regler om Wi-Fi kommer inte att gälla.</string>
@@ -117,12 +117,10 @@
     <string name="context_daily_limit_add_detail">Antal minuter telefonen tillåter varje dag</string>
     <string name="context_daily_limit_info_title">Om den dagliga gränsen</string>
     <string name="context_daily_limit_info_body">Antalet minuter som hela enheten tillåter varje dag, innan en kategori- eller appgräns nedan begränsar det ytterligare. Det är en vanlig regel under ytan — du kan öppna den nedan och lägga till villkor, precis som vilken annan regel som helst.</string>
-    <string name="context_rules_header">Dina regler</string>
     <string name="context_rules_info_title">Om regler</string>
     <string name="context_rules_info_body">Varje regel här byggs på samma sätt: ett villkor (när den gäller), en effekt (vad den gör) och ett mål (vem den gäller). Se “Så kombineras regler” ovan för exempel på att kombinera flera regler, eller flera villkor i en och samma regel.</string>
     <string name="context_no_rules">Inga regler än.</string>
     <string name="context_add_rule">Lägg till en regel</string>
-    <string name="context_rule_off">%1$s (av)</string>
     <string name="context_rule_summary">%1$s → %2$s %3$s</string>
     <string name="context_rule_summary_actions">%1$s → %2$s</string>
     <string name="context_action_phrase">%1$s %2$s</string>
@@ -465,6 +463,22 @@
     <string name="rules_row_context_detail">Regler för ett Wi-Fi-nätverk, en plats eller att vara nära någon</string>
     <string name="rules_more_controls">Fler kontroller</string>
     <string name="rules_more_controls_detail">Appgränser, kategorier, webbfiltret, platser och mer</string>
+
+    <string name="rules_status_on">På</string>
+    <string name="rules_status_paused">Pausad</string>
+    <string name="rules_section_schedules">Scheman</string>
+    <string name="rules_section_where">Plats och närhet</string>
+    <string name="rules_section_health">Hälsa</string>
+    <string name="rules_section_other">Övriga regler</string>
+    <string name="rules_section_paused">Pausade</string>
+    <plurals name="rules_summary_on">
+        <item quantity="one">%d regel på</item>
+        <item quantity="other">%d regler på</item>
+    </plurals>
+    <plurals name="rules_summary_paused">
+        <item quantity="one">%d pausad</item>
+        <item quantity="other">%d pausade</item>
+    </plurals>
     <string name="rules_row_goal">Mål och belöning</string>
     <string name="rules_row_goal_detail">Något att förtjäna genom att hålla sig under en gräns</string>
     <string name="rules_read_only_hint">Ange PIN-koden för att göra ändringar.</string>

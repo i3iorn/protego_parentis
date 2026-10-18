@@ -2,10 +2,13 @@ package dev.schrammel.protego_parentis.ui
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
+import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.context.ContextCapabilities
@@ -26,8 +29,10 @@ import dev.schrammel.protego_parentis.ui.rules.categories
 import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
+import dev.schrammel.protego_parentis.ui.rules.ruleGroups
 import dev.schrammel.protego_parentis.ui.rules.upsert
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
+import dev.schrammel.protego_parentis.ui.rules.RuleSection
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -46,12 +51,15 @@ import java.util.UUID
  * the reason the app exists, not "no phone at dinner," even though modelling
  * it as a rule like any other is what let this merge happen at all.
  *
- * The screen leads with which context sources actually work on this phone —
- * only on the managed phone itself, though: [ContextProvider.capabilities]
- * describes whichever device is running the code, which on a parent's phone
- * would answer the wrong question entirely. Editing a remote child's rules
- * skips that section rather than showing a capability reading for the wrong
- * device.
+ * The list is grouped by what a parent recognises — schedules, somewhere the
+ * phone is or is near, health — and each rule carries its on/off state, so the
+ * whole setup is legible at a glance (rules-UX phase B). See [ruleGroups].
+ *
+ * The screen also shows which context sources actually work on this phone — only
+ * on the managed phone itself, though: [ContextProvider.capabilities] describes
+ * whichever device is running the code, which on a parent's phone would answer
+ * the wrong question entirely. Editing a remote child's rules skips that section
+ * rather than showing a capability reading for the wrong device.
  */
 class ContextRulesActivity : ParentGatedActivity() {
 
@@ -97,8 +105,15 @@ class ContextRulesActivity : ParentGatedActivity() {
         container.removeAllViews()
         container.addView(title(getString(R.string.context_title), R.style.TextAppearance_Dementor_Title))
         ruleVersionBanner(versions) { startActivity(FamilyDevicesActivity.intent(this)) }?.let(container::addView)
+        // The "is this phone actually enforced?" answer, first: a parent who
+        // cannot find it assumes the rules are doing something they are not.
+        if (target.isOwnDevice) container.addView(deviceStatusCard())
         container.addView(caption(getString(R.string.context_explainer)))
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+        // One line for "how much is set up", where the old screen had a flat
+        // "Your rules" heading; the "About rules" explainer now rides on the
+        // count (rules-UX phase B).
+        container.addView(summaryRow(rules))
 
         // #106: the daily limit is a rule like any other now, but it keeps a
         // fixed spot rather than being buried in the list below — see this
@@ -141,13 +156,6 @@ class ContextRulesActivity : ParentGatedActivity() {
         }
 
         val otherRules = rules.filterNot { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
-        container.addView(
-            headingWithInfo(
-                title(getString(R.string.context_rules_header), R.style.TextAppearance_Dementor_Section),
-                R.string.context_rules_info_title,
-                R.string.context_rules_info_body,
-            ),
-        )
         if (otherRules.isEmpty()) {
             container.addView(caption(getString(R.string.context_no_rules)))
             if (canEdit) {
@@ -161,7 +169,14 @@ class ContextRulesActivity : ParentGatedActivity() {
                 container.addView(group(STARTERS.map(::starterRow)))
             }
         } else {
-            addCollapsibleRows(container, otherRules.map { ruleRow(it, places) })
+            // Grouped by what a parent recognises — schedules, somewhere the
+            // phone is, health — rather than one flat list; see [ruleGroups].
+            ruleGroups(otherRules).forEach { group ->
+                container.addView(
+                    title(getString(sectionLabel(group.section)), R.style.TextAppearance_Dementor_Section),
+                )
+                addCollapsibleRows(container, group.rules.map { ruleRow(it, places) })
+            }
         }
 
         if (canEdit) {
@@ -290,6 +305,11 @@ class ContextRulesActivity : ParentGatedActivity() {
         val fixedId: String? = null,
     )
 
+    /**
+     * One rule, as a row: its name with an on/off chip, then the sentence that
+     * says what it does. The chip is the at-a-glance status the old list had
+     * only by prefixing the name with "Off".
+     */
     private fun ruleRow(rule: ContextRule, places: List<PlaceRef>): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -302,9 +322,17 @@ class ContextRulesActivity : ParentGatedActivity() {
             }
 
             addView(
-                TextView(context).apply {
-                    text = if (rule.enabled) rule.name else getString(R.string.context_rule_off, rule.name)
-                    styleAs(R.style.TextAppearance_Dementor_ListItem)
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(
+                        TextView(context).apply {
+                            text = rule.name
+                            styleAs(R.style.TextAppearance_Dementor_ListItem)
+                            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                        },
+                    )
+                    addView(statusChip(rule.enabled))
                 },
             )
             addView(
@@ -314,6 +342,49 @@ class ContextRulesActivity : ParentGatedActivity() {
                 },
             )
         }
+
+    /** The count of what is set up, with the "About rules" explainer beside it. */
+    private fun summaryRow(rules: List<ContextRule>): LinearLayout {
+        val on = rules.count { it.enabled }
+        val paused = rules.count { !it.enabled }
+        val onText = resources.getQuantityString(R.plurals.rules_summary_on, on, on)
+        val text = if (paused == 0) {
+            onText
+        } else {
+            onText + " · " + resources.getQuantityString(R.plurals.rules_summary_paused, paused, paused)
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(caption(text).apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) })
+            addView(infoButton(R.string.context_rules_info_title, R.string.context_rules_info_body))
+        }
+    }
+
+    /**
+     * On or paused, as a word — never colour alone, so the row still reads to
+     * someone who cannot tell the two colours apart.
+     */
+    private fun statusChip(enabled: Boolean): TextView = TextView(this).apply {
+        setText(if (enabled) R.string.rules_status_on else R.string.rules_status_paused)
+        styleAs(R.style.TextAppearance_Dementor_Caption)
+        setBackgroundResource(R.drawable.chip)
+        backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(context, if (enabled) R.color.state_ok else R.color.card_stroke),
+        )
+        setTextColor(ContextCompat.getColor(context, if (enabled) R.color.on_brand else R.color.text_primary))
+        val horizontal = dimen(R.dimen.space_sm)
+        setPadding(horizontal, dimen(R.dimen.space_hairline), horizontal, dimen(R.dimen.space_hairline))
+    }
+
+    /** The heading a [RuleSection] is shown under. */
+    private fun sectionLabel(section: RuleSection): Int = when (section) {
+        RuleSection.SCHEDULES -> R.string.rules_section_schedules
+        RuleSection.WHERE -> R.string.rules_section_where
+        RuleSection.HEALTH -> R.string.rules_section_health
+        RuleSection.OTHER -> R.string.rules_section_other
+        RuleSection.PAUSED -> R.string.rules_section_paused
+    }
 
     /** The rule as a sentence, which is how a parent thinks about it. */
     private fun describe(rule: ContextRule, places: List<PlaceRef>): String =

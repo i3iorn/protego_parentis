@@ -2,12 +2,9 @@ package dev.schrammel.protego_parentis.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.widget.LinearLayout
-import android.widget.TextView
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.RosterStore
@@ -44,15 +41,14 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  * ([BonusTimeActivity]) when [target] is this device's own, and to the
  * parent-side send-a-message screen ([ParentBonusActivity]) otherwise — the
  * same local/remote split #43 already established for every other rule store
- * (#78). Places gets the same
- * split for the same reason (#86): the arrival-announcement toggle only means anything read on the
- * device doing the arriving, but the saved places themselves are exactly the
- * list Contextual rules already edits remotely, so a remote target gets a
- * direct door to [PlacesActivity] rather than losing them along with the
- * toggle. Rows that genuinely cannot work remotely at all — the web filter,
- * the goal, and requests — still only appear when [target] is
- * this device's own; [render] adds a caption saying so rather than omitting
- * them silently.
+ * (#78). Places gets the same split for the same reason (#86): the
+ * arrival-announcement toggle only means anything read on the device doing the
+ * arriving, but the saved places themselves are exactly the list Contextual
+ * rules already edits remotely, so a remote target gets a direct door to those
+ * rather than losing them along with the toggle. Rows that genuinely cannot
+ * work remotely at all — the web filter, the goal, and requests — still only
+ * appear when [target] is this device's own; [render] adds a caption saying so
+ * rather than omitting them silently.
  *
  * Web activity is not here: it is a report, not a limit, and the managed
  * phone's home screen already links it for anyone to read.
@@ -88,7 +84,7 @@ class RulesActivity : ParentGatedActivity() {
             if (name != null) column.addView(captionText(getString(R.string.rules_editing_whose, name)))
             column.addView(captionText(getString(R.string.rules_remote_omissions)))
         }
-        if (target.isOwnDevice) column.addView(statusCard())
+        if (target.isOwnDevice) column.addView(deviceStatusCard())
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         val disabled = policyRuleStore(this, target).read()?.disabledFeatures.orEmpty()
@@ -226,40 +222,6 @@ class RulesActivity : ParentGatedActivity() {
                 )
             }
         }
-    }
-
-    /**
-     * The device's state, in the one place a parent looks when wondering why
-     * nothing is being blocked. Only meaningful for this device's own
-     * enforcement, so it only ever appears when [target] is this device.
-     *
-     * Starts on the reassuring reading rather than blank. The lookup is off the
-     * main thread, so an empty card would flash on every open, and a status line
-     * that blinks looks like a fault whatever it eventually says.
-     */
-    private fun statusCard(): View {
-        val status = TextView(this).apply {
-            setText(R.string.rules_device_status_monitor)
-            styleAs(R.style.TextAppearance_Dementor_Body)
-        }
-
-        Background.load(this, {
-            val coordinator = EnforcementCoordinator(this)
-            // Read, not recomputed. Asking for a fresh evaluation here would mean
-            // opening this screen drove DevicePolicyManager, which is a side
-            // effect no one asked a status line to have.
-            coordinator.isDeviceOwner() to coordinator.dnsFailedLastPass()
-        }) { (owner, dnsFailed) ->
-            status.setText(
-                when {
-                    dnsFailed -> R.string.rules_dns_failed
-                    owner -> R.string.rules_device_status_owner
-                    else -> R.string.rules_device_status_monitor
-                },
-            )
-        }
-
-        return card { addView(status) }
     }
 
     override fun onPause() {

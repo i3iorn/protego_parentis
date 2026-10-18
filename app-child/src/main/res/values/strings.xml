@@ -99,7 +99,7 @@
 
     <!-- Contextual rules. -->
     <string name="context_title">Rules</string>
-    <string name="context_explainer">Rules that only apply somewhere, or near something. The daily limit and bedtime keep working as they are; these sit on top.</string>
+    <string name="context_explainer">The daily limit, bedtime, and rules for where, when or how the phone is used.</string>
     <string name="context_sources_header">What this phone can tell</string>
     <string name="context_wifi_ready">Wi-Fi network: available.</string>
     <string name="context_wifi_blocked">Wi-Fi network: not available. Android needs location permission to reveal a network name. Rules about Wi-Fi will not apply.</string>
@@ -114,12 +114,10 @@
     <string name="context_daily_limit_add_detail">A number of minutes the phone allows every day</string>
     <string name="context_daily_limit_info_title">About the daily limit</string>
     <string name="context_daily_limit_info_body">The number of minutes the whole device allows every day, before any category or app limit below narrows it further. It is an ordinary rule under the hood — you can open it below and add conditions to it, like any other rule.</string>
-    <string name="context_rules_header">Your rules</string>
     <string name="context_rules_info_title">About rules</string>
     <string name="context_rules_info_body">Every rule here is built the same way: a condition (when it applies), an effect (what it does), and a target (who it applies to). See “How rules combine” above for worked examples of combining several rules, or several conditions in one rule.</string>
     <string name="context_no_rules">No rules yet.</string>
     <string name="context_add_rule">Add a rule</string>
-    <string name="context_rule_off">%1$s (off)</string>
     <string name="context_rule_summary">%1$s → %2$s %3$s</string>
     <string name="context_rule_summary_actions">%1$s → %2$s</string>
     <string name="context_action_phrase">%1$s %2$s</string>
@@ -466,6 +464,23 @@
          longer links back (rules-UX phase A). -->
     <string name="rules_more_controls">More controls</string>
     <string name="rules_more_controls_detail">App limits, categories, the web filter, places, and more</string>
+
+    <!-- Rules list (rules-UX phase B): the grouped dashboard. -->
+    <string name="rules_status_on">On</string>
+    <string name="rules_status_paused">Paused</string>
+    <string name="rules_section_schedules">Schedules</string>
+    <string name="rules_section_where">Where and near</string>
+    <string name="rules_section_health">Health</string>
+    <string name="rules_section_other">Other rules</string>
+    <string name="rules_section_paused">Paused</string>
+    <plurals name="rules_summary_on">
+        <item quantity="one">%d rule on</item>
+        <item quantity="other">%d rules on</item>
+    </plurals>
+    <plurals name="rules_summary_paused">
+        <item quantity="one">%d paused</item>
+        <item quantity="other">%d paused</item>
+    </plurals>
     <string name="rules_row_goal">Goal and prize</string>
     <string name="rules_row_goal_detail">Something to earn by staying under a target</string>
     <!-- Shown on a rules screen before the PIN is entered (#43): the rules
