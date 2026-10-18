@@ -64,7 +64,7 @@
     <string name="home_rules_header">My rules</string>
     <string name="home_apps_header">Where the time went</string>
     <string name="home_would_block_header">Would be blocked right now</string>
-    <string name="home_edit_rules">Change rules</string>
+    <string name="home_edit_rules">Rules</string>
     <string name="home_no_usage">No screen time recorded yet today.</string>
     <plurals name="home_and_more">
         <item quantity="one">and %d more</item>
@@ -442,7 +442,7 @@
     <string name="home_open_week_detail">Your last seven days</string>
     <string name="home_open_privacy_detail">Exactly what is measured and what is sent</string>
     <string name="home_language_detail">Change the language of this app</string>
-    <string name="home_edit_rules_detail">Limits and settings, behind the parent PIN</string>
+    <string name="home_edit_rules_detail">The daily limit, bedtime, and other rules, behind the parent PIN</string>
 
     <string name="limits_title">Limits</string>
     <string name="rules_group_limits">How much</string>
@@ -462,8 +462,10 @@
     <string name="rules_row_app_limits_detail">A limit for one app on its own</string>
     <string name="rules_row_context">Where and when rules apply</string>
     <string name="rules_row_context_detail">Rules for a Wi-Fi network, a place, or being near someone</string>
-    <string name="rules_row_rules">Rules</string>
-    <string name="rules_row_rules_detail">The daily limit, bedtime, schedules, and rules for where or when they apply</string>
+    <!-- The one door from the rules list across to the controls hub, which no
+         longer links back (rules-UX phase A). -->
+    <string name="rules_more_controls">More controls</string>
+    <string name="rules_more_controls_detail">App limits, categories, the web filter, places, and more</string>
     <string name="rules_row_goal">Goal and prize</string>
     <string name="rules_row_goal_detail">Something to earn by staying under a target</string>
     <!-- Shown on a rules screen before the PIN is entered (#43): the rules
@@ -490,7 +492,7 @@
     <string name="rules_remote_omissions">Some rules can only be changed on the phone itself</string>
 
     <!-- Rules editor. -->
-    <string name="rules_title">Change rules</string>
+    <string name="rules_title">More controls</string>
     <string name="rules_daily_limit_header">Daily limit</string>
     <string name="rules_daily_limit_hint">Drag to zero for no limit. Try 5 minutes to see the warnings work.</string>
     <string name="rules_bedtime_header">Bedtime</string>
@@ -613,7 +615,7 @@
     <string name="parent_row_inbox">Requests</string>
     <string name="parent_row_inbox_detail">Answer asks for more time</string>
     <string name="parent_row_rules">Rules</string>
-    <string name="parent_row_rules_detail">Every rule this family can set, from here</string>
+    <string name="parent_row_rules_detail">The daily limit, bedtime, and rules for where or when they apply</string>
     <string name="parent_row_audit">History</string>
     <string name="parent_row_audit_detail">Everything that has changed, and who changed it</string>
     <string name="parent_row_sync">Family connection</string>

@@ -214,6 +214,25 @@ class ContextRulesActivityTest {
         assertTrue(summary, summary.contains("10"))
     }
 
+    /**
+     * rules-UX phase A: the rules list is reached directly from "Rules" now, so
+     * the controls hub behind it needs its own door from here.
+     */
+    @Test
+    fun `a More controls row offers the rest of what the phone enforces`() {
+        val activity = activity()
+
+        val more = findText(activity, context.getString(R.string.rules_more_controls))
+        assertNotNull("the controls hub should be reachable from the rules list", more)
+
+        clickAncestor(more!!)
+
+        assertEquals(
+            RulesActivity::class.java.name,
+            shadowOf(activity).nextStartedActivity?.component?.className,
+        )
+    }
+
     // ---------- mixed app versions ----------
 
     private fun enrolParent(version: String?) {

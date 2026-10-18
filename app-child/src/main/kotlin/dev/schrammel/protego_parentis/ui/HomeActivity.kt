@@ -279,7 +279,7 @@ class HomeActivity : DementorActivity() {
             HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
             HomeDestination.WEEK -> startActivity(WeekActivity.intent(this))
             HomeDestination.WEB_ACTIVITY -> startActivity(WebActivityActivity.intent(this))
-            HomeDestination.RULES -> startActivity(Intent(this, RulesActivity::class.java))
+            HomeDestination.RULES -> RulesEntry.launch(this)
             HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
             HomeDestination.PRIVACY -> startActivity(PrivacyActivity.intent(this))

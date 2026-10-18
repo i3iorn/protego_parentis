@@ -8,11 +8,17 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.sync.RosterStore
 
 /**
- * Where "edit the rules" from a parent's phone actually goes (#43).
+ * Where "Rules" from a home screen actually goes (#43, rules-UX phase A).
+ *
+ * It opens the rules list ([ContextRulesActivity]) directly, not the controls
+ * hub ([RulesActivity]) — "Rules" has to mean rules, and the hub screen used to
+ * sit in between as a level with no meaning of its own ("Rules → Rules" before
+ * a rule was ever shown). The hub is now reached from the list, under "More
+ * controls".
  *
  * With one managed phone — every family today — this never shows a picker at
- * all: [RulesActivity] opens directly, targeting that one child. Nothing here
- * so much as constructs [RulesetPickerActivity] unless the roster actually
+ * all: [ContextRulesActivity] opens directly, targeting that one child. Nothing
+ * here so much as constructs [RulesetPickerActivity] unless the roster actually
  * holds a second one, which is what keeps a single-child family from ever
  * seeing a hint that a second could exist (the constraint recorded on #43).
  */
@@ -20,7 +26,7 @@ object RulesEntry {
     fun launch(context: Context) {
         val children = RosterStore(context).children()
         if (children.size <= 1) {
-            context.startActivity(RulesActivity.intent(context, children.singleOrNull()?.id))
+            context.startActivity(ContextRulesActivity.intent(context, children.singleOrNull()?.id))
         } else {
             context.startActivity(RulesetPickerActivity.intent(context))
         }
@@ -50,7 +56,7 @@ class RulesetPickerActivity : ParentRoleActivity() {
             group(
                 children.map { child ->
                     navigationRow(title = child.name, subtitle = "") {
-                        startActivity(RulesActivity.intent(this, child.id))
+                        startActivity(ContextRulesActivity.intent(this, child.id))
                     }
                 },
             ),

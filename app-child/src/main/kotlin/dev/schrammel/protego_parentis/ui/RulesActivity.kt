@@ -37,12 +37,14 @@ import dev.schrammel.protego_parentis.ui.rules.RuleTargets
  * here would answer a question about the wrong device entirely.
  *
  * The daily limit, schedules and context rules are one rule engine now (#106)
- * and share one row and one screen ([ContextRulesActivity]), on either kind
- * of phone — [ContextRulesActivity]'s own local/remote split handles the
- * rest. Bonus time still routes to a local screen ([BonusTimeActivity]) when
- * [target] is this device's own, and to the parent-side send-a-message
- * screen ([ParentBonusActivity]) otherwise — the same local/remote split #43
- * already established for every other rule store (#78). Places gets the same
+ * and live together on [ContextRulesActivity], reached directly from "Rules"
+ * on a home screen rather than from here — this hub is the "More controls"
+ * screen *behind* that list (rules-UX phase A), so it no longer carries a row
+ * of its own back to it. Bonus time still routes to a local screen
+ * ([BonusTimeActivity]) when [target] is this device's own, and to the
+ * parent-side send-a-message screen ([ParentBonusActivity]) otherwise — the
+ * same local/remote split #43 already established for every other rule store
+ * (#78). Places gets the same
  * split for the same reason (#86): the arrival-announcement toggle only means anything read on the
  * device doing the arriving, but the saved places themselves are exactly the
  * list Contextual rules already edits remotely, so a remote target gets a
@@ -133,17 +135,6 @@ class RulesActivity : ParentGatedActivity() {
             column,
             getString(R.string.rules_group_day),
             buildList {
-                // #106: the daily limit, named windows, and context rules are one
-                // rule engine now, so they are one row and one screen — the daily
-                // limit itself has no switch, so this row shows whenever either
-                // feature is on rather than needing one of its own.
-                if (enabled(Feature.SCHEDULES) || enabled(Feature.CONTEXT_RULES)) {
-                    add(
-                        row(R.string.rules_row_rules, R.string.rules_row_rules_detail) {
-                            startActivity(ContextRulesActivity.intent(this@RulesActivity, target.childId))
-                        },
-                    )
-                }
                 if (enabled(Feature.PLACES)) {
                     if (target.isOwnDevice) {
                         // Arrival announcements are inherently this phone's own —

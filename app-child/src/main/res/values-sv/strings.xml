@@ -68,7 +68,7 @@
     <string name="home_rules_header">Mina regler</string>
     <string name="home_apps_header">Vart tiden tog vägen</string>
     <string name="home_would_block_header">Skulle blockeras just nu</string>
-    <string name="home_edit_rules">Ändra regler</string>
+    <string name="home_edit_rules">Regler</string>
     <string name="home_no_usage">Ingen skärmtid registrerad i dag än.</string>
     <plurals name="home_and_more">
         <item quantity="one">och %d till</item>
@@ -443,7 +443,7 @@
     <string name="home_open_week_detail">Dina senaste sju dagar</string>
     <string name="home_open_privacy_detail">Exakt vad som mäts och vad som skickas</string>
     <string name="home_language_detail">Byt språk i appen</string>
-    <string name="home_edit_rules_detail">Gränser och inställningar, bakom förälderns PIN-kod</string>
+    <string name="home_edit_rules_detail">Den dagliga gränsen, läggdags och andra regler, bakom förälderns PIN-kod</string>
 
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>
@@ -463,8 +463,8 @@
     <string name="rules_row_app_limits_detail">En gräns för en enskild app</string>
     <string name="rules_row_context">Var och när regler gäller</string>
     <string name="rules_row_context_detail">Regler för ett Wi-Fi-nätverk, en plats eller att vara nära någon</string>
-    <string name="rules_row_rules">Regler</string>
-    <string name="rules_row_rules_detail">Den dagliga gränsen, läggdags, scheman och regler för var eller när de gäller</string>
+    <string name="rules_more_controls">Fler kontroller</string>
+    <string name="rules_more_controls_detail">Appgränser, kategorier, webbfiltret, platser och mer</string>
     <string name="rules_row_goal">Mål och belöning</string>
     <string name="rules_row_goal_detail">Något att förtjäna genom att hålla sig under en gräns</string>
     <string name="rules_read_only_hint">Ange PIN-koden för att göra ändringar.</string>
@@ -483,7 +483,7 @@
     <string name="rules_remote_omissions">Vissa regler kan bara ändras på telefonen själv</string>
 
     <!-- Regler. -->
-    <string name="rules_title">Ändra regler</string>
+    <string name="rules_title">Fler kontroller</string>
     <string name="rules_daily_limit_header">Daglig gräns</string>
     <string name="rules_daily_limit_hint">Dra till noll för ingen gräns. Testa 5 minuter för att se varningarna fungera.</string>
     <string name="rules_bedtime_header">Läggdags</string>
@@ -606,7 +606,7 @@
     <string name="parent_row_inbox">Förfrågningar</string>
     <string name="parent_row_inbox_detail">Svara på önskemål om mer tid</string>
     <string name="parent_row_rules">Regler</string>
-    <string name="parent_row_rules_detail">Alla regler familjen kan ställa in, härifrån</string>
+    <string name="parent_row_rules_detail">Den dagliga gränsen, läggdags och regler för var eller när de gäller</string>
     <string name="parent_row_audit">Historik</string>
     <string name="parent_row_audit_detail">Allt som ändrats, och vem som ändrade det</string>
     <string name="parent_row_sync">Familjeanslutning</string>
