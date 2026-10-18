@@ -75,8 +75,8 @@ android {
         applicationId = "dev.schrammel.protego_parentis"
         minSdk = 33
         targetSdk = 37
-        versionCode = 52
-        versionName = "1.3.2"
+        versionCode = 53
+        versionName = "1.4.0"
     }
 
     signingConfigs {
@@ -171,6 +171,23 @@ kotlin {
     }
 }
 
+/**
+ * Robolectric reaches into `jdk.internal.access` to build an Android
+ * `FileDescriptor`. The JDK has not exported that package since 17, so without
+ * these the whole Robolectric suite fails during setup with an
+ * `IllegalAccessException` before any test body runs — which is exactly what
+ * happened on JDK 21. The opens are the set Robolectric's own documentation
+ * lists for a modern JDK.
+ */
+tasks.withType<Test>().configureEach {
+    jvmArgs(
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+    )
+}
+
 dependencies {
     implementation(project(":core-policy"))
     implementation(project(":core-provisioning"))
@@ -182,6 +199,7 @@ dependencies {
     implementation(project(":format"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.work)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.camera.core)

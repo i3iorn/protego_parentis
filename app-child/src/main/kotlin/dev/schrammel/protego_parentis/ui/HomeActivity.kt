@@ -3,7 +3,7 @@ package dev.schrammel.protego_parentis.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -11,7 +11,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
@@ -44,6 +43,11 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  *
  * Shows exactly what a parent would see, in the same detail — that symmetry is
  * the product's central promise, so this screen hides nothing and softens nothing.
+ *
+ * Built in code rather than from a layout file, the same way [ParentHomeActivity]
+ * and [SettingsActivity] are: one screen had a layout shell and the others did
+ * not, which meant two places to change for one dashboard and a static title that
+ * never joined the accessibility heading tree the built titles use.
  */
 class HomeActivity : DementorActivity() {
 
@@ -51,6 +55,15 @@ class HomeActivity : DementorActivity() {
     private lateinit var installedApps: InstalledApps
     private lateinit var goals: GoalCoordinator
 
+    private lateinit var column: LinearLayout
+    private lateinit var permissionCard: LinearLayout
+    private lateinit var summaryHolder: LinearLayout
+    private lateinit var navigation: LinearLayout
+    private lateinit var familyBannerHolder: LinearLayout
+    private lateinit var activityBannerHolder: LinearLayout
+    private lateinit var rulesList: LinearLayout
+    private lateinit var blockedList: LinearLayout
+    private lateinit var appList: LinearLayout
 
     /**
      * Set when this launch was handed to another screen.
@@ -100,22 +113,12 @@ class HomeActivity : DementorActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (routeByRole()) return
-        setContentView(R.layout.activity_home)
 
         coordinator = EnforcementCoordinator(this)
         installedApps = InstalledApps(this)
         goals = GoalCoordinator(this)
 
-        findViewById<Button>(R.id.permission_button).setOnClickListener {
-            // To the instructions rather than straight to Settings. Dropping
-            // somebody into a list of every app on the phone, with no note of
-            // what they are looking for or what the switch does, was the step
-            // that lost people.
-            startActivity(PermissionsActivity.intent(this))
-        }
-        findViewById<Button>(R.id.sos_button).setOnClickListener {
-            startActivity(SosActivity.intent(this))
-        }
+        buildLayout()
         buildNavigation()
     }
 
@@ -150,6 +153,99 @@ class HomeActivity : DementorActivity() {
     }
 
     /**
+     * The screen's skeleton, built once. Only the summary card and the three
+     * lists below it are refilled on each render; the rest is fixed.
+     */
+    private fun buildLayout() {
+        column = contentColumn()
+        column.addView(screenTitle(getString(R.string.home_title)))
+
+        permissionCard = card {
+            addView(
+                TextView(context).apply {
+                    text = getString(R.string.home_permission_title)
+                    styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                },
+            )
+            addView(bodyText(getString(R.string.home_permission_body)))
+            addView(
+                primaryActionButton().apply {
+                    setText(R.string.home_permission_button)
+                    setOnClickListener {
+                        // To the instructions rather than straight to Settings.
+                        // Dropping somebody into a list of every app on the phone,
+                        // with no note of what they are looking for or what the
+                        // switch does, was the step that lost people.
+                        startActivity(PermissionsActivity.intent(this@HomeActivity))
+                    }
+                },
+            )
+        }.apply { visibility = View.GONE }
+        column.addView(permissionCard)
+
+        // Filled in asynchronously, so they are placeholders until an answer
+        // arrives — see renderFamilyBanner and renderActivityBanner.
+        familyBannerHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(familyBannerHolder)
+        activityBannerHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(activityBannerHolder)
+
+        summaryHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(summaryHolder)
+
+        column.addView(sosButton())
+
+        navigation = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                topMargin = dimen(R.dimen.space_lg)
+            }
+        }
+        column.addView(navigation)
+
+        column.addView(sectionHeader(getString(R.string.home_rules_header)))
+        rulesList = groupSurface()
+        column.addView(rulesList)
+
+        column.addView(sectionHeader(getString(R.string.home_would_block_header)))
+        blockedList = groupSurface()
+        column.addView(blockedList)
+
+        column.addView(sectionHeader(getString(R.string.home_apps_header)))
+        appList = groupSurface()
+        column.addView(appList)
+
+        showColumn(column)
+    }
+
+    /**
+     * The emergency entry point (LOC-3).
+     *
+     * Above the navigation and outside any list, because it has to be found by
+     * someone who is not reading. It works with every app suspended and the
+     * day's allowance spent: a safety feature behind a limit is not one. Raising
+     * it is guarded inside [SosActivity], not here — this button only opens the
+     * screen that explains what will happen.
+     */
+    private fun sosButton(): Button = destructiveActionButton().apply {
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+            topMargin = dimen(R.dimen.space_xl)
+        }
+        setTypeface(typeface, Typeface.BOLD)
+        setText(R.string.sos_button)
+        setOnClickListener { startActivity(SosActivity.intent(this@HomeActivity)) }
+    }
+
+    /** A group surface for a list of rows — the code equivalent of `Widget.Dementor.Group`. */
+    private fun groupSurface(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundResource(R.drawable.card)
+        val side = dimen(R.dimen.card_padding)
+        setPadding(side, dimen(R.dimen.space_sm), side, dimen(R.dimen.space_sm))
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+    }
+
+    /**
      * Where this screen leads.
      *
      * Grouped the same way [ParentHomeActivity] is now (#78): whatever this
@@ -159,7 +255,6 @@ class HomeActivity : DementorActivity() {
      * opens.
      */
     private fun buildNavigation() {
-        val navigation = findViewById<LinearLayout>(R.id.navigation)
         navigation.removeAllViews()
 
         homeSections(
@@ -169,7 +264,11 @@ class HomeActivity : DementorActivity() {
             addSection(
                 navigation,
                 section.label?.let(::getString),
-                section.rows.map { entry -> row(entry.title, entry.detail) { open(entry.destination) } },
+                section.rows.map { entry ->
+                    row(entry.title, entry.detail, showChevron = !entry.destination.isAction) {
+                        open(entry.destination)
+                    }
+                },
             )
         }
     }
@@ -202,13 +301,12 @@ class HomeActivity : DementorActivity() {
      * parent's phone would be telling the wrong half of the room.
      */
     private fun renderFamilyBanner() {
-        val holder = findViewById<LinearLayout>(R.id.family_banner)
-        holder.removeAllViews()
+        familyBannerHolder.removeAllViews()
         Background.load(this, { FamilyStatus.read(this) to RuleVersionWarning.read(this) }) { (snapshot, versions) ->
             ruleVersionBanner(versions) { startActivity(FamilyDevicesActivity.intent(this)) }
-                ?.let(holder::addView)
+                ?.let(familyBannerHolder::addView)
             familyBanner(snapshot) { startActivity(FamilyDevicesActivity.intent(this)) }
-                ?.let(holder::addView)
+                ?.let(familyBannerHolder::addView)
         }
     }
 
@@ -232,14 +330,13 @@ class HomeActivity : DementorActivity() {
      * histories a family could disagree about.
      */
     private fun renderActivityBanner() {
-        val holder = findViewById<LinearLayout>(R.id.activity_banner)
-        holder.removeAllViews()
+        activityBannerHolder.removeAllViews()
         Background.load(this, {
             val entries = Audit.entries(this)
             ActivitySeenTracker(this).unseen(entries).size
         }) { count ->
             activityBanner(count) { startActivity(AuditActivity.intent(this)) }
-                ?.let(holder::addView)
+                ?.let(activityBannerHolder::addView)
         }
     }
 
@@ -283,16 +380,14 @@ class HomeActivity : DementorActivity() {
     private fun show(snapshot: EnforcementSnapshot?) {
         val needsPermission = snapshot == null
 
-        findViewById<View>(R.id.permission_card).visibility =
-            if (needsPermission) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.summary_card).visibility =
-            if (needsPermission) View.GONE else View.VISIBLE
+        permissionCard.visibility = if (needsPermission) View.VISIBLE else View.GONE
+        summaryHolder.visibility = if (needsPermission) View.GONE else View.VISIBLE
 
         renderRules()
 
         if (snapshot == null) {
-            clear(R.id.blocked_list)
-            clear(R.id.app_list)
+            clear(blockedList)
+            clear(appList)
             return
         }
 
@@ -314,7 +409,7 @@ class HomeActivity : DementorActivity() {
         val active = snapshot.enforcement.activeContextRules
         if (active.isEmpty()) return
 
-        findViewById<LinearLayout>(R.id.rules_list).addView(
+        rulesList.addView(
             line(getString(R.string.home_context_active, active.joinToString(", ") { it.name })),
         )
     }
@@ -328,13 +423,12 @@ class HomeActivity : DementorActivity() {
      * explaining the absence of a feature the family never turned on.
      */
     private fun renderCategoryBudgets(snapshot: EnforcementSnapshot) {
-        val container = findViewById<LinearLayout>(R.id.rules_list)
         val categories = snapshot.policy.categories
         if (categories.isEmpty()) return
 
         categories.sortedBy { it.name.lowercase() }.forEach { category ->
             val budget = snapshot.enforcement.categoryBudgets[category.id]
-            container.addView(
+            rulesList.addView(
                 line(
                     when {
                         budget == null || budget.isUnlimited ->
@@ -354,61 +448,64 @@ class HomeActivity : DementorActivity() {
         }
     }
 
+    /**
+     * The one answer the screen exists to give, rebuilt into [summaryHolder] on
+     * every render. The surface and the colour come from [budgetSummaryCard];
+     * this method only decides the words and the bar's fill.
+     */
     private fun renderSummary(snapshot: EnforcementSnapshot) {
         val budget = snapshot.enforcement.deviceBudget
-        val headline = findViewById<TextView>(R.id.headline)
-        val subline = findViewById<TextView>(R.id.subline)
-        val bar = findViewById<ProgressBar>(R.id.budget_bar)
+        summaryHolder.removeAllViews()
+
+        val headline: String
+        val subline: String
+        val progress: Int?
 
         when {
             budget.isUnlimited -> {
-                headline.text = getString(R.string.home_no_limit_headline)
-                subline.text = getString(
-                    R.string.home_used_no_limit,
-                    formatDuration(budget.used),
-                )
-                bar.visibility = View.GONE
-                tintText(headline, BudgetLevel.NORMAL)
+                headline = getString(R.string.home_no_limit_headline)
+                subline = getString(R.string.home_used_no_limit, formatDuration(budget.used))
+                progress = null
             }
 
             budget.level == BudgetLevel.EXHAUSTED -> {
-                headline.text = getString(R.string.home_used_up)
+                headline = getString(R.string.home_used_up)
                 // Says what was used up, not just that it was: the headline is the
                 // one thing read from across the room, and "time's up" with no
                 // cause sends a reader hunting through the rules list below for
                 // the number that already explains it.
-                subline.text = getString(
+                subline = getString(
                     R.string.home_used_up_detail,
                     formatDuration(budget.allowed + budget.bonus),
                 )
-                bar.visibility = View.VISIBLE
-                bar.progress = 100
-                tint(bar, BudgetLevel.EXHAUSTED)
-                tintText(headline, BudgetLevel.EXHAUSTED)
+                progress = 100
             }
 
             else -> {
-                headline.text = getString(
-                    R.string.home_remaining,
-                    formatDuration(budget.remaining),
-                )
-                subline.text = getString(
+                headline = getString(R.string.home_remaining, formatDuration(budget.remaining))
+                subline = getString(
                     R.string.home_used_of,
                     formatDuration(budget.used),
                     formatDuration(budget.allowed + budget.bonus),
                 )
-                bar.visibility = View.VISIBLE
-                bar.progress = percentUsed(
+                progress = percentUsed(
                     budget.used.inWholeMinutes.toInt(),
                     (budget.allowed + budget.bonus).inWholeMinutes.toInt(),
                 )
-                tint(bar, budget.level)
-                tintText(headline, budget.level)
             }
         }
 
-        findViewById<TextView>(R.id.mode_note).setText(
+        val note = getString(
             if (snapshot.monitorOnly) R.string.home_monitor_only else R.string.home_managed,
+        )
+        summaryHolder.addView(
+            budgetSummaryCard(
+                headline,
+                budget.level,
+                progress,
+                subline = subline,
+                note = note
+            )
         )
     }
 
@@ -422,7 +519,7 @@ class HomeActivity : DementorActivity() {
      * field nothing edits any more.
      */
     private fun renderRules() {
-        val container = clear(R.id.rules_list)
+        val container = clear(rulesList)
         val rules = AppRegistry.childStores.contextRules.rules
 
         val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
@@ -458,8 +555,7 @@ class HomeActivity : DementorActivity() {
     /**
      * #207: this list used to be inert on purpose — "those are the apps that
      * will not open, and offering a row that refuses is worse than not
-     * offering one" (see [renderUsage]'s own doc comment for the reasoning
-     * that shaped it). But staring at an app you cannot open and cannot do
+     * offering one". But staring at an app you cannot open and cannot do
      * anything about is exactly what this list otherwise leaves a child
      * with, so each row is now tappable too — to Android's own uninstall
      * confirmation, not straight to opening the app it still refuses to
@@ -467,7 +563,7 @@ class HomeActivity : DementorActivity() {
      * still finds out: see [AuditAction.APP_UNINSTALLED_BY_CHILD].
      */
     private fun renderBlocked(snapshot: EnforcementSnapshot) {
-        val container = clear(R.id.blocked_list)
+        val container = clear(blockedList)
         val blocked = snapshot.enforcement.suspend + snapshot.enforcement.deferred
 
         if (blocked.isEmpty()) {
@@ -506,7 +602,7 @@ class HomeActivity : DementorActivity() {
     }
 
     private fun renderUsage(snapshot: EnforcementSnapshot) {
-        val container = clear(R.id.app_list)
+        val container = clear(appList)
         val byPackage = snapshot.usage.snapshot.byPackage
             .entries
             .sortedByDescending { it.value }
@@ -518,10 +614,7 @@ class HomeActivity : DementorActivity() {
         }
 
         // Openable, because a list of what you have been using that will not take
-        // you to any of it is a list that answers a question nobody asked. The
-        // blocked list above stays inert on purpose — those are the apps that
-        // will not open, and offering a row that refuses is worse than not
-        // offering one.
+        // you to any of it is a list that answers a question nobody asked.
         byPackage.forEach { (pkg, time) ->
             container.addView(row(pkg, formatDuration(time), openable = true))
         }
@@ -549,8 +642,7 @@ class HomeActivity : DementorActivity() {
 
     // ---------- small view helpers ----------
 
-    private fun clear(id: Int): LinearLayout =
-        findViewById<LinearLayout>(id).apply { removeAllViews() }
+    private fun clear(container: LinearLayout): LinearLayout = container.apply { removeAllViews() }
 
     private fun line(text: String) = TextView(this).apply {
         this.text = text
@@ -604,6 +696,22 @@ class HomeActivity : DementorActivity() {
                     trailingColor?.let { setTextColor(ContextCompat.getColor(context, it)) }
                 },
             )
+            if (uninstallable) {
+                addView(
+                    ImageView(context).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            dimen(R.dimen.row_icon_small),
+                            dimen(R.dimen.row_icon_small)
+                        ).apply {
+                            marginStart = dimen(R.dimen.space_sm)
+                        }
+                        setImageResource(R.drawable.ic_remove)
+                        // Decorative: the trailing line already says "tap to uninstall".
+                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                        contentDescription = null
+                    },
+                )
+            }
         }
     }
 
@@ -638,19 +746,6 @@ class HomeActivity : DementorActivity() {
     private fun View.makeUninstallable(pkg: PackageName) {
         withRipple()
         setOnClickListener { requestUninstall(pkg) }
-    }
-
-    private fun tint(bar: ProgressBar, level: BudgetLevel) {
-        bar.progressTintList =
-            ColorStateList.valueOf(ContextCompat.getColor(this, colourFor(level)))
-    }
-
-    /**
-     * The number itself takes the state colour, not only the bar beneath it.
-     * "Nearly out" should be readable from across a room.
-     */
-    private fun tintText(view: TextView, level: BudgetLevel) {
-        view.setTextColor(ContextCompat.getColor(this, colourFor(level)))
     }
 
     private companion object {

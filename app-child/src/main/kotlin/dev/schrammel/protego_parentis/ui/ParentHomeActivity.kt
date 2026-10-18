@@ -2,13 +2,12 @@ package dev.schrammel.protego_parentis.ui
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.ActivitySeenTracker
 import dev.schrammel.protego_parentis.audit.Audit
@@ -46,6 +45,7 @@ class ParentHomeActivity : ParentRoleActivity() {
     private lateinit var inbox: InboxStore
     private lateinit var summaries: DailySummaryStore
     private lateinit var column: LinearLayout
+    private lateinit var refresh: SwipeRefreshLayout
 
     /** Null until this phone has successfully reached the topic in this session. */
     private var lastCheckedAt: Instant? = null
@@ -63,7 +63,8 @@ class ParentHomeActivity : ParentRoleActivity() {
         RealtimeSyncService.start(this)
 
         column = contentColumn()
-        showColumn(column)
+        refresh = showRefreshableColumn(column)
+        refresh.setOnRefreshListener { pollQuietly() }
     }
 
     override fun onParentPhoneResumed() {
@@ -149,7 +150,11 @@ class ParentHomeActivity : ParentRoleActivity() {
             addSection(
                 column,
                 section.label?.let(::getString),
-                section.rows.map { entry -> row(entry.title, entry.detail) { open(entry.destination) } },
+                section.rows.map { entry ->
+                    row(entry.title, entry.detail, showChevron = !entry.destination.isAction) {
+                        open(entry.destination)
+                    }
+                },
             )
         }
     }
@@ -200,67 +205,54 @@ class ParentHomeActivity : ParentRoleActivity() {
      * child sees on their own dashboard — that symmetry is the product's central
      * promise, so this screen shows no more and no less.
      */
-    private fun todayCard(): LinearLayout = card {
+    private fun todayCard(): LinearLayout {
         val today = summaries.latest
         if (today == null) {
+            return card {
+                addView(
+                    TextView(context).apply {
+                        setText(R.string.parent_today_none)
+                        styleAs(R.style.TextAppearance_Dementor_Subtitle)
+                    },
+                )
+                addView(captionText(getString(R.string.parent_today_none_hint)))
+            }
+        }
+
+        // The level travels as an ordinal so a parent phone needs no copy of the
+        // rules to colour it. An unrecognised value reads as normal rather than as
+        // an alarm — a newer child build must not make this screen shout.
+        val level = BudgetLevel.entries.getOrNull(today.level) ?: BudgetLevel.NORMAL
+        val progress = if (today.hasLimit) {
+            percentUsed(today.usedMinutes, today.allowedMinutes + today.bonusMinutes)
+        } else {
+            null
+        }
+
+        return budgetSummaryCard(headlineFor(today), level, progress).apply {
             addView(
-                TextView(this@ParentHomeActivity).apply {
-                    setText(R.string.parent_today_none)
-                    styleAs(R.style.TextAppearance_Dementor_Subtitle)
-                },
-            )
-            addView(captionText(getString(R.string.parent_today_none_hint)))
-            return@card
-        }
-
-        addView(
-            TextView(this@ParentHomeActivity).apply {
-                text = headlineFor(today)
-                styleAs(R.style.TextAppearance_Dementor_Display)
-                setTextColor(ContextCompat.getColor(context, colourFor(today)))
-            },
-        )
-
-        if (today.hasLimit) {
-            addView(
-                ProgressBar(
-                    this@ParentHomeActivity,
-                    null,
-                    android.R.attr.progressBarStyleHorizontal,
-                ).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dimen(R.dimen.budget_bar_height),
-                    ).apply { topMargin = dimen(R.dimen.space_md) }
-                    max = 100
-                    progress = percentUsed(today)
-                    progressTintList = ColorStateList.valueOf(
-                        ContextCompat.getColor(context, colourFor(today)),
-                    )
-                },
-            )
-        }
-
-        addView(
-            statRow(
-                getString(R.string.parent_today_used),
-                formatLimit(today.usedMinutes),
-            ),
-        )
-
-        if (today.topApps.isNotEmpty()) {
-            addView(captionText(getString(R.string.parent_today_apps)))
-            addCollapsibleRows(this, today.topApps.map { statRow(it.label, formatLimit(it.minutes)) })
-        }
-
-        addView(
-            captionText(
-                getString(
-                    R.string.parent_today_as_of,
-                    formatTime(today.receivedAt),
+                statRow(
+                    getString(R.string.parent_today_used),
+                    formatLimit(today.usedMinutes),
                 ),
-            ),
-        )
+            )
+
+            if (today.topApps.isNotEmpty()) {
+                addView(captionText(getString(R.string.parent_today_apps)))
+                addCollapsibleRows(
+                    this,
+                    today.topApps.map { statRow(it.label, formatLimit(it.minutes)) })
+            }
+
+            addView(
+                captionText(
+                    getString(
+                        R.string.parent_today_as_of,
+                        formatTime(today.receivedAt),
+                    ),
+                ),
+            )
+        }
     }
 
     private fun headlineFor(today: DailySummary): String = when {
@@ -268,18 +260,6 @@ class ParentHomeActivity : ParentRoleActivity() {
         today.remainingMinutes <= 0 -> getString(R.string.home_used_up)
         else -> getString(R.string.parent_today_remaining) + " " + formatLimit(today.remainingMinutes)
     }
-
-    /**
-     * The level travels as an ordinal so a parent phone needs no copy of the
-     * rules to colour it. An unrecognised value reads as normal rather than as
-     * an alarm — a newer child build must not make this screen shout. The colour
-     * itself comes from the same [colourFor] the child's own dashboard uses.
-     */
-    private fun colourFor(today: DailySummary): Int =
-        colourFor(BudgetLevel.entries.getOrNull(today.level) ?: BudgetLevel.NORMAL)
-
-    private fun percentUsed(today: DailySummary): Int =
-        percentUsed(today.usedMinutes, today.allowedMinutes + today.bonusMinutes)
 
     /**
      * Confirmed, because it is the one button here that reaches across and changes
@@ -363,11 +343,17 @@ class ParentHomeActivity : ParentRoleActivity() {
      * before touching a view.
      */
     private fun pollQuietly() {
-        if (!sync.settings().isUsable) return
+        if (!sync.settings().isUsable) {
+            // Nothing to poll, so a spinner a pull-to-refresh started must not
+            // be left turning forever.
+            refresh.isRefreshing = false
+            return
+        }
         sync.pollNow {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 lastCheckedAt = Instant.now()
+                refresh.isRefreshing = false
                 render()
             }
         }

@@ -4,6 +4,7 @@ kotlin = "2.4.20"
 coreKtx = "1.19.1"
 junit = "4.13.2"
 appcompat = "1.8.0"
+swiperefreshlayout = "1.1.0"
 json = "20260814"
 work = "2.12.0"
 biometric = "1.1.0"
@@ -16,6 +17,9 @@ kover = "0.9.9"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+# Pull-to-refresh: the standard gesture, on the one screen a parent opens
+# expecting news from the other phone.
+androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 # The real org.json, for unit tests. Android ships only stubs that throw, so a
 # store that serialises with JSONObject is otherwise untestable off-device.
 json = { group = "org.json", name = "json", version.ref = "json" }

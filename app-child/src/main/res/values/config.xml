@@ -9,7 +9,7 @@
     <!-- How many rows a dashboard list shows before it summarises the rest. With
          a device-wide limit reached, every installed app is technically blocked,
          and a wall of two hundred rows tells the reader nothing. -->
-    <integer name="dashboard_max_rows">12</integer>
+    <integer name="dashboard_max_rows">8</integer>
 
     <!-- The window the weekly view covers, and the window it compares against. -->
     <integer name="week_length_days">7</integer>

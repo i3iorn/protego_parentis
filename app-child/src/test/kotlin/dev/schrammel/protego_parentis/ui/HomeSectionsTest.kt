@@ -116,6 +116,20 @@ class HomeSectionsTest {
         }
     }
 
+    /**
+     * "Lock now" and "Locate" run a local action rather than opening a screen,
+     * so the row carries no chevron — see [HomeDestination.isAction].
+     */
+    @Test
+    fun `only lock and locate are actions, everything else is a screen`() {
+        assertTrue(HomeDestination.LOCK_NOW.isAction)
+        assertTrue(HomeDestination.LOCATE.isAction)
+
+        HomeDestination.entries
+            .filter { it != HomeDestination.LOCK_NOW && it != HomeDestination.LOCATE }
+            .forEach { assertFalse("$it should be a screen, not an action", it.isAction) }
+    }
+
     private fun destinationsFor(role: DeviceRole) = destinations(role, allOn())
 
     private fun destinations(role: DeviceRole, flags: FeatureFlags) =

@@ -1,9 +1,14 @@
 package dev.schrammel.protego_parentis.ui
 
 import android.content.Context
+import android.view.View
+import android.view.accessibility.AccessibilityEvent
 import android.widget.TextView
 import androidx.annotation.DimenRes
 import androidx.annotation.StyleRes
+import androidx.core.view.AccessibilityDelegateCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 
 /**
  * Resolves a dimension resource to pixels.
@@ -18,6 +23,41 @@ internal fun Context.dimen(@DimenRes id: Int): Int = resources.getDimensionPixel
 internal fun TextView.styleAs(@StyleRes appearance: Int): TextView = apply {
     setTextAppearance(appearance)
 }
+
+/**
+ * Makes a slider announce [spoken] rather than its raw percentage.
+ *
+ * A bare `SeekBar` reports its value to TalkBack as "50 percent" — useless for a
+ * control whose whole purpose is choosing minutes. The delegate replaces both the
+ * node's text (what focus announces) and its event text (what a change announces)
+ * with the same string the visible label shows.
+ */
+internal fun View.bindAccessibleValue(spoken: () -> String) {
+    ViewCompat.setAccessibilityDelegate(this, accessibleValueDelegate(spoken))
+}
+
+/**
+ * The delegate [bindAccessibleValue] installs, exposed so its two overrides can
+ * be tested directly without a live accessibility service — Robolectric will not
+ * call them on its own.
+ */
+internal fun accessibleValueDelegate(spoken: () -> String): AccessibilityDelegateCompat =
+    object : AccessibilityDelegateCompat() {
+        override fun onInitializeAccessibilityNodeInfo(
+            host: View,
+            info: AccessibilityNodeInfoCompat
+        ) {
+            super.onInitializeAccessibilityNodeInfo(host, info)
+            info.text = spoken()
+            info.contentDescription = spoken()
+        }
+
+        override fun onPopulateAccessibilityEvent(host: View, event: AccessibilityEvent) {
+            super.onPopulateAccessibilityEvent(host, event)
+            event.text.clear()
+            event.text.add(spoken())
+        }
+    }
 
 /**
  * The shared configuration of every "how many minutes?" slider.

@@ -43,6 +43,16 @@ internal enum class HomeDestination {
     AUDIT,
     PRIVACY,
     SETTINGS,
+    ;
+
+    /**
+     * True for a destination that runs a local action rather than opening a
+     * screen — [LOCK_NOW] and [LOCATE]. Those are rendered as a row without a
+     * chevron, because a chevron promises somewhere else to go and tapping them
+     * does not.
+     */
+    val isAction: Boolean
+        get() = this == LOCK_NOW || this == LOCATE
 }
 
 internal data class HomeRow(
