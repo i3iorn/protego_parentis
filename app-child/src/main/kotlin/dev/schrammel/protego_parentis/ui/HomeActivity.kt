@@ -62,6 +62,7 @@ class HomeActivity : DementorActivity() {
     private lateinit var navigation: LinearLayout
     private lateinit var familyBannerHolder: LinearLayout
     private lateinit var activityBannerHolder: LinearLayout
+    private lateinit var lockStatusCardHolder: LinearLayout
     private lateinit var rulesList: LinearLayout
     private lateinit var blockedList: LinearLayout
     private lateinit var appList: LinearLayout
@@ -190,6 +191,9 @@ class HomeActivity : DementorActivity() {
         column.addView(familyBannerHolder)
         activityBannerHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(activityBannerHolder)
+
+        lockStatusCardHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(lockStatusCardHolder)
 
         summaryHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         // A loading line rather than blank: the summary arrives off the main
@@ -396,9 +400,11 @@ class HomeActivity : DementorActivity() {
         if (snapshot == null) {
             clear(blockedList)
             clear(appList)
+            clear(lockStatusCardHolder)
             return
         }
 
+        renderLockStatusCard(snapshot)
         renderSummary(snapshot)
         renderActiveRules(snapshot)
         renderCategoryBudgets(snapshot)
@@ -475,6 +481,16 @@ class HomeActivity : DementorActivity() {
                 ),
             )
         }
+    }
+
+    /**
+     * The one card that answers "why is my phone locked" and "when does it
+     * open again" — the first thing on the screen. It renders only when the
+     * phone is restricted; a card standing over "everything is fine" is noise.
+     */
+    private fun renderLockStatusCard(snapshot: EnforcementSnapshot) {
+        lockStatusCardHolder.removeAllViews()
+        lockStatusCard(snapshot)?.let { lockStatusCardHolder.addView(it) }
     }
 
     /**

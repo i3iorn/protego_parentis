@@ -171,7 +171,7 @@ internal class RuleDescriber(
 /**
  * Every leaf of a condition tree in tree order, keeping negations where they
  * are written: a leaf's phrase is exactly the row its editor shows, so "not on
- * school Wi-Fi" stays negated here, while [conditionToFamily] reads through
+ * school Wi-Fi" stays negated here, while [RuleKind.of] reads through
  * the negation to keep calling the rule about Wi-Fi.
  */
 private fun leavesOf(condition: Condition): List<Condition> = when (condition) {

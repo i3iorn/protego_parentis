@@ -1507,4 +1507,14 @@
     <string name="rules_tutorial_target_everything_except">everything, except a few chosen apps</string>
     <!-- What a locked screen shows instead of a notification's content (#292). -->
     <string name="notification_locked_placeholder">Unlock to see this notification.</string>
+
+    <!-- Lock status card (HOME-UX phase 1). -->
+    <string name="lock_status_emergency">Emergency is on</string>
+    <string name="lock_status_emergency_body">A parent turned this on. It is not on a timer.</string>
+    <string name="lock_status_budget">Time\'s up for today</string>
+    <string name="lock_status_rule">Locked by %1$s</string>
+    <string name="lock_status_rule_until_parent">Opens again when the rule no longer applies — a parent can lift it too.</string>
+    <string name="lock_status_opens_in">Opens again in %1$s</string>
+    <string name="lock_status_opens_at">Opens again at %1$s</string>
+    <string name="lock_status_countdown">%1$s — at %2$s</string>
 </resources>

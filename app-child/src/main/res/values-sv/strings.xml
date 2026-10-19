@@ -1483,4 +1483,14 @@
     <string name="rules_tutorial_target_everything_except">allt, utom några få valda appar</string>
     <!-- What a locked screen shows instead of a notification's content (#292). -->
     <string name="notification_locked_placeholder">Lås upp för att se aviseringen.</string>
+
+    <!-- Kortet som svarar på "varför är telefonen låst". -->
+    <string name="lock_status_emergency">Nödläge är på</string>
+    <string name="lock_status_emergency_body">En förälder slog på det här. Det går inte på timer.</string>
+    <string name="lock_status_budget">Tiden är slut för idag</string>
+    <string name="lock_status_rule">Låst av %1$s</string>
+    <string name="lock_status_rule_until_parent">Öppnas igen när regeln inte gäller längre — en förälder kan också lyfta den.</string>
+    <string name="lock_status_opens_in">Öppnas igen om %1$s</string>
+    <string name="lock_status_opens_at">Öppnas igen kl %1$s</string>
+    <string name="lock_status_countdown">%1$s — kl %2$s</string>
 </resources>
