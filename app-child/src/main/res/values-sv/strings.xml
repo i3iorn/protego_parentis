@@ -120,6 +120,7 @@
     <string name="context_rules_info_title">Om regler</string>
     <string name="context_rules_info_body">Varje regel har ett villkor (när den gäller), en effekt (vad den gör) och ett mål (vem den gäller).</string>
     <string name="context_no_rules">Inga regler än.</string>
+    <string name="context_search_hint">Sök…</string>
     <string name="context_search_empty">Inga regler matchar sökningen.</string>
     <string name="context_add_rule">Lägg till en regel</string>
     <string name="context_rule_summary">%1$s → %2$s %3$s</string>

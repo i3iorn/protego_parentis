@@ -117,6 +117,7 @@
     <string name="context_rules_info_title">About rules</string>
     <string name="context_rules_info_body">Every rule has a condition (when it applies), an effect (what it does) and a target (who it applies to).</string>
     <string name="context_no_rules">No rules yet.</string>
+    <string name="context_search_hint">Search…</string>
     <string name="context_search_empty">No rules match that search.</string>
     <string name="context_add_rule">Add a rule</string>
     <string name="context_rule_summary">%1$s → %2$s %3$s</string>
