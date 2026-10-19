@@ -33,9 +33,11 @@ import kotlin.time.Duration.Companion.minutes
  * 2. **Device budget exhausted** — "time's up for today", with the day-boundary
  *    reset (`Enforcement.nextChangeAt`) as the countdown.
  * 3. **A contextual rule is applying** — the rule's name + when it lifts
- *    (`Reason.ContextRuleActive.liftsAt`); a rule whose condition cannot say
- *    when it ends (Wi-Fi, place) keeps the countdown out rather than showing a
- *    wrong one.
+ *    (`Reason.ContextRuleActive.liftsAt`); when several rules apply at once,
+ *    the one lifting soonest is the headline, because that is the answer the
+ *    reader is standing inside — and a rule whose condition cannot say when it
+ *    ends (Wi-Fi, place) keeps the countdown out rather than showing a wrong
+ *    one, losing the headline only to a rule that can actually name its end.
  * 4. **Bedtime window active** — same shape as any other rule; the window's
  *    own end is its countdown.
  * 5. **Nothing restricted** — the card does not render at all. A status card
@@ -67,6 +69,8 @@ internal fun Activity.lockStatusCard(snapshot: EnforcementSnapshot): View? {
         else -> {
             val rule = enforcement.suspend.values
                 .filterIsInstance<Reason.ContextRuleActive>()
+                .filter { it.liftsAt != null }
+                .sortedBy { it.liftsAt }
                 .firstOrNull()
                 ?: return null
             headline = getString(R.string.lock_status_rule, rule.ruleName)

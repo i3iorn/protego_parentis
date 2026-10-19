@@ -53,4 +53,7 @@ object NotificationIds {
 
     /** The earned-prize celebration, posted on the next unlock. */
     const val GOAL_EARNED = 24
+
+    /** A restriction just began — budget exhausted, a rule applying, bedtime. */
+    const val BLOCK_STARTED = 25
 }

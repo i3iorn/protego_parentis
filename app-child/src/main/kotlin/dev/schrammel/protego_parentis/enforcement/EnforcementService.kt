@@ -63,6 +63,7 @@ class EnforcementService : Service() {
     }
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var warnings: WarningNotifier
+    private lateinit var blocks: BlockNotifier
     private lateinit var goals: GoalCoordinator
     private lateinit var goalNotifier: GoalNotifier
     private lateinit var review: AppReviewStore
@@ -188,6 +189,7 @@ class EnforcementService : Service() {
         installedApps = InstalledApps(this)
         requestNotifier = RequestNotifier(this)
         warnings = WarningNotifier(this)
+        blocks = BlockNotifier(this)
         goals = GoalCoordinator(this)
         goalNotifier = GoalNotifier(this)
         // The managed phone streams too, so a parent's decision, a bonus, a daily
@@ -201,6 +203,7 @@ class EnforcementService : Service() {
             coordinator = coordinator,
             sync = AppRegistry.realtimeSync,
             warnings = warnings,
+            blocks = blocks,
             review = review,
             installedApps = installedApps,
             requestNotifier = requestNotifier,

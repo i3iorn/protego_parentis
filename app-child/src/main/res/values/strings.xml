@@ -71,11 +71,11 @@
         <item quantity="other">and %d more</item>
     </plurals>
     <string name="home_nothing_blocked">Nothing is blocked right now.</string>
-    <string name="home_rule_limit">Daily limit: %1$s</string>
-    <string name="home_rule_no_limit">No daily limit</string>
-    <string name="home_rule_bedtime">Bedtime: %1$s to %2$s</string>
-    <string name="home_rule_no_bedtime">No bedtime set</string>
     <string name="home_until">until %1$s</string>
+    <!-- HOME-UX phase 2: a blocked row carries its answer as labelled lines
+         under the app's name, instead of a trailing fragment. -->
+    <string name="home_blocked_why">Why: %1$s</string>
+    <string name="home_blocked_until">Until: %1$s</string>
 
     <string name="home_open_week">See my week</string>
 
@@ -920,7 +920,9 @@
     <string name="home_blocked_why_title">Why is %1$s blocked?</string>
     <string name="home_blocked_why_body">%1$s\n\nYour parent set this in the Dementor app. The app opens again by itself when the rule is no longer active — you can also ask for a change.</string>
     <string name="home_blocked_ask">Ask for a change</string>
-    <string name="home_tap_for_details">tap for details</string>
+    <!-- HOME-UX phase 4: the pinned ask row inside the blocked card, shown only
+         while the device budget is spent. -->
+    <string name="home_ask_more_time_body">Ask for more time</string>
     <string name="home_uninstall_desc">Uninstall %1$s</string>
 
     <!-- Web filtering (WF-1, WF-2). -->

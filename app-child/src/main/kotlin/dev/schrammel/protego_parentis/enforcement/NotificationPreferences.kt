@@ -51,6 +51,14 @@ enum class NotificationKind(
     /** A rule changed because another device edited it remotely. */
     RULE_CHANGED(optional = true),
 
+    /**
+     * A restriction just began — the day's budget ran out, a rule became
+     * active, bedtime started. Silenceable: the restriction itself is not
+     * optional, only the announcement of it, so a family that finds these
+     * noisy loses the knock on the door, not the locked door.
+     */
+    BLOCK_STARTED(optional = true),
+
     /** A newly-installed app was allowed or blocked by a parent. */
     APP_DECIDED(optional = true),
 

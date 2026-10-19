@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.enforcement
 
 import android.app.PendingIntent
+import dev.schrammel.protego_parentis.model.PackageName
 
 /**
  * Wherever a notification needs to open a specific screen, without enforcement
@@ -21,6 +22,13 @@ import android.app.PendingIntent
 interface NotificationUx {
     /** The managed phone's own home screen. */
     fun openHome(requestCode: Int): PendingIntent
+
+    /**
+     * The managed phone's home screen, deep-linked to the why-dialog for
+     * [pkg] — the app the child was in when a restriction began. A null
+     * [pkg] is a plain launch, which opens the status card instead.
+     */
+    fun openBlockedWhy(requestCode: Int, pkg: PackageName?): PendingIntent
 
     /** The managed phone's own, PIN-gated, request inbox. */
     fun openRequestInbox(requestCode: Int): PendingIntent

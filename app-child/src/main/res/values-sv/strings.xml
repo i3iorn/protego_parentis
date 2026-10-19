@@ -75,11 +75,11 @@
         <item quantity="other">och %d till</item>
     </plurals>
     <string name="home_nothing_blocked">Inget är blockerat just nu.</string>
-    <string name="home_rule_limit">Daglig gräns: %1$s</string>
-    <string name="home_rule_no_limit">Ingen daglig gräns</string>
-    <string name="home_rule_bedtime">Läggdags: %1$s till %2$s</string>
-    <string name="home_rule_no_bedtime">Ingen läggdags satt</string>
     <string name="home_until">till %1$s</string>
+    <!-- HOME-UX fas 2: en blockerad rad bär sitt svar som märkta rader under
+         appens namn, i stället för en bit text längst ut. -->
+    <string name="home_blocked_why">Varför: %1$s</string>
+    <string name="home_blocked_until">Tills: %1$s</string>
 
     <string name="home_open_week">Se min vecka</string>
 
@@ -910,7 +910,9 @@
     <string name="home_blocked_why_title">Varför är %1$s blockerad?</string>
     <string name="home_blocked_why_body">%1$s\n\nDina föräldrar ställer in det här i Dementor-appen. Appen öppnas igen av sig själv när regeln inte gäller längre — du kan också be om en ändring.</string>
     <string name="home_blocked_ask">Be om en ändring</string>
-    <string name="home_tap_for_details">tryck för detaljer</string>
+    <!-- HOME-UX fas 4: den fasta raden "be om mer tid" i det blockerade
+         kortet, synlig bara när dagens tid är slut. -->
+    <string name="home_ask_more_time_body">Be om mer tid</string>
     <string name="home_uninstall_desc">Avinstallera %1$s</string>
 
     <!-- Webbfiltrering (WF-1, WF-2). -->

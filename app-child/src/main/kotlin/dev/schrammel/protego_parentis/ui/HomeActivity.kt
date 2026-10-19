@@ -23,20 +23,20 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.enforcement.EnforcementCoordinator
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
 import dev.schrammel.protego_parentis.format.formatDuration
+import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
-import dev.schrammel.protego_parentis.model.Condition
+import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Reason
-import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.rules.RequestCoordinator
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.ParentPollWorker
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
-import dev.schrammel.protego_parentis.ui.rules.bedtimeRuleId
 import dev.schrammel.protego_parentis.usage.InstalledApps
 
 /**
@@ -62,9 +62,13 @@ class HomeActivity : DementorActivity() {
     private lateinit var navigation: LinearLayout
     private lateinit var familyBannerHolder: LinearLayout
     private lateinit var activityBannerHolder: LinearLayout
-    private lateinit var lockStatusCardHolder: LinearLayout
-    private lateinit var rulesList: LinearLayout
-    private lateinit var blockedList: LinearLayout
+    /**
+     * Internal so [HomeActivityTest] can assert on what a render pass put
+     * here; the screen is otherwise built and filled privately.
+     */
+    internal lateinit var lockStatusCardHolder: LinearLayout
+    internal lateinit var rulesList: LinearLayout
+    internal lateinit var blockedList: LinearLayout
     private lateinit var appList: LinearLayout
 
     /**
@@ -116,6 +120,12 @@ class HomeActivity : DementorActivity() {
         super.onCreate(savedInstanceState)
         if (routeByRole()) return
 
+        // A deep-link launch from a block notification names the app the child
+        // was in when the restriction began; the why-dialog opens once the
+        // snapshot is in, since the reason needs an evaluation to exist.
+        pendingBlockedPkg = intent.getStringExtra(EXTRA_BLOCKED_PACKAGE)
+            ?.let(::PackageName)
+
         coordinator = EnforcementCoordinator(this)
         installedApps = InstalledApps(this)
         goals = GoalCoordinator(this)
@@ -123,6 +133,9 @@ class HomeActivity : DementorActivity() {
         buildLayout()
         buildNavigation()
     }
+
+    /** The app a block notification named, waiting for a snapshot to explain it. */
+    private var pendingBlockedPkg: PackageName? = null
 
     /**
      * Sends the launch on if this install is not the child's phone.
@@ -389,64 +402,43 @@ class HomeActivity : DementorActivity() {
         Background.load(this, { coordinator.evaluate() }, ::show)
     }
 
-    private fun show(snapshot: EnforcementSnapshot?) {
+    /**
+     * Internal so [HomeActivityTest] can drive a rendering pass directly: the
+     * async [render] path makes a render test a race, and the snapshot is the
+     * thing under test, not the executor that fetches it.
+     */
+    internal fun show(snapshot: EnforcementSnapshot?) {
         val needsPermission = snapshot == null
 
         permissionCard.visibility = if (needsPermission) View.VISIBLE else View.GONE
         summaryHolder.visibility = if (needsPermission) View.GONE else View.VISIBLE
 
-        renderRules()
-
         if (snapshot == null) {
+            clear(rulesList)
             clear(blockedList)
             clear(appList)
             clear(lockStatusCardHolder)
             return
         }
 
+        renderRules(snapshot)
         renderLockStatusCard(snapshot)
         renderSummary(snapshot)
-        renderActiveRules(snapshot)
         renderCategoryBudgets(snapshot)
         renderBlocked(snapshot)
         renderUsage(snapshot)
-    }
 
-    /**
-     * Which contextual rules are applying right now.
-     *
-     * Shown to the child unprompted: a phone that quietly behaves differently at
-     * school than at home, with no way to see why, is the version of this feature
-     * that feels like surveillance rather than a rule.
-     */
-    private fun renderActiveRules(snapshot: EnforcementSnapshot) {
-        val active = snapshot.enforcement.activeContextRules
-        if (active.isEmpty()) return
-
-        // A tinted chip rather than a plain line: this is the same "Active now"
-        // word the rule cards carry (rules-UX phase B/C), so what applies right
-        // now reads the same on the dashboard as it does in the rules list.
-        rulesList.addView(
-            TextView(this).apply {
-                text = getString(R.string.home_context_active, active.joinToString(", ") { it.name })
-                styleAs(R.style.TextAppearance_Dementor_Caption)
-                setBackgroundResource(R.drawable.chip)
-                backgroundTintList = android.content.res.ColorStateList.valueOf(
-                    ContextCompat.getColor(context, R.color.brand),
-                )
-                setTextColor(ContextCompat.getColor(context, R.color.on_brand))
-                val horizontal = dimen(R.dimen.space_sm)
-                setPadding(
-                    horizontal,
-                    dimen(R.dimen.space_hairline),
-                    horizontal,
-                    dimen(R.dimen.space_hairline),
-                )
-                layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
-                    topMargin = dimen(R.dimen.space_xxs)
-                }
-            },
-        )
+        // A notification tapped mid-block lands here: once the screen itself is
+        // rendered, open the why-dialog for the named app — but only while the
+        // block still stands. A launch that arrives after the rule lifted has
+        // nothing to explain, and a dialog saying "you're blocked" over a
+        // working phone would be the notification lying.
+        pendingBlockedPkg?.let { pkg ->
+            snapshot.enforcement.suspend[pkg]?.let { reason ->
+                showBlockedWhy(pkg, reason)
+            }
+            pendingBlockedPkg = null
+        }
     }
 
     /**
@@ -514,19 +506,16 @@ class HomeActivity : DementorActivity() {
             }
 
             budget.level == BudgetLevel.EXHAUSTED -> {
-                headline = getString(R.string.home_used_up)
-                // Says what was used up, not just that it was: the headline is the
-                // one thing read from across the room, and "time's up" with no
-                // cause sends a reader hunting through the rules list below for
-                // the number that already explains it.
-                subline = getString(
+                // The lock status card above already carries "time's up" as the
+                // headline answer; saying it here as well doubles the same words
+                // on one screen. This card's job is the numbers, so the usage
+                // detail leads and the reset rides the subline alone.
+                headline = getString(
                     R.string.home_used_up_detail,
                     formatDuration(budget.allowed + budget.bonus),
-                ) + snapshot.enforcement.nextChangeAt?.let {
-                    // When it comes back is a clock time, not a duration: a
-                    // child plans by "when can I open it again", and the next
-                    // change is exactly when the counters reset.
-                    " · " + getString(R.string.home_resets_at, formatTime(it))
+                )
+                subline = snapshot.enforcement.nextChangeAt?.let {
+                    getString(R.string.home_resets_at, formatTime(it))
                 }.orEmpty()
                 progress = 100
             }
@@ -567,39 +556,46 @@ class HomeActivity : DementorActivity() {
      * instead, at the same well-known ids that screen and #105's migration
      * both use, so this summary reads those rules directly rather than a
      * field nothing edits any more.
+     *
+     * HOME-UX phase 2: the rules read the same grammar as the rules list —
+     * each one a read-only [ruleCard] with its glyph, name and on/off chip,
+     * and the "Active now" tint when the last enforcement pass had it
+     * applying. No switch and no open affordance: the dashboard informs, the
+     * rules list is where a rule is changed, so the child sees the identical
+     * shape without the parent's controls.
      */
-    private fun renderRules() {
+    private fun renderRules(snapshot: EnforcementSnapshot) {
         val container = clear(rulesList)
         val rules = AppRegistry.childStores.contextRules.rules
+        val activeIds = snapshot.enforcement.activeContextRules.map { it.id }.toSet()
 
-        val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
-        val budget = (dailyLimit?.effect as? RuleEffect.SetBudget)?.takeIf { dailyLimit.enabled }
-        container.addView(
-            line(
-                if (budget == null) {
-                    getString(R.string.home_rule_no_limit)
-                } else {
-                    getString(R.string.home_rule_limit, formatLimit(budget.budget.default.inWholeMinutes.toInt()))
-                },
-            ),
-        )
+        if (rules.isEmpty()) {
+            container.addView(line(getString(R.string.context_no_rules)))
+            return
+        }
 
-        val bedtimeId = bedtimeRuleId()
-        val bedtime = rules.firstOrNull { it.id == bedtimeId }
-        val window = (bedtime?.condition as? Condition.DuringWindow)?.takeIf { bedtime.enabled }?.window
-        container.addView(
-            line(
-                if (window == null) {
-                    getString(R.string.home_rule_no_bedtime)
-                } else {
-                    getString(
-                        R.string.home_rule_bedtime,
-                        formatTime(window.start),
-                        formatTime(window.end),
-                    )
-                },
-            ),
+        val describer = RuleDescriber(
+            activity = this,
+            placeName = { id ->
+                AppRegistry.childStores.contextRules.places.firstOrNull { it.id == id }?.name
+            },
+            categoryName = { id ->
+                LocalPolicyStore(this).snapshot().categories
+                    .firstOrNull { it.id == id.value }?.name
+            },
+            glucoseUnit = NightscoutStore(this).units,
         )
+        rules.sortedBy { it.name.lowercase() }.forEach { rule ->
+            container.addView(
+                ruleCard(
+                    rule = rule,
+                    describer = describer,
+                    onOpen = null,
+                    onToggle = null,
+                    activeNow = rule.id in activeIds,
+                ),
+            )
+        }
     }
 
     /**
@@ -622,15 +618,31 @@ class HomeActivity : DementorActivity() {
             return
         }
 
+        // HOME-UX phase 4: when the device budget is spent, the ask belongs in
+        // the same glance that discovers the block — pinned inside this card,
+        // above the app rows, rather than two screens away in the request
+        // inbox. It appears only while the budget is exhausted and only when
+        // the request flow would actually take the ask; a row that refuses is
+        // worse than no row.
+        if (budgetExhausted(snapshot)) {
+            val decisions = RequestCoordinator(this).canSubmit(GrantTarget.Device)
+            if (decisions.isAllowed) {
+                container.addView(askForMoreTimeRow())
+            }
+        }
+
         // Cap the list: with a device-wide limit hit, every installed app is in
         // here, and a wall of two hundred rows tells the reader nothing.
         blocked.entries.take(maxRows).forEach { (pkg, reason) ->
-            val trailing = describe(reason) + " · " + getString(R.string.home_tap_for_details)
+            // HOME-UX phase 2: the reason is the row's body — WHY and UNTIL as
+            // labelled lines under the app's name — so a row is the answer, not
+            // a label plus a hint to tap somewhere else for one. The tap still
+            // opens the why-dialog: the full answer, with the door to asking.
             container.addView(
                 row(
                     pkg,
-                    trailing,
-                    trailingColor = R.color.state_critical,
+                    trailing = "",
+                    bodyLines = blockedRowBody(reason),
                     uninstallable = true,
                     onWhy = { showBlockedWhy(pkg, reason) },
                 ),
@@ -643,6 +655,28 @@ class HomeActivity : DementorActivity() {
             )
         }
     }
+
+    /**
+     * Whether the device-wide budget is spent — the moment of maximum
+     * frustration, and the only one where the ask is adjacent rather than two
+     * screens away. An app's own budget is a different story with a different
+     * gravity; this row stays out of it.
+     */
+    private fun budgetExhausted(snapshot: EnforcementSnapshot): Boolean =
+        snapshot.enforcement.deviceBudget.isExhausted
+
+    /**
+     * The pinned "Ask for more time" row. Tapping it opens the request inbox
+     * ([RequestsActivity]) directly — the same screen the navigation offers,
+     * arrived at in one step from the answer instead of in three.
+     */
+    private fun askForMoreTimeRow(): View = row(
+        pkg = PackageName(ASK_MORE_TIME_TAG),
+        trailing = getString(R.string.home_blocked_ask),
+        bodyLines = listOf(getString(R.string.home_ask_more_time_body)),
+        openable = false,
+        onWhy = { startActivity(RequestsActivity.intent(this)) },
+    )
 
     /**
      * Sends [pkg] to Android's own uninstall-confirmation dialog — the same
@@ -660,8 +694,15 @@ class HomeActivity : DementorActivity() {
 
     private fun renderUsage(snapshot: EnforcementSnapshot) {
         val container = clear(appList)
+        // An app a rule exempts entirely — unlimited time, not counted against
+        // the device budget — has no place in "where did the time go": its
+        // minutes were never the budget's business, and listing them implies
+        // they were spent against a limit they never touched.
         val byPackage = snapshot.usage.snapshot.byPackage
             .entries
+            .filter { (pkg, _) ->
+                snapshot.enforcement.appBudgets[pkg]?.isUnlimited != true
+            }
             .sortedByDescending { it.value }
             .take(maxRows)
 
@@ -677,6 +718,17 @@ class HomeActivity : DementorActivity() {
         }
     }
 
+    /**
+     * The blocked row's answer, as labelled lines (HOME-UX phase 2): WHAT is
+     * blocked is the app's own name above, WHY is the reason the engine gives,
+     * and UNTIL is the moment it lifts. A row is an answer, not a label plus a
+     * hint to tap somewhere else for one.
+     */
+    private fun blockedRowBody(reason: Reason): List<String> = buildList {
+        add(getString(R.string.home_blocked_why, reasonPhrase(reason)))
+        reason.liftsAt?.let { add(getString(R.string.home_blocked_until, formatTime(it))) }
+    }
+
     private fun describe(reason: Reason): String {
         val until = reason.liftsAt?.let {
             getString(
@@ -689,17 +741,19 @@ class HomeActivity : DementorActivity() {
         // Rule and category names are prefixed, so "School hours" alone does
         // not read as some new jargon to a child — the name is the reason,
         // and saying which kind of thing it is makes that legible.
-        val what = when (reason) {
-            is Reason.ManuallyBlocked -> getString(R.string.reason_blocked)
-            is Reason.UnmanagedBrowser -> getString(R.string.reason_unmanaged_browser)
-            is Reason.DeviceBudgetExhausted -> getString(R.string.reason_daily_limit)
-            is Reason.AppBudgetExhausted -> getString(R.string.reason_app_limit)
-            is Reason.CategoryBudgetExhausted ->
-                getString(R.string.reason_category_limit, reason.categoryName)
-            is Reason.ContextRuleActive ->
-                getString(R.string.reason_rule_active, reason.ruleName)
-        }
-        return listOfNotNull(what, until).joinToString(" ")
+        return listOfNotNull(reasonPhrase(reason), until).joinToString(" ")
+    }
+
+    /** The reason as its own phrase, shared by the blocked rows and the why-dialog. */
+    private fun reasonPhrase(reason: Reason): String = when (reason) {
+        is Reason.ManuallyBlocked -> getString(R.string.reason_blocked)
+        is Reason.UnmanagedBrowser -> getString(R.string.reason_unmanaged_browser)
+        is Reason.DeviceBudgetExhausted -> getString(R.string.reason_daily_limit)
+        is Reason.AppBudgetExhausted -> getString(R.string.reason_app_limit)
+        is Reason.CategoryBudgetExhausted ->
+            getString(R.string.reason_category_limit, reason.categoryName)
+        is Reason.ContextRuleActive ->
+            getString(R.string.reason_rule_active, reason.ruleName)
     }
 
     // ---------- small view helpers ----------
@@ -727,12 +781,17 @@ class HomeActivity : DementorActivity() {
         trailingColor: Int? = null,
         uninstallable: Boolean = false,
         onWhy: (() -> Unit)? = null,
+        bodyLines: List<String> = emptyList(),
     ): View {
         val app = installedApps
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
+            // Top *and* bottom padding doubled the gap between consecutive
+            // rows — in the blocked list especially, where every row carries a
+            // two-line body, the list read as one app every inch. One bottom
+            // margin gives the separation without the stacking.
+            setPadding(0, 0, 0, dimen(R.dimen.space_xxs))
 
             if (openable) makeOpenable(pkg)
             if (onWhy != null) {
@@ -759,19 +818,43 @@ class HomeActivity : DementorActivity() {
                 },
             )
             addView(
-                TextView(context).apply {
-                    text = app.labelFor(pkg)
-                    styleAs(R.style.TextAppearance_Dementor_Body)
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
                     layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                    addView(
+                        TextView(context).apply {
+                            text = app.labelFor(pkg)
+                            styleAs(R.style.TextAppearance_Dementor_Body)
+                        },
+                    )
+                    // HOME-UX phase 2: a blocked row carries its answer as
+                    // labelled lines under the name — WHY and UNTIL — instead
+                    // of a trailing fragment. Eye reads the name first, the
+                    // reason right beneath it; the screen reader gets the
+                    // whole answer in one row either way.
+                    bodyLines.forEach { body ->
+                        addView(
+                            TextView(context).apply {
+                                text = body
+                                styleAs(R.style.TextAppearance_Dementor_Caption)
+                                setTextColor(ContextCompat.getColor(context, R.color.state_critical))
+                                layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
+                                    topMargin = dimen(R.dimen.space_hairline)
+                                }
+                            },
+                        )
+                    }
                 },
             )
-            addView(
-                TextView(context).apply {
-                    text = trailing
-                    styleAs(R.style.TextAppearance_Dementor_Body)
-                    trailingColor?.let { setTextColor(ContextCompat.getColor(context, it)) }
-                },
-            )
+            if (trailing.isNotEmpty()) {
+                addView(
+                    TextView(context).apply {
+                        text = trailing
+                        styleAs(R.style.TextAppearance_Dementor_Body)
+                        trailingColor?.let { setTextColor(ContextCompat.getColor(context, it)) }
+                    },
+                )
+            }
             if (uninstallable) {
                 addView(
                     ImageView(context).apply {
@@ -837,8 +920,22 @@ class HomeActivity : DementorActivity() {
             .show()
     }
 
-    private companion object {
+    companion object {
         const val REQUEST_NOTIFICATIONS = 1
+
+        /**
+         * Set when a notification deep-links here naming the app the child was
+         * in when a restriction began — the launch lands on the why-dialog for
+         * that app instead of the generic dashboard.
+         */
+        internal const val EXTRA_BLOCKED_PACKAGE = "dev.schrammel.protego_parentis.BLOCKED_PACKAGE"
         const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
+
+        /**
+         * The pseudo-package the pinned "Ask for more time" row is keyed by —
+         * not a real app, just a stable identity the row helper can style and
+         * the tests can find.
+         */
+        internal const val ASK_MORE_TIME_TAG = "ask-for-more-time"
     }
 }

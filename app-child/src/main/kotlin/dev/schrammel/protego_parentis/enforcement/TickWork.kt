@@ -51,6 +51,7 @@ internal class TickWork(
     private val coordinator: EnforcementCoordinator,
     private val sync: RealtimeSync,
     private val warnings: WarningNotifier,
+    private val blocks: BlockNotifier,
     private val review: AppReviewStore,
     private val installedApps: InstalledApps,
     private val requestNotifier: RequestNotifier,
@@ -90,6 +91,7 @@ internal class TickWork(
         }
 
         warnings.onEvaluated(snapshot.enforcement.deviceBudget, snapshot.usage.snapshot.policyDay)
+        blocks.onEvaluated(snapshot)
         onNotification(summarise(snapshot))
 
         // Counts only: enough to see that a day is being measured and how much is
