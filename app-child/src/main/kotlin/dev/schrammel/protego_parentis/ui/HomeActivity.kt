@@ -192,6 +192,10 @@ class HomeActivity : DementorActivity() {
         column.addView(activityBannerHolder)
 
         summaryHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        // A loading line rather than blank: the summary arrives off the main
+        // thread, and an empty area reads as "nothing here" for the second or
+        // two before the real answer lands.
+        summaryHolder.addView(loadingLine())
         column.addView(summaryHolder)
 
         column.addView(sosButton())
@@ -206,14 +210,17 @@ class HomeActivity : DementorActivity() {
 
         column.addView(sectionHeader(getString(R.string.home_rules_header)))
         rulesList = groupSurface()
+        rulesList.addView(loadingLine())
         column.addView(rulesList)
 
         column.addView(sectionHeader(getString(R.string.home_would_block_header)))
         blockedList = groupSurface()
+        blockedList.addView(loadingLine())
         column.addView(blockedList)
 
         column.addView(sectionHeader(getString(R.string.home_apps_header)))
         appList = groupSurface()
+        appList.addView(loadingLine())
         column.addView(appList)
 
         showColumn(column)
@@ -410,8 +417,29 @@ class HomeActivity : DementorActivity() {
         val active = snapshot.enforcement.activeContextRules
         if (active.isEmpty()) return
 
+        // A tinted chip rather than a plain line: this is the same "Active now"
+        // word the rule cards carry (rules-UX phase B/C), so what applies right
+        // now reads the same on the dashboard as it does in the rules list.
         rulesList.addView(
-            line(getString(R.string.home_context_active, active.joinToString(", ") { it.name })),
+            TextView(this).apply {
+                text = getString(R.string.home_context_active, active.joinToString(", ") { it.name })
+                styleAs(R.style.TextAppearance_Dementor_Caption)
+                setBackgroundResource(R.drawable.chip)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(context, R.color.brand),
+                )
+                setTextColor(ContextCompat.getColor(context, R.color.on_brand))
+                val horizontal = dimen(R.dimen.space_sm)
+                setPadding(
+                    horizontal,
+                    dimen(R.dimen.space_hairline),
+                    horizontal,
+                    dimen(R.dimen.space_hairline),
+                )
+                layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
+                    topMargin = dimen(R.dimen.space_xxs)
+                }
+            },
         )
     }
 
@@ -478,7 +506,12 @@ class HomeActivity : DementorActivity() {
                 subline = getString(
                     R.string.home_used_up_detail,
                     formatDuration(budget.allowed + budget.bonus),
-                )
+                ) + snapshot.enforcement.nextChangeAt?.let {
+                    // When it comes back is a clock time, not a duration: a
+                    // child plans by "when can I open it again", and the next
+                    // change is exactly when the counters reset.
+                    " · " + getString(R.string.home_resets_at, formatTime(it))
+                }.orEmpty()
                 progress = 100
             }
 
@@ -660,6 +693,14 @@ class HomeActivity : DementorActivity() {
     private fun line(text: String) = TextView(this).apply {
         this.text = text
         styleAs(R.style.TextAppearance_Dementor_Body)
+        setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_xxs))
+    }
+
+    /** A quiet "Loading…" stand-in for a list that is filled off the main thread. */
+    private fun loadingLine() = TextView(this).apply {
+        setText(R.string.home_loading)
+        styleAs(R.style.TextAppearance_Dementor_Caption)
+        setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
         setPadding(0, dimen(R.dimen.space_xxs), 0, dimen(R.dimen.space_xxs))
     }
 

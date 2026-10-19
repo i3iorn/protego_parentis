@@ -403,17 +403,17 @@ Re-point the home Rules row to the list; rename the hub; delete the inner
 `strings.xml` (+ `values-sv`). Tests: extend `HomeSectionsTest`; add a test that
 the child Rules destination resolves to the rules list.
 
-**Phase B — Rules dashboard. ✅ Done (1.5.0), except search/sort and "Active now".**
+**Phase B — Rules dashboard. ✅ Done (1.5.0), leftovers closed (1.6.4/1.6.5).**
 Header summary, grouping, status chips, paused section. Grouping is pure data
 (`RuleSections.kt`, tested like `HomeSections`); the device-status card moved to
 a shared helper and is now shown at the top of the list. `ContextRulesActivity`,
 `RuleSections.kt` + tests, `DeviceStatusCard.kt`, `RulesActivity.kt`,
 `strings.xml`, `res/drawable/chip.xml`.
 
-Deferred within B: **search/sort** over the rules, and **"Active now"** — the
-latter would need `EnforcementCoordinator.evaluate()` on every screen open,
-which replays a full day of usage for one status word. Revisit when there is a
-cheap cached snapshot to read instead.
+The deferrals are now closed too: **search/sort** shipped over the rules list
+(debounced `searchField` + an A→Z toggle, flat while searching), and **"Active
+now"** as a cheap persisted read — `EnforcementStatus.activeRuleIds`, written by
+the last enforcement pass, read by the cards; no re-evaluation on screen open.
 
 **Phase C — Structured rule card & describer. ✅ Done (1.6.3).**
 `RuleDescriber` grew `parts(rule): RuleParts` — the rule as labelled pieces
@@ -437,11 +437,11 @@ pins the review step showing the card. Deferred within C, and why:
 - **Child dashboard summary lines** — `HomeActivity.renderRules` keeps its
   one-line summaries; the card's labelled rows are for the screens a parent
   authors in, and the dashboard's transparency promise is that it shows the
-  same *rules*, not the same layout (§10).
-- **Search, sort and "Active now"** — still the Phase B leftovers (§9).
+  same *rules*, not the same layout (§10). Superseded by `HOME-UX.md`, which
+  adopts the card grammar on the dashboard deliberately.
 
-Next up: only the Phase B leftovers (search/sort/Active now) and Phase G
-(motion) remain.
+Next up: Phase G (motion) — see §9 — and the child-dashboard work in
+`HOME-UX.md`.
 
 **Phase D0 — Rule-editor polish (independent of the wizard). ✅ Done (1.6.0).**
 The §5.H fixes shipped all together, with the wizard: Save and Delete use

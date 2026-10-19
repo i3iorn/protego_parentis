@@ -305,6 +305,8 @@
     <string name="places_create_requested">Asked the phone to add this place. It will appear here once confirmed.</string>
     <string name="places_add_my_position">Add my position</string>
     <string name="home_context_active">Active now: %1$s</string>
+    <string name="home_loading">Loading…</string>
+    <string name="home_resets_at">resets at %1$s</string>
 
     <!-- Privacy and diagnostics. -->
     <string name="privacy_title">What leaves this phone</string>

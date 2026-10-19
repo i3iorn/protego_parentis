@@ -306,6 +306,8 @@
     <string name="places_create_requested">Bad telefonen lägga till platsen. Den visas här när det är bekräftat.</string>
     <string name="places_add_my_position">Lägg till min position</string>
     <string name="home_context_active">Gäller nu: %1$s</string>
+    <string name="home_loading">Läser in…</string>
+    <string name="home_resets_at">nollställs kl %1$s</string>
 
     <!-- Integritet och logg. -->
     <string name="privacy_title">Vad som lämnar telefonen</string>
