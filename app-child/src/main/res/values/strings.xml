@@ -117,6 +117,7 @@
     <string name="context_rules_info_title">About rules</string>
     <string name="context_rules_info_body">Every rule has a condition (when it applies), an effect (what it does) and a target (who it applies to).</string>
     <string name="context_no_rules">No rules yet.</string>
+    <string name="context_search_empty">No rules match that search.</string>
     <string name="context_add_rule">Add a rule</string>
     <string name="context_rule_summary">%1$s → %2$s %3$s</string>
     <string name="context_rule_summary_actions">%1$s → %2$s</string>
@@ -492,6 +493,8 @@
     <!-- Rules list (rules-UX phase B): the grouped dashboard. -->
     <string name="rules_status_on">On</string>
     <string name="rules_status_paused">Paused</string>
+    <string name="rules_sort_name">Sort A\u2192Z</string>
+    <string name="rules_sort_grouped">Grouped list</string>
     <string name="rules_status_active_now">Active now</string>
     <string name="rules_section_schedules">Schedules</string>
     <string name="rules_section_where">Where and near</string>

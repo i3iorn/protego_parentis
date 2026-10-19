@@ -66,6 +66,13 @@ class ContextRulesActivity : ParentGatedActivity() {
 
     private lateinit var target: RuleScope
     private lateinit var container: LinearLayout
+    private lateinit var listHolder: LinearLayout
+
+    /** The text typed into the rules search field, empty when nothing is typed. */
+    private var searchQuery: String = ""
+
+    /** How the rules are ordered: by the list's own grouping, or A→Z by name. */
+    private var sortByName: Boolean = false
 
     override fun supportsReadOnly() = true
 
@@ -159,29 +166,15 @@ class ContextRulesActivity : ParentGatedActivity() {
             )
         }
 
-        // Everything that is set up, grouped by what a parent recognises — the
-        // daily limit's group first. Each rule is a card now; see [ruleCardRow].
-        ruleGroups(rules).forEach { group ->
-            container.addView(sectionHeading(group.section))
-            addCollapsibleRows(container, group.rules.map { ruleCardRow(it, places) })
-        }
-
-        // Nothing but the daily limit — or nothing at all. An invitation rather
-        // than a dead end, below the list so the daily limit still leads it.
-        val otherRules = rules.filterNot { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
-        if (otherRules.isEmpty()) {
-            container.addView(caption(getString(R.string.context_no_rules)))
-            if (canEdit) {
-                // Offered rather than created. A family that opens this screen and
-                // finds three windows already switched on has had rules made for
-                // them by an app, which is the opposite of what this product is —
-                // so these arrive off, named, and with the times a parent would
-                // have typed anyway, leaving the decision where it belongs.
-                container.addView(title(getString(R.string.schedules_starters_header), R.style.TextAppearance_Dementor_Section))
-                container.addView(caption(getString(R.string.schedules_starters_hint)))
-                container.addView(group(STARTERS.map(::starterRow)))
-            }
-        }
+        // The search field and the sort switch are the screen's controls, not
+        // part of the list they drive: a keystroke or a toggle rebuilds the
+        // list below them and never the controls themselves, so typing never
+        // steals the cursor — the same split AppLimitsActivity's rows use.
+        container.addView(searchField { searchQuery = it; renderList(rules, places) })
+        container.addView(sortToggle(rules, places))
+        listHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(listHolder)
+        renderList(rules, places)
 
         if (canEdit) {
             container.addView(
@@ -314,6 +307,73 @@ class ContextRulesActivity : ParentGatedActivity() {
      * switches disabled, so the setup stays legible while the actions are not
      * offered (rules-UX §G).
      */
+    /**
+     * The rules themselves, rebuilt on every keystroke or sort toggle: the
+     * controls above them are not, so typing never steals the cursor (the
+     * same split AppLimitsActivity's rows use).
+     *
+     * While a search is active the groups give way to one flat list of the
+     * rules that match — a parent looking for one rule does not want to guess
+     * which section it lives in — and the A→Z order only applies inside the
+     * list's own groups when no search is filtering them.
+     */
+    private fun renderList(rules: List<ContextRule>, places: List<PlaceRef>) {
+        listHolder.removeAllViews()
+        val visible =
+            if (searchQuery.isBlank()) {
+                rules
+            } else {
+                rules.filter { it.name.contains(searchQuery, ignoreCase = true) }
+            }
+        if (searchQuery.isBlank()) {
+            ruleGroups(visible).forEach { group ->
+                val ordered = if (sortByName) group.rules.sortedBy { it.name.lowercase() } else group.rules
+                listHolder.addView(sectionHeading(group.section))
+                addCollapsibleRows(listHolder, ordered.map { ruleCardRow(it, places) })
+            }
+        } else {
+            val ordered = if (sortByName) visible.sortedBy { it.name.lowercase() } else visible
+            if (ordered.isEmpty()) {
+                listHolder.addView(caption(getString(R.string.context_search_empty)))
+            } else {
+                addCollapsibleRows(listHolder, ordered.map { ruleCardRow(it, places) })
+            }
+        }
+
+        // Nothing but the daily limit — or nothing at all. An invitation rather
+        // than a dead end, below the list so the daily limit still leads it.
+        val otherRules = rules.filterNot { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
+        if (otherRules.isEmpty()) {
+            listHolder.addView(caption(getString(R.string.context_no_rules)))
+            if (canEdit) {
+                // Offered rather than created. A family that opens this screen and
+                // finds three windows already switched on has had rules made for
+                // them by an app, which is the opposite of what this product is —
+                // so these arrive off, named, and with the times a parent would
+                // have typed anyway, leaving the decision where it belongs.
+                listHolder.addView(
+                    title(getString(R.string.schedules_starters_header), R.style.TextAppearance_Dementor_Section),
+                )
+                listHolder.addView(caption(getString(R.string.schedules_starters_hint)))
+                listHolder.addView(group(STARTERS.map(::starterRow)))
+            }
+        }
+    }
+
+    /**
+     * The one control for how the rules are ordered: by the list's own grouping
+     * (the default) or A→Z by name. A word, never colour alone.
+     */
+    private fun sortToggle(rules: List<ContextRule>, places: List<PlaceRef>): View = Button(this).apply {
+        setText(if (sortByName) R.string.rules_sort_grouped else R.string.rules_sort_name)
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+            .apply { topMargin = dimen(R.dimen.space_xs) }
+        setOnClickListener {
+            sortByName = !sortByName
+            renderList(rules, places)
+        }
+    }
+
     private fun ruleCardRow(rule: ContextRule, places: List<PlaceRef>): View = ruleCard(
         rule = rule,
         describer = RuleDescriber(

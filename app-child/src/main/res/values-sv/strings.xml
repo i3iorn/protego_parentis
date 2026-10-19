@@ -120,6 +120,7 @@
     <string name="context_rules_info_title">Om regler</string>
     <string name="context_rules_info_body">Varje regel har ett villkor (när den gäller), en effekt (vad den gör) och ett mål (vem den gäller).</string>
     <string name="context_no_rules">Inga regler än.</string>
+    <string name="context_search_empty">Inga regler matchar sökningen.</string>
     <string name="context_add_rule">Lägg till en regel</string>
     <string name="context_rule_summary">%1$s → %2$s %3$s</string>
     <string name="context_rule_summary_actions">%1$s → %2$s</string>
@@ -490,6 +491,8 @@
 
     <string name="rules_status_on">På</string>
     <string name="rules_status_paused">Pausad</string>
+    <string name="rules_sort_name">Sortera A\u2192Z</string>
+    <string name="rules_sort_grouped">Grupperad lista</string>
     <string name="rules_status_active_now">Aktiv nu</string>
     <string name="rules_section_schedules">Scheman</string>
     <string name="rules_section_where">Plats och närhet</string>
