@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.AppRegistry
@@ -557,10 +558,11 @@ class HomeActivity : DementorActivity() {
      * will not open, and offering a row that refuses is worse than not
      * offering one". But staring at an app you cannot open and cannot do
      * anything about is exactly what this list otherwise leaves a child
-     * with, so each row is now tappable too — to Android's own uninstall
-     * confirmation, not straight to opening the app it still refuses to
-     * open. A parent who blocked something to pause it, not remove it,
-     * still finds out: see [AuditAction.APP_UNINSTALLED_BY_CHILD].
+     * with, so each row is now tappable too — to a plain-words answer of *why*
+     * ([showBlockedWhy]) rather than straight to Android's uninstall
+     * confirmation. Uninstalling is still offered, on the trailing icon
+     * alone: a parent who blocked something to pause it, not remove it,
+     * still finds out — see [AuditAction.APP_UNINSTALLED_BY_CHILD].
      */
     private fun renderBlocked(snapshot: EnforcementSnapshot) {
         val container = clear(blockedList)
@@ -574,9 +576,15 @@ class HomeActivity : DementorActivity() {
         // Cap the list: with a device-wide limit hit, every installed app is in
         // here, and a wall of two hundred rows tells the reader nothing.
         blocked.entries.take(maxRows).forEach { (pkg, reason) ->
-            val trailing = describe(reason) + " · " + getString(R.string.home_tap_to_uninstall)
+            val trailing = describe(reason) + " · " + getString(R.string.home_tap_for_details)
             container.addView(
-                row(pkg, trailing, trailingColor = R.color.state_critical, uninstallable = true),
+                row(
+                    pkg,
+                    trailing,
+                    trailingColor = R.color.state_critical,
+                    uninstallable = true,
+                    onWhy = { showBlockedWhy(pkg, reason) },
+                ),
             )
         }
         if (blocked.size > maxRows) {
@@ -629,13 +637,18 @@ class HomeActivity : DementorActivity() {
         }
         // Resources rather than literals: these were the last English strings
         // left in the app, and a Swedish phone was showing three of them.
+        // Rule and category names are prefixed, so "School hours" alone does
+        // not read as some new jargon to a child — the name is the reason,
+        // and saying which kind of thing it is makes that legible.
         val what = when (reason) {
             is Reason.ManuallyBlocked -> getString(R.string.reason_blocked)
             is Reason.UnmanagedBrowser -> getString(R.string.reason_unmanaged_browser)
             is Reason.DeviceBudgetExhausted -> getString(R.string.reason_daily_limit)
             is Reason.AppBudgetExhausted -> getString(R.string.reason_app_limit)
-            is Reason.CategoryBudgetExhausted -> reason.categoryName
-            is Reason.ContextRuleActive -> reason.ruleName
+            is Reason.CategoryBudgetExhausted ->
+                getString(R.string.reason_category_limit, reason.categoryName)
+            is Reason.ContextRuleActive ->
+                getString(R.string.reason_rule_active, reason.ruleName)
         }
         return listOfNotNull(what, until).joinToString(" ")
     }
@@ -656,6 +669,7 @@ class HomeActivity : DementorActivity() {
         openable: Boolean = false,
         trailingColor: Int? = null,
         uninstallable: Boolean = false,
+        onWhy: (() -> Unit)? = null,
     ): View {
         val app = installedApps
         return LinearLayout(this).apply {
@@ -664,7 +678,12 @@ class HomeActivity : DementorActivity() {
             setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_xs))
 
             if (openable) makeOpenable(pkg)
-            if (uninstallable) makeUninstallable(pkg)
+            if (onWhy != null) {
+                // The row body explains the block; the trailing icon stays the
+                // uninstall affordance, so the two never share one tap.
+                withRipple()
+                setOnClickListener { onWhy() }
+            }
 
             addView(
                 ImageView(context).apply {
@@ -706,9 +725,11 @@ class HomeActivity : DementorActivity() {
                             marginStart = dimen(R.dimen.space_sm)
                         }
                         setImageResource(R.drawable.ic_remove)
-                        // Decorative: the trailing line already says "tap to uninstall".
-                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                        contentDescription = null
+                        // The uninstall affordance is this icon alone now: the row's
+                        // own tap explains the block, so the two answers never
+                        // share one tap. Spoken as a control, not decoration.
+                        contentDescription = getString(R.string.home_uninstall_desc, app.labelFor(pkg))
+                        setOnClickListener { requestUninstall(pkg) }
                     },
                 )
             }
@@ -742,10 +763,21 @@ class HomeActivity : DementorActivity() {
         }
     }
 
-    /** Turns a blocked row into Android's own uninstall confirmation for the app it names (#207). */
-    private fun View.makeUninstallable(pkg: PackageName) {
-        withRipple()
-        setOnClickListener { requestUninstall(pkg) }
+    /**
+     * The one place the child can read, in plain words, why an app is closed:
+     * the rule that is applying, when it ends, and the door to asking for a
+     * change. Android's own "app paused" dialog says only that the app is
+     * paused — this says what a child can do about it.
+     */
+    private fun showBlockedWhy(pkg: PackageName, reason: Reason) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.home_blocked_why_title, installedApps.labelFor(pkg)))
+            .setMessage(getString(R.string.home_blocked_why_body, describe(reason)))
+            .setPositiveButton(android.R.string.ok, null)
+            .setNeutralButton(R.string.home_blocked_ask) { _, _ ->
+                startActivity(RequestsActivity.intent(this))
+            }
+            .show()
     }
 
     private companion object {

@@ -121,6 +121,14 @@ internal fun Activity.ruleCard(
         }
         parts.except?.let { section(getString(R.string.context_except_header), listOf(it)) }
         riskNote?.let { addView(riskLine(it)) }
+    }.apply {
+        // A list of rule cards sits tighter than the generic card gap: each one
+        // is a bordered surface of its own, and a full md gap between two
+        // bordered surfaces reads as a blank band rather than a list. A hairline
+        // is all a parent needs to see where one rule ends and the next begins.
+        layoutParams = (layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(MATCH, WRAP)).apply {
+            topMargin = dimen(R.dimen.space_hairline)
+        }
     }
 }
 

@@ -50,7 +50,7 @@ class AppPickerActivity : ParentGatedActivity() {
                 setPadding(0, 0, 0, dimen(R.dimen.space_md))
             },
         )
-        content.addView(searchField { query = it; renderRows() })
+        content.addView(searchField(hint = getString(R.string.app_search_hint)) { query = it; renderRows() })
         content.addView(rows)
         showColumn(content)
     }

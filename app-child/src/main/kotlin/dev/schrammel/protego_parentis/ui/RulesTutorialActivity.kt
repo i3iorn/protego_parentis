@@ -25,6 +25,7 @@ import dev.schrammel.protego_parentis.R
  * than a shortcut that can disagree with the screen it is meant to teach.
  */
 class RulesTutorialActivity : DementorActivity() {
+    override val showsBackButton = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

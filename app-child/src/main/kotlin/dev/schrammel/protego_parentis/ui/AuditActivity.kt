@@ -28,6 +28,7 @@ import java.time.format.FormatStyle
  * log is "what changed recently", not "what has ever happened".
  */
 class AuditActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private val dateFormat: DateTimeFormatter =
         DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)

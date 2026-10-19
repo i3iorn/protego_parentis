@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit
  * holding the passphrase.
  */
 class LanOfferActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var column: LinearLayout
     private lateinit var status: TextView
@@ -157,6 +158,7 @@ class LanOfferActivity : DementorActivity() {
  * never travels anywhere, over any network, in any form.
  */
 class LanFindActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var column: LinearLayout
     private lateinit var status: TextView

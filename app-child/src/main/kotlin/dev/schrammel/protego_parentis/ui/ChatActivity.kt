@@ -60,6 +60,7 @@ import java.time.Instant
  * screen refusing to wait for the next unrelated tick while somebody is here.
  */
 class ChatActivity : DementorActivity() {
+    override val showsBackButton = true
 
     // The one screen with something pinned to the bottom that has to stay above
     // the keyboard. See DementorActivity.movesForKeyboard.

@@ -36,6 +36,7 @@ import java.io.File
  * time — and each one is short enough that reading it costs nothing.
  */
 class PrivacyActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var column: LinearLayout
 
@@ -149,6 +150,7 @@ class PrivacyActivity : DementorActivity() {
  * nothing that would make reading it uncomfortable — see [Diagnostics].
  */
 class DiagnosticsActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var updateCard: LinearLayout
 

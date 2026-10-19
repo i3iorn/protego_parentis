@@ -28,6 +28,7 @@ import dev.schrammel.protego_parentis.security.RoleStore
  * settings that do nothing is a list nobody trusts.
  */
 class NotificationSettingsActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var preferences: NotificationPreferences
     private lateinit var column: LinearLayout

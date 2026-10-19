@@ -29,6 +29,7 @@ import dev.schrammel.protego_parentis.security.RoleStore
  * how to open things.
  */
 class SettingsActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var column: LinearLayout
 

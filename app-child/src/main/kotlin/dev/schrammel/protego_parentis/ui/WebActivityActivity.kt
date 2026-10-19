@@ -25,6 +25,7 @@ import java.time.Instant
  * surveillance, and the same record both can read is an account.
  */
 class WebActivityActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var store: WebActivityStore
     private lateinit var settings: WebFilterStore

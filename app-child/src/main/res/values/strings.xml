@@ -909,10 +909,17 @@
     <string name="privacy_summary_body">Today\'s total, how much of the limit is left, and the five apps you used most, with how long each was open. No times, no history of when you used anything, and nothing about what you did inside an app. Your parents see the same numbers you see on this phone — nothing more.</string>
 
     <!-- Why an app is unavailable. -->
-    <string name="reason_blocked">Blocked</string>
+    <string name="reason_blocked">Blocked by a parent</string>
     <string name="reason_unmanaged_browser">This browser cannot be filtered</string>
-    <string name="reason_daily_limit">Daily limit</string>
-    <string name="reason_app_limit">App limit</string>
+    <string name="reason_daily_limit">Daily limit reached</string>
+    <string name="reason_app_limit">App limit reached</string>
+    <string name="reason_category_limit">Category: %1$s</string>
+    <string name="reason_rule_active">Rule: %1$s</string>
+    <string name="home_blocked_why_title">Why is %1$s blocked?</string>
+    <string name="home_blocked_why_body">%1$s\n\nYour parent set this in the Dementor app. The app opens again by itself when the rule is no longer active — you can also ask for a change.</string>
+    <string name="home_blocked_ask">Ask for a change</string>
+    <string name="home_tap_for_details">tap for details</string>
+    <string name="home_uninstall_desc">Uninstall %1$s</string>
 
     <!-- Web filtering (WF-1, WF-2). -->
     <string name="rules_row_web">Web filtering</string>
@@ -1324,6 +1331,10 @@
     <string name="remote_diagnostics_empty">No diagnostic log has come back from that phone yet.</string>
 
     <string name="app_search_hint">Search apps</string>
+    <string name="search_hint">Search\u2026</string>
+    <string name="rules_search_hint">Search rules</string>
+    <string name="back_button">Back</string>
+    <string name="back_button_description">Go back</string>
     <string name="app_search_none">No app matches that.</string>
     <string name="app_picker_empty_remote_hint">No app list has come back from that phone yet.</string>
     <string name="app_picker_request_list">Request app list</string>

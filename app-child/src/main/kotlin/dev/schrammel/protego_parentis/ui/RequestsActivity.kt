@@ -31,6 +31,7 @@ import kotlin.time.Duration.Companion.minutes
  * to decide on and turns the feature into a slot machine.
  */
 class RequestsActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var coordinator: RequestCoordinator
     private lateinit var policyStore: LocalPolicyStore

@@ -55,6 +55,8 @@ import dev.schrammel.protego_parentis.sync.core.Weakness
  * Once a family is joined, changing or leaving it needs the PIN on any phone.
  */
 class JoinFamilyActivity : ParentGatedActivity() {
+    // An onboarding step: its sequence has its own forward flow, no wandering back.
+    override val showsBackButton = false
 
     private lateinit var config: SyncConfigStore
     private lateinit var sync: SyncCoordinator

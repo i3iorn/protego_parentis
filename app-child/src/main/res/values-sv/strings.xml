@@ -899,10 +899,17 @@
     <string name="privacy_summary_body">Dagens totala tid, hur mycket av gränsen som är kvar, och de fem appar du använt mest med hur länge var och en varit öppen. Inga klockslag, ingen historik över när du använt något, och ingenting om vad du gjort inuti en app. Dina föräldrar ser samma siffror som du ser på den här telefonen — inget mer.</string>
 
     <!-- Varför en app inte går att använda. -->
-    <string name="reason_blocked">Blockerad</string>
+    <string name="reason_blocked">Blockerad av en förälder</string>
     <string name="reason_unmanaged_browser">Den här webbläsaren går inte att filtrera</string>
-    <string name="reason_daily_limit">Daglig gräns</string>
-    <string name="reason_app_limit">Appgräns</string>
+    <string name="reason_daily_limit">Daglig gräns nådd</string>
+    <string name="reason_app_limit">Appgräns nådd</string>
+    <string name="reason_category_limit">Kategori: %1$s</string>
+    <string name="reason_rule_active">Regel: %1$s</string>
+    <string name="home_blocked_why_title">Varför är %1$s blockerad?</string>
+    <string name="home_blocked_why_body">%1$s\n\nDina föräldrar ställer in det här i Dementor-appen. Appen öppnas igen av sig själv när regeln inte gäller längre — du kan också be om en ändring.</string>
+    <string name="home_blocked_ask">Be om en ändring</string>
+    <string name="home_tap_for_details">tryck för detaljer</string>
+    <string name="home_uninstall_desc">Avinstallera %1$s</string>
 
     <!-- Webbfiltrering (WF-1, WF-2). -->
     <string name="rules_row_web">Webbfiltrering</string>
@@ -1309,6 +1316,10 @@
     <string name="remote_diagnostics_empty">Ingen diagnostiklogg har kommit från den telefonen än.</string>
 
     <string name="app_search_hint">Sök appar</string>
+    <string name="search_hint">Sök…</string>
+    <string name="rules_search_hint">Sök regler</string>
+    <string name="back_button">Tillbaka</string>
+    <string name="back_button_description">Gå tillbaka</string>
     <string name="app_search_none">Ingen app matchar det.</string>
     <string name="app_picker_empty_remote_hint">Ingen applista har kommit tillbaka från den telefonen än.</string>
     <string name="app_picker_request_list">Begär applista</string>

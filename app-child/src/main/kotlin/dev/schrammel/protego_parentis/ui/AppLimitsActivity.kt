@@ -88,7 +88,7 @@ class AppLimitsActivity : ParentGatedActivity() {
         // (rules-UX phase F).
         // Built once and never rebuilt. Recreating the field on each keystroke
         // would take the cursor and the typed text with it.
-        container.addView(searchField { query = it; renderRows() })
+        container.addView(searchField(hint = getString(R.string.app_search_hint)) { query = it; renderRows() })
         rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         container.addView(rows)
         showColumn(container)

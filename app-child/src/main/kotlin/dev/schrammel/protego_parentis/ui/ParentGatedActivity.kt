@@ -34,6 +34,11 @@ import dev.schrammel.protego_parentis.security.RoleStore
  */
 abstract class ParentGatedActivity : DementorActivity() {
 
+    // Every gated screen is a sub-screen — reached by tapping a row on a
+    // dashboard — so it always offers a visible way back, not just the gesture
+    // bar (rules-UX phase F's navigation pass).
+    override val showsBackButton: Boolean = true
+
     private var awaitingPin = false
     private var lockButton: View? = null
 

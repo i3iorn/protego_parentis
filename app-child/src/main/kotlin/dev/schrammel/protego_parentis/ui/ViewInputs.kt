@@ -32,10 +32,13 @@ internal class SimpleWatcher(private val onChanged: (String) -> Unit) : TextWatc
 private const val SEARCH_DEBOUNCE_MILLIS = 150L
 
 /**
- * The filter row above a list of apps.
+ * The filter row above a list.
  *
- * One row, used by every screen that lists apps, so the same job feels the same
- * everywhere. [onQuery] is expected to re-render from a list already in
+ * One row, used by every screen that lists something, so the same job feels the
+ * same everywhere. [hint] names what the field searches — "Search apps" on the
+ * app screens, "Search rules" on the rules list — because a field that always
+ * says "Search apps" over a list of rules quietly claims to be a different
+ * screen. [onQuery] is expected to re-render from a list already in
  * memory — see [AppSearch]; re-reading `PackageManager` per character would
  * undo the background load these screens do precisely to stay responsive.
  *
@@ -50,9 +53,10 @@ private const val SEARCH_DEBOUNCE_MILLIS = 150L
  */
 internal fun Activity.searchField(
     prefill: String = "",
+    hint: String = getString(R.string.search_hint),
     onQuery: (String) -> Unit,
 ): EditText = EditText(this).apply {
-    hint = getString(R.string.app_search_hint)
+    this.hint = hint
     // No suggestions: half these queries are package names, and autocorrect
     // turning "deskclock" into two words helps nobody.
     inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS

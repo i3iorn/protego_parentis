@@ -122,7 +122,7 @@ class AppControlActivity : ParentGatedActivity() {
         // the cursor and the typed text with it. Prefilled because render() runs
         // again after a decision, and an empty box over a filtered list is worse
         // than either.
-        column.addView(searchField(query) { query = it; renderRows() })
+        column.addView(searchField(query, hint = getString(R.string.app_search_hint)) { query = it; renderRows() })
         rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(rows)
         reloadCatalog()

@@ -25,11 +25,55 @@ internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
  * [ViewBanners]. This file is what all of those are assembled on top of.
  */
 
-/** A screen's scrolling body, padded and ready to have content added. */
+/**
+ * A screen's scrolling body, padded and ready to have content added.
+ *
+ * When the screen opts in ([DementorActivity.showsBackButton]), a back affordance
+ * is installed above everything else — before the title, so it is found by the
+ * same scan that finds the title, not after it.
+ */
 internal fun Activity.contentColumn(): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
+    if ((this@contentColumn as? DementorActivity)?.showsBackButton == true) addView(backRow())
     val pad = dimen(R.dimen.screen_padding)
     setPadding(pad, pad, pad, dimen(R.dimen.space_4xl))
+}
+
+/**
+ * The back affordance every screen below the dashboards carries.
+ *
+ * A text-and-glyph row rather than an icon asset: the app builds its screens in
+ * code and deliberately carries no icon library, and a plain "‹ Back" needs no
+ * second drawable to be correct in both themes. The row speaks as one control —
+ * "Go back" — with the glyph and the word kept decorative inside it, and the
+ * 48dp floor the touch targets elsewhere on these screens use.
+ */
+internal fun Activity.backRow(): LinearLayout = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
+    minimumHeight = dimen(R.dimen.touch_target)
+    setPadding(0, dimen(R.dimen.space_xs), 0, 0)
+    withRipple()
+    setOnClickListener { finish() }
+    contentDescription = getString(R.string.back_button_description)
+    addView(
+        TextView(this@backRow).apply {
+            text = "‹"
+            styleAs(R.style.TextAppearance_Dementor_Headline)
+            setTextColor(ContextCompat.getColor(context, R.color.brand))
+            // Decorative: the row's own contentDescription already names it.
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        },
+    )
+    addView(
+        TextView(this@backRow).apply {
+            text = getString(R.string.back_button)
+            styleAs(R.style.TextAppearance_Dementor_Caption)
+            setTextColor(ContextCompat.getColor(context, R.color.brand))
+            setPadding(dimen(R.dimen.space_xxs), 0, 0, 0)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        },
+    )
 }
 
 /** Wraps [column] in a scroll view and installs it as the screen's content. */

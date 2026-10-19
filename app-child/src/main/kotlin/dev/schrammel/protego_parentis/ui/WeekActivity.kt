@@ -28,6 +28,7 @@ import kotlin.time.Duration
  * short enough that a bad Tuesday does not feel permanent.
  */
 class WeekActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var installedApps: InstalledApps

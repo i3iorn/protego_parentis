@@ -32,6 +32,18 @@ abstract class DementorActivity : AppCompatActivity() {
      */
     protected open val movesForKeyboard: Boolean = false
 
+    /**
+     * Whether this screen offers a tappable back affordance above its title.
+     *
+     * Every screen below the dashboards opts in: the Android gesture bar covers
+     * the whole left edge, but that is invisible to a reader who arrived here by
+     * tapping a row, and a screen whose only way out is a gesture it does not
+     * know reads as a dead end. The dashboards (child home, parent home) and
+     * first-time setup sequences stay off — a root has nothing to go back to,
+     * and the setup steps are one fixed sequence rather than a place to wander.
+     */
+    internal open val showsBackButton: Boolean = false
+
     override fun setContentView(view: View) {
         super.setContentView(view)
         view.padForSystemBars(movesForKeyboard)

@@ -44,6 +44,7 @@ import dev.schrammel.protego_parentis.usage.UsageAccess
  * know what has been switched on as the parent who switched it.
  */
 class PermissionsActivity : DementorActivity() {
+    override val showsBackButton = true
 
     private lateinit var column: LinearLayout
 

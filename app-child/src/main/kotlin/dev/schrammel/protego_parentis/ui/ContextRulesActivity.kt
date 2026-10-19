@@ -170,7 +170,7 @@ class ContextRulesActivity : ParentGatedActivity() {
         // part of the list they drive: a keystroke or a toggle rebuilds the
         // list below them and never the controls themselves, so typing never
         // steals the cursor — the same split AppLimitsActivity's rows use.
-        container.addView(searchField { searchQuery = it; renderList(rules, places) })
+        container.addView(searchField(hint = getString(R.string.rules_search_hint)) { searchQuery = it; renderList(rules, places) })
         container.addView(sortToggle(rules, places))
         listHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         container.addView(listHolder)
