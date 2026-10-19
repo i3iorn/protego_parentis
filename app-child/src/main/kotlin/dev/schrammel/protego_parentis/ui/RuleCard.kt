@@ -79,7 +79,7 @@ internal fun Activity.ruleCard(
                         styleAs(R.style.TextAppearance_Dementor_ListItem)
                         layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
                             marginStart = gapXs
-                            marginEnd = gapSm
+                            marginEnd = gapXs
                         }
                         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                     },
@@ -164,7 +164,7 @@ private fun LinearLayout.section(label: String, lines: List<String>) {
                 LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
                     layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply {
-                        marginStart = context.dimen(R.dimen.space_sm)
+                        marginStart = context.dimen(R.dimen.space_xs)
                     }
                     lines.forEach { line -> addView(context.phraseLine(line)) }
                 },
