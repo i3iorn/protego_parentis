@@ -252,6 +252,14 @@ class EnforcementCoordinator(
             null
         }
 
+        // Written on the pass that computed it, so the rules list can show
+        // "Active now" by reading — never by re-running this evaluation, whose
+        // usage collection and location read no glance at a list should
+        // trigger. Cleared when nothing applies, so a rule that has stopped
+        // does not stay marked by a stale pass (rules-UX §B).
+        EnforcementStatus(appContext).activeRuleIds =
+            enforcement.activeContextRules.mapTo(mutableSetOf()) { it.id }
+
         return EnforcementSnapshot(policy, usage, enforcement, reconcile, now)
     }
 

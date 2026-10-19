@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.schrammel.protego_parentis.enforcement.EnforcementStatus
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.context.ContextCapabilities
@@ -332,6 +333,7 @@ class ContextRulesActivity : ParentGatedActivity() {
             null
         },
         riskNote = riskNote(rule),
+        activeNow = EnforcementStatus(this).activeRuleIds.contains(rule.id),
     )
 
     /**

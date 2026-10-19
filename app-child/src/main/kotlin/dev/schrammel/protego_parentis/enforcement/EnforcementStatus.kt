@@ -36,8 +36,27 @@ class EnforcementStatus(context: Context) {
             prefs.edit { putBoolean(KEY_DNS_FAILED, value) }
         }
 
+    /**
+     * The rules that were applying on the last enforcement pass (rules-UX §B,
+     * the "Active now" status).
+     *
+     * Stored rather than recomputed for the same reason [dnsFailed] is: the
+     * rules list shows a chip on the cards that are applying right now, and
+     * opening that screen to look must not re-collect a day of usage or re-run
+     * a location read to draw it. A chip that is one pass behind an actual
+     * change of state is the price, and it is the same price the device status
+     * card already pays.
+     */
+    var activeRuleIds: Set<String>
+        get() = prefs.getStringSet(KEY_ACTIVE_RULES, null).orEmpty()
+        set(value) {
+            if (activeRuleIds == value) return
+            prefs.edit { putStringSet(KEY_ACTIVE_RULES, value) }
+        }
+
     private companion object {
         const val FILE_NAME = "enforcement_status"
         const val KEY_DNS_FAILED = "dns_failed"
+        const val KEY_ACTIVE_RULES = "active_rules"
     }
 }

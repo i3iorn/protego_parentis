@@ -37,9 +37,15 @@ internal fun Activity.ruleCard(
     onToggle: ((Boolean) -> Unit)?,
     /** Names the phones that cannot read this rule, when that is the case (rules-UX §G). */
     riskNote: String? = null,
+    /** True when the last enforcement pass had this rule applying (rules-UX §B). */
+    activeNow: Boolean = false,
 ): View {
     val parts = describer.parts(rule)
-    val status = getString(if (rule.enabled) R.string.rules_status_on else R.string.rules_status_paused)
+    val status = when {
+        !rule.enabled -> getString(R.string.rules_status_paused)
+        activeNow -> getString(R.string.rules_status_active_now)
+        else -> getString(R.string.rules_status_on)
+    }
     val switchDescription = getString(
         if (rule.enabled) R.string.context_card_turn_off else R.string.context_card_turn_on,
         rule.name,
@@ -79,7 +85,7 @@ internal fun Activity.ruleCard(
                     },
                 )
                 addView(
-                    statusChip(rule.enabled).apply {
+                    statusChip(rule.enabled, activeNow).apply {
                         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                     },
                 )
@@ -185,15 +191,30 @@ private fun Context.riskLine(text: String): TextView = TextView(this).apply {
     }
 }
 
-/** A coloured word — never colour alone — for the rule's on/off state. */
-private fun Context.statusChip(enabled: Boolean): TextView = TextView(this).apply {
-    setText(if (enabled) R.string.rules_status_on else R.string.rules_status_paused)
+/** A coloured word — never colour alone — for the rule's on/off state, and
+ *  "Active now" (the brand colour) when the last enforcement pass had it applying. */
+private fun Context.statusChip(enabled: Boolean, activeNow: Boolean = false): TextView = TextView(this).apply {
+    setText(
+        when {
+            !enabled -> R.string.rules_status_paused
+            activeNow -> R.string.rules_status_active_now
+            else -> R.string.rules_status_on
+        },
+    )
     styleAs(R.style.TextAppearance_Dementor_Caption)
     setBackgroundResource(R.drawable.chip)
-    backgroundTintList = android.content.res.ColorStateList.valueOf(
-        ContextCompat.getColor(context, if (enabled) R.color.state_ok else R.color.card_stroke),
-    )
-    setTextColor(ContextCompat.getColor(context, if (enabled) R.color.on_brand else R.color.text_primary))
+    val fill = when {
+        !enabled -> R.color.card_stroke
+        activeNow -> R.color.brand
+        else -> R.color.state_ok
+    }
+    val text = when {
+        !enabled -> R.color.text_primary
+        activeNow -> R.color.on_brand
+        else -> R.color.on_brand
+    }
+    backgroundTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(context, fill))
+    setTextColor(ContextCompat.getColor(context, text))
     val horizontal = dimen(R.dimen.space_sm)
     setPadding(horizontal, dimen(R.dimen.space_hairline), horizontal, dimen(R.dimen.space_hairline))
 }

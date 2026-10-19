@@ -490,6 +490,7 @@
 
     <string name="rules_status_on">På</string>
     <string name="rules_status_paused">Pausad</string>
+    <string name="rules_status_active_now">Aktiv nu</string>
     <string name="rules_section_schedules">Scheman</string>
     <string name="rules_section_where">Plats och närhet</string>
     <string name="rules_section_health">Hälsa</string>

@@ -492,6 +492,7 @@
     <!-- Rules list (rules-UX phase B): the grouped dashboard. -->
     <string name="rules_status_on">On</string>
     <string name="rules_status_paused">Paused</string>
+    <string name="rules_status_active_now">Active now</string>
     <string name="rules_section_schedules">Schedules</string>
     <string name="rules_section_where">Where and near</string>
     <string name="rules_section_health">Health</string>
