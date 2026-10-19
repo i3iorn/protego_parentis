@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.ui
 
 import android.content.DialogInterface
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -31,6 +32,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowDialog
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -103,7 +105,7 @@ class ContextRuleEditActivityTest {
         assertTrue(findAllText(activity.window.decorView).any { it.contains("Bedtime") || it.contains("22:30") })
 
         renameField(activity)?.setText("Bedtime (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         val saved = store().rules.single { it.id == "migrated-schedule-bedtime" }
         assertEquals("Bedtime (renamed)", saved.name)
@@ -145,7 +147,7 @@ class ContextRuleEditActivityTest {
         ).setup().get()
 
         renameField(activity)?.setText("Game limit (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         assertEquals(
             context.getString(R.string.context_well_known_target_locked),
@@ -180,7 +182,7 @@ class ContextRuleEditActivityTest {
         ).setup().get()
 
         renameField(activity)?.setText("Game block (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         assertEquals("Game block (renamed)", store().rules.single { it.id == blockRuleId }.name)
     }
@@ -203,7 +205,7 @@ class ContextRuleEditActivityTest {
             ContextRuleEditActivity.intent(context, "custom-allowance"),
         ).setup().get()
 
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         val saved = store().rules.single { it.id == "custom-allowance" }
         assertEquals(Condition.AllowanceSpent(60), saved.condition)
@@ -260,7 +262,7 @@ class ContextRuleEditActivityTest {
             ContextRuleEditActivity.intent(context, "all-of-rule"),
         ).setup().get()
 
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         val saved = store().rules.single { it.id == "all-of-rule" }
         assertEquals(
@@ -289,7 +291,7 @@ class ContextRuleEditActivityTest {
             ContextRuleEditActivity.intent(context, "any-of-rule"),
         ).setup().get()
 
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         val saved = store().rules.single { it.id == "any-of-rule" }
         assertEquals(
@@ -318,7 +320,7 @@ class ContextRuleEditActivityTest {
             ContextRuleEditActivity.intent(context, "negated-combined-rule"),
         ).setup().get()
 
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         val saved = store().rules.single { it.id == "negated-combined-rule" }
         assertEquals(
@@ -362,21 +364,24 @@ class ContextRuleEditActivityTest {
 
     @Test
     fun `saving a new rule that blocks everything with no exception asks for confirmation first`() {
-        // A brand-new rule's defaults are exactly this shape (Always, Everything,
-        // Block) — the accidental case #226 worried about, not a contrived one.
+        // A brand-new rule opens in the guided wizard (rules-UX phase D), so the
+        // Always/Everything/Block shape the accidental case #226 worried about is
+        // now answered question by question and confirmed on review.
         val activity = Robolectric.buildActivity(
             ContextRuleEditActivity::class.java,
             ContextRuleEditActivity.intent(context),
         ).setup().get()
 
+        buildTotalBlockInWizard(activity)
         renameField(activity)?.setText("Lockdown")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_wizard_create))
 
         // Not written yet — the confirmation dialog has to be answered first.
         assertTrue(store().rules.none { it.name == "Lockdown" })
 
         requireNotNull(latestDialog()) { "expected a confirmation dialog before saving a total blackout rule" }
             .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
 
         assertTrue(store().rules.any { it.name == "Lockdown" })
     }
@@ -398,8 +403,10 @@ class ContextRuleEditActivityTest {
             ContextRuleEditActivity.intent(context),
         ).setup().get()
 
+        buildTotalBlockInWizard(activity)
         renameField(activity)?.setText("Lockdown except homework")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_wizard_create))
+        shadowOf(Looper.getMainLooper()).idle()
 
         assertTrue(store().rules.any { it.name == "Lockdown except homework" })
     }
@@ -432,7 +439,7 @@ class ContextRuleEditActivityTest {
         ).setup().get()
 
         renameField(activity)?.setText("School (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         assertEquals(v2Rule.copy(name = "School (renamed)"), store().rules.single { it.id == "v2-rule" })
     }
@@ -448,7 +455,7 @@ class ContextRuleEditActivityTest {
         ).setup().get()
 
         clickButton(activity, context.getString(R.string.context_add_action))
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         val saved = store().rules.single { it.id == "one-action" }
         assertEquals(
@@ -470,11 +477,12 @@ class ContextRuleEditActivityTest {
         ).setup().get()
 
         renameField(activity)?.setText("School (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         assertEquals("School", store().rules.single { it.id == "v2-rule" }.name)
         requireNotNull(latestDialog()) { "expected the older-phones warning" }
             .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals("School (renamed)", store().rules.single { it.id == "v2-rule" }.name)
     }
 
@@ -490,7 +498,7 @@ class ContextRuleEditActivityTest {
         ).setup().get()
 
         renameField(activity)?.setText("School (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         assertEquals("School (renamed)", store().rules.single { it.id == "v2-rule" }.name)
     }
@@ -508,6 +516,7 @@ class ContextRuleEditActivityTest {
 
         requireNotNull(latestDialog()) { "expected a delete confirmation" }
             .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertTrue(store().rules.none { it.id == "to-delete" })
     }
 
@@ -530,7 +539,7 @@ class ContextRuleEditActivityTest {
         assertTrue(findAllText(activity.window.decorView).any { it.contains("72 mg/dL") && it.contains("mmol/L") })
 
         renameField(activity)?.setText("Low (renamed)")
-        clickButton(activity, "Save rule")
+        clickButton(activity, context.getString(R.string.context_save))
 
         assertEquals(rule.copy(name = "Low (renamed)"), store().rules.single { it.id == "low" })
     }
@@ -549,6 +558,21 @@ class ContextRuleEditActivityTest {
             .filterIsInstance<Button>()
             .firstOrNull()
         requireNotNull(button) { "no button titled \"$text\" was rendered" }.performClick()
+    }
+
+    /**
+     * Drives the guided flow a brand-new rule opens in to the one shape the two
+     * blackout tests care about — Always, Everything, Block — leaving the wizard
+     * on its review step. A brand-new rule opens in the wizard rather than the
+     * full editor, so the old "Save rule" button is only reachable after "Edit
+     * details"; these tests instead walk the review-and-create path a parent
+     * actually follows, ending on "Create rule".
+     */
+    private fun buildTotalBlockInWizard(activity: ContextRuleEditActivity) {
+        clickButton(activity, context.getString(R.string.context_wizard_build_own))
+        clickButton(activity, context.getString(R.string.context_effect_block))
+        clickButton(activity, context.getString(R.string.context_when_always))
+        clickButton(activity, context.getString(R.string.context_target_everything))
     }
 
     private fun findAllText(view: View): List<String> =

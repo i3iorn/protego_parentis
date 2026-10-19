@@ -194,3 +194,63 @@ internal fun Activity.sliderDialog(
         .setNegativeButton(android.R.string.cancel, null)
         .show()
 }
+
+/**
+ * A list of choices grouped under quiet sub-headings, for a chooser that has grown
+ * past "one flat list" — "Time", "Place", "Device", "Health". [sections] pairs an
+ * optional header with its options; a null header is a group with no label. A
+ * header is shown but not selectable, so tapping it does nothing rather than
+ * picking whatever happened to sit beneath it.
+ *
+ * Built on [android.widget.BaseAdapter] rather than the plain `setItems` list so
+ * the headers can be interleaved as real rows; `setItems` gives every row the same
+ * weight and no way to separate kinds of choice.
+ */
+internal fun Activity.sectionedMenu(
+    @StringRes title: Int,
+    sections: List<Pair<Int?, List<Pair<String, () -> Unit>>>>,
+) {
+    val labels = mutableListOf<String>()
+    val selectable = mutableListOf<Boolean>()
+    val actions = mutableListOf<() -> Unit>()
+    sections.forEach { (header, options) ->
+        if (header != null) {
+            labels += getString(header)
+            selectable += false
+            actions += {}
+        }
+        options.forEach { (label, action) ->
+            labels += label
+            selectable += true
+            actions += action
+        }
+    }
+    val pad = dimen(R.dimen.space_sm)
+    val adapter = object : android.widget.BaseAdapter() {
+        override fun getCount(): Int = labels.size
+        override fun getItem(position: Int): Any = labels[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+        override fun isEnabled(position: Int): Boolean = selectable[position]
+        override fun getView(
+            position: Int,
+            convertView: android.view.View?,
+            parent: android.view.ViewGroup,
+        ): android.view.View {
+            val row = (convertView as? TextView) ?: TextView(parent.context)
+            row.text = labels[position]
+            row.styleAs(
+                if (selectable[position]) {
+                    R.style.TextAppearance_Dementor_ListItem
+                } else {
+                    R.style.TextAppearance_Dementor_Section
+                },
+            )
+            row.setPadding(pad, pad, pad, pad)
+            return row
+        }
+    }
+    AlertDialog.Builder(this)
+        .setTitle(title)
+        .setAdapter(adapter) { _, index -> actions[index]() }
+        .show()
+}

@@ -98,7 +98,8 @@ with a condition chooser, a per-row **NOT** checkbox, a group mode chooser
 checkbox that negates the entire tree — then a second **except-when tree**, then
 a list of effect+target actions. This is a direct rendering of `ConditionDraft`.
 It is the right power, offered at the wrong altitude. Violates **progressive
-disclosure** and adds decision cost per Hick's Law.
+disclosure** and adds decision cost per Hick's Law. (The small fixes that need
+no wizard are gathered in §5.H.)
 
 **P5 — The concept is fragmented across the app.** The daily limit, bedtime,
 schedules and contextual rules are *one engine* (the #106 unification) yet the
@@ -287,6 +288,58 @@ where a feature goes to hide.
 - **Destructive actions:** delete stays behind a confirm; add undo via a snackbar
   where feasible (reversible actions, Nielsen).
 
+### H. The editor itself: small fixes that need no wizard
+
+`ContextRuleEditActivity` is where §3 P4 actually lives, and a few of its costs
+are self-contained — fixable without the Phase D wizard and without touching the
+model or the engine. All citations are to that file unless said otherwise.
+
+- **The "not connected" toast fires behind the input dialog.** `askForGlucose`
+  (L625–641) shows the toast at L640 on the line *after* `promptForText(...)`,
+  but `promptForText` only shows an `AlertDialog` and returns (`ViewDialogs.kt`
+  L105–114). The toast therefore overlaps the dialog it is meant to accompany,
+  and is shown even when the user cancels. Move it into the dialog's `message`
+  parameter (which already exists), or raise it only once a value is accepted.
+- **Save and Delete don't use the app's button vocabulary.** L250–274 build raw
+  `Button`s, so the screen's primary action doesn't read as primary and its
+  destructive one isn't marked dangerous. `primaryActionButton()` and
+  `destructiveActionButton()` (`ViewButtons.kt` L37–51) already exist and are
+  used everywhere else; swap them in, overriding `layoutParams` to keep the full
+  width.
+- **Removing a group is one tap, unconfirmed and irreversible.**
+  `removeButton(R.string.context_remove_group)` (L325) deletes an entire nested
+  subtree. A group is expensive to rebuild; route it through `confirmDialog`
+  (or give it the undo §G asks for). A leaf row can take the same confirm far
+  more cheaply.
+- **Repeated row controls carry no accessible context.** Every leaf's remove
+  button is the bare string `context_remove_condition` = "Remove" (L344–345,
+  `strings.xml` L162) and every negation toggle is `context_row_not` = "Not"
+  (L397–402, `strings.xml` L205). TalkBack reads the same two labels for every
+  row. Give each a `contentDescription` naming its own row — the condition
+  phrase is already available from `describer.condition(...)`.
+- **The rule is never shown back while it's being built.** The list renders
+  rules through `RuleDescriber.rule()` (`RuleDescriber.kt` L32), but the editor
+  never displays that sentence. A read-only preview near Save closes the gulf of
+  evaluation for a few lines and is a down-payment on §C/§D's review step.
+- **The condition chooser is a long flat menu.** `chooseCondition` (L453–467)
+  lists every condition — always, Wi-Fi, each place, device, battery, window,
+  allowance, three glucose — in one menu. Sub-headings (Time / Place / Device /
+  Health) lower the cost of each choice now, ahead of the template gallery.
+- **Every "choice" is a full-width `Button`.** `choice()` (L970–975) renders
+  conditions, effects and targets as raised buttons, and each row trails a
+  `Not` checkbox and a `Remove` button (`horizontalRow`, L411–416). At depth —
+  every nest adds `space_lg` of left indent — this reads as a wall of buttons
+  and crowds the row. A lighter tappable row (`withRipple()`, as the rest of the
+  app uses) would declutter the tree. Ties into §C.
+- **A blank-name save only toasts.** `save()` (L828–832) doesn't focus or flag
+  the name field, so the error points nowhere.
+
+**Leave as-is.** The root group's "Apply when the above is NOT true" checkbox
+(L198–208) sits *below* its tree rather than in a header row the way nested
+groups' `Not` does. The label — "the above" — is exactly what makes the
+placement read correctly, so the apparent inconsistency is deliberate and worth
+keeping.
+
 ---
 
 ## 6. Concrete label changes (appendix)
@@ -315,6 +368,9 @@ where a feature goes to hide.
   reads the rule once, not three fragments; headers as `isAccessibilityHeading`;
   status as text, not colour alone (WCAG 1.4.1 / 1.3.1).
 - Tap targets ≥ 48dp (Fitts's Law); switches need accessible labels.
+- The editor's **repeated row controls** need the same discipline: every leaf's
+  `Remove` and every row's `Not` are currently identical unlabelled strings
+  (see §5.H), so TalkBack cannot tell one row's control from the next.
 
 ---
 
@@ -357,6 +413,15 @@ cheap cached snapshot to read instead.
 Evolve `RuleDescriber` to emit structured parts (kind, when, then, for) and a
 reusable card. Files: `RuleDescriber.kt`, new `RuleCard.kt`, tests pinning the
 parts per rule shape.
+
+**Phase D0 — Rule-editor polish (independent of the wizard).**
+The §5.H fixes, each shippable on its own and none needing the wizard or a model
+change. Cheapest and most defensible first: the Save/Delete buttons and the
+mis-timed glucose toast (one is a bug, the other a plain design-system
+alignment), then the accessible row labels and the live rule preview. Files:
+`ContextRuleEditActivity.kt`, `ViewDialogs.kt` (only if the glucose message
+moves), `strings.xml` (+ `values-sv`); tests alongside
+`ContextRuleEditActivityTest`.
 
 **Phase D — Authoring wizard + template gallery.**
 Extract the wizard state machine into a **pure, testable class** (mirroring

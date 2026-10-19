@@ -37,6 +37,8 @@ import dev.schrammel.protego_parentis.policy.ConditionDraft
 import dev.schrammel.protego_parentis.policy.ContextRuleAuthoring
 import dev.schrammel.protego_parentis.policy.ContextRuleFormat
 import dev.schrammel.protego_parentis.policy.GroupMode
+import dev.schrammel.protego_parentis.policy.RuleTemplates
+import dev.schrammel.protego_parentis.policy.RuleWizard
 import dev.schrammel.protego_parentis.policy.add
 import dev.schrammel.protego_parentis.policy.groupDepthAt
 import dev.schrammel.protego_parentis.policy.hasImpossibleAtLeast
@@ -85,6 +87,22 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private var name: String = ""
     private var enabled: Boolean = true
 
+    /**
+     * The guided flow for a rule being created (rules-UX phase D); null once an
+     * existing rule is being edited, or once the parent has opened the full
+     * editor from the wizard. [render] branches on this.
+     */
+    private var wizard: RuleWizard? = null
+
+    /** True while the app picker is choosing a target for the wizard rather than for one of [actions]. */
+    private var pickingForWizard: Boolean = false
+
+    /** Set when "edit details" is tapped in the wizard, so the new rule stays in the full editor. */
+    private var advancedForNewRule: Boolean = false
+
+    /** The name field, held so a save refused for a blank name can put the cursor where the problem is. */
+    private var nameField: EditText? = null
+
     /** "When", as the editable tree the screen draws. Its root's NOT is the "invert" checkbox. */
     private var whenDraft = ConditionDraft.Group()
 
@@ -108,6 +126,22 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         val picked = AppPickerActivity.resultFrom(result.data)
+        if (pickingForWizard) {
+            pickingForWizard = false
+            val current = wizard ?: return@registerForActivityResult
+            val chosen = if (pickingExcept) {
+                RuleTarget.EverythingExcept(picked.map(::PackageName).toSet())
+            } else if (picked.isEmpty()) {
+                // Nothing picked leaves the question unanswered rather than
+                // silently meaning "everything".
+                return@registerForActivityResult
+            } else {
+                mergedTarget(picked.map(::PackageName).toSet(), emptySet())
+            }
+            wizard = current.chooseTarget(chosen).next()
+            render()
+            return@registerForActivityResult
+        }
         val index = pickingForAction
         val current = actions.getOrNull(index) ?: return@registerForActivityResult
         if (pickingExcept) {
@@ -151,10 +185,32 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     override fun onGatedContentVisible() {
         if (!requireStillInFamily(target)) return
+        // A brand-new rule opens in the guided wizard (rules-UX phase D); an
+        // existing one opens in the full editor, where its own shape is already
+        // known and re-asking would be busywork. Decided here rather than in
+        // [onCreate] so it survives authenticating after the screen is already up,
+        // and so "edit details" from the wizard — [advancedForNewRule] — is what
+        // stops it coming back.
+        if (wizard == null && !advancedForNewRule && intent.getStringExtra(EXTRA_ID) == null && canEdit) {
+            wizard = RuleWizard()
+        }
         render()
     }
 
     private fun render() {
+        if (wizard != null) {
+            renderWizard()
+        } else {
+            renderAdvanced()
+        }
+    }
+
+    /**
+     * The full editor: every part of the rule at once. A brand-new rule opens
+     * in the guided wizard instead (rules-UX phase D), so this is what an
+     * existing rule opens in and where "edit details" from the wizard lands.
+     */
+    private fun renderAdvanced() {
         container.removeAllViews()
         container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
         container.addView(
@@ -165,16 +221,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         )
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
-        container.addView(
-            EditText(this).apply {
-                hint = getString(R.string.context_name_hint)
-                setText(name)
-                setSingleLine()
-                isEnabled = canEdit
-                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                addTextChangedListener(SimpleWatcher { name = it })
-            },
-        )
+        addNameField(container)
         container.addView(
             CheckBox(this).apply {
                 setText(R.string.context_enabled)
@@ -248,17 +295,18 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         }
 
         if (canEdit) {
+            previewBox()?.let { container.addView(it) }
             container.addView(
-                Button(this).apply {
+                primaryActionButton().apply {
                     setText(R.string.context_save)
                     layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                         .apply { topMargin = dimen(R.dimen.space_xl) }
-                    setOnClickListener { save() }
+                    setOnClickListener { saveAdvanced() }
                 },
             )
             if (intent.hasExtra(EXTRA_ID)) {
                 container.addView(
-                    Button(this).apply {
+                    destructiveActionButton().apply {
                         setText(R.string.context_delete)
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
                             .apply { topMargin = dimen(R.dimen.space_sm) }
@@ -273,6 +321,275 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 )
             }
         }
+    }
+
+    /**
+     * The guided flow a brand-new rule opens in (rules-UX phase D): the three
+     * questions almost every rule really asks, one at a time, over the same
+     * engine the full editor exposes. The order and the skipping are
+     * [RuleWizard]'s, tested without a device; this only draws the step it says
+     * is current. A starter from the gallery answers its own questions and lands
+     * straight on review.
+     */
+    private fun renderWizard() {
+        val current = wizard ?: return
+        container.removeAllViews()
+        container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
+        if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+
+        when (current.step) {
+            RuleWizard.Step.Start -> renderWizardStart()
+            RuleWizard.Step.Effect -> renderWizardEffect(current)
+            RuleWizard.Step.Condition -> renderWizardCondition(current)
+            RuleWizard.Step.Target -> renderWizardTarget(current)
+            RuleWizard.Step.Review -> renderWizardReview(current)
+        }
+
+        if (current.canGoBack && canEdit) {
+            container.addView(
+                actionButton().apply {
+                    setText(R.string.context_wizard_back)
+                    setOnClickListener { wizard = current.back(); render() }
+                },
+            )
+        }
+    }
+
+    /** The gallery: a shape to start from, or the full editor. */
+    private fun renderWizardStart() {
+        container.addView(bodyText(getString(R.string.context_wizard_start_intro)))
+        RuleTemplates.all().forEach { kind ->
+            val label = getString(wizardTemplateLabel(kind))
+            container.addView(
+                choice(label) {
+                    name = label
+                    wizard = wizard?.applyTemplate(RuleTemplates.spec(kind))
+                    render()
+                },
+            )
+        }
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_wizard_build_own)
+                setOnClickListener { wizard = wizard?.buildYourOwn(); render() }
+            },
+        )
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_wizard_edit_details)
+                setOnClickListener { seedAdvancedFromWizard() }
+            },
+        )
+    }
+
+    /** The starter's own name, so the gallery reads the same here as it does elsewhere. */
+    private fun wizardTemplateLabel(kind: RuleTemplates.Kind): Int = when (kind) {
+        RuleTemplates.Kind.SCHOOL -> R.string.schedules_starter_school
+        RuleTemplates.Kind.HOMEWORK -> R.string.schedules_starter_homework
+        RuleTemplates.Kind.DINNER -> R.string.schedules_starter_dinner
+        RuleTemplates.Kind.BEDTIME -> R.string.rules_bedtime_name
+    }
+
+    private fun renderWizardEffect(current: RuleWizard) {
+        container.addView(
+            heading(getString(R.string.context_wizard_effect_header), R.style.TextAppearance_Dementor_Section),
+        )
+        listOf(
+            getString(R.string.context_effect_block) to RuleEffect.Block(),
+            getString(R.string.context_effect_allow) to RuleEffect.Allow,
+            getString(R.string.context_effect_always_block) to RuleEffect.AlwaysBlock(),
+            getString(R.string.context_choose_safety_exempt) to RuleEffect.SafetyExempt,
+        ).forEach { (label, effect) ->
+            container.addView(choice(label) { wizard = current.chooseEffect(effect).next(); render() })
+        }
+        container.addView(
+            actionButton().apply {
+                setText(R.string.context_choose_budget)
+                setOnClickListener { askForWizardBudget(current) }
+            },
+        )
+    }
+
+    private fun askForWizardBudget(current: RuleWizard) {
+        val existingMinutes = (current.effect as? RuleEffect.SetBudget)
+            ?.budget?.default?.inWholeMinutes?.toInt()
+        sliderDialog(
+            title = R.string.context_choose_budget,
+            max = LimitSlider.MAX_STEPS,
+            initialProgress = LimitSlider.progressFor(existingMinutes ?: DEFAULT_BUDGET_MINUTES),
+            format = { formatLimit(LimitSlider.minutesFor(it)) },
+        ) { progress ->
+            wizard = current.chooseEffect(
+                RuleEffect.SetBudget(WeeklyBudget.flat(LimitSlider.minutesFor(progress).minutes)),
+            ).next()
+            render()
+        }
+    }
+
+    private fun renderWizardCondition(current: RuleWizard) {
+        container.addView(
+            heading(getString(R.string.context_wizard_condition_header), R.style.TextAppearance_Dementor_Section),
+        )
+        // "Always" is the absence of a condition — the simplest answer, one tap
+        // away — so it sits on its own above the chooser rather than buried in
+        // it. Everything else is one tap further, in the grouped chooser the full
+        // editor uses.
+        container.addView(
+            choice(getString(R.string.context_when_always)) {
+                wizard = current.chooseCondition(Condition.Always).next()
+                render()
+            },
+        )
+        container.addView(
+            choice(getString(R.string.context_wizard_pick_condition)) {
+                chooseCondition(current.condition) { condition ->
+                    wizard = current.chooseCondition(condition).next()
+                    render()
+                }
+            },
+        )
+    }
+
+    private fun renderWizardTarget(current: RuleWizard) {
+        container.addView(
+            heading(getString(R.string.context_wizard_target_header), R.style.TextAppearance_Dementor_Section),
+        )
+        // The whole "to what" question is four choices — as many as the "what
+        // should happen" step above — so they are shown directly rather than
+        // behind another menu. Choosing categories or apps hands off to the
+        // same pickers the full editor uses.
+        container.addView(
+            choice(getString(R.string.context_target_everything)) {
+                wizard = current.chooseTarget(RuleTarget.Everything).next()
+                render()
+            },
+        )
+        container.addView(
+            choice(getString(R.string.context_choose_categories)) { chooseWizardCategories(current) },
+        )
+        container.addView(
+            choice(getString(R.string.context_choose_apps)) { pickWizardApps(current, except = false) },
+        )
+        container.addView(
+            choice(getString(R.string.context_choose_everything_except)) { pickWizardApps(current, except = true) },
+        )
+    }
+
+    private fun pickWizardApps(current: RuleWizard, except: Boolean) {
+        pickingForWizard = true
+        pickingExcept = except
+        val preselect = when (val picked = current.target) {
+            is RuleTarget.Apps -> picked.packages.map { it.value }
+            is RuleTarget.EverythingExcept -> picked.packages.map { it.value }
+            else -> emptyList()
+        }
+        pickApps.launch(
+            AppPickerActivity.intent(
+                this,
+                getString(if (except) R.string.context_choose_everything_except else R.string.context_choose_apps),
+                preselect,
+                target.childId,
+            ),
+        )
+    }
+
+    private fun chooseWizardCategories(current: RuleWizard) {
+        val categories = policyRuleStore(this, target).categories()
+        if (categories.isEmpty()) {
+            toast(getString(R.string.rules_no_categories))
+            return
+        }
+        val chosen = mutableSetOf<CategoryId>()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.context_choose_categories)
+            .setMultiChoiceItems(categories.map { it.name }.toTypedArray(), BooleanArray(categories.size)) { _, position, isChecked ->
+                val id = CategoryId(categories[position].id)
+                if (isChecked) chosen += id else chosen -= id
+            }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                wizard = current.chooseTarget(RuleTarget.Categories(chosen)).next()
+                render()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun renderWizardReview(current: RuleWizard) {
+        container.addView(
+            heading(getString(R.string.context_wizard_review_header), R.style.TextAppearance_Dementor_Section),
+        )
+        previewBox()?.let { container.addView(it) }
+        addNameField(container)
+        container.addView(
+            primaryActionButton().apply {
+                setText(R.string.context_wizard_create)
+                setOnClickListener { saveWizard() }
+            },
+        )
+    }
+
+    /**
+     * Leaves the wizard for the full editor, carrying over whatever the wizard
+     * has answered so the parent does not lose the shape they just chose — the
+     * point of "edit details" is to refine an answer, not to start over. Only
+     * reached before a rule is saved, so the new rule stays in the full editor.
+     */
+    private fun seedAdvancedFromWizard() {
+        val current = wizard ?: return
+        advancedForNewRule = true
+        wizard = null
+        current.condition?.let { whenDraft = ConditionDraft.fromCondition(it) }
+        val effect = current.effect
+        val chosen = current.target
+        if (effect != null && chosen != null) actions = mutableListOf(RuleAction(effect, chosen))
+        render()
+    }
+
+    /**
+     * The rule as one sentence — the same sentence the rules list shows — kept
+     * under the form so a parent can read back what they are building without
+     * leaving the screen. Built from the wizard's answers when it is up, and
+     * from the full editor's fields otherwise; null while too little is chosen
+     * to describe.
+     */
+    private fun previewBox(): View? {
+        val current = wizard
+        val actionList = if (current != null) {
+            val effect = current.effect ?: return null
+            val chosen = current.target ?: return null
+            listOf(RuleAction(effect, chosen))
+        } else {
+            actions.toList()
+        }
+        val rule = ContextRule(
+            id = ruleId,
+            // A preview exists before the rule is named; the sentence it builds
+            // never shows the name, but the model still insists on a non-blank
+            // one so a saved rule can be named on the block screen.
+            name = name.ifBlank { getString(R.string.context_unnamed_rule) },
+            enabled = enabled,
+            condition = current?.condition ?: whenDraft.toCondition(),
+            actions = actionList,
+            exceptWhen = if (current != null) null else exceptDraft?.toCondition(),
+        )
+        return bodyText(describer.rule(rule))
+    }
+
+    /**
+     * The name field, shared by the full editor and the wizard's review step.
+     * Held in [nameField] so a save refused for a blank name can focus it rather
+     * than only telling the parent, in a toast, that something somewhere is wrong.
+     */
+    private fun addNameField(into: LinearLayout) {
+        nameField = EditText(this).apply {
+            hint = getString(R.string.context_name_hint)
+            setText(name)
+            setSingleLine()
+            isEnabled = canEdit
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+            addTextChangedListener(SimpleWatcher { name = it })
+        }
+        into.addView(nameField)
     }
 
     private fun delete() {
@@ -321,8 +638,16 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             box.addView(
                 horizontalRow(
                     choice(modeLabel(group)) { chooseMode(slot, path) },
-                    notToggle(group.negated) { checked -> slot.edit { it.setNegated(path, checked) } },
-                    removeButton(R.string.context_remove_group) { slot.edit { it.remove(path) } },
+                    notToggle(group.negated, modeLabel(group)) { checked -> slot.edit { it.setNegated(path, checked) } },
+                    removeButton(R.string.context_remove_group) {
+                        // A group is a whole subtree, expensive to rebuild: confirm
+                        // it where a single condition is cheap enough to just remove.
+                        confirmDialog(
+                            R.string.context_remove_group,
+                            getString(R.string.context_remove_group_confirm),
+                            R.string.context_remove_group,
+                        ) { slot.edit { it.remove(path) } }
+                    },
                 ),
             )
         } else if (group.children.size > 1) {
@@ -341,8 +666,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                                 }
                             }
                         },
-                        notToggle(child.negated) { checked -> slot.edit { it.setNegated(childPath, checked) } },
-                        removeButton(R.string.context_remove_condition) { slot.edit { it.remove(childPath) } },
+                        notToggle(child.negated, describer.condition(child.condition)) { checked ->
+                            slot.edit { it.setNegated(childPath, checked) }
+                        },
+                        removeButton(R.string.context_remove_condition, describer.condition(child.condition)) {
+                            slot.edit { it.remove(childPath) }
+                        },
                     ),
                 )
 
@@ -394,18 +723,28 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         menu(R.string.context_combine_header, options)
     }
 
-    private fun notToggle(checked: Boolean, onChange: (Boolean) -> Unit) = CheckBox(this).apply {
-        setText(R.string.context_row_not)
-        isChecked = checked
-        isEnabled = canEdit
-        setOnCheckedChangeListener { _, value -> onChange(value) }
-    }
+    private fun notToggle(checked: Boolean, description: String, onChange: (Boolean) -> Unit) =
+        CheckBox(this).apply {
+            setText(R.string.context_row_not)
+            // The bare "Not" reads the same on every row; name the row it belongs
+            // to so a screen reader can tell one from the next.
+            contentDescription = getString(R.string.context_row_not_description, description)
+            isChecked = checked
+            isEnabled = canEdit
+            setOnCheckedChangeListener { _, value -> onChange(value) }
+        }
 
-    private fun removeButton(textRes: Int, onClick: () -> Unit) = Button(this).apply {
-        setText(textRes)
-        isEnabled = canEdit
-        setOnClickListener { onClick() }
-    }
+    private fun removeButton(textRes: Int, description: String? = null, onClick: () -> Unit) =
+        Button(this).apply {
+            setText(textRes)
+            // "Remove" alone names no row; when the button's own text is not
+            // already descriptive, say what it removes.
+            if (description != null) {
+                contentDescription = getString(R.string.context_remove_description, description)
+            }
+            isEnabled = canEdit
+            setOnClickListener { onClick() }
+        }
 
     /** [main] takes the spare width; everything after it keeps its own size. */
     private fun horizontalRow(main: View, vararg rest: View) = LinearLayout(this).apply {
@@ -433,7 +772,11 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         )
         addView(choice(describer.target(action.target)) { chooseTarget(index) })
         if (actions.size > 1) {
-            addView(removeButton(R.string.context_remove_action) { actions.removeAt(index); render() })
+            addView(
+                removeButton(R.string.context_remove_action, describer.effect(action.effect)) {
+                    actions.removeAt(index); render()
+                },
+            )
         }
     }
 
@@ -450,21 +793,36 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun chooseCondition(current: Condition?, onPicked: (Condition) -> Unit) {
         if (!canEdit) return
         val places = places()
-        val options = buildList {
-            add(getString(R.string.context_when_always) to { onPicked(Condition.Always) })
-            add(getString(R.string.context_choose_wifi) to { askForWifi(current, onPicked) })
-            places.forEach { place ->
-                add(getString(R.string.context_when_place, place.name) to { onPicked(Condition.AtPlace(place.id)) })
-            }
-            add(getString(R.string.context_choose_device) to { chooseDevice(onPicked) })
-            add(getString(R.string.context_choose_battery) to { askForBattery(current, onPicked) })
-            add(getString(R.string.context_choose_window) to { askForWindow(current, onPicked) })
-            add(getString(R.string.context_choose_allowance) to { askForAllowance(current, onPicked) })
-            add(getString(R.string.context_choose_glucose_below) to { askForGlucose(current, below = true, onPicked) })
-            add(getString(R.string.context_choose_glucose_above) to { askForGlucose(current, below = false, onPicked) })
-            add(getString(R.string.context_choose_glucose_stale) to { askForGlucoseStale(current, onPicked) })
-        }
-        menu(R.string.context_when_header, options)
+        // Grouped, so a chooser that now spans the whole engine reads as a few
+        // kinds of question rather than one flat wall. "Always" leads unlabelled:
+        // it is the absence of a condition, not a kind of one.
+        sectionedMenu(
+            R.string.context_when_header,
+            listOf(
+                null to listOf(
+                    getString(R.string.context_when_always) to { onPicked(Condition.Always) },
+                ),
+                R.string.context_group_time to listOf(
+                    getString(R.string.context_choose_window) to { askForWindow(current, onPicked) },
+                    getString(R.string.context_choose_allowance) to { askForAllowance(current, onPicked) },
+                ),
+                R.string.context_group_place to buildList {
+                    add(getString(R.string.context_choose_wifi) to { askForWifi(current, onPicked) })
+                    places.forEach { place ->
+                        add(getString(R.string.context_when_place, place.name) to { onPicked(Condition.AtPlace(place.id)) })
+                    }
+                },
+                R.string.context_group_device to listOf(
+                    getString(R.string.context_choose_device) to { chooseDevice(onPicked) },
+                    getString(R.string.context_choose_battery) to { askForBattery(current, onPicked) },
+                ),
+                R.string.context_group_health to listOf(
+                    getString(R.string.context_choose_glucose_below) to { askForGlucose(current, below = true, onPicked) },
+                    getString(R.string.context_choose_glucose_above) to { askForGlucose(current, below = false, onPicked) },
+                    getString(R.string.context_choose_glucose_stale) to { askForGlucoseStale(current, onPicked) },
+                ),
+            ),
+        )
     }
 
     /** A percentage rather than free text — there is no wrong value to type. */
@@ -625,10 +983,16 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun askForGlucose(current: Condition?, below: Boolean, unit: GlucoseUnit, onPicked: (Condition) -> Unit) {
         val existing = (current as? Condition.GlucoseBelow)?.mgdl?.takeIf { below }
             ?: (current as? Condition.GlucoseAbove)?.mgdl?.takeIf { !below }
+        // The "not connected" warning rides in the dialog's own caption rather than
+        // as a toast. A toast raised on the line after promptForText() fires as the
+        // dialog opens — so it sits behind the dialog and outlives a cancel — while
+        // a caption is read next to the field it applies to and leaves with it.
+        val notConnected = target.isOwnDevice && !NightscoutStore(this).isConfigured
         promptForText(
             if (below) R.string.context_choose_glucose_below else R.string.context_choose_glucose_above,
             if (unit == GlucoseUnit.MMOL_L) R.string.glucose_hint_mmol else R.string.glucose_hint_mgdl,
             prefill = existing?.let { unit.format(it) }.orEmpty(),
+            message = if (notConnected) getString(R.string.glucose_not_connected) else null,
         ) { text ->
             val mgdl = unit.parse(text)
             if (mgdl == null) {
@@ -637,7 +1001,6 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 onPicked(if (below) Condition.GlucoseBelow(mgdl) else Condition.GlucoseAbove(mgdl))
             }
         }
-        if (target.isOwnDevice && !NightscoutStore(this).isConfigured) toast(getString(R.string.glucose_not_connected))
     }
 
     /** How long without a reading counts as "no data": 5 minutes to 4 hours, in 5-minute steps. */
@@ -825,7 +1188,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun wellKnownSingleAppTarget(): RuleTarget.Apps? =
         MigratedRuleIds.singleAppOf(ruleId)?.let { RuleTarget.Apps(setOf(it)) }
 
-    private fun save() {
+    private fun saveAdvanced() {
         if (name.isBlank()) {
             toast(getString(R.string.context_name_required))
             return
@@ -848,6 +1211,24 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             actions = actions.toList(),
             exceptWhen = exceptDraft?.toCondition(),
         )
+        confirmOlderPhones(rule) { confirmBlackout(rule) { commit(rule) } }
+    }
+
+    /**
+     * Saves the rule the wizard's three answers describe. The wizard has already
+     * guaranteed an effect, a condition and a target, so the only thing left to
+     * refuse is the name — the same questions the full editor asks, in the same
+     * order, so a starter saved from the gallery and one saved from the form
+     * cannot disagree about what "looks like a mistake".
+     */
+    private fun saveWizard() {
+        val current = wizard ?: return
+        if (name.isBlank()) {
+            nameField?.requestFocus()
+            toast(getString(R.string.context_name_required))
+            return
+        }
+        val rule = current.toRule(ruleId, name.trim(), enabled) ?: return
         confirmOlderPhones(rule) { confirmBlackout(rule) { commit(rule) } }
     }
 
@@ -967,9 +1348,23 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             .show()
     }
 
+    /**
+     * A choice drawn as a quiet, full-width row — the current condition, effect or
+     * target, a starter in the gallery, or "Add condition". A raised button reads
+     * as the one thing to press, so a tree of them turns the editor into a wall of
+     * buttons and crowds each row against its Not and Remove controls. Flat,
+     * left-aligned and ripple-touched reads as "tap to change" without competing
+     * with Save. Still a [Button] so the screen's choices and its real actions
+     * keep one focus and accessibility story.
+     */
     private fun choice(text: String, onClick: () -> Unit) = Button(this).apply {
         this.text = text
         isEnabled = canEdit
+        isAllCaps = false
+        gravity = android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL
+        withRipple()
+        val pad = dimen(R.dimen.space_sm)
+        setPadding(pad, pad, pad, pad)
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         setOnClickListener { onClick() }
     }

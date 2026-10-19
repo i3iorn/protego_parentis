@@ -156,6 +156,7 @@
     <string name="context_edit_title">Regel</string>
     <string name="context_name_hint">Namn, till exempel Inga spel i skolan</string>
     <string name="context_name_required">Ge regeln ett namn.</string>
+    <string name="context_unnamed_rule">Namnlös regel</string>
     <string name="context_well_known_target_locked">Den här regeln kom från en appgräns eller en appblockering, och dess mål måste vara just den appen för att regeln ska fortsätta synas där — villkor och effekt går fortfarande att ändra här. Gör en separat regel för att täcka fler appar.</string>
     <string name="context_enabled">Regeln är på</string>
     <string name="context_when_header">När</string>
@@ -217,6 +218,19 @@
     <string name="context_remove_exception">Ta bort undantaget</string>
     <string name="context_add_action">+ Lägg till en åtgärd till</string>
     <string name="context_remove_action">Ta bort den här åtgärden</string>
+    <string name="context_remove_group_confirm">Detta tar bort hela gruppen och allt i den. Det går inte att ångra.</string>
+    <string name="context_row_not_description">Inte — %1$s</string>
+    <string name="context_remove_description">Ta bort — %1$s</string>
+    <string name="context_wizard_start_intro">Börja med något som passar din familj, eller bygg regeln själv.</string>
+    <string name="context_wizard_build_own">Bygg din egen</string>
+    <string name="context_wizard_edit_details">Redigera detaljer</string>
+    <string name="context_wizard_back">Tillbaka</string>
+    <string name="context_wizard_effect_header">Vad ska hända?</string>
+    <string name="context_wizard_condition_header">När ska den gälla?</string>
+    <string name="context_wizard_target_header">Vad ska den gälla för?</string>
+    <string name="context_wizard_review_header">Kontrollera den</string>
+    <string name="context_wizard_create">Skapa regel</string>
+    <string name="context_wizard_pick_condition">Välj ett villkor</string>
     <string name="context_older_phones_title">Vissa telefoner använder inte regeln än</string>
     <string name="context_older_phones_body">%1$s kör en äldre version av appen, eller har inte sagt vilken version de kör. Äldre versioner ignorerar regler med flera åtgärder, ett undantag eller en “minst”-grupp, och kan ta bort dem: ett barns telefon med äldre version gör det vid nästa synk. Uppdatera alla telefoner till %2$s eller senare först.</string>
     <string name="rules_version_mixed_title">⚠ Uppdatera alla telefoner innan du använder de nya regelfunktionerna</string>
