@@ -434,6 +434,35 @@ class ContextRuleEditActivityTest {
         )
     }
 
+    /**
+     * The wizard's review step shows the rule back as the same card the rules
+     * list draws (rules-UX phase C) — the structured rows, labelled Where the
+     * sentence the list used to concatenate was.
+     */
+    @Test
+    fun `the wizard's review shows the rule back as a card`() {
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context),
+        ).setup().get()
+
+        buildTotalBlockInWizard(activity)
+
+        val texts = findAllText(activity.window.decorView)
+        assertTrue(
+            "the preview should carry the card's When row",
+            texts.any { it == context.getString(R.string.context_when_header) },
+        )
+        assertTrue(
+            "the preview should carry the card's Then row",
+            texts.any { it == context.getString(R.string.context_card_then) },
+        )
+        assertTrue(
+            "the chosen effect should be on its own line",
+            texts.any { it.contains(context.getString(R.string.context_effect_block)) },
+        )
+    }
+
     // ---------- V2: groups, exceptions, several actions ----------
 
     private val v2Rule = ContextRule(

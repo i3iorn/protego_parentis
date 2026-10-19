@@ -44,6 +44,34 @@ internal class RuleDescriber(
         }
     }
 
+    /**
+     * The rule as labelled parts for a rule card (rules-UX phase C) — the same
+     * phrases [rule] concatenates, kept separate so a screen can label each
+     * one and a screen reader can read them in order. Separate rows also
+     * translate more safely than one concatenated sentence, whose word order
+     * is fixed in the template (§7).
+     *
+     * [RuleParts.kind] is the family of the rule's first leaf, read through any
+     * negation — it is the eye's first sort, not the whole truth for a rule
+     * that mixes families.
+     */
+    data class RuleParts(
+        val kind: RuleKind,
+        /** One phrase per leaf of the "when" tree, in tree order, negations kept. */
+        val whenLines: List<String>,
+        /** One phrase per action: effect and target, as [context_action_phrase]. */
+        val thenLines: List<String>,
+        /** The "except when" phrase alone, or null when the rule has no exception. */
+        val except: String?,
+    )
+
+    fun parts(rule: ContextRule): RuleParts = RuleParts(
+        kind = RuleKind.of(rule.condition),
+        whenLines = leavesOf(rule.condition).map { condition(it, nested = true) },
+        thenLines = rule.actions.map { action(it) },
+        except = rule.exceptWhen?.let { condition(it, nested = false) },
+    )
+
     fun action(action: RuleAction): String =
         activity.getString(R.string.context_action_phrase, effect(action.effect), target(action.target))
 
@@ -138,4 +166,17 @@ internal class RuleDescriber(
         .mapNotNull(categoryName)
         .joinToString(", ")
         .ifBlank { activity.getString(R.string.context_target_categories) }
+}
+
+/**
+ * Every leaf of a condition tree in tree order, keeping negations where they
+ * are written: a leaf's phrase is exactly the row its editor shows, so "not on
+ * school Wi-Fi" stays negated here, while [conditionToFamily] reads through
+ * the negation to keep calling the rule about Wi-Fi.
+ */
+private fun leavesOf(condition: Condition): List<Condition> = when (condition) {
+    is Condition.AllOf -> condition.conditions.flatMap(::leavesOf)
+    is Condition.AnyOf -> condition.conditions.flatMap(::leavesOf)
+    is Condition.AtLeast -> condition.conditions.flatMap(::leavesOf)
+    else -> listOf(condition)
 }

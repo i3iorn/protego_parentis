@@ -2,14 +2,12 @@ package dev.schrammel.protego_parentis.ui
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.context.ContextCapabilities
@@ -24,6 +22,7 @@ import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.policy.ContextRuleFormat
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
+import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.ui.rules.bedtimeRuleId
 import dev.schrammel.protego_parentis.ui.rules.categories
@@ -79,7 +78,16 @@ class ContextRulesActivity : ParentGatedActivity() {
         val resolved = RuleTargets.resolve(this) ?: return finish()
         target = resolved
         if (!requireStillInFamily(target)) return
+        reload()
+    }
 
+    /**
+     * Re-reads the rules from the store and draws the screen. The switch on a
+     * rule card goes through here too: pausing or resuming moves the rule
+     * between sections, so the whole screen redraws from the store rather than
+     * one line mutating in place (rules-UX phase C).
+     */
+    private fun reload() {
         Background.load(this, {
             val rules = contextRuleRuleStore(this, target).read()
             val places = placeRuleStore(this, target).read()
@@ -151,10 +159,10 @@ class ContextRulesActivity : ParentGatedActivity() {
         }
 
         // Everything that is set up, grouped by what a parent recognises — the
-        // daily limit's group first. See [ruleGroups].
+        // daily limit's group first. Each rule is a card now; see [ruleCardRow].
         ruleGroups(rules).forEach { group ->
             container.addView(sectionHeading(group.section))
-            addCollapsibleRows(container, group.rules.map { ruleRow(it, places) })
+            addCollapsibleRows(container, group.rules.map { ruleCardRow(it, places) })
         }
 
         // Nothing but the daily limit — or nothing at all. An invitation rather
@@ -298,57 +306,59 @@ class ContextRulesActivity : ParentGatedActivity() {
     )
 
     /**
-     * One rule, as a row: its name with an on/off chip, then the sentence that
-     * says what it does. The chip is the at-a-glance status the old list had
-     * only by prefixing the name with "Off".
-     *
-     * Read as one item by a screen reader. The row carries the whole thing —
-     * name, status and sentence — as a single [contentDescription], and its
-     * three pieces are kept out of the accessibility tree, so TalkBack says the
-     * rule once rather than stopping on the name, the chip and the sentence as
-     * three separate fragments (rules-UX phase F).
+     * One rule, as a card (rules-UX phase C): its name with an on/off chip,
+     * then the rule as labelled When/Then/Except rows instead of one sentence
+     * to unpick. The body opens the editor; the switch flips the rule without
+     * entering it — read-only (before the PIN) a parent sees the cards with the
+     * switches disabled, so the setup stays legible while the actions are not
+     * offered (rules-UX §G).
      */
-    private fun ruleRow(rule: ContextRule, places: List<PlaceRef>): LinearLayout {
-        val sentence = describe(rule, places)
-        val status = getString(if (rule.enabled) R.string.rules_status_on else R.string.rules_status_paused)
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
-            isClickable = true
-            contentDescription = "${rule.name}. $status. $sentence"
-            setOnClickListener {
-                startActivity(
-                    ContextRuleEditActivity.intent(this@ContextRulesActivity, rule.id, target.childId),
-                )
-            }
+    private fun ruleCardRow(rule: ContextRule, places: List<PlaceRef>): View = ruleCard(
+        rule = rule,
+        describer = RuleDescriber(
+            activity = this,
+            placeName = { id -> places.firstOrNull { it.id == id }?.name },
+            categoryName = { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name },
+            glucoseUnit = NightscoutStore(this).units,
+        ),
+        onOpen = {
+            startActivity(
+                ContextRuleEditActivity.intent(this@ContextRulesActivity, rule.id, target.childId),
+            )
+        },
+        onToggle = if (canEdit) {
+            { checked -> toggleEnabled(rule, checked) }
+        } else {
+            null
+        },
+        riskNote = riskNote(rule),
+    )
 
-            addView(
-                LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    addView(
-                        TextView(context).apply {
-                            text = rule.name
-                            styleAs(R.style.TextAppearance_Dementor_ListItem)
-                            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
-                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                        },
-                    )
-                    addView(
-                        statusChip(rule.enabled).apply {
-                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                        },
-                    )
-                },
-            )
-            addView(
-                TextView(context).apply {
-                    text = sentence
-                    styleAs(R.style.TextAppearance_Dementor_Caption)
-                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                },
-            )
-        }
+    /**
+     * Flips a rule on the spot: the write is the enforcement edit — the same
+     * store [ContextRuleEditActivity] saves to — and the screen re-reads so the
+     * rule lands in its new section's place straight away.
+     */
+    private fun toggleEnabled(rule: ContextRule, checked: Boolean) {
+        contextRuleRuleStore(this, target).upsert(rule.copy(enabled = checked))
+        reload()
+    }
+
+    /**
+     * The per-rule half of the mixed-version warning (rules-UX §G, seen to in
+     * phase C): a rule one or more phones cannot read until they update, named
+     * on the card itself rather than only in the banner above the list. The
+     * same phones-and-per-rule shape [ContextRuleEditActivity]'s save-time
+     * confirm uses — a phone that hasn't reported a version counts as one that
+     * can't, because a silent phone deletes what it can't read.
+     */
+    private fun riskNote(rule: ContextRule): String? {
+        val required = ContextRuleFormat.requiredVersion(rule) ?: return null
+        val older = RosterStore(this).devices
+            .filterNot { ContextRuleFormat.supports(it.appVersion, required) }
+            .map { it.name }
+        if (older.isEmpty()) return null
+        return getString(R.string.context_card_version_risk, older.joinToString(", "))
     }
 
     /** The count of what is set up, with the "About rules" explainer beside it. */
@@ -367,22 +377,6 @@ class ContextRulesActivity : ParentGatedActivity() {
             addView(caption(text).apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) })
             addView(infoButton(R.string.context_rules_info_title, R.string.context_rules_info_body))
         }
-    }
-
-    /**
-     * On or paused, as a word — never colour alone, so the row still reads to
-     * someone who cannot tell the two colours apart.
-     */
-    private fun statusChip(enabled: Boolean): TextView = TextView(this).apply {
-        setText(if (enabled) R.string.rules_status_on else R.string.rules_status_paused)
-        styleAs(R.style.TextAppearance_Dementor_Caption)
-        setBackgroundResource(R.drawable.chip)
-        backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(context, if (enabled) R.color.state_ok else R.color.card_stroke),
-        )
-        setTextColor(ContextCompat.getColor(context, if (enabled) R.color.on_brand else R.color.text_primary))
-        val horizontal = dimen(R.dimen.space_sm)
-        setPadding(horizontal, dimen(R.dimen.space_hairline), horizontal, dimen(R.dimen.space_hairline))
     }
 
     /**
@@ -412,15 +406,6 @@ class ContextRulesActivity : ParentGatedActivity() {
         RuleSection.OTHER -> R.string.rules_section_other
         RuleSection.PAUSED -> R.string.rules_section_paused
     }
-
-    /** The rule as a sentence, which is how a parent thinks about it. */
-    private fun describe(rule: ContextRule, places: List<PlaceRef>): String =
-        RuleDescriber(
-            activity = this,
-            placeName = { id -> places.firstOrNull { it.id == id }?.name },
-            categoryName = { id -> policyRuleStore(this, target).categories().firstOrNull { it.id == id.value }?.name },
-            glucoseUnit = NightscoutStore(this).units,
-        ).rule(rule)
 
     /**
      * A title or section heading on this screen. Marked as an accessibility

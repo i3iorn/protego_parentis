@@ -543,11 +543,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     }
 
     /**
-     * The rule as one sentence — the same sentence the rules list shows — kept
-     * under the form so a parent can read back what they are building without
-     * leaving the screen. Built from the wizard's answers when it is up, and
-     * from the full editor's fields otherwise; null while too little is chosen
-     * to describe.
+     * The rule as it stands, drawn as the same card the rules list uses
+     * (rules-UX phase C) — inert: no switch, nowhere to open; it tells a parent
+     * what they are building before they save it, which is the review step §D
+     * pinned the wizard to and the down-payment §5.H made on it. Built from the
+     * wizard's answers when it is up, and from the full editor's fields
+     * otherwise; null while too little is chosen to describe.
      */
     private fun previewBox(): View? {
         val current = wizard
@@ -569,7 +570,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
             actions = actionList,
             exceptWhen = if (current != null) null else exceptDraft?.toCondition(),
         )
-        return bodyText(describer.rule(rule))
+        return ruleCard(rule, describer, onOpen = null, onToggle = null)
     }
 
     /**

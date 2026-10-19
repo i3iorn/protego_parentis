@@ -415,12 +415,33 @@ latter would need `EnforcementCoordinator.evaluate()` on every screen open,
 which replays a full day of usage for one status word. Revisit when there is a
 cheap cached snapshot to read instead.
 
-**Phase C — Structured rule card & describer.**
-Evolve `RuleDescriber` to emit structured parts (kind, when, then, for) and a
-reusable card. Files: `RuleDescriber.kt`, new `RuleCard.kt`, tests pinning the
-parts per rule shape.
+**Phase C — Structured rule card & describer. ✅ Done (1.6.3).**
+`RuleDescriber` grew `parts(rule): RuleParts` — the rule as labelled pieces
+(`kind`, `whenLines`, `thenLines`, `except`) plus the first-leaf `RuleKind`
+glyph — while `rule(rule)` kept returning the same one sentence for wherever a
+whole rule is spoken. New `RuleCard.kt` renders it everywhere a rule appears:
+a title row (glyph, name, on/off chip), the phrases as labelled When / Then /
+Except rows, a trailing switch that pauses or resumes straight from the list
+without entering the editor, and the per-rule version risk line naming the
+phones that cannot read the rule (the per-rule half of §G's warning, which F
+deferred to this phase). One `contentDescription` on the card carries name,
+status and the full sentence for a screen reader, with the eye's pieces kept
+out of the tree. The rules list and the editor's live preview both show the
+card, so a rule cannot be described two different ways. Strings in en/sv
+(`context_card_when/then/turn_on/turn_off/version_risk`, `rules_card_more`);
+`RuleDescriberTest` pins the parts for every rule shape (window, wifi, place,
+battery, glucose with the family's unit, multi-action, except, deep-tree
+truncation), `ContextRulesActivityTest` pins the card render, the toggle
+without the editor, and the affected-only risk line; `ContextRuleEditActivityTest`
+pins the review step showing the card. Deferred within C, and why:
+- **Child dashboard summary lines** — `HomeActivity.renderRules` keeps its
+  one-line summaries; the card's labelled rows are for the screens a parent
+  authors in, and the dashboard's transparency promise is that it shows the
+  same *rules*, not the same layout (§10).
+- **Search, sort and "Active now"** — still the Phase B leftovers (§9).
 
-Next up: D0/D and E are done (below); this and Phase G are the phases left.
+Next up: only the Phase B leftovers (search/sort/Active now) and Phase G
+(motion) remain.
 
 **Phase D0 — Rule-editor polish (independent of the wizard). ✅ Done (1.6.0).**
 The §5.H fixes shipped all together, with the wizard: Save and Delete use
@@ -479,11 +500,11 @@ titles and everything else the pass touched is translated in `values-sv` (lint
 treats a missing translation as an error). Deferred within F, and why:
 - **Undo from a snackbar (§G)** — a snackbar needs the Material library, and
   the app deliberately carries no UI-kit dependencies (§10). Delete stays
-  behind its confirm; the undo affordance becomes cheap once §C makes a rule
-  card its own row.
-- **Per-rule version pinning (§G)** — the mixed-version warning stays a global
-  banner on the list; the per-rule confirmation happens at save time in the
-  editor. Attaching it to the affected *rows* is a §C concern too.
+  behind its confirm; §C's card made each rule its own row, so the undo
+  affordance is now cheap — it remains the only reason to add the dependency.
+- **Per-rule version pinning (§G)** — resolved by Phase C: the affected card
+  carries the risk line naming the phones that cannot read the rule; the
+  global banner and the editor's save-time confirmation stay as they were.
 
 **Phase G — Motion and finish** (card expand/collapse, transitions), only after
 the structure is right.

@@ -122,6 +122,12 @@
     <string name="context_rule_summary_actions">%1$s → %2$s</string>
     <string name="context_action_phrase">%1$s %2$s</string>
     <string name="context_join_actions">; </string>
+    <!-- The rule card's labelled rows; "When" and "Except when" reuse the
+         editor's own section names so one thing keeps one name. -->
+    <string name="context_card_then">Then</string>
+    <string name="context_card_turn_on">Turn on %1$s</string>
+    <string name="context_card_turn_off">Turn off %1$s</string>
+    <string name="context_card_version_risk">%1$s can’t read this rule and will delete it at their next sync</string>
     <string name="context_join_list">, </string>
     <string name="context_when_except">%1$s, except when %2$s</string>
     <string name="context_when_at_least">at least %1$d of: %2$s</string>
@@ -494,6 +500,10 @@
     <plurals name="rules_summary_on">
         <item quantity="one">%d rule on</item>
         <item quantity="other">%d rules on</item>
+    </plurals>
+    <plurals name="rules_card_more">
+        <item quantity="one">%1$d more condition</item>
+        <item quantity="other">%1$d more conditions</item>
     </plurals>
     <plurals name="rules_summary_paused">
         <item quantity="one">%d paused</item>

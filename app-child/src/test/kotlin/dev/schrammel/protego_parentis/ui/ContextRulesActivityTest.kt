@@ -197,7 +197,7 @@ class ContextRulesActivityTest {
     }
 
     @Test
-    fun `a rule with an exception and several actions reads as one sentence`() {
+    fun `a rule with an exception and several actions reads as a card`() {
         rules().upsert(
             ContextRule(
                 id = "v2",
@@ -214,13 +214,25 @@ class ContextRulesActivityTest {
 
         val activity = activity()
 
-        val summary = findAll(activity.window.decorView) { it is TextView }
+        // The whole rule lives in the card's single contentDescription; the eye's
+        // labelled rows sit out of the reader's path.
+        val card = findAll(activity.window.decorView) {
+            it.contentDescription?.toString()?.startsWith("School.") == true
+        }.singleOrNull()
+        requireNotNull(card) { "no card carrying the rule read as one item was rendered" }
+        val sentence = card.contentDescription.toString()
+        assertTrue(sentence, sentence.contains(context.getString(R.string.context_effect_block)))
+        assertTrue(sentence, sentence.contains(context.getString(R.string.context_join_actions).trim()))
+        assertTrue(sentence, sentence.contains("10"))
+        // The labelled rows, not one sentence to unpick.
+        assertNotNull(findText(activity, context.getString(R.string.context_card_then)))
+        val texts = findAll(activity.window.decorView) { it is TextView }
             .map { (it as TextView).text.toString() }
-            .firstOrNull { it.contains("School") && it.contains("→") }
-        requireNotNull(summary) { "no summary line was rendered for the rule" }
-        assertTrue(summary, summary.contains(context.getString(R.string.context_effect_block)))
-        assertTrue(summary, summary.contains(context.getString(R.string.context_join_actions).trim()))
-        assertTrue(summary, summary.contains("10"))
+        assertEquals(
+            "the exception is its own row, labelled like the editor's section",
+            1,
+            texts.count { it == context.getString(R.string.context_except_header) },
+        )
     }
 
     // ---------- accessibility (rules-UX phase F) ----------
@@ -291,6 +303,104 @@ class ContextRulesActivityTest {
         assertEquals(
             RulesActivity::class.java.name,
             shadowOf(activity).nextStartedActivity?.component?.className,
+        )
+    }
+
+    /**
+     * The card's switch is the whole point of the card: on/off without
+     * entering an editor (rules-UX phase C). Nothing here starts
+     * [ContextRuleEditActivity] — the toggle writes the store and the screen
+     * re-reads, which also moves the rule into or out of "Paused" in place.
+     */
+    @Test
+    fun `a rule card's switch pauses and resumes without opening the editor`() {
+        rules().upsert(
+            ContextRule(
+                id = "school",
+                name = "School",
+                enabled = true,
+                condition = Condition.OnWifi("School"),
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Everything,
+            ),
+        )
+        val activity = activity()
+
+        val turnOff = context.getString(R.string.context_card_turn_off, "School")
+        val turnOn = context.getString(R.string.context_card_turn_on, "School")
+
+        findDescriptionAfterRerender(activity, turnOff).performClick()
+
+        assertEquals(
+            "pausing must reach the store immediately",
+            false,
+            rules().rules.single { it.id == "school" }.enabled,
+        )
+        assertNull(
+            "the editor must not open for a toggle",
+            shadowOf(activity).nextStartedActivity,
+        )
+
+        findDescriptionAfterRerender(activity, turnOn).performClick()
+
+        assertEquals(
+            "resuming must reach the store too",
+            true,
+            rules().rules.single { it.id == "school" }.enabled,
+        )
+    }
+
+    /** [toggleEnabled] rewrites the screen on a background thread; wait for it. */
+    private fun findDescriptionAfterRerender(activity: android.app.Activity, description: String): View {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline) {
+            ShadowLooper.idleMainLooper()
+            findDescription(activity, description)?.let { return it }
+            Thread.sleep(10)
+        }
+        throw AssertionError("no view described \"$description\" appeared after the screen re-read")
+    }
+
+    private fun findDescription(activity: android.app.Activity, description: String): View? =
+        findAll(activity.window.decorView) { it.contentDescription == description }.firstOrNull()
+
+    /**
+     * The per-rule half of the mixed-version warning (rules-UX §G, seen to in
+     * phase C): the card of a rule older phones cannot read names them, and the
+     * card of a rule they can read does not — even with the same family of
+     * phones behind the banner.
+     */
+    @Test
+    fun `a card that older phones cannot read says so, and affected-only`() {
+        enrolParent(version = "1.1.10")
+        rules().upsert(
+            ContextRule(
+                id = "v2",
+                name = "School",
+                enabled = true,
+                condition = Condition.OnWifi("School"),
+                actions = listOf(RuleAction(RuleEffect.Block(), RuleTarget.Everything)),
+                exceptWhen = Condition.BatteryBelow(10),
+            ),
+        )
+        rules().upsert(
+            ContextRule(
+                id = "v1",
+                name = "Plain",
+                enabled = true,
+                condition = Condition.Always,
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = activity()
+
+        val risk = context.getString(R.string.context_card_version_risk, "Mum's phone")
+        assertEquals(
+            "exactly the affected card carries the risk line",
+            1,
+            findAll(activity.window.decorView) { it is TextView && it.text == risk }.size,
         )
     }
 
