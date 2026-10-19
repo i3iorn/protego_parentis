@@ -5,6 +5,7 @@ import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.RecurringWindow
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
+import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.DayOfWeek
@@ -88,5 +89,25 @@ class RuleSectionsTest {
         )
         assertEquals(listOf("Alpha"), groups.first { it.section == RuleSection.SCHEDULES }.rules.map { it.name })
         assertEquals(listOf("Gamma", "Zeta"), groups.first { it.section == RuleSection.WHERE }.rules.map { it.name })
+    }
+
+    @Test
+    fun `the daily limit is its own group, first, even when switched off`() {
+        val daily = ContextRule(
+            id = LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID,
+            name = "Daily limit",
+            enabled = false,
+            condition = Condition.Always,
+            effect = RuleEffect.Block(),
+            target = RuleTarget.Everything,
+        )
+
+        val groups = ruleGroups(listOf(rule("School", condition = window()), daily))
+
+        assertEquals(
+            listOf(RuleSection.DAILY_LIMIT, RuleSection.SCHEDULES),
+            groups.map { it.section },
+        )
+        assertEquals(listOf("Daily limit"), groups.first().rules.map { it.name })
     }
 }

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -46,10 +47,10 @@ import java.util.UUID
  * phone is are all the same thing now — a [ContextRule] — so they are all
  * edited here rather than across the three screens (the old dedicated
  * schedules screen, `LimitsActivity`/`ParentLimitActivity`, and this screen's
- * own previous, narrower self) that #106 replaces. The daily limit still
- * gets a fixed spot at the top rather than being just one more row: it is
- * the reason the app exists, not "no phone at dinner," even though modelling
- * it as a rule like any other is what let this merge happen at all.
+ * own previous, narrower self) that #106 replaces. The daily limit is grouped
+ * with the rest now rather than pinned in a slot of its own: it is still the
+ * first thing the screen shows — it is the reason the app exists — but it is
+ * the first card in the same list, not a different pattern (rules-UX phase E).
  *
  * The list is grouped by what a parent recognises — schedules, somewhere the
  * phone is or is near, health — and each rule carries its on/off state, so the
@@ -115,20 +116,14 @@ class ContextRulesActivity : ParentGatedActivity() {
         // count (rules-UX phase B).
         container.addView(summaryRow(rules))
 
-        // #106: the daily limit is a rule like any other now, but it keeps a
-        // fixed spot rather than being buried in the list below — see this
-        // class's own doc comment for why.
-        container.addView(
-            headingWithInfo(
-                title(getString(R.string.context_daily_limit_header), R.style.TextAppearance_Dementor_Section),
-                R.string.context_daily_limit_info_title,
-                R.string.context_daily_limit_info_body,
-            ),
-        )
+        // The daily limit is a rule like any other now, so it is drawn by the
+        // same grouped list as everything else — its own group first, where a
+        // parent looks, rather than a pinned slot of its own (rules-UX phase E).
+        // The one thing the grouping cannot draw for us is the door to create it
+        // when it does not exist yet: there is no card to group, so the screen
+        // offers one.
         val dailyLimit = rules.firstOrNull { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
-        if (dailyLimit != null) {
-            container.addView(ruleRow(dailyLimit, places))
-        } else if (canEdit) {
+        if (dailyLimit == null && canEdit) {
             container.addView(
                 navigationRow(
                     title = getString(R.string.context_daily_limit_add),
@@ -155,6 +150,15 @@ class ContextRulesActivity : ParentGatedActivity() {
             )
         }
 
+        // Everything that is set up, grouped by what a parent recognises — the
+        // daily limit's group first. See [ruleGroups].
+        ruleGroups(rules).forEach { group ->
+            container.addView(sectionHeading(group.section))
+            addCollapsibleRows(container, group.rules.map { ruleRow(it, places) })
+        }
+
+        // Nothing but the daily limit — or nothing at all. An invitation rather
+        // than a dead end, below the list so the daily limit still leads it.
         val otherRules = rules.filterNot { it.id == LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID }
         if (otherRules.isEmpty()) {
             container.addView(caption(getString(R.string.context_no_rules)))
@@ -167,15 +171,6 @@ class ContextRulesActivity : ParentGatedActivity() {
                 container.addView(title(getString(R.string.schedules_starters_header), R.style.TextAppearance_Dementor_Section))
                 container.addView(caption(getString(R.string.schedules_starters_hint)))
                 container.addView(group(STARTERS.map(::starterRow)))
-            }
-        } else {
-            // Grouped by what a parent recognises — schedules, somewhere the
-            // phone is, health — rather than one flat list; see [ruleGroups].
-            ruleGroups(otherRules).forEach { group ->
-                container.addView(
-                    title(getString(sectionLabel(group.section)), R.style.TextAppearance_Dementor_Section),
-                )
-                addCollapsibleRows(container, group.rules.map { ruleRow(it, places) })
             }
         }
 
@@ -377,8 +372,27 @@ class ContextRulesActivity : ParentGatedActivity() {
         setPadding(horizontal, dimen(R.dimen.space_hairline), horizontal, dimen(R.dimen.space_hairline))
     }
 
-    /** The heading a [RuleSection] is shown under. */
+    /**
+     * The heading a [RuleSection] is shown under. The daily limit's carries its
+     * own explainer, the same pairing the full editor gives its "when" and "to"
+     * rows; every other section is just its name.
+     */
+    private fun sectionHeading(section: RuleSection): View {
+        val label = title(getString(sectionLabel(section)), R.style.TextAppearance_Dementor_Section)
+        return if (section == RuleSection.DAILY_LIMIT) {
+            headingWithInfo(
+                label,
+                R.string.context_daily_limit_info_title,
+                R.string.context_daily_limit_info_body,
+            )
+        } else {
+            label
+        }
+    }
+
+    /** The text a [RuleSection]'s heading reads. */
     private fun sectionLabel(section: RuleSection): Int = when (section) {
+        RuleSection.DAILY_LIMIT -> R.string.context_daily_limit_header
         RuleSection.SCHEDULES -> R.string.rules_section_schedules
         RuleSection.WHERE -> R.string.rules_section_where
         RuleSection.HEALTH -> R.string.rules_section_health
