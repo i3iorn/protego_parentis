@@ -100,13 +100,9 @@ class AppControlActivity : ParentGatedActivity() {
         column.addView(captionText(getString(R.string.apps_network_hint)))
         // A block set here is an ordinary ContextRule under the hood (see this
         // class's own doc comment), governed by the same precedence a category
-        // rule or an Allow elsewhere can override.
-        column.addView(
-            actionButton().apply {
-                setText(R.string.context_tutorial_open)
-                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@AppControlActivity)) }
-            },
-        )
+        // rule or an Allow elsewhere can override. The "how rules combine"
+        // explainer now lives only beside the condition tree it describes
+        // (rules-UX phase F).
         // Remote only: this device's own list is always current (LocalAppCatalog reads
         // the package manager directly), so there is nothing to ask a local target for.
         if (!target.isOwnDevice) {

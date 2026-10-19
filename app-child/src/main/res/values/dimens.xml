@@ -32,6 +32,11 @@
     <dimen name="row_icon">32dp</dimen>
     <dimen name="row_icon_small">28dp</dimen>
 
+    <!-- The smallest a control may be to stay reliably tappable. The "ⓘ" beside
+         a heading is a plain TextView with only text-sized bounds, so without
+         this it sits well under the 48dp a finger needs (rules-UX phase F). -->
+    <dimen name="touch_target">48dp</dimen>
+
     <!-- Surfaces -->
     <dimen name="card_radius">14dp</dimen>
     <dimen name="card_padding">16dp</dimen>

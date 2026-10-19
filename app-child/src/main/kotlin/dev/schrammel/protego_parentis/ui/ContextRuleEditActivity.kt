@@ -213,12 +213,6 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun renderAdvanced() {
         container.removeAllViews()
         container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
-        container.addView(
-            actionButton().apply {
-                setText(R.string.context_tutorial_open)
-                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@ContextRuleEditActivity)) }
-            },
-        )
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         addNameField(container)
@@ -237,6 +231,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 heading(getString(R.string.context_when_header), R.style.TextAppearance_Dementor_Section),
                 R.string.context_when_info_title,
                 R.string.context_when_info_body,
+                learnMore = true,
             ),
         )
         renderGroup(container, whenSlot, emptyList())
@@ -260,6 +255,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 heading(getString(R.string.context_except_header), R.style.TextAppearance_Dementor_Section),
                 R.string.context_except_info_title,
                 R.string.context_except_info_body,
+                learnMore = true,
             ),
         )
         if (exceptDraft == null) {
@@ -282,6 +278,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
                 heading(getString(R.string.context_do_header), R.style.TextAppearance_Dementor_Section),
                 R.string.context_do_info_title,
                 R.string.context_do_info_body,
+                learnMore = true,
             ),
         )
         actions.forEachIndexed { index, action -> container.addView(actionRow(index, action)) }
@@ -592,6 +589,19 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         into.addView(nameField)
     }
 
+    /**
+     * Points a refused save at the field that needs it. An inline error on the
+     * name box names the problem where it is — and a screen reader reads it out
+     * — where a bare toast said what was wrong but not where to fix it
+     * (rules-UX phase F).
+     */
+    private fun flagNameRequired() {
+        nameField?.let {
+            it.error = getString(R.string.context_name_required)
+            it.requestFocus()
+        }
+    }
+
     private fun delete() {
         val deleted = name
         val store = contextRuleRuleStore(this, target)
@@ -765,7 +775,12 @@ class ContextRuleEditActivity : ParentGatedActivity() {
         val toHeading = heading(getString(R.string.context_to_header), R.style.TextAppearance_Dementor_Caption)
         addView(
             if (index == 0) {
-                headingWithInfo(toHeading, R.string.context_to_info_title, R.string.context_to_info_body)
+                headingWithInfo(
+                    toHeading,
+                    R.string.context_to_info_title,
+                    R.string.context_to_info_body,
+                    learnMore = true,
+                )
             } else {
                 toHeading
             },
@@ -1190,7 +1205,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
 
     private fun saveAdvanced() {
         if (name.isBlank()) {
-            toast(getString(R.string.context_name_required))
+            flagNameRequired()
             return
         }
         wellKnownSingleAppTarget()?.let { locked ->
@@ -1224,8 +1239,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun saveWizard() {
         val current = wizard ?: return
         if (name.isBlank()) {
-            nameField?.requestFocus()
-            toast(getString(R.string.context_name_required))
+            flagNameRequired()
             return
         }
         val rule = current.toRule(ruleId, name.trim(), enabled) ?: return

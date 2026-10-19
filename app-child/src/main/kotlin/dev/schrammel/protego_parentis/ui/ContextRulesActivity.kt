@@ -201,12 +201,9 @@ class ContextRulesActivity : ParentGatedActivity() {
             },
         )
 
-        container.addView(
-            actionButton().apply {
-                setText(R.string.context_tutorial_open)
-                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@ContextRulesActivity)) }
-            },
-        )
+        // The "how rules combine" explainer now lives only beside the condition
+        // tree it describes — the advanced editor — rather than as a standalone
+        // essay reachable from every screen (rules-UX phase F).
 
         // The other things this app enforces — app limits, categories, the web
         // filter, places — live on their own hub screen. "Rules" leads here, to
@@ -304,12 +301,21 @@ class ContextRulesActivity : ParentGatedActivity() {
      * One rule, as a row: its name with an on/off chip, then the sentence that
      * says what it does. The chip is the at-a-glance status the old list had
      * only by prefixing the name with "Off".
+     *
+     * Read as one item by a screen reader. The row carries the whole thing —
+     * name, status and sentence — as a single [contentDescription], and its
+     * three pieces are kept out of the accessibility tree, so TalkBack says the
+     * rule once rather than stopping on the name, the chip and the sentence as
+     * three separate fragments (rules-UX phase F).
      */
-    private fun ruleRow(rule: ContextRule, places: List<PlaceRef>): LinearLayout =
-        LinearLayout(this).apply {
+    private fun ruleRow(rule: ContextRule, places: List<PlaceRef>): LinearLayout {
+        val sentence = describe(rule, places)
+        val status = getString(if (rule.enabled) R.string.rules_status_on else R.string.rules_status_paused)
+        return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
             isClickable = true
+            contentDescription = "${rule.name}. $status. $sentence"
             setOnClickListener {
                 startActivity(
                     ContextRuleEditActivity.intent(this@ContextRulesActivity, rule.id, target.childId),
@@ -325,18 +331,25 @@ class ContextRulesActivity : ParentGatedActivity() {
                             text = rule.name
                             styleAs(R.style.TextAppearance_Dementor_ListItem)
                             layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                         },
                     )
-                    addView(statusChip(rule.enabled))
+                    addView(
+                        statusChip(rule.enabled).apply {
+                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                        },
+                    )
                 },
             )
             addView(
                 TextView(context).apply {
-                    text = describe(rule, places)
+                    text = sentence
                     styleAs(R.style.TextAppearance_Dementor_Caption)
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 },
             )
         }
+    }
 
     /** The count of what is set up, with the "About rules" explainer beside it. */
     private fun summaryRow(rules: List<ContextRule>): LinearLayout {
@@ -409,8 +422,15 @@ class ContextRulesActivity : ParentGatedActivity() {
             glucoseUnit = NightscoutStore(this).units,
         ).rule(rule)
 
+    /**
+     * A title or section heading on this screen. Marked as an accessibility
+     * heading so TalkBack's heading navigation can jump between the parts of a
+     * long list, the same way [screenTitle] and [sectionHeader] do elsewhere
+     * (rules-UX phase F).
+     */
     private fun title(text: String, appearance: Int) = TextView(this).apply {
         this.text = text
+        isAccessibilityHeading = true
         styleAs(appearance)
         setPadding(0, dimen(R.dimen.section_spacing), 0, dimen(R.dimen.space_xxs))
     }

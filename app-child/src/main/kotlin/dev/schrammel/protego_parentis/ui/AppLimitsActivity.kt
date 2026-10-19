@@ -83,16 +83,9 @@ class AppLimitsActivity : ParentGatedActivity() {
         )
         // A limit set here is an ordinary ContextRule under the hood (see this
         // class's own doc comment), governed by the same precedence a category
-        // block or an Allow elsewhere can override — worth the same pointer to
-        // the explanation ContextRulesActivity and ContextRuleEditActivity give,
-        // since a parent who only ever uses this screen would otherwise never
-        // see it.
-        container.addView(
-            actionButton().apply {
-                setText(R.string.context_tutorial_open)
-                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@AppLimitsActivity)) }
-            },
-        )
+        // block or an Allow elsewhere can override. The "how rules combine"
+        // explainer now lives only beside the condition tree it describes
+        // (rules-UX phase F).
         // Built once and never rebuilt. Recreating the field on each keystroke
         // would take the cursor and the typed text with it.
         container.addView(searchField { query = it; renderRows() })

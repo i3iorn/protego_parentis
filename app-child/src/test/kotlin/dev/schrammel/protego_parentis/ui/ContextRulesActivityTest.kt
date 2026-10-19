@@ -75,6 +75,14 @@ class ContextRulesActivityTest {
      * finishes; this is the same shape any of this app's other
      * [Background.load]-based screens would need, just not yet exercised by
      * an existing test to copy from.
+     *
+     * Waits for the screen's title specifically, not for "any TextView":
+     * [ParentGatedActivity] pins its Lock button in the corner as soon as the
+     * activity opens, and a [Button] is a [TextView], so "any TextView" is
+     * already true before [render] has drawn anything — the check returned
+     * instantly and let assertions race the background read. The title only
+     * appears once [render] runs, so it is the signal that actually means
+     * "drawn".
      */
     private fun activity(): ContextRulesActivity {
         val activity = Robolectric.buildActivity(
@@ -86,10 +94,11 @@ class ContextRulesActivityTest {
     }
 
     private fun awaitRendered(activity: ContextRulesActivity) {
-        val deadline = System.currentTimeMillis() + 2000
+        val title = context.getString(R.string.context_title)
+        val deadline = System.currentTimeMillis() + 10_000
         while (System.currentTimeMillis() < deadline) {
             ShadowLooper.idleMainLooper()
-            if (findAll(activity.window.decorView) { it is TextView }.isNotEmpty()) return
+            if (findText(activity, title) != null) return
             Thread.sleep(10)
         }
     }
@@ -212,6 +221,58 @@ class ContextRulesActivityTest {
         assertTrue(summary, summary.contains(context.getString(R.string.context_effect_block)))
         assertTrue(summary, summary.contains(context.getString(R.string.context_join_actions).trim()))
         assertTrue(summary, summary.contains("10"))
+    }
+
+    // ---------- accessibility (rules-UX phase F) ----------
+
+    @Test
+    fun `a rule row reads as one item for a screen reader`() {
+        rules().upsert(
+            ContextRule(
+                id = "v2",
+                name = "School",
+                enabled = true,
+                condition = Condition.OnWifi("School"),
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = activity()
+
+        val row = findAll(activity.window.decorView) {
+            it.contentDescription?.toString()?.startsWith("School.") == true
+        }.singleOrNull()
+        requireNotNull(row) { "no rule row carrying a single description was rendered" }
+        assertTrue(
+            "the description should read the whole rule, status included",
+            row.contentDescription.toString().contains(context.getString(R.string.rules_status_on)),
+        )
+    }
+
+    @Test
+    fun `the screen title and section headings are accessibility headings`() {
+        rules().upsert(
+            ContextRule(
+                id = "v2",
+                name = "School",
+                enabled = true,
+                condition = Condition.OnWifi("School"),
+                effect = RuleEffect.Block(),
+                target = RuleTarget.Everything,
+            ),
+        )
+
+        val activity = activity()
+
+        assertTrue(
+            "the screen title should be an accessibility heading",
+            findText(activity, context.getString(R.string.context_title))?.isAccessibilityHeading == true,
+        )
+        assertTrue(
+            "a section heading should be an accessibility heading",
+            findText(activity, context.getString(R.string.rules_section_where))?.isAccessibilityHeading == true,
+        )
     }
 
     /**

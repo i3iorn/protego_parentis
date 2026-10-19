@@ -154,13 +154,9 @@ class CategoryEditActivity : ParentGatedActivity() {
 
         // The limit below is an ordinary ContextRule under the hood (see this
         // class's own doc comment), governed by the same precedence a nested
-        // category or a per-app rule elsewhere can override.
-        content.addView(
-            actionButton().apply {
-                setText(R.string.context_tutorial_open)
-                setOnClickListener { startActivity(RulesTutorialActivity.intent(this@CategoryEditActivity)) }
-            },
-        )
+        // category or a per-app rule elsewhere can override. The "how rules
+        // combine" explainer now lives only beside the condition tree it
+        // describes (rules-UX phase F).
 
         nameInput = EditText(this).apply {
             hint = getString(R.string.category_name_hint)

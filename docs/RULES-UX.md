@@ -355,6 +355,12 @@ keeping.
 | `context_daily_limit_header` | "Daily limit" | a card, not a separate header |
 | `context_rules_header` | "Your rules" | "Your rules" |
 
+All of these shipped across rules-UX 1.4.1–1.6.2 (see §9): the hub is "More
+controls", its inner "Rules" row is gone, both home rows lead to the rules
+list, and the daily limit leads the list as the first card *inside* the
+grouping rather than a pinned header above it — the last row's proposal, in the
+grouped-list shape §9 decided on.
+
 ---
 
 ## 7. Accessibility & internationalisation
@@ -414,25 +420,70 @@ Evolve `RuleDescriber` to emit structured parts (kind, when, then, for) and a
 reusable card. Files: `RuleDescriber.kt`, new `RuleCard.kt`, tests pinning the
 parts per rule shape.
 
-**Phase D0 — Rule-editor polish (independent of the wizard).**
-The §5.H fixes, each shippable on its own and none needing the wizard or a model
-change. Cheapest and most defensible first: the Save/Delete buttons and the
-mis-timed glucose toast (one is a bug, the other a plain design-system
-alignment), then the accessible row labels and the live rule preview. Files:
-`ContextRuleEditActivity.kt`, `ViewDialogs.kt` (only if the glucose message
-moves), `strings.xml` (+ `values-sv`); tests alongside
-`ContextRuleEditActivityTest`.
+Next up: D0/D and E are done (below); this and Phase G are the phases left.
 
-**Phase D — Authoring wizard + template gallery.**
-Extract the wizard state machine into a **pure, testable class** (mirroring
-`ConditionDraft`), and render it step by step. Templates from the existing
-`STARTERS`, expanded. Files: new `RuleWizard`/`RuleTemplates`, `ContextRuleEditActivity.kt`,
-`strings.xml`; unit tests on the state machine; keep the advanced tree.
+**Phase D0 — Rule-editor polish (independent of the wizard). ✅ Done (1.6.0).**
+The §5.H fixes shipped all together, with the wizard: Save and Delete use
+`primaryActionButton()`/`destructiveActionButton()`, delete still behind a
+confirm; removing a nested group goes through `confirmDialog`; the glucose
+"not connected" warning rides in the dialog's own message instead of the toast
+that used to open behind it; every row's Not and Remove carries a
+`contentDescription` naming the row it belongs to; the condition chooser is
+sectioned (Time / Place / Device / Health, with "Always" above it unlabelled);
+choices render as flat ripple rows rather than raised buttons; the rule is
+shown back live under the form (`previewBox`), shared by the wizard's review
+step; and a refused blank-name save puts an inline error on the name field
+rather than only a toast. Files as planned: `ContextRuleEditActivity.kt`,
+`ViewDialogs.kt`, `strings.xml` (+ `values-sv`);
+`ContextRuleEditActivityTest` pins the blank-name refusal and the round-trip
+shapes.
 
-**Phase E — Unify daily limit/bedtime and the adjacent settings.**
-Surface all `ContextRule`s in one list; relabel the hub's leftovers.
+**Phase D — Authoring wizard + template gallery. ✅ Done (1.6.0), except the
+expanded gallery.**
+The wizard state machine is the planned pure, testable class
+(`core-policy/RuleWizard`, `RuleWizardTest`), rendered step by step in
+`ContextRuleEditActivity`: template gallery → what should happen → when → to
+what → review, with back-navigation, and the full condition tree kept behind
+"Edit details" (which seeds the editor with whatever the wizard already
+answered). The gallery is the rules list's own starters, extracted into
+`core-policy/RuleTemplates` (`RuleTemplatesTest`) so both screens offer the
+same four shapes. Deferred within D: the further templates §D named
+(no-games-after-nine, essentials-at-school, and the rest), plus the icons and
+one-line descriptions — the four shipped shapes are the ones the list's
+starters already carried, and §C's card work will change how a gallery row
+looks anyway.
 
-**Phase F — Advanced disclosure polish + states + i18n + a11y pass.**
+**Phase E — Unify daily limit/bedtime and the adjacent settings. ✅ Done (1.6.1).**
+The daily limit is a rule in the same grouped list (`RuleSections`): its own
+group, first, and still first when paused, so it leads without being a
+separate pattern above the grouping — with a create-row when it does not
+exist. The linking alternative was taken over surfacing per-app rules inline:
+app limits, blocks and category budgets remain ordinary rules reached through
+the list's single "More controls" row (which answers "what governs this
+phone?" in one place), and the hub's leftovers keep that name.
+
+**Phase F — Advanced disclosure polish + states + i18n + a11y pass. ✅ Done (1.6.2).**
+The ⓘ essays are rewritten as a line or two (the ~450-character "when" body is
+~180 now), each ending in the story rather than the mechanics, and the ones in the
+advanced editor carry a "Learn more" button that opens the tutorial. The
+tutorial itself now lives only beside the condition tree it describes — the
+rules list, app limits, app control and category screens dropped their
+standalone explainer buttons; the advanced editor's ⓘ dialogs are where
+"How rules combine" is reachable. A11y: every rule row reads to a screen
+reader as one item — a single `contentDescription` carrying name, status and
+sentence, with its three fragments kept out of the tree — the screen title and
+section headings are accessibility headings, and the "ⓘ" button carries a
+48dp `touch_target` floor instead of its text-only glyph bounds (all pinned in
+`ContextRulesActivityTest` and the `dimens.xml` note). i18n: the grouped-chooser
+titles and everything else the pass touched is translated in `values-sv` (lint
+treats a missing translation as an error). Deferred within F, and why:
+- **Undo from a snackbar (§G)** — a snackbar needs the Material library, and
+  the app deliberately carries no UI-kit dependencies (§10). Delete stays
+  behind its confirm; the undo affordance becomes cheap once §C makes a rule
+  card its own row.
+- **Per-rule version pinning (§G)** — the mixed-version warning stays a global
+  banner on the list; the per-rule confirmation happens at save time in the
+  editor. Attaching it to the affected *rows* is a §C concern too.
 
 **Phase G — Motion and finish** (card expand/collapse, transitions), only after
 the structure is right.

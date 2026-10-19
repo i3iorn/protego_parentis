@@ -72,16 +72,20 @@ internal fun Activity.stepIndicator(current: Int, total: Int = ONBOARDING_STEPS)
  * [navigationRow]'s chevron made, so it takes its colour from the theme with
  * no second asset to keep in sync with it.
  */
-internal fun Activity.infoButton(@StringRes title: Int, @StringRes message: Int): TextView =
+internal fun Activity.infoButton(@StringRes title: Int, @StringRes message: Int, learnMore: Boolean = false): TextView =
     TextView(this).apply {
         text = "ⓘ"
         styleAs(R.style.TextAppearance_Dementor_ListItem)
         setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
         val pad = dimen(R.dimen.space_sm)
         setPadding(pad, 0, 0, 0)
+        // The glyph is only as tall as its text; without a floor the whole
+        // control sits under the 48dp a finger needs (rules-UX phase F).
+        minimumHeight = dimen(R.dimen.touch_target)
+        gravity = Gravity.CENTER_VERTICAL
         contentDescription = getString(title)
         withRipple()
-        setOnClickListener { infoDialog(title, message) }
+        setOnClickListener { infoDialog(title, message, learnMore) }
     }
 
 /**
@@ -93,11 +97,12 @@ internal fun Activity.headingWithInfo(
     heading: TextView,
     @StringRes infoTitle: Int,
     @StringRes infoMessage: Int,
+    learnMore: Boolean = false,
 ): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.HORIZONTAL
     gravity = Gravity.CENTER_VERTICAL
     addView(heading.apply { layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f) })
-    addView(infoButton(infoTitle, infoMessage))
+    addView(infoButton(infoTitle, infoMessage, learnMore))
 }
 
 /**

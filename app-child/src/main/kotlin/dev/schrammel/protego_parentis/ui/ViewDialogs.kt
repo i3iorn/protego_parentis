@@ -21,12 +21,21 @@ import dev.schrammel.protego_parentis.R
  * action rather than to explain one that already happened or that a control
  * nearby is about to.
  */
-internal fun Activity.infoDialog(@StringRes title: Int, @StringRes message: Int) {
-    AlertDialog.Builder(this)
+internal fun Activity.infoDialog(@StringRes title: Int, @StringRes message: Int, learnMore: Boolean = false) {
+    val dialog = AlertDialog.Builder(this)
         .setTitle(title)
         .setMessage(message)
         .setPositiveButton(android.R.string.ok, null)
-        .show()
+    // "Learn more" opens the tutorial — the full "how rules combine" essay the
+    // short body deliberately leaves out. Only the advanced editor asks for it:
+    // the explanation belongs beside the condition tree it describes, and the
+    // simpler screens already get a one-line answer (rules-UX phase F).
+    if (learnMore) {
+        dialog.setNeutralButton(R.string.context_learn_more) { _, _ ->
+            startActivity(RulesTutorialActivity.intent(this))
+        }
+    }
+    dialog.show()
 }
 
 /**

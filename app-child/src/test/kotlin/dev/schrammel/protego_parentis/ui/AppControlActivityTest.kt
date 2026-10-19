@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.Condition
 import dev.schrammel.protego_parentis.model.ContextRule
@@ -192,8 +193,10 @@ class AppControlActivityRequestListButtonTest {
         ).setup().get()
 
         // Waits on the section header rather than on the absence of a button,
-        // so this cannot pass merely by asserting before the screen loaded.
-        requireNotNull(awaitRow(activity) { findButton(it, activity.getString(R.string.context_tutorial_open)) }) {
+        // so this cannot pass merely by asserting before the screen loaded. The
+        // header is used because the "how rules combine" button this used to
+        // wait on moved to the advanced editor only (rules-UX phase F).
+        requireNotNull(awaitRow(activity) { findText(it, activity.getString(R.string.apps_title)) }) {
             "the screen should have finished rendering"
         }
         assertNull(findButton(activity.window.decorView, activity.getString(R.string.apps_request_list_update)))
@@ -216,6 +219,16 @@ class AppControlActivityRequestListButtonTest {
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
                 findButton(view.getChildAt(i), text)?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun findText(view: View, text: String): View? {
+        if (view is TextView && view.text == text) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findText(view.getChildAt(i), text)?.let { return it }
             }
         }
         return null

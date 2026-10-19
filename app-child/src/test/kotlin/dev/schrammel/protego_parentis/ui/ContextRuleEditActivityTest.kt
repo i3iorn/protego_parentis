@@ -411,6 +411,29 @@ class ContextRuleEditActivityTest {
         assertTrue(store().rules.any { it.name == "Lockdown except homework" })
     }
 
+    @Test
+    fun `a blank name in the full editor is refused at the field, not only in a toast`() {
+        val activity = Robolectric.buildActivity(
+            ContextRuleEditActivity::class.java,
+            ContextRuleEditActivity.intent(context),
+        ).setup().get()
+
+        // "Edit details" leaves the wizard for the full editor, where "Save rule"
+        // goes through saveAdvanced() rather than the wizard's create path.
+        clickButton(activity, context.getString(R.string.context_wizard_edit_details))
+        val field = renameField(activity)
+        field?.setText("")
+        clickButton(activity, context.getString(R.string.context_save))
+
+        assertTrue("nothing should be saved without a name", store().rules.none { it.name.isBlank() })
+        // The refusal points at the field itself, not only a toast that says
+        // something is wrong somewhere (rules-UX phase F).
+        assertEquals(
+            context.getString(R.string.context_name_required),
+            field?.error?.toString(),
+        )
+    }
+
     // ---------- V2: groups, exceptions, several actions ----------
 
     private val v2Rule = ContextRule(
