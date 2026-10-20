@@ -20,7 +20,9 @@ import dev.schrammel.protego_parentis.rules.GoalCoordinator
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.ui.rules.RuleScope
 import dev.schrammel.protego_parentis.ui.rules.RuleTargets
+import dev.schrammel.protego_parentis.ui.rules.categoryBudgetMinutes
 import dev.schrammel.protego_parentis.ui.rules.categories
+import dev.schrammel.protego_parentis.ui.rules.contextRuleRuleStore
 import dev.schrammel.protego_parentis.ui.rules.policyRuleStore
 import java.time.Instant
 import java.time.LocalTime
@@ -57,6 +59,13 @@ class CategoriesActivity : ParentGatedActivity() {
         if (!canEdit) column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         val categories = policyRuleStore(this, target).categories().sortedBy { it.name.lowercase() }
+        // A category's limit is a rule, not a field: the editor writes it as a
+        // ContextRule and leaves the stored field at zero (see
+        // [CategoryEditActivity]). Reading the field here would show every
+        // category as unlimited, and a limit set a moment ago would look as
+        // though it had not stuck. The stored field stays the fallback for a
+        // category no rule covers yet.
+        val rules = contextRuleRuleStore(this, target).read()
         if (categories.isEmpty()) {
             column.addView(bodyText(getString(R.string.rules_no_categories)))
         } else {
@@ -67,7 +76,9 @@ class CategoriesActivity : ParentGatedActivity() {
                             title = category.name,
                             subtitle = getString(
                                 R.string.rules_category_row,
-                                formatLimit(category.limitMinutes),
+                                formatLimit(
+                                    categoryBudgetMinutes(rules, category.id) ?: category.limitMinutes,
+                                ),
                                 resources.getQuantityString(
                                     R.plurals.rules_category_apps,
                                     category.packages.size,
