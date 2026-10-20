@@ -60,15 +60,18 @@
     <string name="home_used_up">Time\'s up for today</string>
     <string name="home_monitor_only">Watching only. This phone is not set up for blocking, so nothing gets blocked — the rules below are being checked but not applied.</string>
     <string name="home_managed">This phone is managed. Rules below are being enforced.</string>
-    <string name="home_rules_header">My rules</string>
-    <string name="home_apps_header">Where the time went</string>
     <string name="home_would_block_header">Would be blocked right now</string>
-    <string name="home_edit_rules">Rules</string>
-    <string name="home_no_usage">No screen time recorded yet today.</string>
-    <plurals name="home_and_more">
-        <item quantity="one">and %d more</item>
-        <item quantity="other">and %d more</item>
+    <string name="home_menu">Menu</string>
+    <plurals name="home_menu_waiting">
+        <item quantity="one">Menu, %d thing waiting</item>
+        <item quantity="other">Menu, %d things waiting</item>
     </plurals>
+    <string name="home_allowances_header">Your allowances</string>
+    <plurals name="home_blocked_count">
+        <item quantity="one">%d app is blocked right now</item>
+        <item quantity="other">%d apps are blocked right now</item>
+    </plurals>
+    <string name="home_no_usage">No screen time recorded yet today.</string>
     <string name="home_nothing_blocked">Nothing is blocked right now.</string>
     <string name="home_until">until %1$s</string>
     <!-- HOME-UX phase 2: a blocked row carries its answer as labelled lines
@@ -466,7 +469,8 @@
     <string name="home_open_week_detail">Your last seven days</string>
     <string name="home_open_privacy_detail">Exactly what is measured and what is sent</string>
     <string name="home_language_detail">Change the language of this app</string>
-    <string name="home_edit_rules_detail">The daily limit, bedtime, and other rules, behind the parent PIN</string>
+    <string name="home_my_rules">My rules</string>
+    <string name="home_my_rules_detail">The rules that apply to this phone</string>
 
     <string name="limits_title">Limits</string>
     <string name="rules_group_limits">How much</string>

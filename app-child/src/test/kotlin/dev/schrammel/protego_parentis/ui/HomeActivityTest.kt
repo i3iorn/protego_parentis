@@ -1,30 +1,24 @@
 package dev.schrammel.protego_parentis.ui
 
-import android.widget.Switch
 import android.widget.TextView
-import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.BudgetStatus
+import dev.schrammel.protego_parentis.model.Category
+import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.ChildId
-import dev.schrammel.protego_parentis.model.Condition
-import dev.schrammel.protego_parentis.model.ContextRule
 import dev.schrammel.protego_parentis.model.Enforcement
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.Reason
-import dev.schrammel.protego_parentis.model.RuleEffect
-import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import dev.schrammel.protego_parentis.model.WeeklyBudget
-import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -42,12 +36,12 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * Pins what the dashboard renders for a given [EnforcementSnapshot], driven
  * through [HomeActivity.show] — the rendering under test, not the background
- * work that fetches the snapshot (HOME-UX phases 1 and 2).
+ * work that fetches the snapshot.
  *
- * The lock-status card must disappear when nothing is restricted (phase 1);
- * a blocked row must carry its reason and lift-time as labelled lines, and
- * the dashboard's rule cards must carry no switch (phase 2 — the parent's
- * controls stay on the parent's screens).
+ * The dashboard answers one question and offers the rest on demand: one status
+ * card, the child's own allowances, a count of what is blocked, and the two
+ * things they can do from here. The rules, the history and the settings live
+ * in the menu, and the blocked list lives on a screen of its own.
  */
 @RunWith(RobolectricTestRunner::class)
 class HomeActivityTest {
@@ -64,8 +58,8 @@ class HomeActivityTest {
 
     @Test
     fun `the lock status card is absent when nothing is restricted`() {
-        // HOME-UX phase 1, priority 5: a card standing over "everything is
-        // fine" is noise — the budget summary already carries the good news.
+        // A card standing over "everything is fine" is noise — the budget
+        // summary already carries the good news.
         val activity = activity()
         activity.show(snapshot())
 
@@ -73,70 +67,6 @@ class HomeActivityTest {
             "no restriction means no status card",
             0,
             activity.lockStatusCardHolder.childCount,
-        )
-    }
-
-    @Test
-    fun `a blocked row shows reason and lift time as labelled lines`() {
-        // HOME-UX phase 2: WHAT is blocked is the app's name; WHY and UNTIL
-        // are labelled lines beneath it — a row that answers, not a label
-        // plus a hint to tap somewhere else for one.
-        val pkg = PackageName("com.example.game")
-        val lifts = ZonedDateTime.now(zone).plusHours(2).toInstant()
-        val activity = activity()
-        activity.show(
-            snapshot(
-                suspend = mapOf(
-                    pkg to Reason.ContextRuleActive(
-                        ruleId = "rule-1",
-                        ruleName = "School hours",
-                        liftsAt = lifts,
-                    ),
-                ),
-            ),
-        )
-
-        val texts = textsIn(activity.blockedList)
-        val whyLine = texts.singleOrNull { it.startsWith(activity.getString(R.string.home_blocked_why, "")) }
-        assertNotNull("the row must carry a labelled WHY line: $texts", whyLine)
-        assertTrue(
-            "the WHY line must name the rule: $whyLine",
-            whyLine!!.contains("School hours"),
-        )
-        val untilLine = texts.firstOrNull { it.startsWith(activity.getString(R.string.home_blocked_until, "")) }
-        assertNotNull("the row must carry a labelled UNTIL line: $texts", untilLine)
-        assertTrue(
-            "the UNTIL line must carry the clock time: $untilLine",
-            untilLine!!.contains(formatTime(lifts)),
-        )
-    }
-
-    @Test
-    fun `dashboard rule cards carry no switch`() {
-        // HOME-UX phase 2: the child gets the parent's scannable card shape
-        // without the parent's controls — on/off lives on the rules list,
-        // not on a screen the child can only read.
-        AppRegistry.childStores.contextRules.upsert(
-            ContextRule(
-                id = LocalPolicyStore.MIGRATED_DAILY_LIMIT_ID,
-                name = "Daily limit",
-                enabled = true,
-                condition = Condition.Always,
-                effect = RuleEffect.SetBudget(WeeklyBudget.flat(90.minutes)),
-                target = RuleTarget.Everything,
-            ),
-        )
-        val activity = activity()
-        activity.show(snapshot())
-
-        val texts = textsIn(activity.rulesList)
-        assertTrue(
-            "the rule's own name must render on the dashboard: $texts",
-            texts.any { it.contains("Daily limit") },
-        )
-        assertFalse(
-            "a dashboard rule card must carry no switch",
-            hasSwitch(activity.rulesList),
         )
     }
 
@@ -192,6 +122,77 @@ class HomeActivityTest {
         )
     }
 
+    @Test
+    fun `each category with a limit earns a line, and one without earns none`() {
+        // The dashboard's overview content: what is left in each of the
+        // buckets they spend from. A category with no limit has no allowance
+        // and no line.
+        val activity = activity()
+        activity.show(
+            snapshot(
+                categories = listOf(
+                    Category(id = CategoryId("games"), name = "Games", budget = WeeklyBudget.UNLIMITED),
+                    Category(id = CategoryId("school"), name = "School", budget = WeeklyBudget.UNLIMITED),
+                ),
+                categoryBudgets = mapOf(
+                    CategoryId("games") to BudgetStatus(
+                        allowed = 60.minutes,
+                        used = 20.minutes,
+                        bonus = kotlin.time.Duration.ZERO,
+                        remaining = 40.minutes,
+                        level = BudgetLevel.NORMAL,
+                    ),
+                ),
+            ),
+        )
+
+        val texts = textsIn(activity.allowancesHolder)
+        assertTrue(
+            "the category with a limit must have a line: $texts",
+            texts.any { it.contains("Games") },
+        )
+        assertFalse(
+            "a category with no limit earns no line: $texts",
+            texts.any { it.contains("School") },
+        )
+    }
+
+    @Test
+    fun `how much is blocked is a count, not a list`() {
+        // The count is the glance; the names and the reasons are a visit, and
+        // the list is a screen of its own so it can be the whole list.
+        val activity = activity()
+        activity.show(
+            snapshot(
+                suspend = mapOf(
+                    PackageName("com.example.game") to Reason.ContextRuleActive(
+                        ruleId = "rule-1",
+                        ruleName = "School hours",
+                        liftsAt = ZonedDateTime.now(zone).plusHours(2).toInstant(),
+                    ),
+                ),
+            ),
+        )
+
+        val texts = textsIn(activity.blockedCountHolder)
+        assertTrue(
+            "the blocked count must be on the dashboard: $texts",
+            texts.any { it.contains("1") && it.contains("blocked") },
+        )
+    }
+
+    @Test
+    fun `nothing blocked means no count at all`() {
+        val activity = activity()
+        activity.show(snapshot())
+
+        assertEquals(
+            "no blocked apps means no count on the dashboard",
+            0,
+            activity.blockedCountHolder.childCount,
+        )
+    }
+
     // ---------- fixtures ----------
 
     private fun activity(): HomeActivity =
@@ -199,8 +200,10 @@ class HomeActivityTest {
 
     private fun snapshot(
         suspend: Map<PackageName, Reason> = emptyMap(),
+        categories: List<Category> = emptyList(),
+        categoryBudgets: Map<CategoryId, BudgetStatus> = emptyMap(),
     ) = EnforcementSnapshot(
-        policy = Policy(version = 1, childId = ChildId("c1"), timeZone = zone),
+        policy = Policy(version = 1, childId = ChildId("c1"), timeZone = zone, categories = categories),
         usage = CollectedUsage(UsageSnapshot.empty(LocalDate.now(zone)), foregroundPackage = null),
         enforcement = Enforcement(
             policyVersion = 1,
@@ -215,7 +218,7 @@ class HomeActivityTest {
                 level = BudgetLevel.NORMAL,
             ),
             appBudgets = emptyMap(),
-            categoryBudgets = emptyMap(),
+            categoryBudgets = categoryBudgets,
             nextChangeAt = null,
         ),
         reconcile = null,
@@ -227,13 +230,5 @@ class HomeActivityTest {
         if (view is android.view.ViewGroup) {
             for (i in 0 until view.childCount) addAll(textsIn(view.getChildAt(i)))
         }
-    }
-
-    private fun hasSwitch(view: android.view.View): Boolean {
-        if (view is Switch) return true
-        if (view is android.view.ViewGroup) {
-            for (i in 0 until view.childCount) if (hasSwitch(view.getChildAt(i))) return true
-        }
-        return false
     }
 }

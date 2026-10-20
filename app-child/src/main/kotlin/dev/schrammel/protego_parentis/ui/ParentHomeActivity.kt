@@ -51,6 +51,10 @@ class ParentHomeActivity : ParentRoleActivity() {
     private lateinit var inbox: InboxStore
     private lateinit var summaries: DailySummaryStore
     private lateinit var column: LinearLayout
+    private lateinit var menuButton: android.widget.TextView
+
+    /** The managed children's disabled features, read once per render. */
+    private var disabledByChild: List<Set<String>?> = emptyList()
     private lateinit var refresh: SwipeRefreshLayout
 
     /** Null until this phone has successfully reached the topic in this session. */
@@ -82,7 +86,6 @@ class ParentHomeActivity : ParentRoleActivity() {
 
     private fun render() {
         column.removeAllViews()
-        column.addView(screenTitle(getString(R.string.parent_title)))
 
         val configured = sync.settings().isUsable
         val pending = inbox.pending().size
@@ -92,6 +95,17 @@ class ParentHomeActivity : ParentRoleActivity() {
         // small "last checked" caption underneath a headline that keeps saying
         // everything is fine.
         val stale = configured && pending == 0 && isCheckInStale()
+
+        // The menu carries the count of what is waiting: a menu hides what is in
+        // it, and a badge is what says it is not empty. A parent whose child is
+        // asking for more time should not have to open a menu to find out.
+        menuButton = menuButton(waiting = pending) { openMenu() }
+        column.addView(
+            screenTitle(
+                getString(R.string.parent_title),
+                listOf(menuButton),
+            ),
+        )
 
         column.addView(
             card {
@@ -152,17 +166,23 @@ class ParentHomeActivity : ParentRoleActivity() {
         // Family is the same fix as the managed phone's — reachable "only by
         // way of the family it configures" read well and meant nobody found it.
         val disabledByChild = disabledFeaturesByChild()
-        homeSections(DeviceRole.PARENT) { feature -> featureVisible(feature, disabledByChild) }.forEach { section ->
-            addSection(
-                column,
-                section.label?.let(::getString),
-                section.rows.map { entry ->
-                    row(entry.title, entry.detail, showChevron = !entry.destination.isAction) {
-                        open(entry.destination)
-                    }
-                },
-            )
-        }
+        this.disabledByChild = disabledByChild
+    }
+
+    /**
+     * Where this screen leads, when the reader is in the menu.
+     *
+     * The same destinations the dashboard used to lay out inline, and the same
+     * routing: [HomeDestination] names where a row goes, never how to get
+     * there, and each home Activity maps its own destinations in its own
+     * [open].
+     */
+    private fun openMenu() {
+        homeMenuDialog(
+            homeMenuSections(DeviceRole.PARENT) { feature ->
+                featureVisible(feature, disabledByChild)
+            },
+        ) { destination -> open(destination) }
     }
 
     private fun open(destination: HomeDestination) {
@@ -172,6 +192,7 @@ class ParentHomeActivity : ParentRoleActivity() {
             HomeDestination.LOCK_NOW -> confirmLock()
             HomeDestination.LOCATE -> locate()
             HomeDestination.RULES -> RulesEntry.launch(this)
+            HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
             HomeDestination.THE_OTHER_PHONE -> startActivity(ParentDeviceActivity.intent(this))
             HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))

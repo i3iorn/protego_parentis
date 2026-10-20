@@ -29,13 +29,9 @@ class RealNotificationUx(context: Context) : NotificationUx {
         pendingIntentFor(requestCode, Intent(appContext, HomeActivity::class.java))
 
     override fun openBlockedWhy(requestCode: Int, pkg: PackageName?): PendingIntent {
-        val intent = Intent(appContext, HomeActivity::class.java)
-        if (pkg != null) {
-            // The child was mid-app when the block hit; the notification lands
-            // on the why-dialog for that app, not on a generic screen.
-            intent.putExtra(HomeActivity.EXTRA_BLOCKED_PACKAGE, pkg.value)
-        }
-        return pendingIntentFor(requestCode, intent)
+        // The child was mid-app when the block hit; the notification lands
+        // on the blocked list for that app, not on a generic screen.
+        return pendingIntentFor(requestCode, BlockedAppsActivity.intent(appContext, pkg))
     }
 
     override fun openRequestInbox(requestCode: Int) =

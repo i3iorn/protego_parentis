@@ -11,6 +11,7 @@ import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.model.UsageSnapshot
+import dev.schrammel.protego_parentis.ui.BlockedAppsActivity
 import dev.schrammel.protego_parentis.ui.HomeActivity
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import org.junit.Assert.assertEquals
@@ -129,7 +130,7 @@ class BlockNotifierTest {
         assertEquals(
             "the deep link must name the app on screen",
             game.value,
-            launched.getStringExtra(HomeActivity.EXTRA_BLOCKED_PACKAGE),
+            launched.getStringExtra(BlockedAppsActivity.EXTRA_BLOCKED_PACKAGE),
         )
     }
 
@@ -155,7 +156,7 @@ class BlockNotifierTest {
         val launched = shadowOf(notifications.single().contentIntent).savedIntent
         assertTrue(
             "no deep-link extra must be set for an uninvolved app",
-            !launched.hasExtra(HomeActivity.EXTRA_BLOCKED_PACKAGE),
+            !launched.hasExtra(BlockedAppsActivity.EXTRA_BLOCKED_PACKAGE),
         )
     }
 

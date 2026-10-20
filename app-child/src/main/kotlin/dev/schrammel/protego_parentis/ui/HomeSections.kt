@@ -38,6 +38,7 @@ internal enum class HomeDestination {
     // Shared by both roles.
     CHAT,
     RULES,
+    CONTEXT_RULES,
     FAMILY_DEVICES,
     THE_OTHER_PHONE,
     AUDIT,
@@ -108,7 +109,13 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
         ),
         HomeSection(
             label = R.string.home_group_rules,
-            rows = listOf(HomeRow(R.string.home_edit_rules, R.string.home_edit_rules_detail, HomeDestination.RULES)),
+            rows = listOf(
+                // The child's own window into the rules that apply to them.
+                // The editable rules screen is behind the parent's PIN, so
+                // without this the child could not see the rules at all -
+                // which is what the dashboard's read-only list was for.
+                HomeRow(R.string.home_my_rules, R.string.home_my_rules_detail, HomeDestination.CONTEXT_RULES),
+            ),
         ),
         HomeSection(
             label = R.string.home_group_family,
@@ -166,6 +173,31 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
         ),
     )
 }.filter { it.rows.isNotEmpty() }
+
+/**
+ * Whether [destination] stays on the dashboard itself rather than moving into
+ * the menu.
+ *
+ * The child's "ask for more time" and "see my week" are things to do, not
+ * places to browse, and a child who wants more time should not have to open a
+ * menu to ask for it. Everything else is a destination, and a destination
+ * belongs in a menu.
+ */
+internal fun staysOnDashboard(destination: HomeDestination): Boolean =
+    destination == HomeDestination.REQUESTS || destination == HomeDestination.WEEK
+
+/**
+ * The menu's sections: [homeSections] without the rows the dashboard carries.
+ *
+ * The same rows, the same grouping, the same one-line descriptions - only
+ * somewhere else.
+ */
+internal fun homeMenuSections(
+    role: DeviceRole,
+    isEnabled: (Feature) -> Boolean,
+): List<HomeSection> = homeSections(role, isEnabled)
+    .map { section -> section.copy(rows = section.rows.filterNot { staysOnDashboard(it.destination) }) }
+    .filter { it.rows.isNotEmpty() }
 
 /**
  * Whether [feature] should show on a parent's dashboard (#91), given each

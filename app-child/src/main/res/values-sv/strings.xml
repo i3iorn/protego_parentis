@@ -64,15 +64,18 @@
     <string name="home_used_up">Tiden är slut för i dag</string>
     <string name="home_monitor_only">Bara mätning. Den här telefonen är inte inställd för blockering, så inget blockeras — reglerna nedan kontrolleras men tillämpas inte.</string>
     <string name="home_managed">Den här telefonen sköts av appen. Reglerna nedan tillämpas.</string>
-    <string name="home_rules_header">Mina regler</string>
-    <string name="home_apps_header">Vart tiden tog vägen</string>
     <string name="home_would_block_header">Skulle blockeras just nu</string>
-    <string name="home_edit_rules">Regler</string>
-    <string name="home_no_usage">Ingen skärmtid registrerad i dag än.</string>
-    <plurals name="home_and_more">
-        <item quantity="one">och %d till</item>
-        <item quantity="other">och %d till</item>
+    <string name="home_menu">Meny</string>
+    <plurals name="home_menu_waiting">
+        <item quantity="one">Meny, %d sak väntar</item>
+        <item quantity="other">Meny, %d saker väntar</item>
     </plurals>
+    <string name="home_allowances_header">Dina gränser</string>
+    <plurals name="home_blocked_count">
+        <item quantity="one">%d app är blockerad just nu</item>
+        <item quantity="other">%d appar är blockerade just nu</item>
+    </plurals>
+    <string name="home_no_usage">Ingen skärmtid registrerad i dag än.</string>
     <string name="home_nothing_blocked">Inget är blockerat just nu.</string>
     <string name="home_until">till %1$s</string>
     <!-- HOME-UX fas 2: en blockerad rad bär sitt svar som märkta rader under
@@ -467,7 +470,8 @@
     <string name="home_open_week_detail">Dina senaste sju dagar</string>
     <string name="home_open_privacy_detail">Exakt vad som mäts och vad som skickas</string>
     <string name="home_language_detail">Byt språk i appen</string>
-    <string name="home_edit_rules_detail">Den dagliga gränsen, läggdags och andra regler, bakom förälderns PIN-kod</string>
+    <string name="home_my_rules">Mina regler</string>
+    <string name="home_my_rules_detail">De regler som gäller för den här telefonen</string>
 
     <string name="limits_title">Gränser</string>
     <string name="rules_group_limits">Hur mycket</string>

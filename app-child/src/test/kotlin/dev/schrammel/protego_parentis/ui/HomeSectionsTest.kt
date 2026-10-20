@@ -130,6 +130,33 @@ class HomeSectionsTest {
             .forEach { assertFalse("$it should be a screen, not an action", it.isAction) }
     }
 
+    /**
+     * The menu carries the destinations the dashboard no longer lays out
+     * inline. The child's two "things to do" rows stay on the dashboard — a
+     * child who wants more time should not have to open a menu to ask for it.
+     */
+    @Test
+    fun `the menu leaves out the rows the dashboard carries`() {
+        val menu = homeMenuSections(DeviceRole.CHILD, allOn()::isEnabled)
+            .flatMap { it.rows }
+            .map { it.destination }
+
+        assertFalse("ask for more time stays on the dashboard", HomeDestination.REQUESTS in menu)
+        assertFalse("see my week stays on the dashboard", HomeDestination.WEEK in menu)
+        assertTrue("the child's own rules are in the menu", HomeDestination.CONTEXT_RULES in menu)
+    }
+
+    @Test
+    fun `the parent's menu keeps everything its dashboard no longer lists`() {
+        val menu = homeMenuSections(DeviceRole.PARENT, allOn()::isEnabled)
+            .flatMap { it.rows }
+            .map { it.destination }
+
+        assertTrue("the inbox is in the menu", HomeDestination.INBOX in menu)
+        assertTrue("locking the phone now is in the menu", HomeDestination.LOCK_NOW in menu)
+        assertTrue("the settings are in the menu", HomeDestination.SETTINGS in menu)
+    }
+
     private fun destinationsFor(role: DeviceRole) = destinations(role, allOn())
 
     private fun destinations(role: DeviceRole, flags: FeatureFlags) =

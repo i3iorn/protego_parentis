@@ -194,6 +194,11 @@
             android:parentActivityName=".ui.RulesActivity" />
 
         <activity
+            android:name=".ui.BlockedAppsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.HomeActivity" />
+
+        <activity
             android:name=".ui.GoalActivity"
             android:exported="false"
             android:parentActivityName=".ui.RulesActivity" />
