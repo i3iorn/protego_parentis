@@ -28,7 +28,7 @@ class CrashCaptureTest {
     }
 
     @Test
-    fun `a second failure replaces the first`() {
+    fun `only the most recent failure is kept`() {
         CrashCapture.recordEvaluationFailure(context, IllegalStateException("first"))
         CrashCapture.recordEvaluationFailure(context, IllegalStateException("second"))
 

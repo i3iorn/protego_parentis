@@ -42,6 +42,15 @@ class RequestsActivity : DementorActivity() {
     private lateinit var reasonInput: EditText
     private var target: GrantTarget = GrantTarget.Device
 
+    /**
+     * What [onSaveInstanceState] carried across the recreation. The automatic
+     * view-state restore puts the typed reason on the *old* hierarchy, and
+     * [render]'s rebuild in [onResume] would throw that away — so the text is
+     * carried by hand and consumed by the first render after recreation.
+     * After that, renders keep whatever is live in the field.
+     */
+    private var pendingRestore: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Publishing is fire-and-forget and off the main thread; an offline phone
@@ -65,6 +74,15 @@ class RequestsActivity : DementorActivity() {
 
         container = contentColumn()
         showColumn(container)
+
+        savedInstanceState?.getString(KEY_REASON)?.let { pendingRestore = it }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::reasonInput.isInitialized) {
+            outState.putString(KEY_REASON, reasonInput.text.toString())
+        }
     }
 
     override fun onResume() {
@@ -73,10 +91,19 @@ class RequestsActivity : DementorActivity() {
     }
 
     private fun render() {
+        // Rotation saves and restores the view hierarchy — including whatever
+        // the reason field holds — but the onResume() that follows recreates
+        // every view from scratch, and the saved text would die with the old
+        // EditText. Carrying it across the rebuild keeps a half-written
+        // request alive through both a rotation and a target re-pick.
+        val reasonSoFar = pendingRestore
+            ?: if (::reasonInput.isInitialized) reasonInput.text.toString() else ""
+        pendingRestore = null
         container.removeAllViews()
         container.addView(heading(getString(R.string.requests_title), R.style.TextAppearance_Dementor_Title))
 
         renderCompose()
+        reasonInput.setText(reasonSoFar)
         renderHistory()
     }
 
@@ -298,6 +325,7 @@ class RequestsActivity : DementorActivity() {
 
     companion object {
         private const val DEFAULT_CUSTOM_MINUTES = 45
+        private const val KEY_REASON = "requests_reason"
 
         fun intent(context: Context) = Intent(context, RequestsActivity::class.java)
     }

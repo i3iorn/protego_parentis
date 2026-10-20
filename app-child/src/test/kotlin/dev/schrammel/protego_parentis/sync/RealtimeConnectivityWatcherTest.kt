@@ -1,6 +1,8 @@
 package dev.schrammel.protego_parentis.sync
 
+import android.content.Context
 import android.net.ConnectivityManager
+import androidx.core.content.edit
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.TransportKind
 import org.junit.Assert.assertEquals
@@ -22,9 +24,24 @@ class RealtimeConnectivityWatcherTest {
 
     private val context get() = RuntimeEnvironment.getApplication()
 
+    /**
+     * Seals the passphrase the way a real device would. Robolectric has no
+     * AndroidKeyStore, so [SecretVault.seal] always fails and [SyncConfigStore]
+     * refuses to store anything sealed — which would leave every settings read
+     * seeing an unconfigured family. Writing the value under the *legacy* key
+     * instead exercises the migration path, which returns the plaintext it was
+     * asked to migrate even when sealing it fails. [SyncConfigStore.join] must
+     * have run first: its own store step removes the legacy key.
+     */
+    private fun joinWithPassphrase(token: FamilyToken, passphrase: String) {
+        SyncConfigStore(context).join(token, passphrase)
+        context.getSharedPreferences(SyncConfigStore.FILE_NAME, Context.MODE_PRIVATE)
+            .edit { putString(SyncConfigStore.KEY_PASSPHRASE_LEGACY, passphrase) }
+    }
+
     @Test
     fun `network becoming available restarts the realtime service`() {
-        SyncConfigStore(context).join(
+        joinWithPassphrase(
             FamilyToken(TransportKind.NTFY, "https://ntfy.sh", "watcher-test"),
             "secret",
         )

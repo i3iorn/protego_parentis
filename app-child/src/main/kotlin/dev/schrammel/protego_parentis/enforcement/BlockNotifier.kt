@@ -8,10 +8,10 @@ import androidx.core.content.edit
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.format.formatDuration
-import dev.schrammel.protego_parentis.model.EnforcementSnapshot
 import dev.schrammel.protego_parentis.model.Reason
 import java.time.Duration
 import java.time.Instant
+import kotlin.time.toKotlinDuration
 
 /**
  * Tells the child, at the moment a restriction begins, what happened and why.
@@ -131,7 +131,7 @@ class BlockNotifier(context: Context) {
 
     /** "Opens again in 2 h 3 m" — the same first half the dashboard shows. */
     private fun opensIn(at: Instant, now: Instant): String =
-        appContext.getString(R.string.lock_status_opens_in, appContext.formatDuration(Duration.between(now, at)))
+        appContext.getString(R.string.lock_status_opens_in, appContext.formatDuration(Duration.between(now, at).toKotlinDuration()))
 
     private fun readSignature(): String? = prefs.getString(KEY_SIGNATURE, null)
 

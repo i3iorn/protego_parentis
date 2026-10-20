@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.TaskStackBuilder
 import dev.schrammel.protego_parentis.enforcement.NotificationUx
+import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
 

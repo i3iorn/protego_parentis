@@ -17,6 +17,7 @@ import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.model.RuleEffect
 import dev.schrammel.protego_parentis.model.RuleTarget
 import dev.schrammel.protego_parentis.model.UsageSnapshot
+import dev.schrammel.protego_parentis.model.WeeklyBudget
 import dev.schrammel.protego_parentis.rules.LocalPolicyStore
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.RoleStore
@@ -31,11 +32,11 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -121,7 +122,7 @@ class HomeActivityTest {
                 name = "Daily limit",
                 enabled = true,
                 condition = Condition.Always,
-                effect = RuleEffect.SetBudget(WeeklyBudget.flat(java.time.Duration.ofMinutes(90))),
+                effect = RuleEffect.SetBudget(WeeklyBudget.flat(90.minutes)),
                 target = RuleTarget.Everything,
             ),
         )
@@ -136,6 +137,58 @@ class HomeActivityTest {
         assertFalse(
             "a dashboard rule card must carry no switch",
             hasSwitch(activity.rulesList),
+        )
+    }
+
+    @Test
+    fun `only one status card stands on the dashboard`() {
+        // The dashboard must not say the same thing twice. While a rule holds
+        // the phone, the lock status card carries the reason, the countdown
+        // and the day's remaining time together — so the budget summary steps
+        // aside instead of standing beside it with the same numbers.
+        val lifts = ZonedDateTime.now(zone).plusHours(2).toInstant()
+        val activity = activity()
+        activity.show(
+            snapshot(
+                suspend = mapOf(
+                    PackageName("com.example.game") to Reason.ContextRuleActive(
+                        ruleId = "rule-1",
+                        ruleName = "School hours",
+                        liftsAt = lifts,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            "the restriction must be shown",
+            1,
+            activity.lockStatusCardHolder.childCount,
+        )
+        assertEquals(
+            "the budget summary must step aside while the phone is restricted",
+            0,
+            activity.summaryHolder.childCount,
+        )
+    }
+
+    @Test
+    fun `the budget summary stands alone when nothing is restricted`() {
+        // The other half of the same rule: with no restriction the lock status
+        // card has nothing to say, and the budget summary is the dashboard's
+        // one status card.
+        val activity = activity()
+        activity.show(snapshot())
+
+        assertEquals(
+            "no restriction means no status card",
+            0,
+            activity.lockStatusCardHolder.childCount,
+        )
+        assertEquals(
+            "the budget summary must carry the status on its own",
+            1,
+            activity.summaryHolder.childCount,
         )
     }
 
@@ -155,10 +208,10 @@ class HomeActivityTest {
             hide = emptySet(),
             deferred = emptyMap(),
             deviceBudget = BudgetStatus(
-                allowed = Duration.ofHours(2),
-                used = Duration.ZERO,
-                bonus = Duration.ZERO,
-                remaining = Duration.ofHours(2),
+                allowed = 2.hours,
+                used = kotlin.time.Duration.ZERO,
+                bonus = kotlin.time.Duration.ZERO,
+                remaining = 2.hours,
                 level = BudgetLevel.NORMAL,
             ),
             appBudgets = emptyMap(),

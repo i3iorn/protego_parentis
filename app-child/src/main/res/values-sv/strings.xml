@@ -62,7 +62,6 @@
     <string name="home_used_no_limit">%1$s använt i dag</string>
     <string name="home_no_limit_headline">Ingen gräns satt</string>
     <string name="home_used_up">Tiden är slut för i dag</string>
-    <string name="home_used_up_detail">Hela dagens skärmtidsgräns på %1$s är förbrukad. Nollställs klockan 04:00.</string>
     <string name="home_monitor_only">Bara mätning. Den här telefonen är inte inställd för blockering, så inget blockeras — reglerna nedan kontrolleras men tillämpas inte.</string>
     <string name="home_managed">Den här telefonen sköts av appen. Reglerna nedan tillämpas.</string>
     <string name="home_rules_header">Mina regler</string>
@@ -307,7 +306,6 @@
     <string name="places_add_my_position">Lägg till min position</string>
     <string name="home_context_active">Gäller nu: %1$s</string>
     <string name="home_loading">Läser in…</string>
-    <string name="home_resets_at">nollställs kl %1$s</string>
 
     <!-- Integritet och logg. -->
     <string name="privacy_title">Vad som lämnar telefonen</string>
@@ -1191,6 +1189,8 @@
     <string name="notify_rule_changed_detail">När en regel på den här telefonen ändras för att en annan enhet redigerat den.</string>
     <string name="notify_app_decided">Nya appar granskade</string>
     <string name="notify_app_decided_detail">När en förälder tillåter eller blockerar en app du just installerat.</string>
+    <string name="notify_block_started">En blockering påbörjas</string>
+    <string name="notify_block_started_detail">När dagens tid tar slut eller en regel börjar, med när den öppnar igen.</string>
     <string name="notify_audit_tamper">Historiken går inte ihop</string>
     <string name="notify_audit_tamper_reason">Bevis på att en enhets delade historik skrivits om är precis det en person med något att dölja helst velat bli av med, vilket avgör om det får gå.</string>
     <string name="notify_locked_reason">En telefon som låser sig utan förklaring ser trasig ut. Det här är förklaringen.</string>
@@ -1495,4 +1495,5 @@
     <string name="lock_status_opens_in">Öppnas igen om %1$s</string>
     <string name="lock_status_opens_at">Öppnas igen kl %1$s</string>
     <string name="lock_status_countdown">%1$s — kl %2$s</string>
+    <string name="lock_status_remaining">Tid kvar på enheten: %1$s</string>
 </resources>

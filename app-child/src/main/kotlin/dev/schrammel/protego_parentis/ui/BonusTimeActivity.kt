@@ -41,8 +41,13 @@ class BonusTimeActivity : ParentGatedActivity() {
      * grants, two audit entries, and double the minutes — silently, since
      * [GrantStore.add] has no reason to refuse a second grant that looks
      * exactly like a deliberate one.
+     *
+     * A null means "no grant yet", not "granted at boot": both 0 and
+     * [Long.MIN_VALUE] as the start value swallow the very first tap, because
+     * `elapsedRealtime` starts near 0 (and `0 - Long.MIN_VALUE` even wraps
+     * around) — so the first tap must bypass the comparison entirely.
      */
-    private var lastGrantAt = 0L
+    private var lastGrantAt: Long? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,7 +126,8 @@ class BonusTimeActivity : ParentGatedActivity() {
 
     private fun grant(target: GrantTarget, minutes: Int) {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastGrantAt < GRANT_DEBOUNCE_MS) return
+        val last = lastGrantAt
+        if (last != null && now - last < GRANT_DEBOUNCE_MS) return
         lastGrantAt = now
 
         grants.add(

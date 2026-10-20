@@ -90,6 +90,9 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.LOCKED,
         NotificationKind.RULE_CHANGED,
         NotificationKind.APP_DECIDED,
+        // A restriction beginning is the child's news to read: it lands on the
+        // phone whose apps just went dark.
+        NotificationKind.BLOCK_STARTED,
         -> onChild
 
         NotificationKind.REQUEST_RECEIVED,
@@ -184,6 +187,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.LOCKED -> R.string.notify_locked
         NotificationKind.RULE_CHANGED -> R.string.notify_rule_changed
         NotificationKind.APP_DECIDED -> R.string.notify_app_decided
+        NotificationKind.BLOCK_STARTED -> R.string.notify_block_started
         NotificationKind.REQUEST_RECEIVED -> R.string.notify_request_received
         NotificationKind.AUTO_APPROVED -> R.string.notify_auto
         NotificationKind.NEW_APP -> R.string.notify_new_app
@@ -207,6 +211,7 @@ class NotificationSettingsActivity : DementorActivity() {
         NotificationKind.GOAL_EARNED -> R.string.notify_goal_detail
         NotificationKind.RULE_CHANGED -> R.string.notify_rule_changed_detail
         NotificationKind.APP_DECIDED -> R.string.notify_app_decided_detail
+        NotificationKind.BLOCK_STARTED -> R.string.notify_block_started_detail
         NotificationKind.REQUEST_RECEIVED -> R.string.notify_request_received_detail
         NotificationKind.AUTO_APPROVED -> R.string.notify_auto_detail
         NotificationKind.NEW_APP -> R.string.notify_new_app_detail

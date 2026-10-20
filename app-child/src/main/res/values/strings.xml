@@ -58,7 +58,6 @@
     <string name="home_used_no_limit">%1$s used today</string>
     <string name="home_no_limit_headline">No limit set</string>
     <string name="home_used_up">Time\'s up for today</string>
-    <string name="home_used_up_detail">All %1$s of today\'s screen time allowance is used. Resets at 4:00am.</string>
     <string name="home_monitor_only">Watching only. This phone is not set up for blocking, so nothing gets blocked — the rules below are being checked but not applied.</string>
     <string name="home_managed">This phone is managed. Rules below are being enforced.</string>
     <string name="home_rules_header">My rules</string>
@@ -306,7 +305,6 @@
     <string name="places_add_my_position">Add my position</string>
     <string name="home_context_active">Active now: %1$s</string>
     <string name="home_loading">Loading…</string>
-    <string name="home_resets_at">resets at %1$s</string>
 
     <!-- Privacy and diagnostics. -->
     <string name="privacy_title">What leaves this phone</string>
@@ -1202,6 +1200,8 @@
     <string name="notify_rule_changed_detail">When a rule on this phone changes because another device edited it.</string>
     <string name="notify_app_decided">New apps reviewed</string>
     <string name="notify_app_decided_detail">When a parent allows or blocks an app you just installed.</string>
+    <string name="notify_block_started">A block starting</string>
+    <string name="notify_block_started_detail">When the day\'s time runs out or a rule begins, with when it opens again.</string>
     <string name="notify_audit_tamper">History does not add up</string>
     <string name="notify_audit_tamper_reason">Evidence that a device\'s shared history was rewritten is exactly the kind of thing worth hiding, which is what settles whether this may be silenced.</string>
     <string name="notify_device_added">A device joined the family</string>
@@ -1519,4 +1519,5 @@
     <string name="lock_status_opens_in">Opens again in %1$s</string>
     <string name="lock_status_opens_at">Opens again at %1$s</string>
     <string name="lock_status_countdown">%1$s — at %2$s</string>
+    <string name="lock_status_remaining">Time left on device: %1$s</string>
 </resources>

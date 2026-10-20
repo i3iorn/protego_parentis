@@ -31,6 +31,22 @@ kotlin {
     }
 }
 
+/**
+ * Robolectric reaches into `jdk.internal.access` to build an Android
+ * `FileDescriptor`. The JDK has not exported that package since 17, so without
+ * these the whole Robolectric suite fails during setup with an
+ * `IllegalAccessException` before any test body runs. The opens are the set
+ * Robolectric's own documentation lists for a modern JDK.
+ */
+tasks.withType<Test>().configureEach {
+    jvmArgs(
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+    )
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     testImplementation(libs.junit)

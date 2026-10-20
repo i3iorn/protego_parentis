@@ -39,8 +39,11 @@ class GrantStoreTest {
 
     @Test
     fun `an expired grant is not active`() {
+        // An expired grant was necessarily granted earlier: the constructor
+        // requires expiresAt after grantedAt, so moving only expiresAt into
+        // the past would trip that check rather than model real history.
         val now = Instant.now()
-        val expired = grant(at = now).copy(expiresAt = now.minusSeconds(1))
+        val expired = grant(at = now.minusSeconds(10)).copy(expiresAt = now.minusSeconds(1))
         store().add(expired)
 
         assertTrue(store().active(now).isEmpty())

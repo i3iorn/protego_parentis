@@ -4,6 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.os.Looper
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.CategoryId
 import dev.schrammel.protego_parentis.model.Condition
@@ -29,6 +30,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowDialog
 import kotlin.time.Duration.Companion.minutes
 
@@ -217,6 +219,10 @@ class CategoryEditActivityTest {
         // does not track; ShadowDialog sees every Dialog.
         val dialog = ShadowDialog.getLatestDialog() as? androidx.appcompat.app.AlertDialog
         requireNotNull(dialog) { "expected a delete confirmation" }.getButton(which).performClick()
+        // The click dispatches the dialog's listener through a Handler message
+        // on the main looper — performClick() returns before onConfirm() runs,
+        // so the assertions must wait for the queue to drain first.
+        shadowOf(Looper.getMainLooper()).idle()
     }
 
     private fun clickButton(activity: CategoryEditActivity, text: String) {

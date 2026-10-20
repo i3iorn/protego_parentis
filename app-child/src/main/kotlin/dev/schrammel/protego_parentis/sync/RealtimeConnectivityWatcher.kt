@@ -32,6 +32,17 @@ object RealtimeConnectivityWatcher {
 
     @Volatile private var installed = false
 
+    /**
+     * Robolectric builds a fresh application for every test method, but this
+     * object survives them — so without a reset the next test's `install`
+     * is a no-op and its fresh app ends up with no registered callback at all.
+     * Call it from [TestApplication]'s boot sequence, beside the other
+     * `resetForTest` calls.
+     */
+    fun resetForTest() {
+        installed = false
+    }
+
     /** Call once, from [dev.schrammel.protego_parentis.DementorApplication]. */
     fun install(context: Context) {
         if (installed) return

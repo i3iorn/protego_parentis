@@ -2,13 +2,11 @@ package dev.schrammel.protego_parentis.enforcement
 
 import android.app.NotificationManager
 import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import dev.schrammel.protego_parentis.AppRegistry
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.BudgetStatus
 import dev.schrammel.protego_parentis.model.ChildId
 import dev.schrammel.protego_parentis.model.Enforcement
-import dev.schrammel.protego_parentis.model.EnforcementSnapshot
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Policy
 import dev.schrammel.protego_parentis.model.Reason
@@ -21,11 +19,13 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.time.Duration.Companion.hours
 
 /**
  * Pins the companion notification for a restriction beginning (HOME-UX
@@ -37,7 +37,7 @@ import java.time.ZoneId
 @RunWith(RobolectricTestRunner::class)
 class BlockNotifierTest {
 
-    private val context: Context = ApplicationProvider.getApplicationContext()
+    private val context: Context get() = RuntimeEnvironment.getApplication()
     private val zone: ZoneId = ZoneId.systemDefault()
     private val game = PackageName("com.example.game")
 
@@ -71,9 +71,17 @@ class BlockNotifierTest {
         // Remembering the null is what makes this work: without it, leaving
         // quietly and re-entering would look identical to never having left.
         notifier.onEvaluated(snapshot(budgetExhausted = true))
+        // The child swiped the knock away: the shade is empty. Whether the
+        // re-entry announces is decided by the remembered signature, not by
+        // the shade — and the shadow keeps one entry per id, so a re-post
+        // replaces rather than adds.
+        context.getSystemService(NotificationManager::class.java)
+            .cancel(NotificationIds.BLOCK_STARTED)
+        assertEquals(0, notifications.size)
+
         notifier.onEvaluated(snapshot())
         notifier.onEvaluated(snapshot(budgetExhausted = true))
-        assertEquals("re-entry is a new event", 2, notifications.size)
+        assertEquals("re-entry is a new event", 1, notifications.size)
     }
 
     @Test
@@ -170,18 +178,18 @@ class BlockNotifierTest {
                 deferred = emptyMap(),
                 deviceBudget = if (budgetExhausted) {
                     BudgetStatus(
-                        allowed = Duration.ZERO,
-                        used = Duration.ofHours(2),
-                        bonus = Duration.ZERO,
-                        remaining = Duration.ZERO,
+                        allowed = kotlin.time.Duration.ZERO,
+                        used = 2.hours,
+                        bonus = kotlin.time.Duration.ZERO,
+                        remaining = kotlin.time.Duration.ZERO,
                         level = BudgetLevel.EXHAUSTED,
                     )
                 } else {
                     BudgetStatus(
-                        allowed = Duration.ofHours(2),
-                        used = Duration.ZERO,
-                        bonus = Duration.ZERO,
-                        remaining = Duration.ofHours(2),
+                        allowed = 2.hours,
+                        used = kotlin.time.Duration.ZERO,
+                        bonus = kotlin.time.Duration.ZERO,
+                        remaining = 2.hours,
                         level = BudgetLevel.NORMAL,
                     )
                 },

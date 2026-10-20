@@ -36,7 +36,12 @@ class ContextProviderPlacesTest {
         }
         shadowOf(app.getSystemService(LocationManager::class.java)).apply {
             setProviderEnabled(LocationManager.GPS_PROVIDER, true)
-            setLastKnownLocation(LocationManager.GPS_PROVIDER, location)
+            // `simulateLocation` is the shadow API Robolectric deprecates
+            // `setLastKnownLocation` in favour of: it delivers the fix and
+            // leaves it as the provider's last-known location, which is what
+            // ContextProvider actually reads. The location's own timestamp is
+            // preserved, so the staleness cases below still hold.
+            simulateLocation(LocationManager.GPS_PROVIDER, location)
         }
     }
 

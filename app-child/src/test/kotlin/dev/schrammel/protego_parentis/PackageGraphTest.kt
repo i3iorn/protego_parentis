@@ -73,7 +73,6 @@ class PackageGraphTest {
      */
     private val knownCycle = setOf(
         "$basePackage.audit",
-        "$basePackage.dpc",
         "$basePackage.enforcement",
         "$basePackage.rules",
         "$basePackage.sync",

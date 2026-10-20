@@ -44,6 +44,10 @@ class TestApplication : Application() {
         // never called.) The store container is reset by AppRegistry.install.
         SyncGraph.resetForTest()
         SyncConfigStore.resetForTest()
+        // The watcher's installed flag survives test methods; without the
+        // reset its second install is a no-op and the fresh app gets no
+        // registered callback.
+        RealtimeConnectivityWatcher.resetForTest()
         // Mirror DementorApplication.onCreate — kept in step with it deliberately:
         // a test process should boot exactly the way the phone does.
         CrashRecovery.install(this) { AppRegistry.restartLauncher }

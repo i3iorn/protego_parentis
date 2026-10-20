@@ -45,14 +45,35 @@ class ActivitySeenTracker(context: Context) {
     fun markSeen(entries: List<AuditEntry>) {
         val newest = entries.maxOfOrNull { it.at } ?: return
         if (lastSeenAt()?.isAfter(newest) == true) return
-        prefs.edit { putLong(KEY_SEEN_AT, newest.toEpochMilli()) }
+        prefs.edit { putLong(KEY_SEEN_AT, newest.toEpochNanos()) }
     }
 
     private fun lastSeenAt(): Instant? =
-        prefs.getLong(KEY_SEEN_AT, -1L).takeIf { it >= 0L }?.let(Instant::ofEpochMilli)
+        prefs.getLong(KEY_SEEN_AT, -1L).takeIf { it >= 0L }?.let(::fromEpochNanos)
+
+    /**
+     * Full-precision epoch nanoseconds, not [Instant.toEpochMilli]: entries are
+     * stamped as they are written, so an entry set down in the same millisecond
+     * as the watermark is the norm — and truncating would leave it reading as
+     * "after" the baseline forever. Epoch nanoseconds fit a [Long] until
+     * roughly the year 2262.
+     */
+    private fun Instant.toEpochNanos(): Long =
+        epochSecond * NANOS_PER_SECOND + nano
+
+    private fun fromEpochNanos(nanos: Long): Instant =
+        Instant.ofEpochSecond(nanos / NANOS_PER_SECOND, nanos % NANOS_PER_SECOND)
 
     private companion object {
         const val FILE_NAME = "activity_seen"
-        const val KEY_SEEN_AT = "seen_at"
+
+        /**
+         * Versioned because the value's unit changed: an install upgrading from
+         * the old millisecond key finds no watermark here and re-baselines on
+         * its first look — the same graceful first-run path a brand-new phone
+         * takes (see [unseen]).
+         */
+        const val KEY_SEEN_AT = "seen_at_epoch_nanos"
+        const val NANOS_PER_SECOND = 1_000_000_000L
     }
 }

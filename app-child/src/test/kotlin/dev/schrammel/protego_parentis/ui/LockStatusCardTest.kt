@@ -4,6 +4,7 @@ import android.app.Activity
 import android.view.View
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.enforcement.EnforcementSnapshot
+import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.BudgetStatus
 import dev.schrammel.protego_parentis.model.ChildId
@@ -14,6 +15,7 @@ import dev.schrammel.protego_parentis.model.Reason
 import dev.schrammel.protego_parentis.usage.CollectedUsage
 import dev.schrammel.protego_parentis.model.UsageSnapshot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -21,11 +23,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -71,7 +73,7 @@ class LockStatusCardTest {
         // that would read as if the restriction had already lifted.
         val at = Instant.now()
         val phrase = activity.countdown(at)
-        assertTrue(phrase.contains("0 min"))
+        assertTrue(phrase.contains("0m"))
     }
 
     // ---------- priority order ----------
@@ -165,7 +167,40 @@ class LockStatusCardTest {
         )
         assertTrue(
             "no countdown may be invented for a rule with no end",
-            sublineOf(card!!).contains(activity.getString(R.string.lock_status_rule_until_parent)),
+            texts(card).any { it.contains(activity.getString(R.string.lock_status_rule_until_parent)) },
+        )
+    }
+
+    @Test
+    fun aRestrictedPhoneStillSaysHowMuchTimeIsLeftToday() {
+        // The dashboard shows one status card, not two: while a rule holds the
+        // phone, that card carries the reason, the countdown and the day's
+        // remaining time together. Merging the cards must not cost the reader
+        // the time they have left.
+        val soon = ZonedDateTime.now(zone).plusMinutes(30).toInstant()
+        val snapshot = snapshot(
+            suspend = mapOf(PackageName("com.game") to ruleReason("School hours", soon)),
+        )
+        val card = activity.lockStatusCard(snapshot)
+
+        assertTrue(
+            "the locked card must still carry the day's remaining time: ${texts(card!!)}",
+            texts(card).any {
+                it.contains(activity.getString(R.string.lock_status_remaining, activity.formatDuration(120.minutes)))
+            },
+        )
+    }
+
+    @Test
+    fun anExhaustedBudgetDoesNotAlsoSayZeroTimeLeft() {
+        // The headline already says the time is up; "0 h left" underneath it
+        // would say the same thing a second time.
+        val snapshot = snapshot(deviceBudget = exhaustedBudget())
+        val card = activity.lockStatusCard(snapshot)
+
+        assertFalse(
+            "an exhausted budget must not add a time-left line: ${texts(card!!)}",
+            texts(card).any { it.contains(activity.getString(R.string.lock_status_remaining, "")) },
         )
     }
 
@@ -180,10 +215,10 @@ class LockStatusCardTest {
     // ---------- fixtures ----------
 
     private fun exhaustedBudget() = BudgetStatus(
-        allowed = Duration.ZERO,
-        used = Duration.ofMinutes(30),
-        bonus = Duration.ZERO,
-        remaining = Duration.ZERO,
+        allowed = kotlin.time.Duration.ZERO,
+        used = 30.minutes,
+        bonus = kotlin.time.Duration.ZERO,
+        remaining = kotlin.time.Duration.ZERO,
         level = BudgetLevel.EXHAUSTED,
     )
 
@@ -193,9 +228,9 @@ class LockStatusCardTest {
     private fun snapshot(
         suspend: Map<PackageName, Reason> = emptyMap(),
         deviceBudget: BudgetStatus = BudgetStatus(
-            allowed = Duration.ofHours(2),
-            used = Duration.ZERO,
-            bonus = Duration.ZERO,
+            allowed = 2.hours,
+            used = kotlin.time.Duration.ZERO,
+            bonus = kotlin.time.Duration.ZERO,
             remaining = 120.minutes,
             level = BudgetLevel.NORMAL,
         ),
@@ -219,8 +254,6 @@ class LockStatusCardTest {
     )
 
     private fun headlineOf(view: View): String = findFirstText(view)
-
-    private fun sublineOf(view: View): String = texts(view).last()
 
     private fun texts(view: View): List<String> = buildList {
         if (view is android.widget.TextView && view.text.isNotEmpty()) add(view.text.toString())

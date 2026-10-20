@@ -6,6 +6,7 @@ import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.AuditEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -16,6 +17,17 @@ import java.time.Instant
 class ActivitySeenTrackerTest {
 
     private val context: Context get() = RuntimeEnvironment.getApplication()
+
+    @Before
+    fun setUp() {
+        // The tracker persists its baseline in SharedPreferences, and
+        // Robolectric hands every test method a fresh application but the same
+        // pref file — so without this, a baseline written by an earlier method
+        // (seconds earlier, by wall-clock) leaks into this one and "unseen"
+        // counts an entry the previous method created.
+        context.getSharedPreferences("activity_seen", Context.MODE_PRIVATE)
+            .edit().clear().commit()
+    }
 
     private fun tracker() = ActivitySeenTracker(context)
 

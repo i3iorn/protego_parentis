@@ -47,8 +47,24 @@ class EnforcementCoordinatorTest {
         )
     }
 
+    /**
+     * The shadow treats an unset op as allowed, so the test that exercises the
+     * "no usage access" branch has to state that denial explicitly rather than
+     * rely on the shadow's default staying changed from some other test.
+     */
+    private fun denyUsageAccess() {
+        val appOps = context.getSystemService(AppOpsManager::class.java)!!
+        shadowOf(appOps).setMode(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            context.packageName,
+            AppOpsManager.MODE_ERRORED,
+        )
+    }
+
     @Test
     fun `evaluate returns null without usage access`() {
+        denyUsageAccess()
         val coordinator = EnforcementCoordinator(context, port = FakeDevicePolicyPort(owner = false))
 
         assertNull(coordinator.evaluate())

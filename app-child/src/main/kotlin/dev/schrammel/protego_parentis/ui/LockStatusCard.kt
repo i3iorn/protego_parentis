@@ -44,6 +44,11 @@ import kotlin.time.Duration.Companion.minutes
  *    standing over "everything is fine" is noise; the budget summary already
  *    carries the good news.
  *
+ * While the card is showing, it is the dashboard's only status card: the day's
+ * remaining time rides along underneath it, so the reason, the countdown and
+ * the time left are one answer rather than two cards saying the same thing in
+ * different shapes.
+ *
  * The countdown re-renders with the dashboard on `onResume` — a ticking timer
  * would need a loop the screen's other content does not otherwise run, and a
  * minute-stale countdown that corrects on the next open beats a foreground
@@ -69,14 +74,27 @@ internal fun Activity.lockStatusCard(snapshot: EnforcementSnapshot): View? {
         else -> {
             val rule = enforcement.suspend.values
                 .filterIsInstance<Reason.ContextRuleActive>()
-                .filter { it.liftsAt != null }
-                .sortedBy { it.liftsAt }
+                .sortedWith(compareBy(nullsLast<Instant>()) { it.liftsAt })
                 .firstOrNull()
                 ?: return null
             headline = getString(R.string.lock_status_rule, rule.ruleName)
             subline = rule.liftsAt?.let { countdown(it) }
                 ?: getString(R.string.lock_status_rule_until_parent)
         }
+    }
+
+    // The day's remaining time rides along in the same card. The dashboard
+    // shows one status card, not two, and a phone that a rule is holding shut
+    // still has a day left to spend — the fact is not lost by merging the
+    // cards, only moved. It stays a quiet line under the answer rather than a
+    // second answer competing with it.
+    val budget = enforcement.deviceBudget
+    val timeLeft = if (budget.isUnlimited || budget.isExhausted) {
+        // No limit set has no number to give, and an exhausted budget is the
+        // headline above — "0 h left" under "time's up" says it twice.
+        null
+    } else {
+        getString(R.string.lock_status_remaining, formatDuration(budget.remaining))
     }
 
     return card {
@@ -97,6 +115,18 @@ internal fun Activity.lockStatusCard(snapshot: EnforcementSnapshot): View? {
                 }
             },
         )
+        timeLeft?.let { left ->
+            addView(
+                TextView(context).apply {
+                    text = left
+                    styleAs(R.style.TextAppearance_Dementor_Caption)
+                    setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
+                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                        topMargin = dimen(R.dimen.space_xxs)
+                    }
+                },
+            )
+        }
     }
 }
 

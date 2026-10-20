@@ -26,7 +26,6 @@ import dev.schrammel.protego_parentis.format.formatDuration
 import dev.schrammel.protego_parentis.glucose.NightscoutStore
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
-import dev.schrammel.protego_parentis.model.BudgetLevel
 import dev.schrammel.protego_parentis.model.GrantTarget
 import dev.schrammel.protego_parentis.model.PackageName
 import dev.schrammel.protego_parentis.model.Reason
@@ -58,7 +57,6 @@ class HomeActivity : DementorActivity() {
 
     private lateinit var column: LinearLayout
     private lateinit var permissionCard: LinearLayout
-    private lateinit var summaryHolder: LinearLayout
     private lateinit var navigation: LinearLayout
     private lateinit var familyBannerHolder: LinearLayout
     private lateinit var activityBannerHolder: LinearLayout
@@ -67,6 +65,7 @@ class HomeActivity : DementorActivity() {
      * here; the screen is otherwise built and filled privately.
      */
     internal lateinit var lockStatusCardHolder: LinearLayout
+    internal lateinit var summaryHolder: LinearLayout
     internal lateinit var rulesList: LinearLayout
     internal lateinit var blockedList: LinearLayout
     private lateinit var appList: LinearLayout
@@ -489,10 +488,23 @@ class HomeActivity : DementorActivity() {
      * The one answer the screen exists to give, rebuilt into [summaryHolder] on
      * every render. The surface and the colour come from [budgetSummaryCard];
      * this method only decides the words and the bar's fill.
+     *
+     * While anything is restricted, the lock status card above is the status
+     * card: it carries the reason, the countdown and the day's remaining time
+     * together. A second card beside it — the same numbers in a different
+     * shape — is what made this screen read as two surfaces fighting over one
+     * fact, so this one steps aside and leaves. The numbers it would have
+     * carried live on the week screen.
      */
     private fun renderSummary(snapshot: EnforcementSnapshot) {
         val budget = snapshot.enforcement.deviceBudget
         summaryHolder.removeAllViews()
+
+        if (lockStatusCardHolder.childCount > 0) {
+            summaryHolder.visibility = View.GONE
+            return
+        }
+        summaryHolder.visibility = View.VISIBLE
 
         val headline: String
         val subline: String
@@ -503,21 +515,6 @@ class HomeActivity : DementorActivity() {
                 headline = getString(R.string.home_no_limit_headline)
                 subline = getString(R.string.home_used_no_limit, formatDuration(budget.used))
                 progress = null
-            }
-
-            budget.level == BudgetLevel.EXHAUSTED -> {
-                // The lock status card above already carries "time's up" as the
-                // headline answer; saying it here as well doubles the same words
-                // on one screen. This card's job is the numbers, so the usage
-                // detail leads and the reset rides the subline alone.
-                headline = getString(
-                    R.string.home_used_up_detail,
-                    formatDuration(budget.allowed + budget.bonus),
-                )
-                subline = snapshot.enforcement.nextChangeAt?.let {
-                    getString(R.string.home_resets_at, formatTime(it))
-                }.orEmpty()
-                progress = 100
             }
 
             else -> {
@@ -580,12 +577,17 @@ class HomeActivity : DementorActivity() {
                 AppRegistry.childStores.contextRules.places.firstOrNull { it.id == id }?.name
             },
             categoryName = { id ->
-                LocalPolicyStore(this).snapshot().categories
+                LocalPolicyStore(this).categories
                     .firstOrNull { it.id == id.value }?.name
             },
             glucoseUnit = NightscoutStore(this).units,
         )
-        rules.sortedBy { it.name.lowercase() }.forEach { rule ->
+        // The dashboard is an overview, not a second rules screen: the first
+        // [maxRows] rules stand for the set and anything past them is one
+        // quiet "and more" line. The full list — with editing — stays one tap
+        // away in the rules screen, so nothing is out of reach.
+        val sorted = rules.sortedBy { it.name.lowercase() }
+        sorted.take(maxRows).forEach { rule ->
             container.addView(
                 ruleCard(
                     rule = rule,
@@ -594,6 +596,23 @@ class HomeActivity : DementorActivity() {
                     onToggle = null,
                     activeNow = rule.id in activeIds,
                 ),
+            )
+        }
+        if (sorted.size > maxRows) {
+            container.addView(
+                // Tappable by design: the dashboard only stands for the set —
+                // the full list, with editing, is the rules screen. An inert
+                // "and more" would leave the reader knowing there is more but
+                // unable to reach it.
+                line(
+                    resources.getQuantityString(
+                        R.plurals.home_and_more,
+                        sorted.size - maxRows,
+                        sorted.size - maxRows,
+                    ),
+                ).apply {
+                    setOnClickListener { startActivity(ContextRulesActivity.intent(this@HomeActivity)) }
+                },
             )
         }
     }
@@ -651,7 +670,14 @@ class HomeActivity : DementorActivity() {
         if (blocked.size > maxRows) {
             val extra = blocked.size - maxRows
             container.addView(
-                line(resources.getQuantityString(R.plurals.home_and_more, extra, extra)),
+                // Same grammar as the rules list's "and more": one tap to the
+                // screen that names every app this phone refuses, rather than
+                // a dead-end line.
+                line(
+                    resources.getQuantityString(R.plurals.home_and_more, extra, extra),
+                ).apply {
+                    setOnClickListener { startActivity(ContextRulesActivity.intent(this@HomeActivity)) }
+                },
             )
         }
     }
