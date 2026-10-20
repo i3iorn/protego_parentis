@@ -41,6 +41,12 @@ import java.time.Instant
  */
 class ParentHomeActivity : ParentRoleActivity() {
 
+    /**
+     * The dashboard is a root: there is nothing behind it to go back to, so the
+     * back affordance its sub-screens carry would only offer to leave the app.
+     */
+    override val showsBackButton: Boolean = false
+
     private lateinit var sync: SyncCoordinator
     private lateinit var inbox: InboxStore
     private lateinit var summaries: DailySummaryStore

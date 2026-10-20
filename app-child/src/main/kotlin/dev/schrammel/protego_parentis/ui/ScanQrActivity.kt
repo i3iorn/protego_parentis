@@ -99,6 +99,10 @@ class ScanQrActivity : DementorActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
+                // The back affordance, above the title: this screen lays out
+                // its own root rather than a content column, so the row brings
+                // its own margin.
+                addView(backRow(sidePadding = dimen(R.dimen.screen_padding)))
                 addView(screenTitle(getString(R.string.scan_title)).apply {
                     val pad = dimen(R.dimen.screen_padding)
                     setPadding(pad, dimen(R.dimen.space_sm), pad, dimen(R.dimen.space_sm))

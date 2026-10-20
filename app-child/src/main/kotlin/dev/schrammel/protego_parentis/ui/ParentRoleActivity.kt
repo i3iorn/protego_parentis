@@ -20,6 +20,14 @@ import dev.schrammel.protego_parentis.security.RoleStore
  */
 abstract class ParentRoleActivity : DementorActivity() {
 
+    /**
+     * Every screen here is reached by tapping a row on the parent's dashboard,
+     * so every one of them offers a visible way back rather than only the
+     * gesture bar — the same reasoning [ParentGatedActivity] follows. The
+     * dashboard itself opts out: a root has nothing to go back to.
+     */
+    override val showsBackButton: Boolean = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!isParentPhone()) {

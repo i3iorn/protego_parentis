@@ -28,16 +28,40 @@ internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 /**
  * A screen's scrolling body, padded and ready to have content added.
  *
- * When the screen opts in ([DementorActivity.showsBackButton]), a back affordance
- * is installed above everything else — before the title, so it is found by the
- * same scan that finds the title, not after it.
+ * The back affordance is deliberately not added here. A screen that rebuilds
+ * its content - which nearly every one of them does, on every render - clears
+ * the column it was given, so a back row inside the column would be wiped by
+ * the screen's own first render. [showColumn] puts it above the column
+ * instead, where a rebuild cannot reach it.
  */
 internal fun Activity.contentColumn(): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
-    if ((this@contentColumn as? DementorActivity)?.showsBackButton == true) addView(backRow())
     val pad = dimen(R.dimen.screen_padding)
     setPadding(pad, pad, pad, dimen(R.dimen.space_4xl))
 }
+
+/**
+ * The screen's back affordance above [column], for a screen that has one.
+ *
+ * Above the column rather than inside it, for the reason [contentColumn]
+ * gives: the screens that rebuild their content clear the column, and a back
+ * row inside it went with them - which is why the affordance was missing from
+ * screen after screen while the code that drew it sat right here.
+ *
+ * The row carries the screen's own horizontal margin, because the column
+ * below it keeps that margin for the content and the row sits outside it.
+ */
+private fun Activity.withBackAffordance(column: LinearLayout): LinearLayout =
+    if ((this as? DementorActivity)?.showsBackButton != true) {
+        column
+    } else {
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+            addView(backRow(sidePadding = dimen(R.dimen.screen_padding)))
+            addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
+        }
+    }
 
 /**
  * The back affordance every screen below the dashboards carries.
@@ -47,12 +71,24 @@ internal fun Activity.contentColumn(): LinearLayout = LinearLayout(this).apply {
  * second drawable to be correct in both themes. The row speaks as one control —
  * "Go back" — with the glyph and the word kept decorative inside it, and the
  * 48dp floor the touch targets elsewhere on these screens use.
+ *
+ * [sidePadding] is the screen's own horizontal margin, for the few screens that
+ * lay out their own root rather than a [contentColumn] — the chat composer and
+ * the camera preview. A column screen already carries that margin, so it leaves
+ * this at zero rather than doubling it.
+ *
+ * The row carries the screen's top margin too: it sits above the column, which
+ * has a margin of its own for the content, and without one the row would cling
+ * to the status bar while everything else sat a screen's width below it.
  */
-internal fun Activity.backRow(): LinearLayout = LinearLayout(this).apply {
+internal fun Activity.backRow(sidePadding: Int = 0): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.HORIZONTAL
     gravity = Gravity.CENTER_VERTICAL
     minimumHeight = dimen(R.dimen.touch_target)
-    setPadding(0, dimen(R.dimen.space_xs), 0, 0)
+    setPadding(sidePadding, dimen(R.dimen.space_xs), sidePadding, 0)
+    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+        topMargin = dimen(R.dimen.screen_padding)
+    }
     withRipple()
     setOnClickListener { finish() }
     contentDescription = getString(R.string.back_button_description)
@@ -82,7 +118,7 @@ internal fun Activity.showColumn(column: LinearLayout) {
         ScrollView(this).apply {
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
             isFillViewport = true
-            addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
+            addView(withBackAffordance(column), LinearLayout.LayoutParams(MATCH, WRAP))
         },
     )
 }
@@ -98,7 +134,7 @@ internal fun Activity.showRefreshableColumn(column: LinearLayout): SwipeRefreshL
     val scroll = ScrollView(this).apply {
         layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         isFillViewport = true
-        addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
+        addView(withBackAffordance(column), LinearLayout.LayoutParams(MATCH, WRAP))
     }
     val refresh = SwipeRefreshLayout(this).apply {
         layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)

@@ -26,6 +26,9 @@ import java.time.format.FormatStyle
  */
 class CelebrationActivity : DementorActivity() {
 
+    /** Shown over the dashboard, so it carries the same way back. */
+    override val showsBackButton: Boolean = true
+
     private lateinit var store: GoalStore
 
     override fun onCreate(savedInstanceState: Bundle?) {

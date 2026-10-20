@@ -31,6 +31,13 @@ import dev.schrammel.protego_parentis.sync.SyncGraph
  */
 class SosActivity : DementorActivity() {
 
+    /**
+     * Reached from the dashboard, so it offers a way back like every other
+     * screen below a dashboard. Leaving it does not end the emergency: only the
+     * child can do that, and the button for it is on this screen.
+     */
+    override val showsBackButton: Boolean = true
+
     private lateinit var sos: SosStore
     private lateinit var sync: SyncCoordinator
     private lateinit var column: LinearLayout
