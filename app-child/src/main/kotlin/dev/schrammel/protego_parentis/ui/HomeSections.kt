@@ -6,16 +6,16 @@ import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.security.DeviceRole
 
 /**
- * Where each row on a phone's home screen leads (#78).
+ * Where each row on a phone's home screen leads.
  *
  * The two home screens used to be designed separately — different groups, a
  * different order, "Family" naming three different rows depending which screen
  * you read it on. Both now render the same shape: an unlabelled group for
- * whatever this phone was opened to do, then Rules, Family, Openness and
- * Settings, in that order, on both kinds of phone. Only which rows land inside
- * each group differs, and that difference is real — a parent's phone has no
- * usage of its own to show, a managed phone has nobody else's device to check
- * on — not a difference in what the groups are called or where they sit.
+ * whatever this phone was opened to do, then the groups below, in that order,
+ * on both kinds of phone. Only which rows land inside each group differs, and
+ * that difference is real — a parent's phone has no usage of its own to show, a
+ * managed phone has nobody else's device to check on — not a difference in what
+ * the groups are called or where they sit.
  *
  * `HomeDestination` names *where a row goes*, never *how to get there*. Each
  * home Activity maps its own destinations to a `startActivity` call or a local
@@ -92,48 +92,57 @@ internal data class HomeSection(
  * parent's now has to ask about a specific managed child's replicated ones —
  * see [ParentHomeActivity]'s call site.
  *
+ * The groups are named after what the screens in them are *about*, not after
+ * a shape: "How much" said nothing about the six screens under it, and the
+ * one that did — the limit on each app, the cap on a category, what the
+ * phone may and may not do — is the limit, so the group says so.
+ *
  * [HomeDestination.PRIVACY] is deliberately never offered to a parent: it is
  * titled "what leaves this phone" and reads this device's own web-filter and
  * diagnostic state — on a parent's phone that is a report on the wrong device,
  * not a shorter version of the truth. [HomeDestination.AUDIT] is the opposite
  * case, the *same* shared family record read from either phone, which is why
- * it appears in Openness on both rather than only on one.
+ * it appears in the family group on both rather than only on one.
  */
 internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): List<HomeSection> = when (role) {
     DeviceRole.CHILD -> listOf(
+        // The child's own time: the extra minutes they were given, the goal
+        // they are working toward, and the two ways a request for more time
+        // goes - asking, and the standing answers that need no asking.
         HomeSection(
-            label = null,
+            label = R.string.home_group_own_time,
             rows = buildList {
+                if (isEnabled(Feature.BONUS)) {
+                    add(HomeRow(R.string.rules_row_bonus, R.string.rules_row_bonus_detail, HomeDestination.BONUS))
+                }
+                if (isEnabled(Feature.GOALS)) {
+                    add(HomeRow(R.string.rules_row_goal, R.string.rules_row_goal_detail, HomeDestination.GOAL))
+                }
                 if (isEnabled(Feature.REQUESTS)) {
-                    add(HomeRow(R.string.home_open_requests, R.string.home_open_requests_detail, HomeDestination.REQUESTS))
-                }
-                if (isEnabled(Feature.CHAT)) {
-                    add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
-                }
-                add(HomeRow(R.string.home_open_week, R.string.home_open_week_detail, HomeDestination.WEEK))
-                if (isEnabled(Feature.WEB_ACTIVITY)) {
                     add(
                         HomeRow(
-                            R.string.rules_row_web_activity,
-                            R.string.rules_row_web_activity_detail,
-                            HomeDestination.WEB_ACTIVITY,
+                            R.string.rules_row_requests,
+                            R.string.rules_row_requests_detail,
+                            HomeDestination.REQUEST_INBOX,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.AUTO_APPROVE)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_auto,
+                            R.string.rules_row_auto_detail,
+                            HomeDestination.AUTO_APPROVE,
                         ),
                     )
                 }
             },
         ),
+        // What the phone allows: the rules themselves, the groups of apps that
+        // share a limit, the limit on one app, the apps that may and may not
+        // run, and what the browser may reach.
         HomeSection(
-            label = R.string.home_group_rules,
-            rows = listOf(
-                // The child's own window into the rules that apply to them.
-                // The editable rules screen is behind the parent's PIN, so
-                // without this the child could not see the rules at all -
-                // which is what the dashboard's read-only list was for.
-                HomeRow(R.string.home_my_rules, R.string.home_my_rules_detail, HomeDestination.CONTEXT_RULES),
-            ),
-        ),
-        HomeSection(
-            label = R.string.rules_group_limits,
+            label = R.string.home_group_own_limits,
             rows = buildList {
                 if (isEnabled(Feature.CATEGORIES)) {
                     add(
@@ -173,8 +182,28 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
                 }
             },
         ),
+        // The people: the conversation, whose phones this family trusts, and
+        // the shared record of what was decided.
         HomeSection(
-            label = R.string.rules_group_day,
+            label = R.string.home_group_own_family,
+            rows = buildList {
+                if (isEnabled(Feature.CHAT)) {
+                    add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
+                }
+                add(
+                    HomeRow(
+                        R.string.rules_row_devices,
+                        R.string.rules_row_devices_detail,
+                        HomeDestination.FAMILY_DEVICES,
+                    ),
+                )
+                add(HomeRow(R.string.home_open_audit, R.string.home_open_audit_detail, HomeDestination.AUDIT))
+            },
+        ),
+        // This phone itself: what it notices, what it counts, what it sends,
+        // and how it is set up.
+        HomeSection(
+            label = R.string.home_group_this_phone,
             rows = buildList {
                 if (isEnabled(Feature.PLACES)) {
                     add(
@@ -194,35 +223,48 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
                         ),
                     )
                 }
-                if (isEnabled(Feature.GOALS)) {
+                if (isEnabled(Feature.WEB_ACTIVITY)) {
                     add(
                         HomeRow(
-                            R.string.rules_row_goal,
-                            R.string.rules_row_goal_detail,
-                            HomeDestination.GOAL,
+                            R.string.rules_row_web_activity,
+                            R.string.rules_row_web_activity_detail,
+                            HomeDestination.WEB_ACTIVITY,
                         ),
                     )
                 }
-                if (isEnabled(Feature.BONUS)) {
-                    add(
-                        HomeRow(
-                            R.string.rules_row_bonus,
-                            R.string.rules_row_bonus_detail,
-                            HomeDestination.BONUS,
-                        ),
-                    )
+                add(HomeRow(R.string.home_open_privacy, R.string.home_open_privacy_detail, HomeDestination.PRIVACY))
+                add(HomeRow(R.string.settings_title, R.string.settings_row_detail, HomeDestination.SETTINGS))
+            },
+        ),
+    )
+
+    DeviceRole.PARENT -> listOf(
+        // What this phone can do to theirs, right now.
+        HomeSection(
+            label = null,
+            rows = buildList {
+                add(HomeRow(R.string.parent_row_lock, R.string.parent_row_lock_detail, HomeDestination.LOCK_NOW))
+                if (isEnabled(Feature.LOCATION)) {
+                    add(HomeRow(R.string.parent_row_locate, R.string.parent_row_locate_detail, HomeDestination.LOCATE))
                 }
             },
         ),
+        // Their time: the extra minutes they have been given, the requests
+        // waiting for an answer, and the standing answers that need no asking.
+        // The last two sit side by side: they are the two ways a request for
+        // more time goes.
         HomeSection(
-            label = R.string.rules_group_requests,
+            label = R.string.home_group_child_time,
             rows = buildList {
+                if (isEnabled(Feature.BONUS)) {
+                    add(HomeRow(R.string.rules_row_bonus, R.string.rules_row_bonus_detail, HomeDestination.BONUS))
+                }
                 if (isEnabled(Feature.REQUESTS)) {
                     add(
                         HomeRow(
-                            R.string.rules_row_requests,
-                            R.string.rules_row_requests_detail,
-                            HomeDestination.REQUEST_INBOX,
+                            R.string.parent_row_inbox,
+                            R.string.parent_row_inbox_detail,
+                            HomeDestination.INBOX,
                         ),
                     )
                 }
@@ -236,47 +278,14 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
                     )
                 }
             },
-        ),        HomeSection(
-            label = R.string.home_group_family,
-            rows = listOf(
-                HomeRow(R.string.rules_row_devices, R.string.rules_row_devices_detail, HomeDestination.FAMILY_DEVICES),
-            ),
         ),
+        // What they are allowed: the rules, the groups of apps that share a
+        // limit, the limit on one app, the apps that may and may not run, and
+        // the places a rule can refer to.
         HomeSection(
-            label = R.string.home_group_openness,
-            rows = listOf(
-                HomeRow(R.string.home_open_audit, R.string.home_open_audit_detail, HomeDestination.AUDIT),
-                HomeRow(R.string.home_open_privacy, R.string.home_open_privacy_detail, HomeDestination.PRIVACY),
-            ),
-        ),
-        HomeSection(
-            label = R.string.home_group_settings,
-            rows = listOf(HomeRow(R.string.settings_title, R.string.settings_row_detail, HomeDestination.SETTINGS)),
-        ),
-    )
-    DeviceRole.PARENT -> listOf(
-        HomeSection(
-            label = null,
+            label = R.string.home_group_child_limits,
             rows = buildList {
-                if (isEnabled(Feature.REQUESTS)) {
-                    add(HomeRow(R.string.parent_row_inbox, R.string.parent_row_inbox_detail, HomeDestination.INBOX))
-                }
-                if (isEnabled(Feature.CHAT)) {
-                    add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
-                }
-                add(HomeRow(R.string.parent_row_lock, R.string.parent_row_lock_detail, HomeDestination.LOCK_NOW))
-                if (isEnabled(Feature.LOCATION)) {
-                    add(HomeRow(R.string.parent_row_locate, R.string.parent_row_locate_detail, HomeDestination.LOCATE))
-                }
-            },
-        ),
-        HomeSection(
-            label = R.string.home_group_rules,
-            rows = listOf(HomeRow(R.string.parent_row_rules, R.string.parent_row_rules_detail, HomeDestination.RULES)),
-        ),
-        HomeSection(
-            label = R.string.rules_group_limits,
-            rows = buildList {
+                add(HomeRow(R.string.parent_row_rules, R.string.parent_row_rules_detail, HomeDestination.RULES))
                 if (isEnabled(Feature.CATEGORIES)) {
                     add(
                         HomeRow(
@@ -304,11 +313,6 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
                         ),
                     )
                 }
-            },
-        ),
-        HomeSection(
-            label = R.string.rules_group_day,
-            rows = buildList {
                 if (isEnabled(Feature.PLACES)) {
                     add(
                         HomeRow(
@@ -318,79 +322,49 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
                         ),
                     )
                 }
-                if (isEnabled(Feature.BONUS)) {
-                    add(
-                        HomeRow(
-                            R.string.rules_row_bonus,
-                            R.string.rules_row_bonus_detail,
-                            HomeDestination.BONUS,
-                        ),
-                    )
-                }
             },
         ),
+        // The people: the conversation, the phone itself, whose phones this
+        // family trusts, and the shared record of what was decided.
         HomeSection(
-            label = R.string.rules_group_requests,
+            label = R.string.home_group_child_family,
             rows = buildList {
-                if (isEnabled(Feature.AUTO_APPROVE)) {
-                    add(
-                        HomeRow(
-                            R.string.rules_row_auto,
-                            R.string.rules_row_auto_detail,
-                            HomeDestination.AUTO_APPROVE,
-                        ),
-                    )
+                if (isEnabled(Feature.CHAT)) {
+                    add(HomeRow(R.string.chat_title, R.string.chat_row_detail, HomeDestination.CHAT))
                 }
+                add(
+                    HomeRow(
+                        R.string.parent_row_device,
+                        R.string.parent_row_device_detail,
+                        HomeDestination.THE_OTHER_PHONE,
+                    ),
+                )
+                add(
+                    HomeRow(
+                        R.string.rules_row_devices,
+                        R.string.rules_row_devices_detail,
+                        HomeDestination.FAMILY_DEVICES,
+                    ),
+                )
+                add(HomeRow(R.string.parent_row_audit, R.string.parent_row_audit_detail, HomeDestination.AUDIT))
             },
-        ),        HomeSection(
-            label = R.string.home_group_family,
+        ),
+        // This phone itself.
+        HomeSection(
+            label = R.string.home_group_this_phone,
             rows = listOf(
-                HomeRow(R.string.parent_row_device, R.string.parent_row_device_detail, HomeDestination.THE_OTHER_PHONE),
-                HomeRow(R.string.rules_row_devices, R.string.rules_row_devices_detail, HomeDestination.FAMILY_DEVICES),
+                HomeRow(R.string.settings_title, R.string.settings_row_detail, HomeDestination.SETTINGS),
             ),
-        ),
-        HomeSection(
-            label = R.string.home_group_openness,
-            rows = listOf(HomeRow(R.string.parent_row_audit, R.string.parent_row_audit_detail, HomeDestination.AUDIT)),
-        ),
-        HomeSection(
-            label = R.string.home_group_settings,
-            rows = listOf(HomeRow(R.string.settings_title, R.string.settings_row_detail, HomeDestination.SETTINGS)),
         ),
     )
 }.filter { it.rows.isNotEmpty() }
-
-/**
- * Whether [destination] stays on the dashboard itself rather than moving into
- * the menu.
- *
- * The child's "ask for more time" and "see my week" are things to do, not
- * places to browse, and a child who wants more time should not have to open a
- * menu to ask for it. Everything else is a destination, and a destination
- * belongs in a menu.
- */
-internal fun staysOnDashboard(destination: HomeDestination): Boolean =
-    destination == HomeDestination.REQUESTS || destination == HomeDestination.WEEK
-
-/**
- * The menu's sections: [homeSections] without the rows the dashboard carries.
- *
- * The same rows, the same grouping, the same one-line descriptions - only
- * somewhere else.
- */
-internal fun homeMenuSections(
-    role: DeviceRole,
-    isEnabled: (Feature) -> Boolean,
-): List<HomeSection> = homeSections(role, isEnabled)
-    .map { section -> section.copy(rows = section.rows.filterNot { staysOnDashboard(it.destination) }) }
-    .filter { it.rows.isNotEmpty() }
 
 /**
  * Whether [feature] should show on a parent's dashboard (#91), given each
  * managed child's replicated `disabledFeatures` set (null for a child this
  * phone has not yet heard a policy from).
  *
- * A pure predicate on purpose — see [ParentHomeActivity.disabledFeaturesByChild]'s
+ * A pure predicate on purpose - see [ParentHomeActivity.disabledFeaturesByChild]'s
  * own doc comment for why the read that produces [disabledByChild] happens
  * exactly once per screen render rather than once per feature checked here.
  *

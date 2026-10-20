@@ -66,6 +66,13 @@
     <string name="home_managed">Den här telefonen sköts av appen. Reglerna nedan tillämpas.</string>
     <string name="home_would_block_header">Skulle blockeras just nu</string>
     <string name="home_menu">Meny</string>
+    <string name="home_group_own_time">Din tid</string>
+    <string name="home_group_child_time">Deras tid</string>
+    <string name="home_group_own_limits">Dina gränser</string>
+    <string name="home_group_child_limits">Deras gränser</string>
+    <string name="home_group_own_family">Din familj</string>
+    <string name="home_group_child_family">Familjen</string>
+    <string name="home_group_this_phone">Den här telefonen</string>
     <plurals name="home_menu_waiting">
         <item quantity="one">Meny, %d sak väntar</item>
         <item quantity="other">Meny, %d saker väntar</item>
@@ -472,19 +479,9 @@
     <string name="home_edit_rules_detail">Den dagliga gränsen, läggdags och andra regler</string>
     <string name="home_open_privacy_detail">Exakt vad som mäts och vad som skickas</string>
     <string name="home_language_detail">Byt språk i appen</string>
-    <string name="home_my_rules">Mina regler</string>
     <string name="home_my_rules_detail">De regler som gäller för den här telefonen</string>
 
     <string name="limits_title">Gränser</string>
-    <string name="rules_group_limits">Hur mycket</string>
-    <string name="rules_group_limits_info_title">Om “Hur mycket”</string>
-    <string name="rules_group_limits_info_body">Kategorier grupperar appar för att dela en daglig gräns. Appgränser sätter ett tak för en enskild app. Appkontroll låter dig tillåta eller blockera specifika appar helt, och visar appar som just kommit. Webbfiltret styr surfning på den här enheten. Webbaktivitet, listan över besökta sidor, finns på startskärmen.</string>
-    <string name="rules_group_day">Hur dagen fungerar</string>
-    <string name="rules_group_day_info_title">Om “Hur dagen fungerar”</string>
-    <string name="rules_group_day_info_body">Regler slår ihop den dagliga gränsen, tidsfönster och plats- eller Wi-Fi-baserade villkor till en och samma regelmotor, så du kan säga saker som “blockera spel efter 21” eller “bara det nödvändigaste i skolan.” Platser håller de platser regler kan hänvisa till. Bonustid lägger till extra minuter bara för idag.</string>
-    <string name="rules_group_requests">Förfrågningar</string>
-    <string name="rules_group_requests_info_title">Om förfrågningar</string>
-    <string name="rules_group_requests_info_body">Förfrågningar visar vad ditt barn har bett om att låsa upp. Automatiska svar skapar ett stående ja för specifika förfrågningar — en viss mängd, ett visst antal gånger per dag eller vecka — så du slipper svara på varje en för sig.</string>
     <string name="rules_row_limits">Daglig gräns och läggdags</string>
     <string name="rules_row_limits_detail">Tiden, lugna timmar och appar som struntar i båda</string>
     <string name="rules_row_categories">Kategorier</string>
@@ -1237,14 +1234,10 @@
     <string name="audit_feature_on">Påslaget: %1$s</string>
     <string name="audit_feature_off">Undanlagt: %1$s</string>
 
-    <string name="home_group_openness">Vad du kan se om det här</string>
-    <string name="home_group_settings">Inställningar</string>
     <string name="settings_title">Inställningar</string>
     <string name="settings_row_detail">Aviseringar, behörigheter, språk och telefonens PIN-kod</string>
     <string name="settings_group_family">Den här familjen</string>
     <string name="settings_row_role_detail">Lämna över den här telefonen så att den blir den med gränserna</string>
-    <string name="home_group_family">Familj</string>
-    <string name="home_group_rules">Regler</string>
     <string name="join_relay_header">Hur meddelanden färdas</string>
     <string name="features_editing_whose">Redigerar %1$s\'s delar</string>
     <string name="features_picker_title">Vems delar?</string>

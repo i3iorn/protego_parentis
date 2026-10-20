@@ -62,6 +62,13 @@
     <string name="home_managed">This phone is managed. Rules below are being enforced.</string>
     <string name="home_would_block_header">Would be blocked right now</string>
     <string name="home_menu">Menu</string>
+    <string name="home_group_own_time">Your time</string>
+    <string name="home_group_child_time">Their time</string>
+    <string name="home_group_own_limits">Your limits</string>
+    <string name="home_group_child_limits">Their limits</string>
+    <string name="home_group_own_family">Your family</string>
+    <string name="home_group_child_family">The family</string>
+    <string name="home_group_this_phone">This phone</string>
     <plurals name="home_menu_waiting">
         <item quantity="one">Menu, %d thing waiting</item>
         <item quantity="other">Menu, %d things waiting</item>
@@ -471,19 +478,9 @@
     <string name="home_edit_rules_detail">The daily limit, bedtime, and other rules</string>
     <string name="home_open_privacy_detail">Exactly what is measured and what is sent</string>
     <string name="home_language_detail">Change the language of this app</string>
-    <string name="home_my_rules">My rules</string>
     <string name="home_my_rules_detail">The rules that apply to this phone</string>
 
     <string name="limits_title">Limits</string>
-    <string name="rules_group_limits">How much</string>
-    <string name="rules_group_limits_info_title">About “How much”</string>
-    <string name="rules_group_limits_info_body">Categories group apps to share one daily limit. App limits set a cap for one app on its own. App control lets you allow or block specific apps outright, and shows apps that just arrived. The web filter governs browsing on this device itself. Web activity, the list of sites visited, is on the home screen.</string>
-    <string name="rules_group_day">How the day works</string>
-    <string name="rules_group_day_info_title">About “How the day works”</string>
-    <string name="rules_group_day_info_body">Rules combines the daily limit, time windows, and location- or Wi-Fi-based conditions into one rule engine, so you can say things like “block games after 9pm” or “nothing but the essentials at school.” Places holds the locations rules can refer to. Bonus time adds extra minutes for today only.</string>
-    <string name="rules_group_requests">Requests</string>
-    <string name="rules_group_requests_info_title">About requests</string>
-    <string name="rules_group_requests_info_body">Requests holds what your child has asked to unlock. Auto-approve creates a standing yes for specific requests — a set amount, a set number of times per day or week — so you don’t have to answer each one by hand.</string>
     <string name="rules_row_limits">Daily limit and bedtime</string>
     <string name="rules_row_limits_detail">The allowance, quiet hours, and apps that ignore both</string>
     <string name="rules_row_categories">Categories</string>
@@ -1247,14 +1244,10 @@
     <string name="audit_feature_on">Turned on: %1$s</string>
     <string name="audit_feature_off">Put away: %1$s</string>
 
-    <string name="home_group_openness">What you can see about this</string>
-    <string name="home_group_settings">Settings</string>
     <string name="settings_title">Settings</string>
     <string name="settings_row_detail">Notifications, permissions, language, and this phone\'s PIN</string>
     <string name="settings_group_family">This family</string>
     <string name="settings_row_role_detail">Hand this phone over to be the one with the limits</string>
-    <string name="home_group_family">Family</string>
-    <string name="home_group_rules">Rules</string>
     <string name="join_relay_header">How messages travel</string>
     <string name="features_editing_whose">Editing %1$s\'s parts</string>
     <string name="features_picker_title">Whose parts?</string>

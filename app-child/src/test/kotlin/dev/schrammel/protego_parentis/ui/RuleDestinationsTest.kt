@@ -109,13 +109,13 @@ class RuleDestinationsTest {
         // there is nothing to set up on somebody else's phone.
         assertEquals(
             emptyList<HomeDestination>(),
-            homeMenuSections(DeviceRole.PARENT) { true }
+            homeSections(DeviceRole.PARENT) { true }
                 .flatMap { it.rows }
                 .filter { it.destination == HomeDestination.WEB_FILTER },
         )
         assertEquals(
             listOf(HomeDestination.WEB_FILTER),
-            homeMenuSections(DeviceRole.CHILD) { true }
+            homeSections(DeviceRole.CHILD) { true }
                 .flatMap { it.rows }
                 .filter { it.destination == HomeDestination.WEB_FILTER }
                 .map { it.destination },

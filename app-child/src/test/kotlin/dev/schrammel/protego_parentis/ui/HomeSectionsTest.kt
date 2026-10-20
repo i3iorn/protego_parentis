@@ -38,16 +38,46 @@ class HomeSectionsTest {
 
     private fun labelsFor(role: DeviceRole) = homeSections(role, allOn()::isEnabled).map { it.label }
 
+    /**
+     * The two home screens are read by two different people, so they say
+     * different things: a child's menu is about the phone in their hand, a
+     * parent's about the child they are standing in for.
+     */
     @Test
-    fun `both roles see the same group labels in the same order`() {
-        assertEquals(listOf(null) + REST, labelsFor(DeviceRole.CHILD))
-        assertEquals(listOf(null) + REST, labelsFor(DeviceRole.PARENT))
+    fun `each role's menu is grouped around what its screens are about`() {
+        assertEquals(
+            listOf(
+                R.string.home_group_own_time,
+                R.string.home_group_own_limits,
+                R.string.home_group_own_family,
+                R.string.home_group_this_phone,
+            ),
+            labelsFor(DeviceRole.CHILD),
+        )
+        assertEquals(
+            listOf(
+                null,
+                R.string.home_group_child_time,
+                R.string.home_group_child_limits,
+                R.string.home_group_child_family,
+                R.string.home_group_this_phone,
+            ),
+            labelsFor(DeviceRole.PARENT),
+        )
     }
 
+    /**
+     * The unlabelled group is whatever this phone was opened to do - on a
+     * parent's phone, the two things they can do to theirs in the moment.
+     */
     @Test
-    fun `the first group is unlabelled on both`() {
-        assertEquals(null, homeSections(DeviceRole.CHILD, allOn()::isEnabled).first().label)
-        assertEquals(null, homeSections(DeviceRole.PARENT, allOn()::isEnabled).first().label)
+    fun `the parent's unlabelled group is the actions they can take right now`() {
+        val first = homeSections(DeviceRole.PARENT, allOn()::isEnabled).first()
+        assertEquals(null, first.label)
+        assertEquals(
+            listOf(HomeDestination.LOCK_NOW, HomeDestination.LOCATE),
+            first.rows.map { it.destination },
+        )
     }
 
     /**
@@ -66,9 +96,6 @@ class HomeSectionsTest {
 
         assertTrue(HomeDestination.THE_OTHER_PHONE in parentDestinations)
         assertFalse(HomeDestination.THE_OTHER_PHONE in childDestinations)
-
-        assertTrue(HomeDestination.WEEK in childDestinations)
-        assertFalse(HomeDestination.WEEK in parentDestinations)
 
         assertTrue(HomeDestination.LOCK_NOW in parentDestinations)
         assertFalse(HomeDestination.LOCK_NOW in childDestinations)
@@ -131,24 +158,23 @@ class HomeSectionsTest {
     }
 
     /**
-     * The menu carries the destinations the dashboard no longer lays out
-     * inline. The child's two "things to do" rows stay on the dashboard — a
-     * child who wants more time should not have to open a menu to ask for it.
+     * The dashboard carries the two things a child comes here to do - ask for
+     * more time, see their week - so the menu does not also list them. The
+     * rules themselves are on the dashboard too, under their own row.
      */
     @Test
     fun `the menu leaves out the rows the dashboard carries`() {
-        val menu = homeMenuSections(DeviceRole.CHILD, allOn()::isEnabled)
+        val menu = homeSections(DeviceRole.CHILD, allOn()::isEnabled)
             .flatMap { it.rows }
             .map { it.destination }
 
         assertFalse("ask for more time stays on the dashboard", HomeDestination.REQUESTS in menu)
         assertFalse("see my week stays on the dashboard", HomeDestination.WEEK in menu)
-        assertTrue("the child's own rules are in the menu", HomeDestination.CONTEXT_RULES in menu)
     }
 
     @Test
     fun `the parent's menu keeps everything its dashboard no longer lists`() {
-        val menu = homeMenuSections(DeviceRole.PARENT, allOn()::isEnabled)
+        val menu = homeSections(DeviceRole.PARENT, allOn()::isEnabled)
             .flatMap { it.rows }
             .map { it.destination }
 
@@ -165,7 +191,7 @@ class HomeSectionsTest {
      */
     @Test
     fun `the controls the hub used to hold are in the menu`() {
-        val menu = homeMenuSections(DeviceRole.CHILD) { true }
+        val menu = homeSections(DeviceRole.CHILD) { true }
             .flatMap { it.rows }
             .map { it.destination }
 
@@ -190,7 +216,7 @@ class HomeSectionsTest {
      */
     @Test
     fun `the parent's menu carries the child's controls and not this phone's`() {
-        val menu = homeMenuSections(DeviceRole.PARENT) { true }
+        val menu = homeSections(DeviceRole.PARENT) { true }
             .flatMap { it.rows }
             .map { it.destination }
 
@@ -206,15 +232,5 @@ class HomeSectionsTest {
     private fun destinations(role: DeviceRole, flags: FeatureFlags) =
         homeSections(role, flags::isEnabled).flatMap { it.rows }.map { it.destination }
 
-    private companion object {
-        val REST = listOf(
-            R.string.home_group_rules,
-            R.string.rules_group_limits,
-            R.string.rules_group_day,
-            R.string.rules_group_requests,
-            R.string.home_group_family,
-            R.string.home_group_openness,
-            R.string.home_group_settings,
-        )
-    }
+
 }

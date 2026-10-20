@@ -57,7 +57,7 @@ class HomeMenuTest {
     }
 
     @Test
-    fun `the menu says how many things are waiting`() {
+    fun `the menu shows each row's title and its one-line description`() {
         activity.homeMenuDialog(
             listOf(
                 HomeSection(
@@ -75,9 +75,14 @@ class HomeMenuTest {
 
         val dialog = ShadowDialog.getLatestDialog()
         assertNotNull("the menu must be showing", dialog)
+        val texts = textsIn(dialog.window!!.decorView)
         assertTrue(
-            "the menu must carry a title",
-            textsIn(dialog.window!!.decorView).any { it == activity.getString(R.string.home_menu) },
+            "the row must carry its title: $texts",
+            texts.any { it == activity.getString(R.string.home_open_week) },
+        )
+        assertTrue(
+            "the row must carry its description: $texts",
+            texts.any { it == activity.getString(R.string.home_open_week_detail) },
         )
     }
 

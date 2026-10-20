@@ -11,7 +11,6 @@ import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,21 +47,43 @@ class AutoApprovalRemoteTest {
         RoleStore(context).choose(DeviceRole.CHILD)
     }
 
+    /**
+     * The two ways a request for more time goes - asking, and the standing
+     * answers that need no asking - belong next to each other. They are the two
+     * sides of one thing, and a reader looking for one should not have to
+     * wonder whether the other is in the next group.
+     */
     @Test
-    fun `editing a child's rules remotely, the requests row is absent but auto-approval is offered`() {
+    fun `the requests and the automatic answers sit next to each other`() {
+        RoleStore(context).choose(DeviceRole.CHILD)
+        LocalDeviceId.useInTests("THISPHONE")
+
+        val rows = homeSections(DeviceRole.CHILD) { true }.flatMap { it.rows }
+        val inbox = rows.indexOfFirst { it.destination == HomeDestination.REQUEST_INBOX }
+        val auto = rows.indexOfFirst { it.destination == HomeDestination.AUTO_APPROVE }
+
+        assertTrue("the request inbox must be in the menu", inbox >= 0)
+        assertTrue("the automatic answers must be in the menu", auto >= 0)
+        assertEquals(
+            "the requests and the automatic answers belong side by side",
+            inbox + 1,
+            auto,
+        )
+    }
+
+    @Test
+    fun `a parent's menu carries the inbox and the automatic answers together`() {
         RoleStore(context).choose(DeviceRole.PARENT)
         enrolChild("CHILD1")
 
-        val destinations = homeMenuSections(DeviceRole.PARENT) { true }
-            .flatMap { it.rows }
-            .map { it.destination }
-        assertFalse(
-            "the requests inbox is this phone's own",
-            HomeDestination.REQUEST_INBOX in destinations,
-        )
-        assertTrue(
-            "the auto-approval row should be offered for a remote target",
-            HomeDestination.AUTO_APPROVE in destinations,
+        val rows = homeSections(DeviceRole.PARENT) { true }.flatMap { it.rows }
+        val destinations = rows.map { it.destination }
+        assertTrue("the inbox is in the menu", HomeDestination.INBOX in destinations)
+        assertTrue("the automatic answers are in the menu", HomeDestination.AUTO_APPROVE in destinations)
+        assertEquals(
+            "the requests and the automatic answers belong side by side",
+            rows.indexOfFirst { it.destination == HomeDestination.INBOX } + 1,
+            rows.indexOfFirst { it.destination == HomeDestination.AUTO_APPROVE },
         )
 
         RulesEntry.launchControl(activity, HomeDestination.AUTO_APPROVE)
@@ -74,11 +95,11 @@ class AutoApprovalRemoteTest {
     }
 
     @Test
-    fun `on the managed phone itself, both requests and auto-approval are offered`() {
+    fun `on the managed phone itself, both the request inbox and the automatic answers are offered`() {
         RoleStore(context).choose(DeviceRole.CHILD)
         LocalDeviceId.useInTests("THISPHONE")
 
-        val destinations = homeMenuSections(DeviceRole.CHILD) { true }
+        val destinations = homeSections(DeviceRole.CHILD) { true }
             .flatMap { it.rows }
             .map { it.destination }
         assertTrue(HomeDestination.REQUEST_INBOX in destinations)
