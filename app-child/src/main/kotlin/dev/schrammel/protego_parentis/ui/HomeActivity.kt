@@ -201,6 +201,16 @@ class HomeActivity : DementorActivity() {
                 subtitle = getString(R.string.home_open_week_detail),
             ) { startActivity(WeekActivity.intent(this)) },
         )
+        // The rules, on the dashboard rather than only in the menu: they are
+        // the rules this phone is running, and the screen behind them opens
+        // read-only to whoever is not the parent, so there is no PIN between
+        // a child and the rules that apply to them.
+        column.addView(
+            navigationRow(
+                title = getString(R.string.home_edit_rules),
+                subtitle = getString(R.string.home_edit_rules_detail),
+            ) { RulesEntry.launch(this) },
+        )
 
         column.addView(sosButton())
 

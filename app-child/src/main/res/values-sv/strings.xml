@@ -468,6 +468,8 @@
     <!-- Navigering. Varje rad säger vad som finns bakom den. -->
     <string name="home_open_requests_detail">Be om mer tid och se svaren</string>
     <string name="home_open_week_detail">Dina senaste sju dagar</string>
+    <string name="home_edit_rules">Regler</string>
+    <string name="home_edit_rules_detail">Den dagliga gränsen, läggdags och andra regler</string>
     <string name="home_open_privacy_detail">Exakt vad som mäts och vad som skickas</string>
     <string name="home_language_detail">Byt språk i appen</string>
     <string name="home_my_rules">Mina regler</string>

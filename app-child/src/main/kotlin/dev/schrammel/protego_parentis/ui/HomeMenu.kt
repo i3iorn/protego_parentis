@@ -62,6 +62,12 @@ internal fun Activity.homeMenuDialog(
         setPadding(pad, dimen(R.dimen.space_sm), pad, pad)
     }
 
+    // The dialog has to be gone before the screen behind it opens. Left
+    // standing, it floats over the screen the reader just chose - and back
+    // from there dismisses the menu again instead of returning to the
+    // dashboard.
+    lateinit var dialog: AlertDialog
+
     sections.forEach { section ->
         addSection(
             content,
@@ -74,12 +80,15 @@ internal fun Activity.homeMenuDialog(
                     // actions in the menu - lock the phone now, find where it
                     // is - do not go anywhere.
                     showChevron = !entry.destination.isAction,
-                ) { onOpen(entry.destination) }
+                ) {
+                    dialog.dismiss()
+                    onOpen(entry.destination)
+                }
             },
         )
     }
 
-    AlertDialog.Builder(this)
+    dialog = AlertDialog.Builder(this)
         .setTitle(R.string.home_menu)
         .setView(
             ScrollView(this).apply {
@@ -87,5 +96,6 @@ internal fun Activity.homeMenuDialog(
             },
         )
         .setPositiveButton(android.R.string.ok, null)
-        .show()
+        .create()
+    dialog.show()
 }

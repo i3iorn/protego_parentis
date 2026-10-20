@@ -467,6 +467,8 @@
     <!-- Navigation labels. Each says what is behind it. -->
     <string name="home_open_requests_detail">Ask for more time and see the answers</string>
     <string name="home_open_week_detail">Your last seven days</string>
+    <string name="home_edit_rules">Rules</string>
+    <string name="home_edit_rules_detail">The daily limit, bedtime, and other rules</string>
     <string name="home_open_privacy_detail">Exactly what is measured and what is sent</string>
     <string name="home_language_detail">Change the language of this app</string>
     <string name="home_my_rules">My rules</string>
