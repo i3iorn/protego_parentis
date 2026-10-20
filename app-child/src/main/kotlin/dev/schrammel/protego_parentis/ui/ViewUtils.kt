@@ -73,7 +73,7 @@ internal object LimitSlider {
     const val STEP_MINUTES = 5
 
     /** 96 steps of five minutes: nought to eight hours. */
-    const val MAX_STEPS = 96
+    const val MAX_STEPS = 48
 
     fun minutesFor(progress: Int): Int = progress * STEP_MINUTES
 
