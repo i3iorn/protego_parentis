@@ -1324,7 +1324,6 @@
     <string name="app_search_hint">Sök appar</string>
     <string name="search_hint">Sök…</string>
     <string name="rules_search_hint">Sök regler</string>
-    <string name="back_button">Tillbaka</string>
     <string name="back_button_description">Gå tillbaka</string>
     <string name="app_search_none">Ingen app matchar det.</string>
     <string name="app_picker_empty_remote_hint">Ingen applista har kommit tillbaka från den telefonen än.</string>

@@ -28,11 +28,9 @@ internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 /**
  * A screen's scrolling body, padded and ready to have content added.
  *
- * The back affordance is deliberately not added here. A screen that rebuilds
- * its content - which nearly every one of them does, on every render - clears
- * the column it was given, so a back row inside the column would be wiped by
- * the screen's own first render. [showColumn] puts it above the column
- * instead, where a rebuild cannot reach it.
+ * The way back belongs to the screen's title, not to the body: it is part of
+ * the header the screen puts at the top of this column (see [screenTitle]),
+ * where a screen that rebuilds its content cannot wipe it.
  */
 internal fun Activity.contentColumn(): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
@@ -41,75 +39,27 @@ internal fun Activity.contentColumn(): LinearLayout = LinearLayout(this).apply {
 }
 
 /**
- * The screen's back affordance above [column], for a screen that has one.
+ * The way back, as one small chevron in the screen's header.
  *
- * Above the column rather than inside it, for the reason [contentColumn]
- * gives: the screens that rebuild their content clear the column, and a back
- * row inside it went with them - which is why the affordance was missing from
- * screen after screen while the code that drew it sat right here.
+ * A glyph rather than a line of text: the header carries the screen's name on
+ * its other side, and a whole line reading "Back" would take more room than
+ * the header is meant to take. The app builds its screens in code and
+ * deliberately carries no icon library, and a plain chevron needs no second
+ * drawable to be correct in both themes.
  *
- * The row carries the screen's own horizontal margin, because the column
- * below it keeps that margin for the content and the row sits outside it.
+ * The glyph is decorative: the control itself speaks for itself as "Go back",
+ * and it keeps the 48dp floor the touch targets elsewhere on these screens use.
  */
-private fun Activity.withBackAffordance(column: LinearLayout): LinearLayout =
-    if ((this as? DementorActivity)?.showsBackButton != true) {
-        column
-    } else {
-        LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-            addView(backRow(sidePadding = dimen(R.dimen.screen_padding)))
-            addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
-        }
-    }
-
-/**
- * The back affordance every screen below the dashboards carries.
- *
- * A text-and-glyph row rather than an icon asset: the app builds its screens in
- * code and deliberately carries no icon library, and a plain "‹ Back" needs no
- * second drawable to be correct in both themes. The row speaks as one control —
- * "Go back" — with the glyph and the word kept decorative inside it, and the
- * 48dp floor the touch targets elsewhere on these screens use.
- *
- * [sidePadding] is the screen's own horizontal margin, for the few screens that
- * lay out their own root rather than a [contentColumn] — the chat composer and
- * the camera preview. A column screen already carries that margin, so it leaves
- * this at zero rather than doubling it.
- *
- * The row carries the screen's top margin too: it sits above the column, which
- * has a margin of its own for the content, and without one the row would cling
- * to the status bar while everything else sat a screen's width below it.
- */
-internal fun Activity.backRow(sidePadding: Int = 0): LinearLayout = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL
-    gravity = Gravity.CENTER_VERTICAL
+internal fun Activity.backButton(): TextView = TextView(this).apply {
+    text = "‹"
+    styleAs(R.style.TextAppearance_Dementor_Headline)
+    setTextColor(ContextCompat.getColor(context, R.color.brand))
+    gravity = Gravity.CENTER
+    minimumWidth = dimen(R.dimen.touch_target)
     minimumHeight = dimen(R.dimen.touch_target)
-    setPadding(sidePadding, dimen(R.dimen.space_xs), sidePadding, 0)
-    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
-        topMargin = dimen(R.dimen.screen_padding)
-    }
+    contentDescription = getString(R.string.back_button_description)
     withRipple()
     setOnClickListener { finish() }
-    contentDescription = getString(R.string.back_button_description)
-    addView(
-        TextView(this@backRow).apply {
-            text = "‹"
-            styleAs(R.style.TextAppearance_Dementor_Headline)
-            setTextColor(ContextCompat.getColor(context, R.color.brand))
-            // Decorative: the row's own contentDescription already names it.
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        },
-    )
-    addView(
-        TextView(this@backRow).apply {
-            text = getString(R.string.back_button)
-            styleAs(R.style.TextAppearance_Dementor_Caption)
-            setTextColor(ContextCompat.getColor(context, R.color.brand))
-            setPadding(dimen(R.dimen.space_xxs), 0, 0, 0)
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        },
-    )
 }
 
 /** Wraps [column] in a scroll view and installs it as the screen's content. */
@@ -118,7 +68,7 @@ internal fun Activity.showColumn(column: LinearLayout) {
         ScrollView(this).apply {
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
             isFillViewport = true
-            addView(withBackAffordance(column), LinearLayout.LayoutParams(MATCH, WRAP))
+            addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
         },
     )
 }
@@ -134,7 +84,7 @@ internal fun Activity.showRefreshableColumn(column: LinearLayout): SwipeRefreshL
     val scroll = ScrollView(this).apply {
         layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         isFillViewport = true
-        addView(withBackAffordance(column), LinearLayout.LayoutParams(MATCH, WRAP))
+        addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
     }
     val refresh = SwipeRefreshLayout(this).apply {
         layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)

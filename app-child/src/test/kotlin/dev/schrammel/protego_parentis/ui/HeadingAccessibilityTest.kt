@@ -19,7 +19,9 @@ class HeadingAccessibilityTest {
 
     @Test
     fun `a screen title is an accessibility heading`() {
-        assertTrue(activity.screenTitle("Rules").isAccessibilityHeading)
+        // The title lives inside the screen's header row, beside the way back;
+        // the title itself is what TalkBack's heading navigation jumps to.
+        assertTrue(activity.screenTitleText("Rules").isAccessibilityHeading)
     }
 
     @Test

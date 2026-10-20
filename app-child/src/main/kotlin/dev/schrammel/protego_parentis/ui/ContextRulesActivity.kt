@@ -120,7 +120,7 @@ class ContextRulesActivity : ParentGatedActivity() {
         versions: ContextRuleFormat.MixedVersions?,
     ) {
         container.removeAllViews()
-        container.addView(title(getString(R.string.context_title), R.style.TextAppearance_Dementor_Title))
+        container.addView(screenTitle(getString(R.string.context_title)))
         ruleVersionBanner(versions) { startActivity(FamilyDevicesActivity.intent(this)) }?.let(container::addView)
         // The "is this phone actually enforced?" answer, first: a parent who
         // cannot find it assumes the rules are doing something they are not.

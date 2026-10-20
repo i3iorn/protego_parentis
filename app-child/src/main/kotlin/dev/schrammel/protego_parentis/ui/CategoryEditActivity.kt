@@ -167,8 +167,8 @@ class CategoryEditActivity : ParentGatedActivity() {
         val content = contentColumn()
 
         content.addView(
-            headingWithInfo(
-                screenTitle(getString(R.string.category_title)),
+            screenTitle(
+                getString(R.string.category_title),
                 R.string.category_info_title,
                 R.string.category_info_body,
             ),

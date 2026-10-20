@@ -2,6 +2,7 @@ package dev.schrammel.protego_parentis.ui
 
 import android.app.Activity
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -18,16 +19,64 @@ import dev.schrammel.protego_parentis.ui.rules.RuleWriteKind
  * Split out of `Views.kt` so the scaffolding there stays about layout.
  */
 
-/** The screen's name. One per screen, at the top. */
-internal fun Activity.screenTitle(text: String): TextView = TextView(this).apply {
+/**
+ * The screen's name, as text.
+ *
+ * The title on its own, for a screen that builds a row of its own around it.
+ * Most screens want [screenTitle] instead, which is the name with the way back
+ * beside it.
+ */
+internal fun Activity.screenTitleText(text: String): TextView = TextView(this).apply {
     this.text = text
     // Screens are built in code, so nothing else tells TalkBack where one
     // part of a screen ends; headings are what its heading navigation jumps
     // between.
     isAccessibilityHeading = true
     styleAs(R.style.TextAppearance_Dementor_Title)
-    setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_lg))
+    setPadding(0, dimen(R.dimen.space_xs), 0, dimen(R.dimen.space_sm))
 }
+
+/**
+ * The screen's header: its name on the left, the way back on the right, and
+ * the space between them.
+ *
+ * A row rather than two stacked things. The way back belongs beside the name
+ * it belongs to, and it was taking a whole line of its own above the title,
+ * with a margin above and below it: more room than a control whose job is to
+ * be obvious. The middle is left free for whatever a screen wants to put
+ * there: an explainer beside the name, an action, a count.
+ */
+internal fun Activity.screenTitle(text: String): LinearLayout = screenTitle(text, emptyList())
+
+/**
+ * As [screenTitle], with the small explainer some screens carry beside their
+ * name.
+ */
+internal fun Activity.screenTitle(
+    text: String,
+    @StringRes infoTitle: Int,
+    @StringRes infoMessage: Int,
+): LinearLayout = screenTitle(text, listOf(infoButton(infoTitle, infoMessage)))
+
+/**
+ * As [screenTitle], with the screen's own things beside the name.
+ *
+ * They sit between the name and the way back, so the name stays where the eye
+ * expects it and the way back stays where the thumb expects it.
+ */
+internal fun Activity.screenTitle(text: String, actions: List<View>): LinearLayout =
+    LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        addView(
+            screenTitleText(text).apply {
+                layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            },
+        )
+        actions.forEach { addView(it) }
+        if ((this@screenTitle as? DementorActivity)?.showsBackButton == true) addView(backButton())
+    }
 
 /**
  * A group heading.

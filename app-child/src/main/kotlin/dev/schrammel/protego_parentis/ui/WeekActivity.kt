@@ -55,7 +55,7 @@ class WeekActivity : DementorActivity() {
 
     private fun render() {
         container.removeAllViews()
-        container.addView(title(getString(R.string.week_title), 30f))
+        container.addView(screenTitle(getString(R.string.week_title)))
         Background.load(this, { coordinator.historyIncludingToday() }, ::show)
     }
 

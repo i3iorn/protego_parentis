@@ -4,12 +4,14 @@ import android.app.Activity
 import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
 import dev.schrammel.protego_parentis.security.ParentSession
 import dev.schrammel.protego_parentis.security.RoleStore
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -108,19 +110,44 @@ class BackButtonTest {
         )
     }
 
+    @Test
+    fun `the header puts the name on the left and the way back on the right`() {
+        // One row, not two: the name, then the space between them, then the
+        // way back. The space is there for whatever a screen wants to put
+        // beside its name.
+        RoleStore(context).choose(DeviceRole.CHILD)
+        val activity = build(CategoriesActivity::class.java)
+
+        val header = requireNotNull(backButtonOf(activity)).parent as ViewGroup
+        val children = (0 until header.childCount).map { header.getChildAt(it) }
+
+        assertEquals(
+            "the screen's name comes first, on the left",
+            activity.getString(R.string.rules_categories_header),
+            (children.first() as TextView).text.toString(),
+        )
+        assertEquals(
+            "the way back comes last, on the right",
+            activity.getString(R.string.back_button_description),
+            children.last().contentDescription,
+        )
+    }
+
     private fun build(screen: Class<out Activity>): Activity =
         Robolectric.buildActivity(screen, Intent(context, screen)).setup().get()
 
     /** Whether [activity] carries the back affordance, by what it says to a reader. */
-    private fun hasBackRow(activity: Activity): Boolean {
+    private fun hasBackRow(activity: Activity): Boolean = backButtonOf(activity) != null
+
+    private fun backButtonOf(activity: Activity): View? {
         val description = activity.getString(R.string.back_button_description)
 
-        fun walk(view: View): Boolean {
-            if (view.contentDescription == description) return true
+        fun walk(view: View): View? {
+            if (view.contentDescription == description) return view
             if (view is ViewGroup) {
-                for (i in 0 until view.childCount) if (walk(view.getChildAt(i))) return true
+                for (i in 0 until view.childCount) walk(view.getChildAt(i))?.let { return it }
             }
-            return false
+            return null
         }
 
         return walk(activity.window.decorView)

@@ -212,7 +212,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
      */
     private fun renderAdvanced() {
         container.removeAllViews()
-        container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
+        container.addView(screenTitle(getString(R.string.context_edit_title)))
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         addNameField(container)
@@ -331,7 +331,7 @@ class ContextRuleEditActivity : ParentGatedActivity() {
     private fun renderWizard() {
         val current = wizard ?: return
         container.removeAllViews()
-        container.addView(heading(getString(R.string.context_edit_title), R.style.TextAppearance_Dementor_Title))
+        container.addView(screenTitle(getString(R.string.context_edit_title)))
         if (!canEdit) container.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
 
         when (current.step) {

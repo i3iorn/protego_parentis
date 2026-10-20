@@ -65,11 +65,8 @@ class AppLimitsActivity : ParentGatedActivity() {
         super.onCreate(savedInstanceState)
         container = contentColumn()
         container.addView(
-            headingWithInfo(
-                TextView(this).apply {
-                    setText(R.string.app_limits_title)
-                    styleAs(R.style.TextAppearance_Dementor_Title)
-                },
+            screenTitle(
+                getString(R.string.app_limits_title),
                 R.string.app_limits_info_title,
                 R.string.app_limits_info_body,
             ),

@@ -161,8 +161,8 @@ class AutoApprovalEditActivity : ParentGatedActivity() {
     private fun render() {
         column.removeAllViews()
         column.addView(
-            headingWithInfo(
-                screenTitle(getString(R.string.auto_title)),
+            screenTitle(
+                getString(R.string.auto_title),
                 R.string.auto_info_title,
                 R.string.auto_info_body,
             ),

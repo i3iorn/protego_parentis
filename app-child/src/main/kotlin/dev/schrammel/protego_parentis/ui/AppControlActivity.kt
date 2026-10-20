@@ -90,8 +90,8 @@ class AppControlActivity : ParentGatedActivity() {
     private fun render() {
         column.removeAllViews()
         column.addView(
-            headingWithInfo(
-                screenTitle(getString(R.string.apps_title)),
+            screenTitle(
+                getString(R.string.apps_title),
                 R.string.apps_info_title,
                 R.string.apps_info_body,
             ),

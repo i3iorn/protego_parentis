@@ -100,7 +100,7 @@ class RequestsActivity : DementorActivity() {
             ?: if (::reasonInput.isInitialized) reasonInput.text.toString() else ""
         pendingRestore = null
         container.removeAllViews()
-        container.addView(heading(getString(R.string.requests_title), R.style.TextAppearance_Dementor_Title))
+        container.addView(screenTitle(getString(R.string.requests_title)))
 
         renderCompose()
         reasonInput.setText(reasonSoFar)

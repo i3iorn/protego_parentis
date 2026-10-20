@@ -70,8 +70,8 @@ class FeatureSettingsActivity : ParentGatedActivity() {
     private fun render() {
         column.removeAllViews()
         column.addView(
-            headingWithInfo(
-                screenTitle(getString(R.string.features_title)),
+            screenTitle(
+                getString(R.string.features_title),
                 R.string.features_info_title,
                 R.string.features_info_body,
             ),
