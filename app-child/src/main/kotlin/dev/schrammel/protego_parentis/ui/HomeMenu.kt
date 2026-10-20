@@ -89,7 +89,6 @@ internal fun Activity.homeMenuDialog(
     }
 
     dialog = AlertDialog.Builder(this)
-        .setTitle(R.string.home_menu)
         .setView(
             ScrollView(this).apply {
                 addView(content, LinearLayout.LayoutParams(MATCH, WRAP))
