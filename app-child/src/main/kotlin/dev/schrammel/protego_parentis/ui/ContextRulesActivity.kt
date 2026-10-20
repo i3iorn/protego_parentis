@@ -207,17 +207,9 @@ class ContextRulesActivity : ParentGatedActivity() {
         // tree it describes — the advanced editor — rather than as a standalone
         // essay reachable from every screen (rules-UX phase F).
 
-        // The other things this app enforces — app limits, categories, the web
-        // filter, places — live on their own hub screen. "Rules" leads here, to
-        // the rules, so this is the one door across to the rest (rules-UX phase A).
-        container.addView(
-            navigationRow(
-                getString(R.string.rules_more_controls),
-                getString(R.string.rules_more_controls_detail),
-            ) {
-                startActivity(RulesActivity.intent(this@ContextRulesActivity, target.childId))
-            },
-        )
+        // The other things this app enforces - app limits, categories, the web
+        // filter, places - are in the home screen's menu now, one tap from
+        // the dashboard rather than a level behind this one.
 
         // What the sensors can read is only meaningful for this device's own.
         if (capabilities != null) {

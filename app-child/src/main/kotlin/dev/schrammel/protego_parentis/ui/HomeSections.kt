@@ -44,6 +44,21 @@ internal enum class HomeDestination {
     AUDIT,
     PRIVACY,
     SETTINGS,
+
+    // The controls the "More controls" hub used to hold behind a level of
+    // its own. They are destinations like any other now, and a home screen's
+    // menu is where a destination belongs.
+    CATEGORIES,
+    APP_LIMITS,
+    APP_CONTROL,
+    WEB_FILTER,
+    PLACES,
+    ARRIVALS,
+    NIGHTSCOUT,
+    GOAL,
+    BONUS,
+    REQUEST_INBOX,
+    AUTO_APPROVE,
     ;
 
     /**
@@ -118,6 +133,110 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
             ),
         ),
         HomeSection(
+            label = R.string.rules_group_limits,
+            rows = buildList {
+                if (isEnabled(Feature.CATEGORIES)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_categories,
+                            R.string.rules_row_categories_detail,
+                            HomeDestination.CATEGORIES,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.APP_LIMITS)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_app_limits,
+                            R.string.rules_row_app_limits_detail,
+                            HomeDestination.APP_LIMITS,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.APP_CONTROL)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_apps,
+                            R.string.rules_row_apps_detail,
+                            HomeDestination.APP_CONTROL,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.WEB_FILTER)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_web,
+                            R.string.rules_row_web_detail,
+                            HomeDestination.WEB_FILTER,
+                        ),
+                    )
+                }
+            },
+        ),
+        HomeSection(
+            label = R.string.rules_group_day,
+            rows = buildList {
+                if (isEnabled(Feature.PLACES)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_places_alerts,
+                            R.string.rules_row_places_alerts_detail,
+                            HomeDestination.ARRIVALS,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.CONTEXT_RULES)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_nightscout,
+                            R.string.rules_row_nightscout_detail,
+                            HomeDestination.NIGHTSCOUT,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.GOALS)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_goal,
+                            R.string.rules_row_goal_detail,
+                            HomeDestination.GOAL,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.BONUS)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_bonus,
+                            R.string.rules_row_bonus_detail,
+                            HomeDestination.BONUS,
+                        ),
+                    )
+                }
+            },
+        ),
+        HomeSection(
+            label = R.string.rules_group_requests,
+            rows = buildList {
+                if (isEnabled(Feature.REQUESTS)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_requests,
+                            R.string.rules_row_requests_detail,
+                            HomeDestination.REQUEST_INBOX,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.AUTO_APPROVE)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_auto,
+                            R.string.rules_row_auto_detail,
+                            HomeDestination.AUTO_APPROVE,
+                        ),
+                    )
+                }
+            },
+        ),        HomeSection(
             label = R.string.home_group_family,
             rows = listOf(
                 HomeRow(R.string.rules_row_devices, R.string.rules_row_devices_detail, HomeDestination.FAMILY_DEVICES),
@@ -135,7 +254,6 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
             rows = listOf(HomeRow(R.string.settings_title, R.string.settings_row_detail, HomeDestination.SETTINGS)),
         ),
     )
-
     DeviceRole.PARENT -> listOf(
         HomeSection(
             label = null,
@@ -157,6 +275,74 @@ internal fun homeSections(role: DeviceRole, isEnabled: (Feature) -> Boolean): Li
             rows = listOf(HomeRow(R.string.parent_row_rules, R.string.parent_row_rules_detail, HomeDestination.RULES)),
         ),
         HomeSection(
+            label = R.string.rules_group_limits,
+            rows = buildList {
+                if (isEnabled(Feature.CATEGORIES)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_categories,
+                            R.string.rules_row_categories_detail,
+                            HomeDestination.CATEGORIES,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.APP_LIMITS)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_app_limits,
+                            R.string.rules_row_app_limits_detail,
+                            HomeDestination.APP_LIMITS,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.APP_CONTROL)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_apps,
+                            R.string.rules_row_apps_detail,
+                            HomeDestination.APP_CONTROL,
+                        ),
+                    )
+                }
+            },
+        ),
+        HomeSection(
+            label = R.string.rules_group_day,
+            rows = buildList {
+                if (isEnabled(Feature.PLACES)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_places,
+                            R.string.rules_row_places_detail,
+                            HomeDestination.PLACES,
+                        ),
+                    )
+                }
+                if (isEnabled(Feature.BONUS)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_bonus,
+                            R.string.rules_row_bonus_detail,
+                            HomeDestination.BONUS,
+                        ),
+                    )
+                }
+            },
+        ),
+        HomeSection(
+            label = R.string.rules_group_requests,
+            rows = buildList {
+                if (isEnabled(Feature.AUTO_APPROVE)) {
+                    add(
+                        HomeRow(
+                            R.string.rules_row_auto,
+                            R.string.rules_row_auto_detail,
+                            HomeDestination.AUTO_APPROVE,
+                        ),
+                    )
+                }
+            },
+        ),        HomeSection(
             label = R.string.home_group_family,
             rows = listOf(
                 HomeRow(R.string.parent_row_device, R.string.parent_row_device_detail, HomeDestination.THE_OTHER_PHONE),

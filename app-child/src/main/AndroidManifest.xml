@@ -151,7 +151,7 @@
         <activity
             android:name=".ui.ParentBonusActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.RulesetPickerActivity"
@@ -191,7 +191,7 @@
         <activity
             android:name=".ui.CategoriesActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.BlockedAppsActivity"
@@ -201,7 +201,7 @@
         <activity
             android:name=".ui.GoalActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <!--
           Behind Settings now, not Rules — moved there with the rest of "this
@@ -242,7 +242,7 @@
         <activity
             android:name=".ui.AutoApprovalActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.AutoApprovalEditActivity"
@@ -252,17 +252,17 @@
         <activity
             android:name=".ui.WebFilterActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.AppControlActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.ContextRulesActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.ContextRuleEditActivity"
@@ -272,12 +272,12 @@
         <activity
             android:name=".ui.NightscoutActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.PlaceAlertsActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.PlacesActivity"
@@ -392,15 +392,10 @@
         <activity
             android:name=".ui.RequestInboxActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
-
-        <activity
-            android:name=".ui.WeekActivity"
-            android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
         <activity
-            android:name=".ui.RulesActivity"
+            android:name=".ui.WeekActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
@@ -420,17 +415,17 @@
         <activity
             android:name=".ui.AppLimitsActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.BonusTimeActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <activity
             android:name=".ui.CategoryEditActivity"
             android:exported="false"
-            android:parentActivityName=".ui.RulesActivity" />
+            android:parentActivityName=".ui.HomeActivity" />
 
         <receiver
             android:name=".enforcement.BootReceiver"

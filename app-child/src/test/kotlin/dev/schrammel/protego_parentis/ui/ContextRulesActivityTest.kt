@@ -288,21 +288,17 @@ class ContextRulesActivityTest {
     }
 
     /**
-     * rules-UX phase A: the rules list is reached directly from "Rules" now, so
-     * the controls hub behind it needs its own door from here.
+     * The controls that used to sit behind a "More controls" hub are in the
+     * home screen's menu now, so the rules list carries no door to a level of
+     * its own - it is the rules, and the menu is one step back.
      */
     @Test
-    fun `a More controls row offers the rest of what the phone enforces`() {
+    fun `the rules list carries no door to a controls hub`() {
         val activity = activity()
 
-        val more = findText(activity, context.getString(R.string.rules_more_controls))
-        assertNotNull("the controls hub should be reachable from the rules list", more)
-
-        clickAncestor(more!!)
-
-        assertEquals(
-            RulesActivity::class.java.name,
-            shadowOf(activity).nextStartedActivity?.component?.className,
+        assertNull(
+            "the menu belongs to the home screen, not to the rules list",
+            findText(activity, context.getString(R.string.home_menu)),
         )
     }
 

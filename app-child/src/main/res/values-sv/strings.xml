@@ -493,8 +493,6 @@
     <string name="rules_row_app_limits_detail">En gräns för en enskild app</string>
     <string name="rules_row_context">Var och när regler gäller</string>
     <string name="rules_row_context_detail">Regler för ett Wi-Fi-nätverk, en plats eller att vara nära någon</string>
-    <string name="rules_more_controls">Fler kontroller</string>
-    <string name="rules_more_controls_detail">Appgränser, kategorier, webbfiltret, platser och mer</string>
 
     <string name="rules_status_on">På</string>
     <string name="rules_status_paused">Pausad</string>
@@ -536,7 +534,6 @@
     <string name="rules_remote_omissions">Vissa regler kan bara ändras på telefonen själv</string>
 
     <!-- Regler. -->
-    <string name="rules_title">Fler kontroller</string>
     <string name="rules_daily_limit_header">Daglig gräns</string>
     <string name="rules_daily_limit_hint">Dra till noll för ingen gräns. Testa 5 minuter för att se varningarna fungera.</string>
     <string name="rules_bedtime_header">Läggdags</string>

@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.minutes
  * remote/local split; this was the one gap left).
  *
  * Answering a request in the moment stays own-device-only, standing at the
- * phone the request came from — see [RulesActivity]'s "Requests" group,
+ * phone the request came from — see the menu's "Requests" group,
  * which this screen does not belong to. Deciding when a standing yes should
  * apply is a rule about the child's phone, not an action on it, so it moves
  * with every other rule.

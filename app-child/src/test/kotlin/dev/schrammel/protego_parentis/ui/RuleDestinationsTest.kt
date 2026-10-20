@@ -1,8 +1,6 @@
 package dev.schrammel.protego_parentis.ui
 
-import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
+import android.app.Activity
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.LocalDeviceId
@@ -21,23 +19,24 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 
 /**
- * #78 part 3, rules-UX phase A: [RulesActivity] is the "More controls" hub
- * behind the rules list. These pin the destinations it still owns resolving to
- * the *right* screen — the local screen when
- * [dev.schrammel.protego_parentis.ui.rules.RuleScope] is this device's own, the
- * parent-side send-a-message screen when it is not. The row that opened the
- * rules list is gone: "Rules" opens that list directly now.
+ * Where the controls in the home screen's menu lead.
+ *
+ * They used to sit behind a hub screen of their own ("More controls"), which
+ * was a level with no meaning of its own between the reader and the thing they
+ * came to change. They are destinations like any other now, so they are opened
+ * the way any other destination is: for this phone on a child's own, and for
+ * the child whose rules are being edited on a parent's.
  */
 @RunWith(RobolectricTestRunner::class)
 class RuleDestinationsTest {
 
     private val context get() = RuntimeEnvironment.getApplication()
 
+    /** The menu's rows are opened from a screen, not from the application. */
+    private val activity: Activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+
     private fun enrolChild(id: String) =
         RosterStore(context).enrol(Vouch(id = DeviceId(id), name = id, role = SyncRole.CHILD, publicKey = "key"))
-
-    private fun rulesActivity(): RulesActivity =
-        Robolectric.buildActivity(RulesActivity::class.java, RulesActivity.intent(context)).setup().get()
 
     @After
     fun tearDown() {
@@ -50,9 +49,8 @@ class RuleDestinationsTest {
     fun `on the managed phone itself, bonus time opens the local screen`() {
         RoleStore(context).choose(DeviceRole.CHILD)
         LocalDeviceId.useInTests("THISPHONE")
-        val activity = rulesActivity()
 
-        click(activity, R.string.rules_row_bonus)
+        RulesEntry.launchControl(activity, HomeDestination.BONUS)
 
         assertEquals(
             BonusTimeActivity::class.java.name,
@@ -64,9 +62,8 @@ class RuleDestinationsTest {
     fun `editing a child's rules remotely, bonus time sends a message instead`() {
         RoleStore(context).choose(DeviceRole.PARENT)
         enrolChild("CHILD1")
-        val activity = rulesActivity()
 
-        click(activity, R.string.rules_row_bonus)
+        RulesEntry.launchControl(activity, HomeDestination.BONUS)
 
         assertEquals(
             ParentBonusActivity::class.java.name,
@@ -76,7 +73,7 @@ class RuleDestinationsTest {
 
     /**
      * #86: the arrival-announcement toggle only means anything on the device
-     * doing the arriving, so it stays own-device-only — but the saved places
+     * doing the arriving, so it stays own-device-only - but the saved places
      * themselves are the same list Contextual rules already edits remotely,
      * so a remote target gets its own direct door to them instead.
      */
@@ -84,9 +81,8 @@ class RuleDestinationsTest {
     fun `on the managed phone itself, places opens arrival announcements`() {
         RoleStore(context).choose(DeviceRole.CHILD)
         LocalDeviceId.useInTests("THISPHONE")
-        val activity = rulesActivity()
 
-        click(activity, R.string.rules_row_places_alerts)
+        RulesEntry.launchControl(activity, HomeDestination.ARRIVALS)
 
         assertEquals(
             PlaceAlertsActivity::class.java.name,
@@ -98,9 +94,8 @@ class RuleDestinationsTest {
     fun `editing a child's rules remotely, places opens place management directly`() {
         RoleStore(context).choose(DeviceRole.PARENT)
         enrolChild("CHILD1")
-        val activity = rulesActivity()
 
-        click(activity, R.string.rules_row_places)
+        RulesEntry.launchControl(activity, HomeDestination.PLACES)
 
         assertEquals(
             PlacesActivity::class.java.name,
@@ -108,26 +103,22 @@ class RuleDestinationsTest {
         )
     }
 
-    /** Clicks the row titled by [titleRes], the same way a tap on the screen would. */
-    private fun click(activity: RulesActivity, titleRes: Int) {
-        val title = activity.getString(titleRes)
-        val row = requireNotNull(findClickableRow(activity.window.decorView, title)) {
-            "no row titled \"$title\" was rendered"
-        }
-        row.performClick()
-    }
-
-    private fun findClickableRow(view: View, title: String): View? {
-        if (view is TextView && view.text == title) {
-            var candidate = view.parent as? View
-            while (candidate != null && !candidate.isClickable) candidate = candidate.parent as? View
-            return candidate
-        }
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                findClickableRow(view.getChildAt(i), title)?.let { return it }
-            }
-        }
-        return null
+    @Test
+    fun `the web filter is this phone's own and never a child's`() {
+        // The web filter governs browsing on the device it is set up on, so
+        // there is nothing to set up on somebody else's phone.
+        assertEquals(
+            emptyList<HomeDestination>(),
+            homeMenuSections(DeviceRole.PARENT) { true }
+                .flatMap { it.rows }
+                .filter { it.destination == HomeDestination.WEB_FILTER },
+        )
+        assertEquals(
+            listOf(HomeDestination.WEB_FILTER),
+            homeMenuSections(DeviceRole.CHILD) { true }
+                .flatMap { it.rows }
+                .filter { it.destination == HomeDestination.WEB_FILTER }
+                .map { it.destination },
+        )
     }
 }

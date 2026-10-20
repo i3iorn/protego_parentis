@@ -26,7 +26,7 @@ import dev.schrammel.protego_parentis.ui.rules.placeRuleStore
  *
  * The announcement toggle is always local — [ContextRuleStore] directly,
  * never [target] — because it describes what *this* device tells a parent
- * about itself, which [RulesActivity] only ever offers on its own device
+ * about itself, which the menu only ever offers on its own device
  * (#86). The saved places list, though, now reads and links onward through
  * [target] the same way [ContextRulesActivity]'s "Manage places" button
  * does (#71): the two doors into [PlacesActivity] used to diverge — one

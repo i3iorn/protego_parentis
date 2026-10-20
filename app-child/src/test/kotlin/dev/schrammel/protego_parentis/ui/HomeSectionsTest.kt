@@ -157,6 +157,50 @@ class HomeSectionsTest {
         assertTrue("the settings are in the menu", HomeDestination.SETTINGS in menu)
     }
 
+    /**
+     * The controls that used to sit behind a "More controls" hub are in the
+     * menu now. The hub was a level with no meaning of its own between the
+     * reader and the thing they came to change; a destination belongs in a
+     * menu, and the dashboard is where the menu lives.
+     */
+    @Test
+    fun `the controls the hub used to hold are in the menu`() {
+        val menu = homeMenuSections(DeviceRole.CHILD) { true }
+            .flatMap { it.rows }
+            .map { it.destination }
+
+        listOf(
+            HomeDestination.CATEGORIES,
+            HomeDestination.APP_LIMITS,
+            HomeDestination.APP_CONTROL,
+            HomeDestination.WEB_FILTER,
+            HomeDestination.ARRIVALS,
+            HomeDestination.NIGHTSCOUT,
+            HomeDestination.GOAL,
+            HomeDestination.BONUS,
+            HomeDestination.REQUEST_INBOX,
+            HomeDestination.AUTO_APPROVE,
+        ).forEach { assertTrue("$it must be in the menu", it in menu) }
+    }
+
+    /**
+     * A parent's phone holds no rules of its own, so the controls are all about
+     * a child's phone - and the ones that only ever meant anything on this
+     * device (the web filter) are not among them.
+     */
+    @Test
+    fun `the parent's menu carries the child's controls and not this phone's`() {
+        val menu = homeMenuSections(DeviceRole.PARENT) { true }
+            .flatMap { it.rows }
+            .map { it.destination }
+
+        assertTrue(HomeDestination.CATEGORIES in menu)
+        assertTrue(HomeDestination.PLACES in menu)
+        assertTrue(HomeDestination.BONUS in menu)
+        assertFalse(HomeDestination.WEB_FILTER in menu)
+        assertFalse(HomeDestination.REQUEST_INBOX in menu)
+    }
+
     private fun destinationsFor(role: DeviceRole) = destinations(role, allOn())
 
     private fun destinations(role: DeviceRole, flags: FeatureFlags) =
@@ -165,6 +209,9 @@ class HomeSectionsTest {
     private companion object {
         val REST = listOf(
             R.string.home_group_rules,
+            R.string.rules_group_limits,
+            R.string.rules_group_day,
+            R.string.rules_group_requests,
             R.string.home_group_family,
             R.string.home_group_openness,
             R.string.home_group_settings,

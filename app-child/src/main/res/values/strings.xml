@@ -494,8 +494,6 @@
     <string name="rules_row_context_detail">Rules for a Wi-Fi network, a place, or being near someone</string>
     <!-- The one door from the rules list across to the controls hub, which no
          longer links back (rules-UX phase A). -->
-    <string name="rules_more_controls">More controls</string>
-    <string name="rules_more_controls_detail">App limits, categories, the web filter, places, and more</string>
 
     <!-- Rules list (rules-UX phase B): the grouped dashboard. -->
     <string name="rules_status_on">On</string>
@@ -546,7 +544,6 @@
     <string name="rules_remote_omissions">Some rules can only be changed on the phone itself</string>
 
     <!-- Rules editor. -->
-    <string name="rules_title">More controls</string>
     <string name="rules_daily_limit_header">Daily limit</string>
     <string name="rules_daily_limit_hint">Drag to zero for no limit. Try 5 minutes to see the warnings work.</string>
     <string name="rules_bedtime_header">Bedtime</string>

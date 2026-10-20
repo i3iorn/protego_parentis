@@ -193,6 +193,18 @@ class ParentHomeActivity : ParentRoleActivity() {
             HomeDestination.LOCATE -> locate()
             HomeDestination.RULES -> RulesEntry.launch(this)
             HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
+            HomeDestination.CATEGORIES,
+            HomeDestination.APP_LIMITS,
+            HomeDestination.APP_CONTROL,
+            HomeDestination.WEB_FILTER,
+            HomeDestination.PLACES,
+            HomeDestination.ARRIVALS,
+            HomeDestination.NIGHTSCOUT,
+            HomeDestination.GOAL,
+            HomeDestination.BONUS,
+            HomeDestination.REQUEST_INBOX,
+            HomeDestination.AUTO_APPROVE,
+            -> RulesEntry.launchControl(this, destination)
             HomeDestination.THE_OTHER_PHONE -> startActivity(ParentDeviceActivity.intent(this))
             HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
