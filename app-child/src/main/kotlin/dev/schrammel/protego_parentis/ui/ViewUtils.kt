@@ -68,11 +68,7 @@ internal fun accessibleValueDelegate(spoken: () -> String): AccessibilityDelegat
  * size and quietly produce different rounding in each.
  */
 internal object LimitSlider {
-
-    /** Five-minute granularity: fine enough to be useful, coarse enough to drag. */
     const val STEP_MINUTES = 5
-
-    /** 96 steps of five minutes: nought to eight hours. */
     const val MAX_STEPS = 48
 
     fun minutesFor(progress: Int): Int = progress * STEP_MINUTES
