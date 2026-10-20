@@ -1,5 +1,6 @@
 package dev.schrammel.protego_parentis.ui
 
+import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -19,6 +20,7 @@ import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.core.DeviceId
 import dev.schrammel.protego_parentis.sync.core.SyncRole
 import dev.schrammel.protego_parentis.sync.core.Vouch
+import dev.schrammel.protego_parentis.ui.rules.RuleTargets
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -113,6 +115,32 @@ class CategoryEditRemoteTest {
         )
     }
 
+    @Test
+    fun `the category list shows the limit that was just saved for the child`() {
+        // The whole path the reader walks: set a limit on the child's phone,
+        // go back to the list, and see it there. The list reads the limit from
+        // the rule, because the rule is where the limit lives.
+        LocalDeviceId.useInTests("PARENTPHONE")
+        val activity = editor()
+        dragSliderTo(activity, 4)
+        clickButton(activity, "Save")
+
+        val list = Robolectric.buildActivity(
+            CategoriesActivity::class.java,
+            RuleTargets.putExtra(Intent(context, CategoriesActivity::class.java), childId),
+        ).setup().get()
+        val texts = textsIn(list)
+
+        assertTrue(
+            "the category list must show the limit that was just saved: $texts",
+            texts.any { it.contains("20m") },
+        )
+        assertFalse(
+            "the category list must not say the category has no limit: $texts",
+            texts.any { it.contains("No limit") },
+        )
+    }
+
     // ---------- driving the screen ----------
 
     private fun dragSliderTo(activity: CategoryEditActivity, step: Int) {
@@ -142,5 +170,15 @@ class CategoryEditRemoteTest {
             for (i in 0 until view.childCount) findSeekBar(view.getChildAt(i))?.let { return it }
         }
         return null
+    }
+
+    private fun textsIn(activity: CategoriesActivity): List<String> = buildList {
+        fun walk(view: View) {
+            if (view is TextView && view.text.isNotEmpty()) add(view.text.toString())
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) walk(view.getChildAt(i))
+            }
+        }
+        walk(activity.window.decorView)
     }
 }

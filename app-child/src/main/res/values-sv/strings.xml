@@ -594,7 +594,7 @@
     <string name="category_save_failed">Inte sparat. Den här telefonen kunde inte skriva de regler den blev ombedd att skriva, så inget ändrades. Försök igen om en stund.</string>
     <string name="category_limit_header">Daglig gräns</string>
     <string name="category_apps_header">Appar i den här kategorin</string>
-    <string name="category_no_apps">Inga appar valda än.</string>
+    <string name="category_no_apps">Inga appar valda än. En gräns på en kategori utan appar begränsar ingenting, så lägg till de appar den ska täcka.</string>
     <string name="category_choose_apps">Välj appar</string>
     <string name="category_save">Spara</string>
     <string name="category_delete">Ta bort kategorin</string>

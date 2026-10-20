@@ -604,7 +604,7 @@
     <string name="category_save_failed">Not saved. This phone could not write the rules it was asked to, so nothing changed. Try again in a moment.</string>
     <string name="category_limit_header">Daily limit</string>
     <string name="category_apps_header">Apps in this category</string>
-    <string name="category_no_apps">No apps chosen yet.</string>
+    <string name="category_no_apps">No apps chosen yet. A limit on a category with no apps enforces nothing, so add the apps it should cover.</string>
     <string name="category_choose_apps">Choose apps</string>
     <string name="category_save">Save</string>
     <string name="category_delete">Delete category</string>
