@@ -601,6 +601,7 @@
     <string name="category_info_body">A category groups apps to share one daily limit — an hour of games in total, however it is split between them. An app can belong to more than one category; each one enforces its own limit independently.</string>
     <string name="category_name_hint">Name, for example Games</string>
     <string name="category_name_required">Give the category a name.</string>
+    <string name="category_save_failed">Not saved. This phone could not write the rules it was asked to, so nothing changed. Try again in a moment.</string>
     <string name="category_limit_header">Daily limit</string>
     <string name="category_apps_header">Apps in this category</string>
     <string name="category_no_apps">No apps chosen yet.</string>
@@ -615,6 +616,7 @@
     <string name="app_limits_hint">Tap an app to give it its own daily limit. Apps that already have one are listed first.</string>
     <string name="app_limits_none">No limit</string>
     <string name="app_limits_save">Save</string>
+    <string name="app_limits_save_failed">Not saved. This phone could not write the rules it was asked to, so nothing changed. Try again in a moment.</string>
 
     <!-- Bonus time. -->
     <string name="bonus_title">Bonus time</string>

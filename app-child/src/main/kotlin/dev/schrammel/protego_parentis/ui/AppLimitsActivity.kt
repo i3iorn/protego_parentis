@@ -189,7 +189,7 @@ class AppLimitsActivity : ParentGatedActivity() {
             val minutes = LimitSlider.minutesFor(progress)
             val store = contextRuleRuleStore(this, target)
             val id = ruleId(app.pkg)
-            if (minutes > 0) {
+            val saved = if (minutes > 0) {
                 store.upsert(
                     ContextRule(
                         id = id,
@@ -202,6 +202,14 @@ class AppLimitsActivity : ParentGatedActivity() {
                 )
             } else {
                 store.delete(id)
+            }
+            if (!saved) {
+                // Nothing was written, so nothing is on its way to the child's
+                // phone. Saying so is the whole difference between a parent who
+                // can tell the change did not stick and one left believing it
+                // did.
+                toast(R.string.app_limits_save_failed)
+                return@sliderDialog
             }
             Audit.record(
                 context = this,

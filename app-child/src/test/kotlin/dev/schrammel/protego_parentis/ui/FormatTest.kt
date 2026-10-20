@@ -23,7 +23,7 @@ class LimitSliderTest {
 
     @Test
     fun `progress and minutes round-trip on step boundaries`() {
-        listOf(0, 5, 30, 120, 480).forEach { minutes ->
+        listOf(0, 5, 30, 120, 240).forEach { minutes ->
             assertEquals(minutes, LimitSlider.minutesFor(LimitSlider.progressFor(minutes)))
         }
     }
@@ -40,8 +40,8 @@ class LimitSliderTest {
     }
 
     @Test
-    fun `the slider spans zero to eight hours`() {
+    fun `the slider spans zero to four hours`() {
         assertEquals(0, LimitSlider.minutesFor(0))
-        assertEquals(8 * 60, LimitSlider.minutesFor(LimitSlider.MAX_STEPS))
+        assertEquals(4 * 60, LimitSlider.minutesFor(LimitSlider.MAX_STEPS))
     }
 }

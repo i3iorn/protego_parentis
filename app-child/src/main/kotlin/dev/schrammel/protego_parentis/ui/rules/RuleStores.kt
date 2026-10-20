@@ -19,10 +19,14 @@ import dev.schrammel.protego_parentis.rules.ScheduleStore
 import dev.schrammel.protego_parentis.rules.StoredCategory
 import dev.schrammel.protego_parentis.rules.applySnapshot
 import dev.schrammel.protego_parentis.rules.snapshot
+import dev.schrammel.protego_parentis.security.LocalDeviceId
+import dev.schrammel.protego_parentis.security.RoleStore
 import dev.schrammel.protego_parentis.sync.AppInventoryStore
 import dev.schrammel.protego_parentis.sync.PolicyReplication
 import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.ReplicationRules
+import dev.schrammel.protego_parentis.sync.toSyncRole
 import dev.schrammel.protego_parentis.usage.AppInfo
 import dev.schrammel.protego_parentis.usage.InstalledApps
 
@@ -43,7 +47,19 @@ import dev.schrammel.protego_parentis.usage.InstalledApps
  */
 interface PolicyRuleStore : RuleWriteKind {
     fun read(): PolicySnapshot?
-    fun write(snapshot: PolicySnapshot)
+
+    /**
+     * Writes [snapshot] to this ruleset.
+     *
+     * False when the write could not be made at all: a remote write refused
+     * because this phone has no identity of its own, or because its role may
+     * not write that child's rules. The distinction matters because the
+     * acknowledgement a parent's phone gives says the change is on its way to
+     * the child's phone, and a rule that never left the phone is worse than
+     * one the parent was warned about. A write that changed nothing still
+     * counts as written: there was simply nothing to say.
+     */
+    fun write(snapshot: PolicySnapshot): Boolean
 }
 
 /**
@@ -61,10 +77,11 @@ class LocalPolicyRuleStore(private val context: Context) : PolicyRuleStore, Rule
     override val writesRemotely: Boolean = false
     private val store = LocalPolicyStore(context)
     override fun read(): PolicySnapshot = store.snapshot()
-    override fun write(snapshot: PolicySnapshot) {
+    override fun write(snapshot: PolicySnapshot): Boolean {
         // applySnapshot is one LocalPolicyStore transaction, which already
         // kicks enforcement itself.
         store.applySnapshot(snapshot)
+        return true
     }
 }
 
@@ -72,8 +89,30 @@ class RemotePolicyRuleStore(private val context: Context, private val childId: D
     PolicyRuleStore, RuleWriteKind {
     override val writesRemotely: Boolean = true
     override fun read(): PolicySnapshot? = PolicyReplication(context).read(childId)
-    override fun write(snapshot: PolicySnapshot) =
+    override fun write(snapshot: PolicySnapshot): Boolean {
+        if (!mayWriteRuleset(context, childId)) return false
         SyncGraph.get(context).applyPolicyEdit(snapshot, childId)
+        return true
+    }
+}
+
+/**
+ * Whether this phone may write [childId]'s ruleset at all.
+ *
+ * The same three things refuse a write inside the replication layer refuse it
+ * here: no target to write to, no identity of this phone's own (a keystore
+ * key invalidated by a biometric change, the moments before first unlock), or
+ * a role that may not write that subtree. Asked here rather than inferred
+ * from the ops the write produced, because a write that changed nothing is
+ * still a write that landed, and must not be mistaken for a refused one.
+ */
+private fun mayWriteRuleset(context: Context, childId: DeviceId): Boolean {
+    val origin = LocalDeviceId.current() ?: return false
+    return ReplicationRules.mayWrite(
+        RoleStore(context).roleOrChild.toSyncRole(),
+        "${ReplicationRules.POLICY}/${childId.value}/rules",
+        DeviceId(origin),
+    )
 }
 
 fun policyRuleStore(context: Context, target: RuleScope): PolicyRuleStore =
@@ -82,19 +121,29 @@ fun policyRuleStore(context: Context, target: RuleScope): PolicyRuleStore =
 /** [LocalPolicyStore.categories]'s three helpers, generalised to either device. */
 fun PolicyRuleStore.categories(): List<StoredCategory> = read()?.categories.orEmpty()
 
-fun PolicyRuleStore.upsertCategory(category: StoredCategory) {
-    val snapshot = read() ?: return
-    write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == category.id } + category))
+/**
+ * Whether [category] was written.
+ *
+ * False when the write could not be made at all (see [PolicyRuleStore.write]),
+ * or when this phone holds no copy of the ruleset to edit: there is nothing
+ * to change, and a parent told their change is on its way deserves to know
+ * it never left.
+ */
+fun PolicyRuleStore.upsertCategory(category: StoredCategory): Boolean {
+    val snapshot = read() ?: return false
+    return write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == category.id } + category))
 }
 
-fun PolicyRuleStore.deleteCategory(id: String) {
-    val snapshot = read() ?: return
-    write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == id }))
+fun PolicyRuleStore.deleteCategory(id: String): Boolean {
+    val snapshot = read() ?: return false
+    return write(snapshot.copy(categories = snapshot.categories.filterNot { it.id == id }))
 }
 
 interface ContextRuleRuleStore : RuleWriteKind {
     fun read(): List<ContextRule>
-    fun write(rules: List<ContextRule>)
+
+    /** As [PolicyRuleStore.write]: false when the write could not be made. */
+    fun write(rules: List<ContextRule>): Boolean
 }
 
 class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleStore,
@@ -102,9 +151,10 @@ class LocalContextRuleRuleStore(private val context: Context) : ContextRuleRuleS
     override val writesRemotely: Boolean = false
     private val store = ContextRuleStore(context)
     override fun read(): List<ContextRule> = store.rules
-    override fun write(rules: List<ContextRule>) {
+    override fun write(rules: List<ContextRule>): Boolean {
         store.rules = rules
         AppRegistry.ruleMutationSink.rulesChanged()
+        return true
     }
 }
 
@@ -112,8 +162,11 @@ class RemoteContextRuleRuleStore(private val context: Context, private val child
     ContextRuleRuleStore, RuleWriteKind {
     override val writesRemotely: Boolean = true
     override fun read(): List<ContextRule> = PolicyReplication(context).readContextRules(childId)
-    override fun write(rules: List<ContextRule>) =
+    override fun write(rules: List<ContextRule>): Boolean {
+        if (!mayWriteRuleset(context, childId)) return false
         SyncGraph.get(context).applyContextRuleEdit(rules, childId)
+        return true
+    }
 }
 
 fun contextRuleRuleStore(context: Context, target: RuleScope): ContextRuleRuleStore =
@@ -122,13 +175,13 @@ fun contextRuleRuleStore(context: Context, target: RuleScope): ContextRuleRuleSt
 /** [ContextRuleStore]'s upsert/delete convenience shape, generalised to either device. */
 fun ContextRuleRuleStore.find(id: String): ContextRule? = read().firstOrNull { it.id == id }
 
-fun ContextRuleRuleStore.upsert(rule: ContextRule) {
+/** Whether [rule] was written: false when the write could not be made. */
+fun ContextRuleRuleStore.upsert(rule: ContextRule): Boolean =
     write(read().filterNot { it.id == rule.id } + rule)
-}
 
-fun ContextRuleRuleStore.delete(id: String) {
+/** Whether the rule was deleted: false when the write could not be made. */
+fun ContextRuleRuleStore.delete(id: String): Boolean =
     write(read().filterNot { it.id == id })
-}
 
 /**
  * The family's standing answers to requests (RQ-1), either device's (#89).

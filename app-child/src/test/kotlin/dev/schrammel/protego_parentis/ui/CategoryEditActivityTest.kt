@@ -4,6 +4,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.SeekBar
+import android.widget.TextView
 import android.os.Looper
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.model.CategoryId
@@ -209,6 +211,80 @@ class CategoryEditActivityTest {
         answerLatestDialog(android.content.DialogInterface.BUTTON_POSITIVE)
 
         assertTrue(rules().rules.none { it.id == "migrated-category-budget-games-id" })
+    }
+
+    @Test
+    fun `a second load does not put the limit back`() {
+        // Every onResume queues another read on the one background thread the
+        // whole app shares, so a second read can land after the reader has
+        // chosen a limit. It must not replace that choice: the save that
+        // follows would write the reverted value, deleting the rule rather
+        // than creating it.
+        val activity = awaitScreen(activity(id = "games-id"))
+        dragSlider(activity, 4)
+        assertEquals("20m", sliderValue(activity))
+
+        activity.applyLoaded(null, emptyList())
+
+        assertEquals(
+            "a later load must not undo the limit the reader chose",
+            "20m",
+            sliderValue(activity),
+        )
+    }
+
+    @Test
+    fun `coming back to the screen keeps the name that was typed`() {
+        val controller = Robolectric.buildActivity(
+            CategoryEditActivity::class.java,
+            CategoryEditActivity.intent(context, "games-id"),
+        )
+        val activity = awaitScreen(controller.setup().get())
+        nameField(activity)?.setText("Games")
+
+        // The screen is rebuilt from the stored category on every resume, and
+        // what was typed since is newer than what is stored.
+        controller.pause().resume()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals("Games", nameField(activity)?.text.toString())
+    }
+
+    /**
+     * Waits for the screen to be filled in.
+     *
+     * The load runs on the app's one shared background thread, so it lands
+     * whenever it lands; the test waits for it rather than hoping.
+     */
+    private fun awaitScreen(activity: CategoryEditActivity): CategoryEditActivity {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            if (findSeekBar(activity.window.decorView) != null) return activity
+            Thread.sleep(10)
+        }
+        throw AssertionError("the category screen never loaded")
+    }
+
+    private fun dragSlider(activity: CategoryEditActivity, step: Int) {
+        val bar = requireNotNull(findSeekBar(activity.window.decorView)) { "no limit slider was rendered" }
+        // A user drag, so the screen hears about it: the slider reports only
+        // changes the user made, never its own first layout.
+        shadowOf(bar).onSeekBarChangeListener!!.onProgressChanged(bar, step, true)
+    }
+
+    private fun sliderValue(activity: CategoryEditActivity): String {
+        val bar = requireNotNull(findSeekBar(activity.window.decorView)) { "no limit slider was rendered" }
+        val block = bar.parent as ViewGroup
+        return (block.getChildAt(0) as TextView).text.toString()
+    }
+
+    private fun findSeekBar(view: View): SeekBar? {
+        if (view is SeekBar) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) findSeekBar(view.getChildAt(i))?.let { return it }
+        }
+        return null
     }
 
     private fun nameField(activity: CategoryEditActivity): EditText? =

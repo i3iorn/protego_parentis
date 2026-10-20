@@ -591,6 +591,7 @@
     <string name="category_info_body">En kategori grupperar appar för att dela en daglig gräns — en timme spel totalt, oavsett hur den fördelas mellan dem. En app kan tillhöra fler än en kategori; var och en håller sin egen gräns oberoende av de andra.</string>
     <string name="category_name_hint">Namn, till exempel Spel</string>
     <string name="category_name_required">Ge kategorin ett namn.</string>
+    <string name="category_save_failed">Inte sparat. Den här telefonen kunde inte skriva de regler den blev ombedd att skriva, så inget ändrades. Försök igen om en stund.</string>
     <string name="category_limit_header">Daglig gräns</string>
     <string name="category_apps_header">Appar i den här kategorin</string>
     <string name="category_no_apps">Inga appar valda än.</string>
@@ -605,6 +606,7 @@
     <string name="app_limits_hint">Tryck på en app för att ge den en egen daglig gräns. Appar som redan har en visas först.</string>
     <string name="app_limits_none">Ingen gräns</string>
     <string name="app_limits_save">Spara</string>
+    <string name="app_limits_save_failed">Inte sparat. Den här telefonen kunde inte skriva de regler den blev ombedd att skriva, så inget ändrades. Försök igen om en stund.</string>
 
     <!-- Extratid. -->
     <string name="bonus_title">Extratid</string>

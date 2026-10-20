@@ -112,7 +112,12 @@ class CategoryEditActivity : ParentGatedActivity() {
     override fun onGatedContentVisible() {
         if (!requireStillInFamily(target)) return
         if (loaded) {
+            // A rebuild must not cost the reader what they have typed: the
+            // name field is rebuilt from the stored category, which is older
+            // than anything typed since.
+            val typedName = if (::nameInput.isInitialized) nameInput.text.toString() else ""
             showColumn(buildLayout(existing))
+            if (typedName.isNotEmpty()) nameInput.setText(typedName)
             refreshAppsSummary()
             refreshNestedSummary()
             return
@@ -126,18 +131,36 @@ class CategoryEditActivity : ParentGatedActivity() {
             // rather than the everyday path.
             val rules = contextRuleRuleStore(this, target).read()
             found to rules
-        }) { (found, rules) ->
-            loaded = true
-            existing = found
-            categoryId = found?.id ?: UUID.randomUUID().toString()
-            packages = LinkedHashSet(found?.packages.orEmpty())
-            nested = LinkedHashSet(found?.subcategories.orEmpty())
-            limitMinutes = minutesFrom(rules, categoryId) ?: found?.limitMinutes ?: defaultLimitMinutes
+        }) { (found, rules) -> applyLoaded(found, rules) }
+    }
 
-            showColumn(buildLayout(existing))
-            refreshAppsSummary()
-            refreshNestedSummary()
-        }
+    /**
+     * Fills the screen with what was loaded.
+     *
+     * Only the first result may fill it. [onGatedContentVisible] runs on every
+     * [onResume], and each run queues a read on the one background thread the
+     * whole app shares, so a second read can be in flight when the first one
+     * lands: the screen appears, the reader drags the limit slider, and then
+     * the second result arrives and quietly replaces what they chose with the
+     * value it read a moment earlier. A limit that silently reverts to "No
+     * limit" on its way to being saved is worse than one that took a moment to
+     * appear, and the save that follows writes the reverted value — deleting
+     * the rule rather than creating it.
+     *
+     * Internal so the test can drive the second arrival directly.
+     */
+    internal fun applyLoaded(found: StoredCategory?, rules: List<ContextRule>) {
+        if (loaded) return
+        loaded = true
+        existing = found
+        categoryId = found?.id ?: UUID.randomUUID().toString()
+        packages = LinkedHashSet(found?.packages.orEmpty())
+        nested = LinkedHashSet(found?.subcategories.orEmpty())
+        limitMinutes = minutesFrom(rules, categoryId) ?: found?.limitMinutes ?: defaultLimitMinutes
+
+        showColumn(buildLayout(existing))
+        refreshAppsSummary()
+        refreshNestedSummary()
     }
 
     private fun buildLayout(existing: StoredCategory?): LinearLayout {
@@ -279,7 +302,12 @@ class CategoryEditActivity : ParentGatedActivity() {
         }
 
         val minutes = limitMinutes
-        policyRuleStore(this, target).upsertCategory(
+        // Both writes have to land for the limit to be a limit: the category
+        // carries the name and its members, the rule carries the allowance. A
+        // write that could not be made at all (a ruleset this phone may not
+        // write, or one it holds no copy of) must not be acknowledged as one
+        // that is on its way to the child's phone.
+        val categorySaved = policyRuleStore(this, target).upsertCategory(
             StoredCategory(
                 id = categoryId,
                 name = name,
@@ -294,7 +322,7 @@ class CategoryEditActivity : ParentGatedActivity() {
 
         val ruleStore = contextRuleRuleStore(this, target)
         val id = ruleId(categoryId)
-        if (minutes > 0) {
+        val ruleSaved = if (minutes > 0) {
             ruleStore.upsert(
                 ContextRule(
                     id = id,
@@ -307,6 +335,14 @@ class CategoryEditActivity : ParentGatedActivity() {
             )
         } else {
             ruleStore.delete(id)
+        }
+
+        if (!categorySaved || !ruleSaved) {
+            // Nothing was written, so nothing is on its way. Saying so is the
+            // whole difference between a parent who can tell the change did
+            // not stick and one left believing it did.
+            toast(R.string.category_save_failed)
+            return
         }
 
         Audit.record(
