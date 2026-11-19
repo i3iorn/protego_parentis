@@ -111,6 +111,7 @@ class RulesInventoryTest {
         "KEY_FORMAT=format" to PARENT,
         "KEY_ACTIONS=actions" to PARENT,
         "KEY_EXCEPT=except" to PARENT,
+        "KEY_PAUSED_UNTIL=pausedUntil" to PARENT,
         "KEY_ANNOUNCE_ARRIVALS=announce_arrivals" to PENDING,
         // A parent can rename, resize or remove a place from any phone, so
         // the list and its radius are Parent — but not where it is.

@@ -119,8 +119,9 @@ class ContextRuleStore(context: Context) {
                         put(KEY_EFFECT, ContextRuleCodec.encodeEffect(rule.effect))
                         put(KEY_TARGET, ContextRuleCodec.encodeTarget(rule.target))
                     }
+                    rule.pausedUntil?.let { put(KEY_PAUSED_UNTIL, it.toEpochMilli()) }
                 }
-            },
+            }
         ).toString()
 
     private fun decodeRules(raw: String?): List<ContextRule> {
@@ -160,6 +161,9 @@ class ContextRuleStore(context: Context) {
             condition = condition,
             actions = actions,
             exceptWhen = exceptWhen,
+            pausedUntil = json.optLong(KEY_PAUSED_UNTIL, 0L).takeIf { it > 0L }?.let {
+                java.time.Instant.ofEpochMilli(it)
+            },
         )
     }
 
@@ -234,6 +238,7 @@ class ContextRuleStore(context: Context) {
         const val KEY_FORMAT = "format"
         const val KEY_ACTIONS = "actions"
         const val KEY_EXCEPT = "except"
+        const val KEY_PAUSED_UNTIL = "pausedUntil"
         const val FORMAT_V2 = 2
         const val KEY_LAT = "lat"
         const val KEY_LON = "lon"

@@ -93,6 +93,9 @@ internal class ContextRuleReplication(context: Context) {
         val exceptWhen = fields[FIELD_RULE_EXCEPT]?.takeIf { v2 }?.let {
             ContextRuleCodec.decodeConditionFromString(it) ?: return null
         }
+        val pausedUntil = fields[FIELD_RULE_PAUSED_UNTIL]?.toLongOrNull()?.takeIf { it > 0L }?.let {
+            java.time.Instant.ofEpochMilli(it)
+        }
         return ContextRule(
             id = ruleId,
             name = name,
@@ -100,6 +103,7 @@ internal class ContextRuleReplication(context: Context) {
             condition = condition,
             actions = actions,
             exceptWhen = exceptWhen,
+            pausedUntil = pausedUntil,
         )
     }
 
@@ -156,6 +160,7 @@ internal class ContextRuleReplication(context: Context) {
                     rule.exceptWhen?.let {
                         put("$ruleRoot/$FIELD_RULE_EXCEPT", ContextRuleCodec.encodeConditionToString(it))
                     }
+                    rule.pausedUntil?.let { put("$ruleRoot/$FIELD_RULE_PAUSED_UNTIL", it.toEpochMilli().toString()) }
                 } else {
                     put("$ruleRoot/$FIELD_RULE_EFFECT", ContextRuleCodec.encodeEffectToString(rule.effect))
                     put("$ruleRoot/$FIELD_RULE_TARGET", ContextRuleCodec.encodeTargetToString(rule.target))
@@ -180,6 +185,7 @@ internal class ContextRuleReplication(context: Context) {
         const val FIELD_RULE_FORMAT = "format"
         const val FIELD_RULE_ACTION_COUNT = "actionCount"
         const val FIELD_RULE_EXCEPT = "except"
+        const val FIELD_RULE_PAUSED_UNTIL = "pausedUntil"
         private const val ACTION_FIELD_PREFIX = "action_"
         const val FORMAT_V2 = 2
 
@@ -192,6 +198,7 @@ internal class ContextRuleReplication(context: Context) {
             FIELD_RULE_FORMAT,
             FIELD_RULE_ACTION_COUNT,
             FIELD_RULE_EXCEPT,
+            FIELD_RULE_PAUSED_UNTIL,
         )
 
         /** As [ScheduleReplication.FIELD_SCHEDULE_DELETED], for a contextual rule. */

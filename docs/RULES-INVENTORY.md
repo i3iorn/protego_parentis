@@ -152,7 +152,7 @@ replicate it so a sibling phone on an older build keeps working. Still all 11
 fields Parent — a family can still reach a schedule this way, just not
 through any UI that writes it any more.
 
-## ContextRuleStore — `context_rules` · 14 Parent, 1 Pending
+## ContextRuleStore — `context_rules` · 15 Parent, 1 Pending
 
 Contextual rules and the places they refer to, in one store — and, as of
 [#72](https://github.com/i3iorn/dementor_watch/issues/72)'s rule-engine
@@ -168,12 +168,17 @@ condition kind, is carried by `ContextRuleCodec`'s existing `KEY_KIND` below
 rather than a field of its own.
 
 `rules`, `id`, `name`, `enabled`, `condition`, `effect`, `target`, `format`,
-`actions`, `except`, `places`, `radius`
+`actions`, `except`, `pausedUntil`, `places`, `radius`
 
 `format`, `actions` and `except` are Rules V2 (#301): a rule with several
 actions or an "except when" stores them there instead of in `effect`/`target`,
 so an older build drops it rather than half-reading it. They replicate the
 same way the rest of a rule does.
+
+`pausedUntil` is a V2-era addition that lets a parent pause a rule for a
+fixed window (the "Pause 5m/10m/15m/30m" button). It is encoded as an epoch
+millis timestamp alongside V2 fields, so older builds decode the rule with
+`pausedUntil == null` — they ignore it silently rather than dropping the rule.
 
 [#41](https://github.com/i3iorn/dementor_watch/issues/41) closed the rule half
 of this store the way [#40](https://github.com/i3iorn/dementor_watch/issues/40)

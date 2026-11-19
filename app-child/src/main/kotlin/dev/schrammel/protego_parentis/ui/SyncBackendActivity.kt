@@ -22,6 +22,7 @@ import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.FamilyTokens
 import dev.schrammel.protego_parentis.sync.core.TransportKind
+import dev.schrammel.protego_parentis.sync.NtfyCredentials
 
 /**
  * Where the family's messages are carried.
@@ -47,11 +48,16 @@ class SyncBackendActivity : ParentGatedActivity() {
     private lateinit var sync: SyncCoordinator
     private lateinit var column: LinearLayout
     private lateinit var serverInput: EditText
-
     private var chosen: TransportKind = TransportKind.NTFY
 
     /** Null until a test has been run in this visit. */
     private var testResult: String? = null
+
+    /** Auth type selector and inputs (persisted across renders). */
+    private lateinit var authTypeRadioGroup: RadioGroup
+    private lateinit var tokenInput: EditText
+    private lateinit var usernameInput: EditText
+    private lateinit var passwordInput: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +70,22 @@ class SyncBackendActivity : ParentGatedActivity() {
             hint = getString(R.string.backend_server_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setText(settings.serverUrl)
+        }
+
+        tokenInput = EditText(this).apply {
+            hint = getString(R.string.backend_token_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setText((settings.credentials as? NtfyCredentials.Token)?.token ?: "")
+        }
+        usernameInput = EditText(this).apply {
+            hint = getString(R.string.backend_username_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            setText((settings.credentials as? NtfyCredentials.Basic)?.username ?: "")
+        }
+        passwordInput = EditText(this).apply {
+            hint = getString(R.string.backend_password_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setText((settings.credentials as? NtfyCredentials.Basic)?.password ?: "")
         }
 
         column = contentColumn()
@@ -102,6 +124,68 @@ class SyncBackendActivity : ParentGatedActivity() {
                 (serverInput.parent as? ViewGroup)?.removeView(serverInput)
                 addView(serverInput)
                 addView(captionText(getString(R.string.backend_server_hint_detail)))
+            },
+        )
+
+        // Authentication section
+        val credentials = settings.credentials
+        column.addView(sectionHeader(getString(R.string.backend_auth_header)))
+        column.addView(
+            card {
+                authTypeRadioGroup = RadioGroup(this@SyncBackendActivity).apply {
+                    orientation = RadioGroup.VERTICAL
+                }
+                val types = listOf(
+                    "none" to R.string.backend_auth_none,
+                    "token" to R.string.backend_auth_token,
+                    "basic" to R.string.backend_auth_basic,
+                )
+                types.forEachIndexed { index, (key, label) ->
+                    val isSelected = when {
+                        credentials is NtfyCredentials.Token && key == "token" -> true
+                        credentials is NtfyCredentials.Basic && key == "basic" -> true
+                        credentials is NtfyCredentials.None && key == "none" -> true
+                        else -> false
+                    }
+                    authTypeRadioGroup.addView(
+                        RadioButton(this@SyncBackendActivity).apply {
+                            id = index + 1
+                            text = getString(label)
+                            isChecked = isSelected
+                            setOnCheckedChangeListener { _, checkedNow ->
+                                if (checkedNow) {
+                                    // Show/hide input fields
+                                    tokenInput.visibility = if (key == "token") android.view.View.VISIBLE else android.view.View.GONE
+                                    val showBasic = key == "basic"
+                                    usernameInput.visibility = if (showBasic) android.view.View.VISIBLE else android.view.View.GONE
+                                    passwordInput.visibility = if (showBasic) android.view.View.VISIBLE else android.view.View.GONE
+                                }
+                            }
+                        },
+                    )
+                }
+                addView(authTypeRadioGroup)
+
+                // Show/hide inputs based on current selection
+                val initialVisible = when (credentials) {
+                    is NtfyCredentials.Token -> "token"
+                    is NtfyCredentials.Basic -> "basic"
+                    is NtfyCredentials.None -> "none"
+                }
+                tokenInput.visibility = if (initialVisible == "token") android.view.View.VISIBLE else android.view.View.GONE
+                val showBasic = initialVisible == "basic"
+                usernameInput.visibility = if (showBasic) android.view.View.VISIBLE else android.view.View.GONE
+                passwordInput.visibility = if (showBasic) android.view.View.VISIBLE else android.view.View.GONE
+
+                // Remove from old parent if needed
+                (tokenInput.parent as? ViewGroup)?.removeView(tokenInput)
+                (usernameInput.parent as? ViewGroup)?.removeView(usernameInput)
+                (passwordInput.parent as? ViewGroup)?.removeView(passwordInput)
+
+                addView(tokenInput)
+                addView(captionText(getString(R.string.backend_token_detail)))
+                addView(usernameInput)
+                addView(passwordInput)
             },
         )
 
@@ -202,6 +286,11 @@ class SyncBackendActivity : ParentGatedActivity() {
 
     private fun move(token: FamilyToken) {
         config.move(token)
+        // Save credentials as well
+        val tokenValue = tokenInput.text.toString().trim().takeIf { it.isNotBlank() }
+        val user = usernameInput.text.toString().trim().takeIf { it.isNotBlank() }
+        val pass = passwordInput.text.toString().trim().takeIf { it.isNotBlank() }
+        config.saveCredentials(token = tokenValue, username = user, password = pass)
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,

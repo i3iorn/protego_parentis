@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import dev.schrammel.protego_parentis.AppRegistry
@@ -160,6 +161,14 @@ class RealtimeSyncService : Service() {
             // silently dead connection is noticed rather than blocking forever.
             readTimeout = READ_TIMEOUT_MILLIS
             instanceFollowRedirects = false
+            when (settings.credentials) {
+                is NtfyCredentials.Token -> setRequestProperty("Authorization", "Bearer ${settings.credentials.token}")
+                is NtfyCredentials.Basic -> {
+                    val value = Base64.encodeToString("${settings.credentials.username}:${settings.credentials.password}".toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                    setRequestProperty("Authorization", "Basic $value")
+                }
+                is NtfyCredentials.None -> Unit
+            }
         }
         currentConnection = connection
         try {

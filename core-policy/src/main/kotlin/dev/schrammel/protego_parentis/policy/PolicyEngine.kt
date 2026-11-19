@@ -376,6 +376,12 @@ object PolicyEngine {
             .filter { it.enabled }
             .flatMap { ContextRules.windowsIn(it.activeWhen) }
         ScheduleResolver.nextWindowEdgeAfter(ruleWindows, nowZdt)?.let(candidates::add)
+        // A paused rule re-enables on its own at pausedUntil, so enforcement must
+        // wake then rather than sit silent until something unrelated fires.
+        policy.contextRules
+            .mapNotNull { it.pausedUntil }
+            .filter { it.isAfter(now) }
+            .forEach(candidates::add)
         liveGrants.forEach { candidates += it.expiresAt }
         // Otherwise an installation window would stay open until the next tick for
         // some unrelated reason, which could be five minutes or the 4am reset.

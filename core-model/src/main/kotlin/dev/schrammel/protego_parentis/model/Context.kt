@@ -390,6 +390,14 @@ data class ContextRule(
     val condition: Condition,
     val actions: List<RuleAction>,
     val exceptWhen: Condition? = null,
+    /**
+     * When this rule is temporarily paused. If not null and the instant is in
+     * the future, the rule does not apply despite being "enabled".
+     *
+     * When the pause expires, the rule becomes active again automatically.
+     * Used by "Pause rule for 5/10/15/30 min" from the parent view.
+     */
+    val pausedUntil: java.time.Instant? = null,
 ) {
     /** A rule with one action, the only shape a rule could have before V2. */
     constructor(
@@ -399,7 +407,8 @@ data class ContextRule(
         condition: Condition,
         effect: RuleEffect,
         target: RuleTarget,
-    ) : this(id, name, enabled, condition, listOf(RuleAction(effect, target)))
+        pausedUntil: java.time.Instant? = null,
+    ) : this(id, name, enabled, condition, listOf(RuleAction(effect, target)), null, pausedUntil)
 
     init {
         require(id.isNotBlank()) { "a rule needs an id" }

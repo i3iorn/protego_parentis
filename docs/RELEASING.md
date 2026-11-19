@@ -163,6 +163,11 @@ repeat and there is no way to reuse one. `versionName` is what people see.
 
 Both live in `app-child/build.gradle.kts`.
 
+The release tag has to be `v` followed by `versionName`, exactly: `v1.8.2` for
+`versionName = 1.8.2`. The release workflow checks this and fails the release
+if it does not hold, because a third-party updater reading the release page
+has nothing else to go on.
+
 ---
 
 ## OTA updates, without Play
@@ -250,3 +255,90 @@ again short of uninstalling and re-provisioning it from scratch.
   hardware** — see the README's own "Current state" section for the same
   caveat about every other `DevicePolicyManager` interaction. Test a real OTA
   update on a provisioned handset before trusting it with a family's phone.
+
+---
+
+## Obtainium
+
+[Obtainium](https://github.com/ImranR98/Obtainium) is an Android app that
+installs and updates other apps straight from their release pages. It watches
+a GitHub repository, takes the newest release, and installs the APK attached
+to it. It is a second way for a family to get this app onto a phone, and it
+needs nothing beyond the GitHub release the workflow above already publishes.
+
+### Adding it
+
+In Obtainium, add this repository as a GitHub source:
+
+```
+https://github.com/i3iorn/protego_parentis
+```
+
+That is all. Obtainium finds each release by itself, shows the release notes
+as the changelog, and updates from it. A personal access token is only needed
+if GitHub's unauthenticated rate limit becomes a problem, which it does for
+people tracking a lot of apps.
+
+### What the release workflow does for Obtainium's sake
+
+Obtainium reads a GitHub release in a specific way, and three of the things
+it reads are things this repository controls:
+
+- **The tag is the version.** Obtainium compares the release tag against the
+  version Android reports for the copy already installed, because that is the
+  only version it can read without downloading anything. The tag therefore
+  has to be `v` followed by `versionName` exactly — `v1.8.2`, not `1.8.2` and
+  not `v1.8.2-release`. The release workflow refuses a tag that does not
+  match, because a mismatch reads as "there is an update" forever, or as no
+  update at all, depending on which side moved.
+
+  This is also why `versionName` has to change along with `versionCode` even
+  when the change is invisible in the app.
+
+- **The release body is the changelog.** The workflow writes the body: what
+  the release is, how to install it, and the fingerprint of the signing
+  certificate, with GitHub's generated changelog after it.
+
+- **There is exactly one APK.** Obtainium prompts when a release carries more
+  than one, and cannot update in the background when it has to ask. The
+  release carries one.
+
+### Pinning the signing certificate
+
+Obtainium's *Allowed signing cert hashes* field takes the SHA-256
+fingerprint of the certificate an app must be signed with, and refuses
+anything else. Every release's notes carry the fingerprint of the key this
+project signs with, so it can be copied from there.
+
+The format is the SHA-256 of the certificate's DER bytes, uppercase and
+colon-separated — which is what `apksigner verify --print-certs` prints and
+what Obtainium expects, so the two are interchangeable.
+
+Worth doing for this app in particular: a parental control app is installed
+by one person and run by another, and "installed whatever the release page
+served" is a weaker guarantee than "installed only what this project signed".
+
+### Obtainium and the app's own updater
+
+Both work on the same install, and both install the same artifact — the
+release APK, signed with the release key. The app checks for a newer release
+once a day and applies it unattended; Obtainium does the same on its own
+schedule. Whichever runs first, the other sees that version already
+installed and does nothing.
+
+Using both at once is not a conflict, but there is little reason to: Obtainium
+shows the release notes and lets a person decide, which is more useful for a
+parent than an update that appears on its own.
+
+### One install, one channel
+
+A copy installed from Google Play is signed by Google, not by this project,
+because Play App Signing re-signs every upload with a key Google holds. A
+copy installed from a GitHub release carries this project's fingerprint.
+
+Android refuses to replace an app with one signed by a different key, so
+those are two separate apps as far as updates go. A Play install is updated
+by Play. A sideloaded install is updated from here — by Obtainium, or by the
+app itself. There is no way to move a family from one to the other without
+uninstalling, which on a device-owner phone means releasing it first
+(Rules → Device control → Release this phone).

@@ -399,6 +399,11 @@
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
+        <!-- Day detail screen opened from the weekly view -->
+        <activity
+            android:name=".ui.DayDetailActivity"
+            android:exported="true" />
+
         <!--
           excludeFromRecents so the PIN screen cannot be skipped by resuming the
           rules editor from the recents list.

@@ -503,6 +503,18 @@
     <string name="rules_section_health">Health</string>
     <string name="rules_section_other">Other rules</string>
     <string name="rules_section_paused">Paused</string>
+    <string name="rules_pause">Pause</string>
+    <string name="rules_pause_5m">Pause for 5 minutes</string>
+    <string name="rules_pause_10m">Pause for 10 minutes</string>
+    <string name="rules_pause_15m">Pause for 15 minutes</string>
+    <string name="rules_pause_30m">Pause for 30 minutes</string>
+    <string name="rules_paused_remaining">Paused · %1$s left</string>
+    <string name="day_detail_total">Total time used today</string>
+    <string name="day_detail_none">No data</string>
+    <string name="day_detail_unknown">Unknown day</string>
+    <string name="day_detail_no_data">No data available</string>
+    <string name="day_detail_title">Day</string>
+    <string name="day_detail_by_app">By app</string>
     <plurals name="rules_summary_on">
         <item quantity="one">%d rule on</item>
         <item quantity="other">%d rules on</item>
@@ -1517,4 +1529,15 @@
     <string name="lock_status_opens_at">Opens again at %1$s</string>
     <string name="lock_status_countdown">%1$s — at %2$s</string>
     <string name="lock_status_remaining">Time left on device: %1$s</string>
+
+    <!-- Authentication for ntfy relay. -->
+    <string name="backend_auth_header">Authentication</string>
+    <string name="backend_auth_hint">How to authenticate to the ntfy relay</string>
+    <string name="backend_token_hint">Bearer token (Authorization: Bearer ***)</string>
+    <string name="backend_token_detail">Enter a single token, shown as *** in logs. Sent as the Authorization: Bearer header.</string>
+    <string name="backend_username_hint">Username</string>
+    <string name="backend_password_hint">Password</string>
+    <string name="backend_auth_none">No authentication</string>
+    <string name="backend_auth_token">Bearer token</string>
+    <string name="backend_auth_basic">Username and password</string>
 </resources>

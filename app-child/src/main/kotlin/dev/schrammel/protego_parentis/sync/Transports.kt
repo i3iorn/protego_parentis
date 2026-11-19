@@ -17,6 +17,6 @@ import dev.schrammel.protego_parentis.sync.core.TransportKind
 object Transports {
 
     fun of(settings: SyncSettings): FamilyTransport = when (settings.transport) {
-        TransportKind.NTFY -> NtfyTransport(settings.serverUrl, settings.topic)
+        TransportKind.NTFY -> NtfyTransport(settings.serverUrl, settings.topic, settings.credentials)
     }
 }

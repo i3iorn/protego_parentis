@@ -1,5 +1,6 @@
 package dev.schrammel.protego_parentis.sync
 
+import android.util.Base64
 import android.util.Log
 import dev.schrammel.protego_parentis.sync.core.FamilyTransport
 import dev.schrammel.protego_parentis.sync.core.TransportFailureKind
@@ -32,6 +33,7 @@ import dev.schrammel.protego_parentis.sync.core.MessageCrypto
 class NtfyTransport(
     private val serverUrl: String,
     private val topic: String,
+    private val credentials: NtfyCredentials = NtfyCredentials.None,
 ) : FamilyTransport {
 
     override val kind: TransportKind = TransportKind.NTFY
@@ -183,6 +185,14 @@ class NtfyTransport(
             // No redirects: a redirect off our configured host would send traffic
             // somewhere we did not choose.
             instanceFollowRedirects = false
+            when (credentials) {
+                is NtfyCredentials.Token -> setRequestProperty("Authorization", "Bearer ${credentials.token}")
+                is NtfyCredentials.Basic -> {
+                    val value = Base64.encodeToString("${credentials.username}:${credentials.password}".toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                    setRequestProperty("Authorization", "Basic $value")
+                }
+                is NtfyCredentials.None -> Unit
+            }
         }
 
     // Internal rather than private so a test can reference MAX_LINE_CHARS

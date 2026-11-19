@@ -180,6 +180,14 @@ class WeekActivity : DementorActivity() {
                     )
                 },
             )
+            // Open DayDetailActivity for this day when clicked
+            val barIndex = container.childCount - 1
+            container.getChildAt(barIndex).setOnClickListener {
+                val intent = Intent(this, DayDetailActivity::class.java).apply {
+                    putExtra(DayDetailActivity.EXTRA_DAY, day.policyDay)
+                }
+                startActivity(intent)
+            }
         }
     }
 

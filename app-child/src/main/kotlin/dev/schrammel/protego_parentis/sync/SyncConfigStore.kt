@@ -25,6 +25,15 @@ data class SyncSettings(
     val topic: String,
     val passphrase: String,
     /**
+     * How this phone authenticates to the backend.
+     *
+     * Neither a bearer token nor a username/password is part of the shared
+     * family code — those are per-device secrets, like the passphrase, sealed
+     * in this phone's keystore. [NtfyCredentials.None] means the relay takes
+     * anonymous traffic.
+     */
+    val credentials: NtfyCredentials = NtfyCredentials.None,
+    /**
      * This phone's identity on the topic: the fingerprint of its signing key.
      *
      * Not a preference and not editable. [deviceName] is what people read;
@@ -80,6 +89,7 @@ class SyncConfigStore(context: Context) {
         passphrase = passphrase(),
         deviceId = deviceId(),
         deviceName = deviceName(),
+        credentials = credentials(),
     )
 
     /**
@@ -222,6 +232,82 @@ class SyncConfigStore(context: Context) {
 
     /** Whether the phone can keep a passphrase at all, so a screen can say so. */
     fun canKeepSecrets(): Boolean = SecretVault.isAvailable()
+
+    // ---------- ntfy credentials ----------
+
+    /**
+     * Reads the stored ntfy credentials.
+     *
+     * Returns [NtfyCredentials.Token] if a bearer token is stored, [NtfyCredentials.Basic]
+     * if username and password are stored, or [NtfyCredentials.None] if neither.
+     */
+    private fun credentials(): NtfyCredentials {
+        // Token takes precedence if present.
+        val tokenSealed = prefs.getString(KEY_NTFY_TOKEN_SEALED, null)
+        tokenSealed?.let { sealed ->
+            SecretVault.open(sealed)?.takeIf { it.isNotBlank() }?.let { plain ->
+                return NtfyCredentials.Token(plain)
+            }
+        }
+
+        val userSealed = prefs.getString(KEY_NTFY_USERNAME_SEALED, null)
+        val passSealed = prefs.getString(KEY_NTFY_PASSWORD_SEALED, null)
+        if (userSealed != null && passSealed != null) {
+            val username = SecretVault.open(userSealed).orEmpty()
+            val password = SecretVault.open(passSealed).orEmpty()
+            if (username.isNotBlank() && password.isNotBlank()) {
+                return NtfyCredentials.Basic(username, password)
+            }
+        }
+
+        return NtfyCredentials.None
+    }
+
+    /**
+     * Stores ntfy credentials.
+     *
+     * Only the provided credentials are written; existing ones are cleared so
+     * the store never holds both a token and a username/password pair.
+     * Returns false if the keystore refuses to seal any value.
+     */
+    fun saveCredentials(token: String? = null, username: String? = null, password: String? = null): Boolean {
+        prefs.edit {
+            // Clear all first — only one auth mode is active at a time.
+            remove(KEY_NTFY_TOKEN_SEALED)
+            remove(KEY_NTFY_USERNAME_SEALED)
+            remove(KEY_NTFY_PASSWORD_SEALED)
+        }
+        return when {
+            token?.isNotBlank() == true -> {
+                val sealed = SecretVault.seal(token)
+                sealed?.let {
+                    prefs.edit { putString(KEY_NTFY_TOKEN_SEALED, it) }
+                }
+                true
+            }
+            username?.isNotBlank() == true && password?.isNotBlank() == true -> {
+                val userSealed = SecretVault.seal(username)
+                val passSealed = SecretVault.seal(password)
+                if (userSealed != null && passSealed != null) {
+                    prefs.edit {
+                        putString(KEY_NTFY_USERNAME_SEALED, userSealed)
+                        putString(KEY_NTFY_PASSWORD_SEALED, passSealed)
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            else -> true // clearing is always a success
+        }
+    }
+    fun forgetCredentials() {
+        prefs.edit {
+            remove(KEY_NTFY_TOKEN_SEALED)
+            remove(KEY_NTFY_USERNAME_SEALED)
+            remove(KEY_NTFY_PASSWORD_SEALED)
+        }
+    }
 
     // ---------- this phone's name ----------
 
@@ -439,5 +525,9 @@ class SyncConfigStore(context: Context) {
         const val KEY_LAST_HEARTBEAT = "last_heartbeat"
         const val KEY_LAST_ANNOUNCE = "last_announce"
         const val KEY_LAST_DIGEST = "last_digest"
+
+        const val KEY_NTFY_TOKEN_SEALED = "ntfy_token_sealed"
+        const val KEY_NTFY_USERNAME_SEALED = "ntfy_username_sealed"
+        const val KEY_NTFY_PASSWORD_SEALED = "ntfy_password_sealed"
     }
 }

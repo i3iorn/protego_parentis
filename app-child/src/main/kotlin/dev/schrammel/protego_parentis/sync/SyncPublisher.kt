@@ -527,20 +527,21 @@ class SyncPublisher(context: Context, private val signer: Signer = KeystoreSigne
      * connected, hears nothing, and is indistinguishable from a quiet week.
      */
     fun testReachable(token: FamilyToken, onFinished: (String) -> Unit) {
-        SyncKeying.execute {
-            val transport = Transports.of(
-                config.load().copy(
-                    transport = token.kind,
-                    serverUrl = token.serverUrl,
-                    topic = token.topic,
-                ),
-            )
-            when (val result = transport.poll(Instant.now().minusSeconds(POLL_OVERLAP_SECONDS))) {
-                is TransportResult.Ok -> onFinished("reachable")
-                is TransportResult.Failed -> onFinished(result.message)
+            SyncKeying.execute {
+                val current = config.load()
+                val transport = Transports.of(
+                    current.copy(
+                        transport = token.kind,
+                        serverUrl = token.serverUrl,
+                        topic = token.topic,
+                    ),
+                )
+                when (val result = transport.poll(Instant.now().minusSeconds(POLL_OVERLAP_SECONDS))) {
+                    is TransportResult.Ok -> onFinished("reachable")
+                    is TransportResult.Failed -> onFinished(result.message)
+                }
             }
         }
-    }
 
     internal fun syncRole(): SyncRole = transmitter.syncRole()
 

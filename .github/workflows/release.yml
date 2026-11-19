@@ -2,13 +2,24 @@
 # update.json manifest that describes it, as GitHub Release assets whenever a
 # version tag is pushed.
 #
-# This is the entire OTA update channel: UpdateClient (app-child's `update`
-# package) reads exactly these two files, from GitHub's own
+# Two channels read this release, and they want different things from it.
+#
+# The first is the app's own: UpdateClient (app-child's `update` package) reads
+# exactly these two files, from GitHub's own
 # `/releases/latest/download/<name>` aliases rather than the REST API, so
 # checking for updates costs nothing and hits no rate limit regardless of how
-# many family phones do it. See docs/RELEASING.md for the one-time setup this
-# workflow depends on — a release signing key that does not yet exist until
-# somebody creates it, and the four repository secrets built from it.
+# many family phones do it.
+#
+# The second is a third-party updater watching the same repository — Obtainium
+# is the one this project cares about. It reads the release *tag* as the
+# version, the release *body* as the changelog, and the `.apk` asset as the
+# thing to install, so the tag has to match the version the APK reports, the
+# body has to say something worth reading, and there must be exactly one APK
+# to pick. The steps below exist to hold all three of those true.
+#
+# See docs/RELEASING.md for the one-time setup this workflow depends on — a
+# release signing key that does not yet exist until somebody creates it, and
+# the four repository secrets built from it.
 name: Release
 
 on:
@@ -80,6 +91,94 @@ jobs:
         if: always()
         run: rm -f release.jks keystore.properties
 
+      # The tag is the version, for everything that reads this release rather
+      # than the APK inside it.
+      #
+      # Obtainium — and every other updater that watches a GitHub release —
+      # compares the release *tag* against the version Android reports for the
+      # copy already installed, because that is the only version it can read
+      # without downloading anything. A tag that does not match versionName
+      # therefore reads as "there is an update" forever, or as no update at
+      # all, depending on which side moved.
+      #
+      # The app's own updater does not care: it compares versionCode, out of
+      # update.json. This check is about the humans and the third-party
+      # updaters, who only ever see the tag.
+      #
+      # It runs first of all the checks because it is the cheapest one and
+      # because a mistyped tag is the mistake most likely to be made.
+      - name: Check the tag against the version
+        run: |
+          set -euo pipefail
+
+          info=$(./gradlew -q :app-child:printVersionInfo)
+          versionCode=$(echo "$info" | grep '^versionCode=' | cut -d= -f2)
+          versionName=$(echo "$info" | grep '^versionName=' | cut -d= -f2)
+          tag="${GITHUB_REF_NAME}"
+
+          expected="v${versionName}"
+          if [ "$tag" != "$expected" ]; then
+            echo "::error::Tag $tag does not match versionName $versionName."
+            echo "::error::The tag must be $expected, or updaters that read the"
+            echo "::error::tag instead of the APK will not recognise the release."
+            exit 1
+          fi
+
+          # A version with a pre-release suffix is a pre-release, and says so
+          # on the release rather than only in its name. Obtainium skips
+          # pre-releases unless it is told not to, and GitHub's "latest
+          # release" — which the app's own updater polls — never points at
+          # one, so a beta cannot be handed to a family as the stable build.
+          case "$versionName" in
+            *-*) prerelease=true ;;
+            *) prerelease=false ;;
+          esac
+
+          cat > version.env <<ENV
+          VERSION_CODE=$versionCode
+          VERSION_NAME=$versionName
+          PRERELEASE=$prerelease
+          ENV
+          cat version.env
+
+      # The fingerprint of the certificate this release is signed with, read
+      # out of the APK that is about to be published rather than out of the
+      # keystore, so it describes the artifact and not the intention.
+      #
+      # Obtainium lets a user pin the certificates an app may be signed with
+      # and refuses anything else. For an app that asks a family to hand a
+      # teenager a phone, that is the difference between "installed whatever
+      # GitHub served" and "installed only what this project signed" — so the
+      # fingerprint belongs in the release notes, where it can be copied.
+      #
+      # The format is Obtainium's: the SHA-256 of the certificate's DER bytes,
+      # uppercase and colon-separated.
+      - name: Fingerprint the release signing certificate
+        run: |
+          set -euo pipefail
+          apk=app-child/build/outputs/apk/release/app-child-release.apk
+
+          apksigner=$(find "${ANDROID_HOME:?}/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          if [ -z "$apksigner" ]; then
+            echo "::error::apksigner was not found under ${ANDROID_HOME:?}/build-tools."
+            exit 1
+          fi
+
+          # Read the whole output first, then pick the line out of it. Piping
+          # straight into a filter that stops early would close the pipe under
+          # apksigner and fail the step over a SIGPIPE.
+          certs=$("$apksigner" verify --print-certs "$apk")
+          fingerprint=$(printf '%s\n' "$certs" \
+            | sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p' \
+            | sed -n '1p')
+          if [ -z "$fingerprint" ]; then
+            echo "::error::No signing certificate fingerprint could be read out of $apk."
+            exit 1
+          fi
+
+          echo "FINGERPRINT=$fingerprint" >> version.env
+          echo "Signing certificate SHA-256: $fingerprint"
+
       # 16 KB page-size compatibility. Used to run on every push/PR against
       # the unsigned release APK build.yml produced; it moved here when that
       # workflow was split up (see test.yml's header comment) because this
@@ -128,35 +227,127 @@ jobs:
       - name: Build update.json
         run: |
           set -euo pipefail
+          source version.env
+
           apk=app-child/build/outputs/apk/release/app-child-release.apk
           if [ ! -f "$apk" ]; then
             echo "::error::$apk was not produced — check the signing step above."
             exit 1
           fi
 
-          info=$(./gradlew -q :app-child:printVersionInfo)
-          versionCode=$(echo "$info" | grep '^versionCode=' | cut -d= -f2)
-          versionName=$(echo "$info" | grep '^versionName=' | cut -d= -f2)
           sha256=$(sha256sum "$apk" | cut -d' ' -f1)
           size=$(stat -c%s "$apk")
 
           cp "$apk" app-child-release.apk
           cat > update.json <<MANIFEST
           {
-            "versionCode": $versionCode,
-            "versionName": "$versionName",
+            "versionCode": $VERSION_CODE,
+            "versionName": "$VERSION_NAME",
             "apkSha256": "$sha256",
             "apkSize": $size
           }
           MANIFEST
           cat update.json
 
+      # The release notes are the release's own documentation, and they are
+      # what an updater shows the person it is updating for. So: how to
+      # install this, how to tell that it is the genuine article, and what
+      # it weighs. GitHub's generated changelog is appended to this below.
+      - name: Write the release notes
+        run: |
+          set -euo pipefail
+          source version.env
+
+          apk=app-child/build/outputs/apk/release/app-child-release.apk
+          sha256=$(sha256sum "$apk" | cut -d' ' -f1)
+          size=$(stat -c%s "$apk")
+
+          # Quoted heredoc, so the backticks and the code fences below stay
+          # exactly as written, and the values are substituted afterwards.
+          cat > release-notes.md <<'NOTES'
+          ## Dementor Watch @@VERSION_NAME@@
+
+          A parental control app for Android, enforced through Device Owner
+          rather than an overlay. It measures screen time, enforces daily,
+          category and per-app limits and bedtime, and shows the teenager the
+          same numbers the parent sees.
+
+          **versionCode** @@VERSION_CODE@@ · **APK** @@SIZE@@ bytes · **SHA-256** `@@SHA256@@`
+
+          ### Install
+
+          **With Obtainium** — add this repository as a GitHub source:
+
+          ```
+          https://github.com/@@REPOSITORY@@
+          ```
+
+          Obtainium finds this release by itself and updates from it. It shows
+          the notes below as the changelog.
+
+          **By hand** — download `app-child-release.apk` and install it, or:
+
+          ```
+          adb install -r app-child-release.apk
+          ```
+
+          Until the phone is a device owner the app measures and reports but
+          blocks nothing; see the README for how to hand it over.
+
+          ### Check what you are installing
+
+          This release is signed with the project's release key. The SHA-256
+          fingerprint of that certificate is:
+
+          ```
+          @@FINGERPRINT@@
+          ```
+
+          Paste it into Obtainium's *Allowed signing cert hashes* field and it
+          will refuse any APK that is not signed with this key — which is the
+          whole point of installing from a release page rather than from
+          wherever a link happens to point.
+
+          ### One install, one channel
+
+          A copy installed from Google Play is signed by Google, not by this
+          project, because Play re-signs every upload with a key it holds. A
+          copy installed from this release carries the fingerprint above.
+          Android refuses to replace an app with one signed by a different
+          key, so those are two separate apps as far as updates go: a Play
+          install is updated by Play, and a sideloaded install is updated from
+          here — by Obtainium, or by the app itself, which checks daily and
+          applies a newer release unattended.
+
+          `update.json` sits next to the APK for the app's own updater. It is
+          the same artifact, not a second one.
+          NOTES
+
+          sed -i \
+            -e "s|@@VERSION_NAME@@|$VERSION_NAME|g" \
+            -e "s|@@VERSION_CODE@@|$VERSION_CODE|g" \
+            -e "s|@@SIZE@@|$size|g" \
+            -e "s|@@SHA256@@|$sha256|g" \
+            -e "s|@@FINGERPRINT@@|$FINGERPRINT|g" \
+            -e "s|@@REPOSITORY@@|$GITHUB_REPOSITORY|g" \
+            release-notes.md
+          cat release-notes.md
+
       - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "${{ github.ref_name }}" \
+          source version.env
+
+          args=(--title "$GITHUB_REF_NAME" --notes-file release-notes.md --generate-notes)
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+
+          # --generate-notes with --notes-file puts the notes file first and
+          # GitHub's generated changelog after it, which is what the release
+          # page shows and what an updater shows the person it updates for.
+          gh release create "$GITHUB_REF_NAME" \
             app-child-release.apk update.json \
-            --title "${{ github.ref_name }}" \
-            --generate-notes
+            "${args[@]}"

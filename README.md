@@ -232,7 +232,9 @@ outside Play: the managed phone checks daily and applies a newer, signed
 release unattended (device owner's own silent-install privilege — see
 `docs/RELEASING.md`'s "OTA updates, without Play"), and a parent's own phone
 downloads and verifies the same release but asks for a tap, since it has no
-such privilege.
+such privilege. The same release is also a GitHub Release, so the app can be
+installed and updated by Obtanium or any other updater that reads a release
+page, without Play in the picture at all.
 
 Not built yet:
 
@@ -446,3 +448,20 @@ build difference that can break something the debug build did fine.
 Release signing reads `keystore.properties` from the repository root. The file is
 not in the repository and never should be; a release build without it fails with
 an explanation rather than quietly producing something Play will reject.
+
+### Getting it onto a phone without Play
+
+Every tagged release is published as a GitHub Release with the signed APK
+attached, so the app can be installed and updated from there rather than from
+Play:
+
+- **[Obtanium](https://github.com/ImranR98/Obtainium)** — add this repository
+  as a GitHub source and it installs and updates the app on its own. Each
+  release's notes carry the signing certificate's fingerprint, which
+  Obtainium can be told to insist on.
+- **The app itself** — a sideloaded copy checks for a newer release daily and
+  applies it unattended, using device owner's own install privilege.
+
+A copy installed from Play is signed by Google, and Android will not replace
+it with one signed by this project, so a family that installed from Play
+stays on Play. `docs/RELEASING.md` has the detail.

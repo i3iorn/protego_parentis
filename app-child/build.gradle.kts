@@ -75,8 +75,8 @@ android {
         applicationId = "dev.schrammel.protego_parentis"
         minSdk = 33
         targetSdk = 37
-        versionCode = 70
-        versionName = "1.8.1"
+        versionCode = 73
+        versionName = "1.8.4"
     }
 
     signingConfigs {
@@ -252,10 +252,20 @@ if (releaseRequested) {
  * grepping this file's own Kotlin for two `val` assignments is exactly the
  * kind of thing that silently breaks the moment somebody reformats it. This
  * reads the values Gradle already parsed instead.
+ *
+ * The values are read here, while the task is being configured, and not
+ * inside the action. An action that reaches back into the `android` extension
+ * captures this script along with it, and the configuration cache cannot
+ * serialise a script reference — so the build prints the right two lines and
+ * then fails with "configuration cache problems found in this build" at the
+ * very end, which takes the whole release down with it. The same trap the
+ * check above documents, in the same file, for the same reason.
  */
 tasks.register("printVersionInfo") {
+    val code = android.defaultConfig.versionCode
+    val name = android.defaultConfig.versionName
     doLast {
-        println("versionCode=${android.defaultConfig.versionCode}")
-        println("versionName=${android.defaultConfig.versionName}")
+        println("versionCode=$code")
+        println("versionName=$name")
     }
 }

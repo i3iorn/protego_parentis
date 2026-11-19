@@ -125,7 +125,10 @@ internal object ContextRules {
          */
         deviceUsage: Duration,
     ): ContextOutcome {
-        val active = rules.filter { it.enabled && holds(it.activeWhen, context, now, deviceUsage) }
+        val active = rules.filter {
+            val paused = it.pausedUntil
+            it.enabled && (paused == null || paused.isAfter(now.toInstant())) && holds(it.activeWhen, context, now, deviceUsage)
+        }
 
         val blocked = LinkedHashMap<PackageName, ContextRule>()
         val alwaysBlocked = LinkedHashMap<PackageName, ContextRule>()
