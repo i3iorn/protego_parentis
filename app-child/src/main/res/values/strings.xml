@@ -1575,4 +1575,5 @@
 
     <!-- The relay's last response, on the backend screen. -->
     <string name="backend_last_response">Last server response</string>
+    <string name="backend_credentials_not_stored">The phone could not store the credentials securely, so nothing was saved. They are not in use.</string>
 </resources>

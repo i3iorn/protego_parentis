@@ -313,12 +313,16 @@ class SyncBackendActivity : ParentGatedActivity() {
      */
     private fun test() {
         val token = proposed() ?: return
+        // Read what was typed BEFORE re-rendering: render() resets the auth
+        // selection from the stored credentials, and the stored ones are
+        // precisely what has not been saved yet.
+        val credentials = typedCredentials()
         testResult = getString(R.string.backend_testing)
         render()
 
         // Test with what was typed, so a wrong password is caught here rather
         // than after it has been saved as the family's credentials.
-        sync.testReachable(token, typedCredentials()) { result ->
+        sync.testReachable(token, credentials) { result ->
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 testResult = getString(R.string.backend_test_result, result)
@@ -419,11 +423,17 @@ class SyncBackendActivity : ParentGatedActivity() {
             token.topic != previous.topic
         if (serverChanged) config.move(token)
 
-        config.saveCredentials(
+        val stored = config.saveCredentials(
             token = tokenInput.text.toString().trim().takeIf { it.isNotBlank() },
             username = usernameInput.text.toString().trim().takeIf { it.isNotBlank() },
             password = passwordInput.text.toString().trim().takeIf { it.isNotBlank() },
         )
+        if (!stored) {
+            // Said rather than silent: a keystore that refused to seal leaves
+            // the family running without credentials, and the 403s that follow
+            // look exactly like the server having changed its mind.
+            toast(R.string.backend_credentials_not_stored)
+        }
         Audit.record(
             context = this,
             actor = AuditActor.PARENT,
