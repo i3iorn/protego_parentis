@@ -153,6 +153,7 @@ jobs:
           VERSION_CODE=$versionCode
           VERSION_NAME=$versionName
           PRERELEASE=$prerelease
+          TAG=$tag
           ENV
           cat version.env
 
@@ -370,8 +371,11 @@ jobs:
           source version.env
 
           # The tag, not GITHUB_REF_NAME: under a manual dispatch the ref name
-          # is the branch the workflow ran on, not the release being cut.
-          args=(--title "$tag" --notes-file release-notes.md --generate-notes)
+          # is the branch the workflow ran on, not the release being cut. TAG
+          # rides in version.env because each step is its own shell. --target
+          # pins a tag that does not exist yet to the commit that was built,
+          # instead of gh's default (the default branch's HEAD).
+          args=(--title "$TAG" --notes-file release-notes.md --generate-notes --target "$GITHUB_SHA")
           if [ "$PRERELEASE" = "true" ]; then
             args+=(--prerelease)
           fi
@@ -379,6 +383,6 @@ jobs:
           # --generate-notes with --notes-file puts the notes file first and
           # GitHub's generated changelog after it, which is what the release
           # page shows and what an updater shows the person it updates for.
-          gh release create "$tag" \
+          gh release create "$TAG" \
             app-child-release.apk update.json \
             "${args[@]}"
