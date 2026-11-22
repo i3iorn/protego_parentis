@@ -79,6 +79,11 @@ import kotlin.time.Duration.Companion.minutes
  * rule can have several "do this, to that" actions.
  */
 class ContextRuleEditActivity : ParentGatedActivity() {
+    /**
+     * Rule editing is a run of small changes: one PIN, then the whole visit.
+     */
+    override val keepsSessionPinned: Boolean = true
+
 
     private lateinit var target: RuleScope
     private lateinit var container: LinearLayout

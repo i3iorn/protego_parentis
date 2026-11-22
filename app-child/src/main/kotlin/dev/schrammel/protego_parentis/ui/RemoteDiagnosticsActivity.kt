@@ -29,6 +29,13 @@ import dev.schrammel.protego_parentis.sync.core.DeviceId
  */
 class RemoteDiagnosticsActivity : ParentGatedActivity() {
 
+    /**
+     * The log is a report, not a control: reading what the managed phone has
+     * been doing needs no PIN, and there is nothing on this screen to change.
+     */
+    override fun supportsReadOnly() = true
+
+
     // DeviceId is a value class — lateinit is not allowed on one, since it
     // has no null-representable backing field the way a plain reference
     // type does. Lazy sidesteps that by wrapping it in an ordinary Lazy<DeviceId>

@@ -60,6 +60,11 @@ import kotlin.time.Duration.Companion.minutes
  * name, membership, and nesting.
  */
 class CategoryEditActivity : ParentGatedActivity() {
+    /**
+     * Rule editing is a run of small changes: one PIN, then the whole visit.
+     */
+    override val keepsSessionPinned: Boolean = true
+
 
     private lateinit var target: RuleScope
 

@@ -33,6 +33,11 @@ import dev.schrammel.protego_parentis.rules.isPlausibleHost
  * otherwise. Over-promising on filtering is how a family stops checking.
  */
 class WebFilterActivity : ParentGatedActivity() {
+    /**
+     * Rule editing is a run of small changes: one PIN, then the whole visit.
+     */
+    override val keepsSessionPinned: Boolean = true
+
 
     private lateinit var store: WebFilterStore
     private lateinit var column: LinearLayout
@@ -46,6 +51,13 @@ class WebFilterActivity : ParentGatedActivity() {
 
     override fun onGatedContentVisible() = render()
 
+    /**
+     * What the web filter *is* is fine to read without the PIN; what it points
+     * at is the parent's call. A read-only visit gets the summary, not the
+     * controls — same shape as the backend screen.
+     */
+    override fun supportsReadOnly() = true
+
     override fun onGatedContentHidden() {
         column.removeAllViews()
     }
@@ -54,6 +66,30 @@ class WebFilterActivity : ParentGatedActivity() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.web_title)))
         column.addView(bodyText(getString(R.string.web_intro)))
+        if (!canEdit) {
+            column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+            column.addView(
+                card {
+                    addView(statRow(getString(R.string.web_dns_header), store.profile.name))
+                    addView(
+                        statRow(
+                            getString(R.string.web_browser_header),
+                            getString(
+                                R.string.web_browser_summary,
+                                store.browserPolicy.blockedUrls.size,
+                                store.browserPolicy.allowedUrls.size,
+                                if (store.browserPolicy.suspendUnmanagedBrowsers) {
+                                    getString(R.string.rules_state_on)
+                                } else {
+                                    getString(R.string.rules_state_off)
+                                },
+                            ),
+                        ),
+                    )
+                },
+            )
+            return
+        }
 
         column.addView(sectionHeader(getString(R.string.web_dns_header)))
         column.addView(

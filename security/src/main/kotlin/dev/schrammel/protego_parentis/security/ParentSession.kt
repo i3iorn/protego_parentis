@@ -29,13 +29,31 @@ object ParentSession {
 
     private var unlockedAtElapsed: Long? = null
 
+    /**
+     * A pinned session lasts until the last pinned screen closes, not for
+     * [LIFETIME]: "stay unlocked for this visit" is for the run of rule edits
+     * a parent sits down to do, and ends when they are done with them.
+     */
+    private var pinned: Boolean = false
+
     val isUnlocked: Boolean
-        get() = remaining() > Duration.ZERO
+        get() = pinned || remaining() > Duration.ZERO
 
     fun unlock() {
         // Elapsed realtime, not wall clock: the clock is settable by the person
         // we are locking out.
         unlockedAtElapsed = SystemClock.elapsedRealtime()
+    }
+
+    /** Pins the session until [unpin]. A pinned session does not time out. */
+    fun pinForThisVisit() {
+        pinned = true
+        unlock()
+    }
+
+    /** Ends the pin. The ordinary five-minute window still applies afterwards. */
+    fun unpin() {
+        pinned = false
     }
 
     /** Extends the session. Called as a parent moves between gated screens. */
@@ -45,6 +63,7 @@ object ParentSession {
 
     fun lock() {
         unlockedAtElapsed = null
+        pinned = false
     }
 
     private fun remaining(): Duration {

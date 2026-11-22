@@ -44,6 +44,11 @@ import java.util.UUID
  * for the managed phone to actually create.
  */
 class PlacesActivity : ParentGatedActivity() {
+    /**
+     * Rule editing is a run of small changes: one PIN, then the whole visit.
+     */
+    override val keepsSessionPinned: Boolean = true
+
 
     private lateinit var target: RuleScope
     private lateinit var container: LinearLayout

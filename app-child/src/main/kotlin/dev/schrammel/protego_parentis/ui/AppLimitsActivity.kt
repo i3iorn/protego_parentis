@@ -51,6 +51,11 @@ import kotlin.time.Duration.Companion.minutes
  * the common case, the full editor for everything else.
  */
 class AppLimitsActivity : ParentGatedActivity() {
+    /**
+     * Rule editing is a run of small changes: one PIN, then the whole visit.
+     */
+    override val keepsSessionPinned: Boolean = true
+
 
     private lateinit var target: RuleScope
     private lateinit var container: LinearLayout

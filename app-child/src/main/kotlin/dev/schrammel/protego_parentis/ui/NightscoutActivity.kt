@@ -25,6 +25,11 @@ import java.time.Instant
  * than the server's API secret, which could also write treatments.
  */
 class NightscoutActivity : ParentGatedActivity() {
+    /**
+     * Rule editing is a run of small changes: one PIN, then the whole visit.
+     */
+    override val keepsSessionPinned: Boolean = true
+
 
     private lateinit var store: NightscoutStore
     private lateinit var column: LinearLayout

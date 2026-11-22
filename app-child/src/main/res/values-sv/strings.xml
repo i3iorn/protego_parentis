@@ -1215,6 +1215,7 @@
     <string name="rules_state_on">På</string>
     <string name="rules_state_off">Av</string>
     <string name="rules_tutorial_row_detail">Genomgångna exempel på vad regelkombinationer blir</string>
+    <string name="web_browser_summary">%1$d blockerade adresser, %2$d tillåtna, pausa icke-hanterade webbläsare: %3$s</string>
     <string name="audit_backend_changed">Meddelanden går nu via %1$s</string>
 
     <string name="join_no_keystore">Telefonen vill inte lagra lösenfrasen säkert, så den har inte sparats. Det brukar lösa sig när skärmlåset ställts in på nytt.</string>

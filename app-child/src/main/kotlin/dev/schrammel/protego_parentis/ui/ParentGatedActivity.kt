@@ -42,6 +42,22 @@ abstract class ParentGatedActivity : DementorActivity() {
     private var awaitingPin = false
     private var lockButton: View? = null
 
+    /**
+     * Whether an authenticated visit here keeps the session alive until this
+     * screen closes, instead of expiring after five minutes — for rule
+     * editing, where the work is a run of small changes and a PIN every
+     * second one is friction with nothing on the other side of it.
+     */
+    protected open val keepsSessionPinned: Boolean = false
+
+    /** Whether this instance is the one holding the pin open. */
+    private var pinnedHere = false
+
+    companion object {
+        /** How many pinned screens are currently alive; the pin ends with the last one. */
+        private var pinnedActivities = 0
+    }
+
     /** Set only by [requestUnlock] — an explicit, screen-triggered ask rather than the automatic one. */
     private var pendingUnlock: (() -> Unit)? = null
 
@@ -186,9 +202,23 @@ abstract class ParentGatedActivity : DementorActivity() {
     private fun showGatedContent() {
         onGatedContentVisible()
         onParentAuthenticated()
+        if (keepsSessionPinned && ParentSession.isUnlocked && !pinnedHere) {
+            ParentSession.pinForThisVisit()
+            pinnedHere = true
+            pinnedActivities++
+        }
         // Nothing to lock on a screen requiresPin() left unguarded — there is no
         // session here to end early.
         lockButton?.visibility = if (requiresPin()) View.VISIBLE else View.GONE
+    }
+
+    override fun onDestroy() {
+        if (pinnedHere) {
+            pinnedHere = false
+            pinnedActivities--
+            if (pinnedActivities <= 0) ParentSession.unpin()
+        }
+        super.onDestroy()
     }
 
     private fun hideGatedContent() {
