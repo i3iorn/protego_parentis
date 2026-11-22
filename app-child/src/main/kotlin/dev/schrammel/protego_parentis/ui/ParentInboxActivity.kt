@@ -54,6 +54,8 @@ class ParentInboxActivity : ParentRoleActivity() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.inbox_title)))
 
+        decisionBanner?.let { column.addView(infoBanner(it.text, it.ok)) }
+
         val now = Instant.now()
         val all = inbox.all(now)
         // Soonest to expire first: a request two minutes from lapsing sitting
@@ -62,7 +64,12 @@ class ParentInboxActivity : ParentRoleActivity() {
         val pending = all.filter { it.isOpenAt(now) }.sortedBy { it.expiresAt }
 
         if (pending.isEmpty()) {
-            column.addView(bodyText(getString(R.string.inbox_empty)))
+            column.addView(
+                emptyState(
+                    getString(R.string.inbox_empty),
+                    getString(R.string.inbox_empty_detail),
+                ),
+            )
         } else {
             addCollapsibleRows(column, pending.map(::pendingCard))
         }
@@ -162,10 +169,25 @@ class ParentInboxActivity : ParentRoleActivity() {
         }
 
         decisionDialog(label) { text ->
-            settleRequest(inbox, sync, request, state, note = text.trim().takeIf(String::isNotEmpty))
+            val note = text.trim().takeIf(String::isNotEmpty)
+            settleRequest(inbox, sync, request, state, note = note)
+            // Stays on screen until the next render is gone past: the answer
+            // was acted on, and the words say where it went (P5.12).
+            decisionBanner = Banner(
+                if (state == RequestState.APPROVED) {
+                    getString(R.string.inbox_answered_approved)
+                } else {
+                    getString(R.string.inbox_answered_denied)
+                },
+                ok = state == RequestState.APPROVED,
+            )
             render()
         }
     }
+
+    /** What the last decision banner says, until the next render replaces it. */
+    private data class Banner(val text: String, val ok: Boolean)
+    private var decisionBanner: Banner? = null
 
     companion object {
 

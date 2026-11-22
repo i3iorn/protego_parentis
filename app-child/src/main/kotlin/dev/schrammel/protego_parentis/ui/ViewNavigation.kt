@@ -30,6 +30,7 @@ internal fun Activity.navigationRow(
     title: String,
     subtitle: String,
     showChevron: Boolean = true,
+    @androidx.annotation.DrawableRes icon: Int? = null,
     trailing: android.view.View? = null,
     onClick: () -> Unit,
 ): LinearLayout = LinearLayout(this).apply {
@@ -42,6 +43,25 @@ internal fun Activity.navigationRow(
     // Gives the row a touch response, so it looks like the control it is.
     withRipple()
     setOnClickListener { onClick() }
+
+    // An icon before the text, when the caller names one: tinted from the
+    // theme's own primary text colour, so a single asset works day and night.
+    if (icon != null) {
+        addView(
+            android.widget.ImageView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    dimen(R.dimen.row_icon), dimen(R.dimen.row_icon),
+                ).apply { marginEnd = dimen(R.dimen.space_md) }
+                setImageResource(icon)
+                val primary = android.util.TypedValue()
+                    .also { theme.resolveAttribute(android.R.attr.textColorPrimary, it, true) }
+                    .data
+                setColorFilter(primary)
+                // Decorative: the label beside it says the same thing.
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            },
+        )
+    }
 
     addView(
         LinearLayout(context).apply {

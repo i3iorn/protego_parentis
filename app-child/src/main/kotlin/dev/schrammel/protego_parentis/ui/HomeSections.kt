@@ -379,3 +379,39 @@ internal fun featureVisible(feature: Feature, disabledByChild: List<Set<String>?
     if (disabledByChild.isEmpty()) return true
     return disabledByChild.any { disabled -> disabled == null || feature.name !in disabled }
 }
+
+/**
+ * The drawer row's icon: one plain 24dp stroke drawing per destination, tinted
+ * from the theme where it is drawn. Deliberately simple shapes — the icon's
+ * job is to be found again by shape before it is read by name, not to be
+ * looked at on its own.
+ */
+internal fun iconFor(destination: HomeDestination): Int = when (destination) {
+    HomeDestination.WEEK -> R.drawable.ic_dest_week
+    HomeDestination.WEB_ACTIVITY -> R.drawable.ic_dest_web_activity
+    HomeDestination.INBOX -> R.drawable.ic_dest_inbox
+    HomeDestination.LOCK_NOW -> R.drawable.ic_dest_lock
+    HomeDestination.LOCATE -> R.drawable.ic_dest_locate
+    HomeDestination.CHAT -> R.drawable.ic_dest_chat
+    HomeDestination.RULES -> R.drawable.ic_dest_rules
+    HomeDestination.CONTEXT_RULES -> R.drawable.ic_dest_context_rules
+    HomeDestination.FAMILY_DEVICES -> R.drawable.ic_dest_devices
+    HomeDestination.THE_OTHER_PHONE -> R.drawable.ic_dest_phone
+    HomeDestination.AUDIT -> R.drawable.ic_dest_audit
+    HomeDestination.PRIVACY -> R.drawable.ic_dest_privacy
+    HomeDestination.SETTINGS -> R.drawable.ic_dest_settings
+    HomeDestination.CATEGORIES -> R.drawable.ic_dest_categories
+    HomeDestination.APP_LIMITS -> R.drawable.ic_dest_app_limits
+    HomeDestination.APP_CONTROL -> R.drawable.ic_dest_app_control
+    HomeDestination.WEB_FILTER -> R.drawable.ic_dest_web_filter
+    HomeDestination.PLACES -> R.drawable.ic_dest_places
+    HomeDestination.ARRIVALS -> R.drawable.ic_dest_arrivals
+    HomeDestination.NIGHTSCOUT -> R.drawable.ic_dest_nightscout
+    HomeDestination.GOAL -> R.drawable.ic_dest_goal
+    HomeDestination.BONUS -> R.drawable.ic_dest_bonus
+    HomeDestination.REQUEST_INBOX -> R.drawable.ic_dest_requests
+    HomeDestination.AUTO_APPROVE -> R.drawable.ic_dest_auto_approve
+    // A child's own dashboard-only destination; the drawer that asks for an
+    // icon never carries it. A shared list glyph is the honest placeholder.
+    HomeDestination.REQUESTS -> R.drawable.ic_dest_requests
+}

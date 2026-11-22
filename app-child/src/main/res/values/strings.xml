@@ -1586,4 +1586,7 @@
     <string name="rules_state_off">Off</string>
     <string name="rules_tutorial_row_detail">Worked examples of what rule combinations add up to</string>
     <string name="web_browser_summary">%1$d blocked URLs, %2$d allowed, suspend unmanaged browsers: %3$s</string>
+    <string name="inbox_empty_detail">Requests the child sends land here until they expire.</string>
+    <string name="inbox_answered_approved">Approved. The child’s phone applies the time as soon as it is online.</string>
+    <string name="inbox_answered_denied">Denied. The reason was sent with the answer.</string>
 </resources>

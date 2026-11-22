@@ -65,10 +65,8 @@ internal fun Activity.showHomeDrawer(
                     navigationRow(
                         title = getString(entry.title),
                         subtitle = getString(entry.detail),
-                        // A chevron promises somewhere else to go, and the two
-                        // actions in the menu - lock the phone now, find where
-                        // it is - do not go anywhere.
                         showChevron = !entry.destination.isAction,
+                        icon = iconFor(entry.destination),
                     ) {
                         close { onOpen(entry.destination) }
                     }
