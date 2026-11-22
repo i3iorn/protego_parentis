@@ -164,13 +164,27 @@ jobs:
             exit 1
           fi
 
+          # A runner's newest build-tools has produced an apksigner that exits 0
+          # with no output at all, so prefer versions with a known record and
+          # keep the newest only as a fallback. Whatever runs, its full output
+          # goes into the log: the next failure diagnoses itself instead of
+          # hiding inside a command substitution.
+          known_good=$(find "${ANDROID_HOME:?}/build-tools" -name apksigner -type f \
+            | grep -E '/(3[2-5])\.[0-9]+(\.[0-9]+)?/' | sort -V | tail -n 1 || true)
+          if [ -n "$known_good" ]; then apksigner="$known_good"; fi
+          echo "Using apksigner: $apksigner"
+
           # Read the whole output first, then pick the line out of it. Piping
           # straight into a filter that stops early would close the pipe under
           # apksigner and fail the step over a SIGPIPE.
-          certs=$("$apksigner" verify --print-certs "$apk")
-          fingerprint=$(printf '%s\n' "$certs" \
-            | sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p' \
+          "$apksigner" verify --print-certs "$apk" > certs.out 2> certs.err || true
+          cat certs.out certs.err
+          fingerprint=$(sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p' certs.out \
             | sed -n '1p')
+          if [ -z "$fingerprint" ]; then
+            fingerprint=$(sed -n 's/^.*certificate SHA-256 digest: //p' certs.err certs.out \
+              | sed -n '1p')
+          fi
           if [ -z "$fingerprint" ]; then
             echo "::error::No signing certificate fingerprint could be read out of $apk."
             exit 1
