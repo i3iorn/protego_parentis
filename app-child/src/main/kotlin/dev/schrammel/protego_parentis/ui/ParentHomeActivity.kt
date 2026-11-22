@@ -178,7 +178,7 @@ class ParentHomeActivity : ParentRoleActivity() {
      * [open].
      */
     private fun openMenu() {
-        homeMenuDialog(
+        showHomeDrawer(
             homeSections(DeviceRole.PARENT) { feature ->
                 featureVisible(feature, disabledByChild)
             },

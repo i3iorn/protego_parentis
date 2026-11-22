@@ -244,7 +244,7 @@ class HomeActivity : DementorActivity() {
      * [open].
      */
     private fun openMenu() {
-        homeMenuDialog(
+        showHomeDrawer(
             homeSections(
                 DeviceRole.CHILD,
                 AppRegistry.childStores.featureFlags::isEnabled,

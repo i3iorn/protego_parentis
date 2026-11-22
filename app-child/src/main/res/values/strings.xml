@@ -1568,4 +1568,8 @@
     <string name="restore_bad_file">That file is not a family export.</string>
     <string name="restore_open_failed">The export would not open — is the passphrase right, and is the file complete?</string>
     <string name="restore_done">Family restored. This phone now waits for a parent’s approval, like any new device.</string>
+
+    <!-- The home screens' navigation drawer. -->
+    <string name="drawer_search_hint">Jump to…</string>
+    <string name="drawer_no_match">Nothing by that name. Try part of a word.</string>
 </resources>

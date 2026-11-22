@@ -2,10 +2,7 @@ package dev.schrammel.protego_parentis.ui
 
 import android.app.Activity
 import android.view.Gravity
-import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import dev.schrammel.protego_parentis.R
 
 /**
@@ -43,58 +40,4 @@ internal fun Activity.menuButton(waiting: Int, onClick: () -> Unit): TextView = 
     }
     withRipple()
     setOnClickListener { onClick() }
-}
-
-/**
- * The menu itself: the sectioned rows, in a dialog that opens from the header.
- *
- * A dialog rather than a screen of its own, because a menu is a list of
- * places and a place you go to is not a place you stay: the reader picks a row
- * and the screen behind it is still the dashboard they came from.
- */
-internal fun Activity.homeMenuDialog(
-    sections: List<HomeSection>,
-    onOpen: (HomeDestination) -> Unit,
-) {
-    val content = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        val pad = dimen(R.dimen.screen_padding)
-        setPadding(pad, dimen(R.dimen.space_sm), pad, pad)
-    }
-
-    // The dialog has to be gone before the screen behind it opens. Left
-    // standing, it floats over the screen the reader just chose - and back
-    // from there dismisses the menu again instead of returning to the
-    // dashboard.
-    lateinit var dialog: AlertDialog
-
-    sections.forEach { section ->
-        addSection(
-            content,
-            section.label?.let(::getString),
-            section.rows.map { entry ->
-                navigationRow(
-                    title = getString(entry.title),
-                    subtitle = getString(entry.detail),
-                    // A chevron promises somewhere else to go, and the two
-                    // actions in the menu - lock the phone now, find where it
-                    // is - do not go anywhere.
-                    showChevron = !entry.destination.isAction,
-                ) {
-                    dialog.dismiss()
-                    onOpen(entry.destination)
-                }
-            },
-        )
-    }
-
-    dialog = AlertDialog.Builder(this)
-        .setView(
-            ScrollView(this).apply {
-                addView(content, LinearLayout.LayoutParams(MATCH, WRAP))
-            },
-        )
-        .setPositiveButton(android.R.string.ok, null)
-        .create()
-    dialog.show()
 }
