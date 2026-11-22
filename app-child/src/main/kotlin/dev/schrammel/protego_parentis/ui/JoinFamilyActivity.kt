@@ -125,6 +125,13 @@ class JoinFamilyActivity : ParentGatedActivity() {
     }
 
     /**
+     * The family a phone belongs to is its own business: what it is called,
+     * what code the next phone needs. Joining, leaving, exporting and moving
+     * are the parent's — those wait for the PIN.
+     */
+    override fun supportsReadOnly() = true
+
+    /**
      * Who has to prove themselves before touching this.
      *
      * The managed phone always. Everyone else once there is a family to change —
@@ -157,6 +164,9 @@ class JoinFamilyActivity : ParentGatedActivity() {
 
         if (settings.isUsable) {
             column.addView(screenTitle(getString(R.string.join_connected_title)))
+            if (!canEdit) {
+                column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+            }
             column.addView(connectedCard())
             reachabilityWarning?.let { warning ->
                 column.addView(
@@ -165,24 +175,26 @@ class JoinFamilyActivity : ParentGatedActivity() {
                     },
                 )
             }
-            column.addView(
-                actionButton().apply {
-                    setText(R.string.join_leave)
-                    layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                        .apply { topMargin = dimen(R.dimen.space_lg) }
-                    setOnClickListener { confirmLeave() }
-                },
-            )
-
-            if (RoleStore(this).roleOrChild == DeviceRole.PARENT) {
+            if (canEdit) {
                 column.addView(
                     actionButton().apply {
-                        setText(R.string.join_disband)
+                        setText(R.string.join_leave)
                         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-                            .apply { topMargin = dimen(R.dimen.space_sm) }
-                        setOnClickListener { confirmDisband() }
+                            .apply { topMargin = dimen(R.dimen.space_lg) }
+                        setOnClickListener { confirmLeave() }
                     },
                 )
+
+                if (RoleStore(this).roleOrChild == DeviceRole.PARENT) {
+                    column.addView(
+                        actionButton().apply {
+                            setText(R.string.join_disband)
+                            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+                                .apply { topMargin = dimen(R.dimen.space_sm) }
+                            setOnClickListener { confirmDisband() }
+                        },
+                    )
+                }
             }
 
         // The relay lives here rather than beside this screen. Which server
@@ -199,16 +211,18 @@ class JoinFamilyActivity : ParentGatedActivity() {
             ),
         )
 
-        addSection(
-            column,
-            getString(R.string.export_header),
-            listOf(
-                navigationRow(
-                    getString(R.string.export_title),
-                    getString(R.string.export_row_detail),
-                ) { askExportPassphrase() },
-            ),
-        )
+        if (canEdit) {
+            addSection(
+                column,
+                getString(R.string.export_header),
+                listOf(
+                    navigationRow(
+                        getString(R.string.export_title),
+                        getString(R.string.export_row_detail),
+                    ) { askExportPassphrase() },
+                ),
+            )
+        }
         return
         }
 
@@ -216,6 +230,14 @@ class JoinFamilyActivity : ParentGatedActivity() {
         column.addView(screenTitle(getString(R.string.join_title)))
         column.addView(bodyText(getString(R.string.join_intro)))
         if (onboarding) column.addView(captionText(getString(R.string.join_onboarding_hint)))
+
+        // Joining is a parent's act — it hands this phone the family's secrets.
+        // A read-only visit (the managed phone with a PIN set, no family yet)
+        // gets the explanation and the unlock banner, not the form.
+        if (!canEdit) {
+            column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+            return
+        }
 
         column.addView(sectionHeader(getString(R.string.join_token_header)))
         column.addView(tokenInput)

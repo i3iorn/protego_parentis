@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
@@ -92,24 +93,37 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         column.removeAllViews()
     }
 
+    /**
+     * The roster is visible to the family member it describes: who is trusted,
+     * who is waiting, what this phone's fingerprint is. Deciding — approving,
+     * renaming, revoking, even renaming this phone — is the parent's, and waits
+     * for the PIN.
+     */
+    override fun supportsReadOnly() = true
+
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.devices_title)))
         column.addView(bodyText(getString(R.string.devices_intro)))
+        if (!canEdit) {
+            column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+        }
 
         column.addView(sectionHeader(getString(R.string.devices_this_phone)))
         column.addView(thisPhone())
 
         val mayApprove = Enrolment.mayApprove(role(), roster.parents().size)
 
-        if (!mayApprove) {
+        if (!mayApprove || !canEdit) {
             // Said plainly rather than by an absent button: a screen that lists
-            // phones waiting and offers nothing looks broken.
+            // phones waiting and offers nothing looks broken. In read-only the
+            // pending cards are left off entirely — deciding is the PIN-gated
+            // act — and the standing text says whose decision it is.
             column.addView(sectionHeader(getString(R.string.devices_waiting)))
             column.addView(bodyText(getString(R.string.devices_parents_decide)))
         }
 
-        val pending = if (mayApprove) roster.pending else emptyList()
+        val pending = if (mayApprove && canEdit) roster.pending else emptyList()
         if (pending.isNotEmpty()) {
             column.addView(sectionHeader(getString(R.string.devices_waiting)))
             column.addView(captionText(getString(R.string.devices_waiting_hint)))
@@ -176,6 +190,9 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         addView(
             Button(this@FamilyDevicesActivity).apply {
                 setText(R.string.devices_rename_this)
+                // Naming this phone is an edit like any other: the roster's
+                // names are what a parent compares fingerprints against.
+                visibility = if (canEdit) View.VISIBLE else View.GONE
                 setOnClickListener { renameSelf(settings.deviceName) }
             },
         )
@@ -246,6 +263,7 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         addView(
             Button(context).apply {
                 setText(R.string.devices_let_ask_again)
+                visibility = if (canEdit) View.VISIBLE else View.GONE
                 setOnClickListener {
                     roster.unrefuse(FamilyDevicesActivity.idOf(id))
                     render()
@@ -258,8 +276,8 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         orientation = LinearLayout.VERTICAL
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
         setPadding(0, dimen(R.dimen.space_sm), 0, dimen(R.dimen.space_sm))
-        isClickable = true
-        setOnClickListener { manage(device) }
+        isClickable = canEdit
+        setOnClickListener { if (canEdit) manage(device) }
 
         addView(
             TextView(context).apply {
@@ -291,7 +309,7 @@ class FamilyDevicesActivity : ParentGatedActivity() {
         // Only the managed phone keeps the kind of log a crash would show up
         // in — a parent's own phone has never had a way to ask a family
         // member's phone what it has been doing without holding it.
-        if (device.role == SyncRole.CHILD) {
+        if (device.role == SyncRole.CHILD && canEdit) {
             addView(
                 Button(context).apply {
                     setText(R.string.devices_view_diagnostics)

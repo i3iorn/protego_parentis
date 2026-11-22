@@ -107,16 +107,51 @@ class SyncBackendActivity : ParentGatedActivity() {
         column.removeAllViews()
     }
 
+    /**
+     * The family's shape is the child's business too: who is in it, what it is
+     * called, where it meets. A managed phone renders all of it read-only and
+     * asks for the PIN only when something is about to change.
+     */
+    override fun supportsReadOnly() = true
+
     private fun render() {
         column.removeAllViews()
         column.addView(screenTitle(getString(R.string.backend_title)))
         column.addView(bodyText(getString(R.string.backend_intro)))
+        if (!canEdit) {
+            column.addView(readOnlyBanner { requestUnlock { onGatedContentVisible() } })
+        }
 
         val settings = config.load()
         if (!settings.isUsable) {
             // Nothing to move. Changing the address of a family this phone has not
             // joined would write settings that the next join overwrites anyway.
             column.addView(bodyText(getString(R.string.backend_not_connected)))
+            return
+        }
+
+        // Read-only: say where the family meets and how it authenticates, but
+        // show no field a credential is typed into — the inputs below are
+        // pre-filled with the stored secrets, and a read-only visit must not
+        // put those on screen.
+        if (!canEdit) {
+            column.addView(card {
+                addView(statRow(getString(R.string.backend_kind_header), labelFor(chosen)))
+                addView(statRow(getString(R.string.backend_server_header), settings.serverUrl))
+                addView(statRow(getString(R.string.backend_topic_header), settings.topic))
+                addView(
+                    statRow(
+                        getString(R.string.backend_auth_header),
+                        getString(
+                            when (settings.credentials) {
+                                is NtfyCredentials.Token -> R.string.backend_auth_token
+                                is NtfyCredentials.Basic -> R.string.backend_auth_basic
+                                is NtfyCredentials.None -> R.string.backend_auth_none
+                            },
+                        ),
+                    ),
+                )
+            })
             return
         }
 
