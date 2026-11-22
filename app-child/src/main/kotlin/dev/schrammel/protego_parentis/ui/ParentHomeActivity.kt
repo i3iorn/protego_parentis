@@ -14,6 +14,7 @@ import dev.schrammel.protego_parentis.audit.Audit
 import dev.schrammel.protego_parentis.model.AuditAction
 import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.BudgetLevel
+import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.sync.DailySummary
 import dev.schrammel.protego_parentis.sync.DailySummaryStore
@@ -24,6 +25,8 @@ import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.RosterStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.SyncGraph
+import dev.schrammel.protego_parentis.sync.core.DeviceId
+import dev.schrammel.protego_parentis.sync.core.KnownDevice
 import java.time.Instant
 
 /**
@@ -59,6 +62,15 @@ class ParentHomeActivity : ParentRoleActivity() {
 
     /** Null until this phone has successfully reached the topic in this session. */
     private var lastCheckedAt: Instant? = null
+
+    /**
+     * Which managed child's rules the dashboard's rows are about, when the
+     * roster holds more than one. Single-child families never see the selector
+     * — the constraint recorded on #43 — and a fresh render falls back to the
+     * first child, so a child removed from the family cannot leave a dangling
+     * selection behind.
+     */
+    private var selectedChildId: DeviceId? = null
 
 
     override fun onParentPhoneReady(savedInstanceState: Bundle?) {
@@ -134,6 +146,55 @@ class ParentHomeActivity : ParentRoleActivity() {
             },
         )
 
+        // P2: a per-child selector, and only when the roster actually holds
+        // more than one managed phone — the single-child family never sees a
+        // hint that a second could exist (#43). The selection decides which
+        // child the Rules rows below are about.
+        val children = RosterStore(this).children()
+        if (children.size > 1) {
+            if (children.none { it.id == selectedChildId }) selectedChildId = children.first().id
+            column.addView(childChips(children))
+        }
+
+        // P2 of the 1.9.0 UX plan: the two requests closest to expiring,
+        // answerable right here. The dashboard's whole question is "is anybody
+        // waiting on me?" — so when the answer is yes, the next thing on the
+        // screen is the thing they are waiting with.
+        val pendingRequests = inbox.pending().sortedBy { it.expiresAt }
+        if (configured && pendingRequests.isNotEmpty()) {
+            column.addView(sectionHeader(getString(R.string.parent_inbox_inline_header)))
+            pendingRequests.take(INLINE_REQUESTS).forEach { request ->
+                column.addView(
+                    inboxQuickCard(
+                        request,
+                        onApprove = {
+                            // A yes without a note is a yes.
+                            settleRequest(inbox, sync, request, RequestState.APPROVED, note = null)
+                            render()
+                        },
+                        onDeny = {
+                            // A denial is expected to carry a reason; the note
+                            // dialog is shared with the inbox.
+                            decisionDialog(R.string.inbox_deny) { note ->
+                                settleRequest(
+                                    inbox,
+                                    sync,
+                                    request,
+                                    RequestState.DENIED,
+                                    note = note.trim().takeIf(String::isNotEmpty),
+                                )
+                                render()
+                            }
+                        },
+                    ),
+                )
+            }
+            val more = pendingRequests.size - INLINE_REQUESTS
+            if (more > 0) {
+                column.addView(captionText(getString(R.string.parent_inbox_more, more)))
+            }
+        }
+
         // A placeholder now, filled in when the answer arrives. Reading the
         // roster touches preference files, and the alternative — holding the
         // whole screen back until it returns — would make the common case, a
@@ -169,6 +230,36 @@ class ParentHomeActivity : ParentRoleActivity() {
         this.disabledByChild = disabledByChild
     }
 
+    /** The chips for a multi-child family: one per managed phone, one selected. */
+    private fun childChips(children: List<KnownDevice>): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
+        }
+        children.forEach { child ->
+            row.addView(
+                android.widget.Button(this).apply {
+                    text = child.name
+                    textSize = 14f
+                    isAllCaps = false
+                    val selected = child.id == selectedChildId
+                    setBackgroundColor(
+                        getColor(if (selected) R.color.state_ok else R.color.text_secondary),
+                    )
+                    setTextColor(getColor(R.color.text_primary))
+                    layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
+                        marginEnd = dimen(R.dimen.space_xs)
+                    }
+                    setOnClickListener {
+                        selectedChildId = child.id
+                        render()
+                    }
+                },
+            )
+        }
+        return row
+    }
+
     /**
      * Where this screen leads, when the reader is in the menu.
      *
@@ -191,7 +282,9 @@ class ParentHomeActivity : ParentRoleActivity() {
             HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
             HomeDestination.LOCK_NOW -> confirmLock()
             HomeDestination.LOCATE -> locate()
-            HomeDestination.RULES -> RulesEntry.launch(this)
+            // "Rules" opens the map: every control, its state, and the worked
+            // examples one tap away (P2.6).
+            HomeDestination.RULES -> startActivity(RulesOverviewActivity.intent(this))
             HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
             HomeDestination.CATEGORIES,
             HomeDestination.APP_LIMITS,
@@ -204,7 +297,9 @@ class ParentHomeActivity : ParentRoleActivity() {
             HomeDestination.BONUS,
             HomeDestination.REQUEST_INBOX,
             HomeDestination.AUTO_APPROVE,
-            -> RulesEntry.launchControl(this, destination)
+            -> selectedChildId?.let {
+                startActivity(RulesEntry.controlIntentFor(this, destination, it))
+            } ?: RulesEntry.launchControl(this, destination)
             HomeDestination.THE_OTHER_PHONE -> startActivity(ParentDeviceActivity.intent(this))
             HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
@@ -401,6 +496,9 @@ class ParentHomeActivity : ParentRoleActivity() {
     companion object {
         /** How long since the last telemetry before a quiet inbox stops looking like good news. */
         private val STALE_CHECKIN_THRESHOLD: java.time.Duration = java.time.Duration.ofHours(24)
+
+        /** How many pending requests the dashboard answers inline; the rest wait in the inbox. */
+        private const val INLINE_REQUESTS = 2
 
         fun intent(context: Context) = Intent(context, ParentHomeActivity::class.java)
     }

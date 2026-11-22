@@ -1576,4 +1576,13 @@
     <!-- The relay's last response, on the backend screen. -->
     <string name="backend_last_response">Last server response</string>
     <string name="backend_credentials_not_stored">The phone could not store the credentials securely, so nothing was saved. They are not in use.</string>
+    <string name="backend_auth_reachable">The relay accepts these credentials.</string>
+    <string name="backend_auth_unreachable">The relay did not accept these credentials.</string>
+
+    <!-- The parent dashboard\'s inline inbox and the rules overview (v1.9.0 UX plan). -->
+    <string name="parent_inbox_inline_header">Waiting for an answer</string>
+    <string name="parent_inbox_more">%1$d more waiting — see the inbox</string>
+    <string name="rules_state_on">On</string>
+    <string name="rules_state_off">Off</string>
+    <string name="rules_tutorial_row_detail">Worked examples of what rule combinations add up to</string>
 </resources>

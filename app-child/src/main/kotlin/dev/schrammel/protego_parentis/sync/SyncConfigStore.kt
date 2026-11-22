@@ -280,10 +280,15 @@ class SyncConfigStore(context: Context) {
         return when {
             token?.isNotBlank() == true -> {
                 val sealed = SecretVault.seal(token)
-                sealed?.let {
-                    prefs.edit { putString(KEY_NTFY_TOKEN_SEALED, it) }
+                if (sealed == null) {
+                    // Sealing failed: writing nothing and claiming success would
+                    // leave the family running unauthenticated while the screen
+                    // says the credentials are in. Call the save what it is.
+                    false
+                } else {
+                    prefs.edit { putString(KEY_NTFY_TOKEN_SEALED, sealed) }
+                    true
                 }
-                true
             }
             username?.isNotBlank() == true && password?.isNotBlank() == true -> {
                 val userSealed = SecretVault.seal(username)

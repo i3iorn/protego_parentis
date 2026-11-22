@@ -30,6 +30,7 @@ internal fun Activity.navigationRow(
     title: String,
     subtitle: String,
     showChevron: Boolean = true,
+    trailing: android.view.View? = null,
     onClick: () -> Unit,
 ): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.HORIZONTAL
@@ -60,6 +61,11 @@ internal fun Activity.navigationRow(
             )
         },
     )
+    // A trailing extra — a state chip, a count — sits between the text and
+    // the chevron, so it reads as part of the row rather than an afterthought.
+    if (trailing != null) {
+        addView(trailing)
+    }
     if (showChevron) {
         addView(
             TextView(context).apply {
@@ -90,4 +96,9 @@ internal fun Activity.row(
     @StringRes detailRes: Int,
     showChevron: Boolean = true,
     onClick: () -> Unit,
-): LinearLayout = navigationRow(getString(titleRes), getString(detailRes), showChevron, onClick)
+): LinearLayout = navigationRow(
+    title = getString(titleRes),
+    subtitle = getString(detailRes),
+    showChevron = showChevron,
+    onClick = onClick,
+)

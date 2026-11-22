@@ -1207,6 +1207,14 @@
     <string name="drawer_no_match">Inget med det namnet. Testa en del av ett ord.</string>
     <string name="backend_last_response">Reläets senaste svar</string>
     <string name="backend_credentials_not_stored">Telefonen kunde inte lagra uppgifterna säkert, så inget sparades. De används inte.</string>
+    <string name="backend_auth_reachable">Reläet godtar dessa uppgifter.</string>
+    <string name="backend_auth_unreachable">Reläet godtog inte dessa uppgifter.</string>
+
+    <string name="parent_inbox_inline_header">Väntar på svar</string>
+    <string name="parent_inbox_more">%1$d fler väntar — öppna inkorgen</string>
+    <string name="rules_state_on">På</string>
+    <string name="rules_state_off">Av</string>
+    <string name="rules_tutorial_row_detail">Genomgångna exempel på vad regelkombinationer blir</string>
     <string name="audit_backend_changed">Meddelanden går nu via %1$s</string>
 
     <string name="join_no_keystore">Telefonen vill inte lagra lösenfrasen säkert, så den har inte sparats. Det brukar lösa sig när skärmlåset ställts in på nytt.</string>

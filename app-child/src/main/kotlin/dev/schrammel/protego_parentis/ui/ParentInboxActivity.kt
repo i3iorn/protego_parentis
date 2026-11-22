@@ -6,9 +6,6 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.TextView
 import dev.schrammel.protego_parentis.R
-import dev.schrammel.protego_parentis.audit.Audit
-import dev.schrammel.protego_parentis.model.AuditAction
-import dev.schrammel.protego_parentis.model.AuditActor
 import dev.schrammel.protego_parentis.model.RequestState
 import dev.schrammel.protego_parentis.sync.InboxStore
 import dev.schrammel.protego_parentis.sync.IncomingRequest
@@ -153,7 +150,9 @@ class ParentInboxActivity : ParentRoleActivity() {
 
     /**
      * Both answers offer a note, for the same reason the child's side does: a
-     * denial with a reason is a conversation, a bare no is a wall.
+     * denial with a reason is a conversation, a bare no is a wall. The record
+     * itself — settle plus audit — is shared with the dashboard's quick cards,
+     * so the two surfaces can never drift apart in what they record.
      */
     private fun decide(request: IncomingRequest, state: RequestState) {
         val label = if (state == RequestState.APPROVED) {
@@ -163,23 +162,7 @@ class ParentInboxActivity : ParentRoleActivity() {
         }
 
         decisionDialog(label) { text ->
-            val note = text.trim().takeIf(String::isNotEmpty)
-            // No separate decision message. It carried the *replicated* id,
-            // which the child looks up as one of its own request ids and never
-            // matches — so it was a wasted message that did nothing, alongside
-            // the write below that actually answers the request.
-            inbox.settle(request.id, state, note, decidedBy = sync.settings().deviceName)
-            Audit.record(
-                context = this,
-                actor = AuditActor.PARENT,
-                action = if (state == RequestState.APPROVED) {
-                    AuditAction.REQUEST_APPROVED
-                } else {
-                    AuditAction.REQUEST_DENIED
-                },
-                subject = label(request),
-                after = Audit.minutes(request.minutes),
-            )
+            settleRequest(inbox, sync, request, state, note = text.trim().takeIf(String::isNotEmpty))
             render()
         }
     }

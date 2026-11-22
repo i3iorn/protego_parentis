@@ -1,6 +1,7 @@
 package dev.schrammel.protego_parentis.ui
 
 import android.app.Activity
+import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -212,6 +213,27 @@ internal fun Activity.statRow(label: String, value: String): LinearLayout =
  * didn't". [duration] defaults to the ordinary case; pass `Toast.LENGTH_LONG`
  * for a message worth more time to read, such as an error explaining itself.
  */
+
+/**
+ * A small state marker at the end of a row: a coloured dot and one word.
+ *
+ * Not a background pill — the app's rows are plain text over cards, and a
+ * floating capsule on top of that reads as a different design language. A dot
+ * takes its colour from the state (green on, amber off, red broken) and stays
+ * legible at a glance, which is the whole job.
+ */
+internal fun Activity.statusChip(text: String, color: Int): TextView =
+    TextView(this).apply {
+        // The dot is part of the text rather than a drawable: one view, no
+        // assets, and the screen reader reads the words and skips the glyph.
+        this.text = "\u25CF " + text
+        setTextColor(color)
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER_VERTICAL
+        minWidth = dimen(R.dimen.touch_target)
+        contentDescription = text
+    }
+
 internal fun Activity.toast(message: String, duration: Int = Toast.LENGTH_SHORT) =
     Toast.makeText(this, message, duration).show()
 

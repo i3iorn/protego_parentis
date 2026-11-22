@@ -139,6 +139,9 @@
             android:parentActivityName=".ui.ParentHomeActivity" />
 
         <activity
+            android:name=".ui.RulesOverviewActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.ParentInboxActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />

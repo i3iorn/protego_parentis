@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -54,6 +55,9 @@ class SyncBackendActivity : ParentGatedActivity() {
 
     /** Null until a test has been run in this visit. */
     private var testResult: String? = null
+
+    /** Whether the last test — typed or stored credentials — reached the relay. */
+    private var lastReachable: Boolean? = null
 
     /** Auth type selector and inputs (persisted across renders). */
     private lateinit var authTypeRadioGroup: RadioGroup
@@ -241,6 +245,29 @@ class SyncBackendActivity : ParentGatedActivity() {
                 addView(captionText(getString(R.string.backend_token_detail)))
                 addView(usernameInput)
                 addView(passwordInput)
+
+                // The box itself says what the last test found: green when the
+                // relay answered with these credentials, red when it did not.
+                // Untouched until something was tested — an untested box says
+                // nothing rather than guessing.
+                lastReachable?.let { reachable ->
+                    val color = getColor(if (reachable) R.color.state_ok else R.color.state_critical)
+                    addView(
+                        View(this@SyncBackendActivity).apply {
+                            setBackgroundColor(color)
+                            layoutParams = LinearLayout.LayoutParams(MATCH, dimen(R.dimen.space_xs))
+                                .apply { topMargin = dimen(R.dimen.space_sm) }
+                        },
+                    )
+                    addView(
+                        captionText(
+                            getString(
+                                if (reachable) R.string.backend_auth_reachable
+                                else R.string.backend_auth_unreachable,
+                            ),
+                        ).apply { setTextColor(color) },
+                    )
+                }
             },
         )
 
@@ -325,6 +352,7 @@ class SyncBackendActivity : ParentGatedActivity() {
         sync.testReachable(token, credentials) { result ->
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                lastReachable = result == "reachable"
                 testResult = getString(R.string.backend_test_result, result)
                 render()
             }
@@ -404,11 +432,23 @@ class SyncBackendActivity : ParentGatedActivity() {
     private fun confirmMove() {
         val token = proposed() ?: return
 
-        confirmDialog(
-            R.string.backend_save,
-            getString(R.string.backend_move_confirm, FamilyTokens.encode(token)),
-            R.string.backend_save,
-        ) {
+        // Changing the address re-issues the family code and needs a warning.
+        // Saving credentials on the address the family already uses changes
+        // nothing anyone else can see — it just saves, and the tint below says
+        // whether the relay accepted them.
+        val previous = config.load()
+        val moves = token.kind != previous.transport ||
+            token.serverUrl != previous.serverUrl ||
+            token.topic != previous.topic
+        if (moves) {
+            confirmDialog(
+                R.string.backend_save,
+                getString(R.string.backend_move_confirm, FamilyTokens.encode(token)),
+                R.string.backend_save,
+            ) {
+                move(token)
+            }
+        } else {
             move(token)
         }
     }
@@ -433,6 +473,26 @@ class SyncBackendActivity : ParentGatedActivity() {
             // the family running without credentials, and the 403s that follow
             // look exactly like the server having changed its mind.
             toast(R.string.backend_credentials_not_stored)
+        } else {
+            // Verify against the store, not the intent: read back what was
+            // sealed and re-test the relay with exactly that. The box then
+            // says whether the family is, as of this save, authenticated —
+            // which is the thing the person pressing Save wants to know.
+            val savedSettings = config.load()
+            val savedIsEmpty = savedSettings.credentials is NtfyCredentials.None
+            val typedIsEmpty = typedCredentials() is NtfyCredentials.None
+            if (savedIsEmpty && !typedIsEmpty) {
+                toast(R.string.backend_credentials_not_stored)
+            } else {
+                sync.testReachable(token) { result ->
+                    runOnUiThread {
+                        if (isFinishing || isDestroyed) return@runOnUiThread
+                        lastReachable = result == "reachable"
+                        testResult = getString(R.string.backend_test_result, result)
+                        render()
+                    }
+                }
+            }
         }
         Audit.record(
             context = this,
