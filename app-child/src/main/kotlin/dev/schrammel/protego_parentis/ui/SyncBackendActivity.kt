@@ -22,6 +22,7 @@ import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.FamilyTokens
 import dev.schrammel.protego_parentis.sync.core.TransportKind
+import dev.schrammel.protego_parentis.sync.LastServerResponse
 import dev.schrammel.protego_parentis.sync.NtfyCredentials
 
 /**
@@ -251,6 +252,18 @@ class SyncBackendActivity : ParentGatedActivity() {
         )
         testResult?.let { column.addView(captionText(it)) }
 
+        // A refused sync and a broken one look identical from the app's side;
+        // the difference lives in the response itself — which proxy answered,
+        // what it said. Small link rather than a permanent panel: it is
+        // debugging help, not furniture.
+        LastServerResponse.peek()?.let { snapshot ->
+            column.addView(
+                captionText(getString(R.string.backend_last_response)).apply {
+                    setOnClickListener { showLastResponse(snapshot) }
+                },
+            )
+        }
+
         column.addView(
             actionButton().apply {
                 setText(R.string.backend_save)
@@ -312,6 +325,46 @@ class SyncBackendActivity : ParentGatedActivity() {
                 render()
             }
         }
+    }
+
+    /**
+     * What the relay actually answered, in a scrollable, monospace view.
+     *
+     * Monospace because status lines, headers and JSON bodies read better in
+     * columns; selectable because a response is exactly what a support
+     * conversation wants pasted into it. No credentials are in here by
+     * construction — [LastServerResponse] drops them.
+     */
+    private fun showLastResponse(snapshot: LastServerResponse.Snapshot) {
+        val text = buildString {
+            appendLine(snapshot.request)
+            appendLine(
+                when {
+                    snapshot.status >= 0 -> "status ${snapshot.status} (${snapshot.phase})"
+                    else -> "no response (${snapshot.phase})"
+                },
+            )
+            if (snapshot.headers.isNotBlank()) {
+                appendLine()
+                appendLine(snapshot.headers)
+            }
+            if (snapshot.body.isNotBlank()) {
+                appendLine()
+                appendLine(snapshot.body)
+            }
+        }
+        val view = TextView(this).apply {
+            setText(text)
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            val pad = dimen(R.dimen.screen_padding)
+            setPadding(pad, pad, pad, 0)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.backend_last_response)
+            .setView(android.widget.ScrollView(this).apply { addView(view) })
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     /** The credentials currently on screen, in the mode the radio buttons select. */

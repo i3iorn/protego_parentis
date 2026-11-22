@@ -1572,4 +1572,7 @@
     <!-- The home screens' navigation drawer. -->
     <string name="drawer_search_hint">Jump to…</string>
     <string name="drawer_no_match">Nothing by that name. Try part of a word.</string>
+
+    <!-- The relay's last response, on the backend screen. -->
+    <string name="backend_last_response">Last server response</string>
 </resources>

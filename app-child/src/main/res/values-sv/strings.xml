@@ -1205,6 +1205,7 @@
     <string name="restore_done">Familjen återställd. Den här telefonen väntar nu på en förälders godkännande, som vilken ny telefon som helst.</string>
     <string name="drawer_search_hint">Hoppa till…</string>
     <string name="drawer_no_match">Inget med det namnet. Testa en del av ett ord.</string>
+    <string name="backend_last_response">Reläets senaste svar</string>
     <string name="audit_backend_changed">Meddelanden går nu via %1$s</string>
 
     <string name="join_no_keystore">Telefonen vill inte lagra lösenfrasen säkert, så den har inte sparats. Det brukar lösa sig när skärmlåset ställts in på nytt.</string>

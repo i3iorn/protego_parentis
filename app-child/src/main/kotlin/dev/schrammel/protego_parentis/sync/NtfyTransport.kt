@@ -51,6 +51,7 @@ class NtfyTransport(
         connection.outputStream.use { it.write(envelope.toByteArray(Charsets.UTF_8)) }
 
         val code = connection.responseCode
+        record(connection, code, phase = "publish")
         connection.disconnect()
 
         if (code in 200..299) {
@@ -61,6 +62,7 @@ class NtfyTransport(
     } catch (e: Exception) {
         // Offline is the normal case, not an error worth shouting about.
         Log.d(TAG, "Publish failed", e)
+        recordException(e, "publish")
         TransportResult.Failed(e.message ?: "could not reach the server", classify(e))
     }
 
@@ -77,15 +79,18 @@ class NtfyTransport(
 
         val code = connection.responseCode
         if (code !in 200..299) {
+            record(connection, code, phase = "poll")
             connection.disconnect()
             TransportResult.Failed("server returned $code", TransportFailureKind.HTTP_ERROR, code)
         } else {
             val envelopes = connection.inputStream.bufferedReader().use(::readEnvelopes)
+            record(connection, code, phase = "poll", body = "")
             connection.disconnect()
             TransportResult.Ok(envelopes)
         }
     } catch (e: Exception) {
         Log.d(TAG, "Poll failed", e)
+        recordException(e, "poll")
         TransportResult.Failed(e.message ?: "could not reach the server", classify(e))
     }
 
@@ -94,6 +99,60 @@ class NtfyTransport(
         is SocketTimeoutException -> TransportFailureKind.TIMEOUT
         is UnknownHostException -> TransportFailureKind.UNREACHABLE
         else -> TransportFailureKind.OTHER
+    }
+
+    /**
+     * Keeps the last response for the backend screen's "last server response"
+     * view — see [LastServerResponse] for why. Never reads a 2xx body (a poll's
+     * body can be enormous and its status says enough) and never stores an
+     * Authorization header.
+     */
+    private fun record(
+        connection: HttpURLConnection,
+        code: Int,
+        phase: String,
+        body: String? = null,
+    ) {
+        val resolved = body ?: readBody(connection, code)
+        LastServerResponse.record(
+            LastServerResponse.Snapshot(
+                at = Instant.now(),
+                request = "${connection.requestMethod} ${connection.url}",
+                status = code,
+                headers = LastServerResponse.formatHeaders(connection.headerFields.orEmpty()),
+                body = resolved,
+                phase = phase,
+            ),
+        )
+    }
+
+    private fun recordException(e: Exception, phase: String) {
+        LastServerResponse.record(
+            LastServerResponse.Snapshot(
+                at = Instant.now(),
+                request = "$phase $serverUrl/$topic (no response arrived)",
+                status = -1,
+                headers = "",
+                body = "${e.javaClass.simpleName}: ${e.message ?: "no message"}",
+                phase = phase,
+            ),
+        )
+    }
+
+    /** Reads at most [LastServerResponse.MAX_BODY_CHARS] of an error body. */
+    private fun readBody(connection: HttpURLConnection, code: Int): String = try {
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        stream?.bufferedReader()?.use { reader ->
+            val buffer = StringBuilder()
+            while (buffer.length < LastServerResponse.MAX_BODY_CHARS) {
+                val next = reader.read()
+                if (next < 0) break
+                buffer.append(next.toChar())
+            }
+            LastServerResponse.body(buffer.toString())
+        } ?: ""
+    } catch (_: Exception) {
+        ""
     }
 
     /**
