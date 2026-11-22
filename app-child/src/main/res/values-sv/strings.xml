@@ -1168,6 +1168,41 @@
     <string name="backend_move_confirm">Telefonen börjar använda den nya adressen direkt. Alla andra telefoner behöver den här koden:\n\n%1$s</string>
     <string name="backend_moved_title">Flyttad</string>
     <string name="backend_moved_body">Ge koden till alla andra telefoner i familjen. Tills de har den kan de inte höra den här.</string>
+    <string name="backend_auth_header">Autentisering</string>
+    <string name="backend_auth_hint">Hur telefonen autentiserar mot ntfy-relät</string>
+    <string name="backend_token_hint">Bearer-token (Authorization: Bearer ***)</string>
+    <string name="backend_token_detail">Klistra in en token, visas som *** i loggar. Skickas som Authorization: Bearer-huvud till relät.</string>
+    <string name="backend_username_hint">Användarnamn</string>
+    <string name="backend_password_hint">Lösenord</string>
+    <string name="backend_auth_none">Ingen autentisering</string>
+    <string name="backend_auth_token">Bearer-token</string>
+    <string name="backend_auth_basic">Användarnamn och lösenord</string>
+    <string name="backend_topic_header">Kanal</string>
+    <string name="backend_topic_hint">dementor-…</string>
+    <string name="backend_topic_detail">Familjens privata kanalnamn. Att ändra det flyttar hela familjen — varje telefon behöver den nya kod som visas när du sparar. Nya kanaler börjar med dementor-.</string>
+    <string name="backend_suggest_topic">Föreslå en ny kanal</string>
+
+    <string name="export_header">Ta med familjen</string>
+    <string name="export_title">Exportera familjen</string>
+    <string name="export_row_detail">Spara en krypterad fil med allt den här familjen behöver — server, kanal, lösenfras och reläinloggning — för att återställa den på en annan telefon.</string>
+    <string name="export_dialog_title">Exportera familjen</string>
+    <string name="export_action">Exportera</string>
+    <string name="export_passphrase_hint">Lösenfras för exportfilen</string>
+    <string name="export_passphrase_detail">Filen innehåller familjens lösenfras och reläinloggning, så den krypteras med en egen lösenfras. Välj en du inte använt tidigare, och förvara den åtskild från filen.</string>
+    <string name="export_passphrase_too_short">Använd minst %1$d tecken.</string>
+    <string name="export_failed">Familjen kunde inte förseglas i en fil.</string>
+    <string name="export_file_name">dementor-family.txt</string>
+    <string name="export_done">Exporten sparad. Filen är värdelös utan lösenfrasen.</string>
+    <string name="export_file_error">Filen kunde inte skrivas. Inget sparades.</string>
+
+    <string name="restore_header">Har du en fil?</string>
+    <string name="restore_title">Återställ från en export</string>
+    <string name="restore_row_detail">Gå med i familjen från en exporterad fil i stället för att skriva koden och lösenfrasen.</string>
+    <string name="restore_dialog_title">Återställ familjen</string>
+    <string name="restore_action">Återställ</string>
+    <string name="restore_bad_file">Den filen är inte en familjeexport.</string>
+    <string name="restore_open_failed">Exporten gick inte att öppna — stämmer lösenfrasen, och är filen hel?</string>
+    <string name="restore_done">Familjen återställd. Den här telefonen väntar nu på en förälders godkännande, som vilken ny telefon som helst.</string>
     <string name="audit_backend_changed">Meddelanden går nu via %1$s</string>
 
     <string name="join_no_keystore">Telefonen vill inte lagra lösenfrasen säkert, så den har inte sparats. Det brukar lösa sig när skärmlåset ställts in på nytt.</string>

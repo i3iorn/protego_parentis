@@ -526,16 +526,23 @@ class SyncPublisher(context: Context, private val signer: Signer = KeystoreSigne
      * catches is a mistyped host, which otherwise produces a family that looks
      * connected, hears nothing, and is indistinguishable from a quiet week.
      */
-    fun testReachable(token: FamilyToken, onFinished: (String) -> Unit) {
-            SyncKeying.execute {
-                val current = config.load()
-                val transport = Transports.of(
-                    current.copy(
-                        transport = token.kind,
-                        serverUrl = token.serverUrl,
-                        topic = token.topic,
-                    ),
-                )
+    fun testReachable(
+        token: FamilyToken,
+        credentials: NtfyCredentials? = null,
+        onFinished: (String) -> Unit,
+    ) {
+        SyncKeying.execute {
+            val current = config.load()
+            val transport = Transports.of(
+                current.copy(
+                    transport = token.kind,
+                    serverUrl = token.serverUrl,
+                    topic = token.topic,
+                    // The credentials being tried, not necessarily the stored ones —
+                    // the backend screen tests what was typed before saving it.
+                    credentials = credentials ?: current.credentials,
+                ),
+            )
                 when (val result = transport.poll(Instant.now().minusSeconds(POLL_OVERLAP_SECONDS))) {
                     is TransportResult.Ok -> onFinished("reachable")
                     is TransportResult.Failed -> onFinished(result.message)

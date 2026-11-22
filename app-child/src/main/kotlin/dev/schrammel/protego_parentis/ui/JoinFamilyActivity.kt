@@ -12,6 +12,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.audit.Audit
@@ -21,12 +23,15 @@ import dev.schrammel.protego_parentis.model.Passphrases
 import dev.schrammel.protego_parentis.security.DeviceRole
 import dev.schrammel.protego_parentis.security.PinLock
 import dev.schrammel.protego_parentis.security.RoleStore
+import dev.schrammel.protego_parentis.sync.NtfyCredentials
 import dev.schrammel.protego_parentis.sync.RealtimeSyncService
 import dev.schrammel.protego_parentis.sync.SyncConfigStore
 import dev.schrammel.protego_parentis.sync.SyncCoordinator
 import dev.schrammel.protego_parentis.sync.SyncGraph
 import dev.schrammel.protego_parentis.sync.SyncSettings
 import dev.schrammel.protego_parentis.sync.core.Band
+import dev.schrammel.protego_parentis.sync.core.FamilyExport
+import dev.schrammel.protego_parentis.sync.core.FamilyExports
 import dev.schrammel.protego_parentis.sync.core.FamilyToken
 import dev.schrammel.protego_parentis.sync.core.FamilyTokens
 import dev.schrammel.protego_parentis.sync.core.MessageCrypto
@@ -70,6 +75,12 @@ class JoinFamilyActivity : ParentGatedActivity() {
 
     /** Set once a post-join reachability check comes back unreachable; null otherwise. */
     private var reachabilityWarning: String? = null
+
+    /** A sealed export waiting for the person to pick where to save it. */
+    private var exportEnvelope: String? = null
+
+    /** An export file body waiting for its passphrase. */
+    private var pendingRestore: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -187,7 +198,18 @@ class JoinFamilyActivity : ParentGatedActivity() {
                 ) { startActivity(SyncBackendActivity.intent(this)) },
             ),
         )
-            return
+
+        addSection(
+            column,
+            getString(R.string.export_header),
+            listOf(
+                navigationRow(
+                    getString(R.string.export_title),
+                    getString(R.string.export_row_detail),
+                ) { askExportPassphrase() },
+            ),
+        )
+        return
         }
 
         if (onboarding) column.addView(stepIndicator(3))
@@ -224,6 +246,17 @@ class JoinFamilyActivity : ParentGatedActivity() {
                     .apply { topMargin = dimen(R.dimen.space_md) }
                 setOnClickListener { join() }
             },
+        )
+
+        addSection(
+            column,
+            getString(R.string.restore_header),
+            listOf(
+                navigationRow(
+                    getString(R.string.restore_title),
+                    getString(R.string.restore_row_detail),
+                ) { pickRestoreFile.launch(arrayOf("*/*")) },
+            ),
         )
 
         column.addView(sectionHeader(getString(R.string.join_start_header)))
@@ -377,6 +410,154 @@ class JoinFamilyActivity : ParentGatedActivity() {
             return
         }
         connect(token, passphraseInput.text.toString())
+    }
+
+    // ---------- export ----------
+
+    /**
+     * Asks what encrypts the export file.
+     *
+     * Deliberately a separate passphrase from the family's, and typed rather
+     * than reused: the file is the one artifact likely to be emailed or left in
+     * a downloads folder, and a single secret protecting both the topic and the
+     * file would mean one leaked passphrase compromises both at once.
+     */
+    private fun askExportPassphrase() {
+        val input = EditText(this).apply {
+            hint = getString(R.string.export_passphrase_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.export_dialog_title)
+            .setMessage(R.string.export_passphrase_detail)
+            .setView(input)
+            .setPositiveButton(R.string.export_action, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val passphrase = input.text.toString()
+            if (passphrase.length < MessageCrypto.MIN_PASSPHRASE_LENGTH) {
+                input.error = getString(
+                    R.string.export_passphrase_too_short,
+                    MessageCrypto.MIN_PASSPHRASE_LENGTH,
+                )
+                return@setOnClickListener
+            }
+            val settings = config.load()
+            val envelope = runCatching {
+                FamilyExports.seal(
+                    FamilyExport(
+                        token = FamilyToken(settings.transport, settings.serverUrl, settings.topic),
+                        passphrase = settings.passphrase,
+                        relayToken = (settings.credentials as? NtfyCredentials.Token)?.token.orEmpty(),
+                        relayUsername = (settings.credentials as? NtfyCredentials.Basic)?.username.orEmpty(),
+                        relayPassword = (settings.credentials as? NtfyCredentials.Basic)?.password.orEmpty(),
+                    ),
+                    passphrase,
+                )
+            }.getOrElse {
+                toast(R.string.export_failed)
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+            exportEnvelope = envelope
+            createExportFile.launch(getString(R.string.export_file_name))
+        }
+    }
+
+    private val createExportFile = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        val envelope = exportEnvelope
+        exportEnvelope = null
+        if (uri == null || envelope == null) return@registerForActivityResult
+        val written = runCatching {
+            contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(envelope.toByteArray(Charsets.UTF_8))
+            } ?: throw IllegalStateException("no stream")
+        }.isSuccess
+        Toast.makeText(
+            this,
+            if (written) R.string.export_done else R.string.export_file_error,
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    // ---------- restore ----------
+
+    private val pickRestoreFile = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val body = runCatching {
+            contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        }.getOrNull()
+        if (body.isNullOrBlank()) {
+            toast(R.string.restore_bad_file)
+            return@registerForActivityResult
+        }
+        pendingRestore = body
+        askRestorePassphrase()
+    }
+
+    /** Same shape as the export dialog, and the same minimum length. */
+    private fun askRestorePassphrase() {
+        val input = EditText(this).apply {
+            hint = getString(R.string.export_passphrase_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.restore_dialog_title)
+            .setView(input)
+            .setPositiveButton(R.string.restore_action, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val body = pendingRestore ?: return@setOnClickListener
+            val export = runCatching {
+                FamilyExports.open(body, input.text.toString())
+            }.getOrNull()
+            when {
+                export == null -> input.error = getString(R.string.restore_open_failed)
+                !config.canKeepSecrets() -> {
+                    dialog.dismiss()
+                    toast(R.string.join_no_keystore)
+                }
+                else -> {
+                    dialog.dismiss()
+                    pendingRestore = null
+                    restore(export)
+                }
+            }
+        }
+    }
+
+    /**
+     * Joins the family the export describes.
+     *
+     * Identical in effect to typing the code and the passphrase by hand: the
+     * phone arrives as a new device — the export carries no signing key — and
+     * waits in the enrolment queue like any other newcomer.
+     */
+    private fun restore(export: FamilyExport) {
+        sync.join(export.token, export.passphrase)
+        config.saveCredentials(
+            token = export.relayToken.takeIf { it.isNotBlank() },
+            username = export.relayUsername.takeIf { it.isNotBlank() },
+            password = export.relayPassword.takeIf { it.isNotBlank() },
+        )
+        export.deviceName.trim().takeIf { it.isNotBlank() }?.let { config.deviceName = it }
+        Audit.record(
+            context = this,
+            actor = AuditActor.PARENT,
+            action = AuditAction.SYNC_CONFIGURED,
+            after = Audit.flag(true),
+        )
+        sync.announceSelf(force = true)
+        RealtimeSyncService.start(this)
+        reachabilityWarning = null
+        Toast.makeText(this, R.string.restore_done, Toast.LENGTH_LONG).show()
+        render()
     }
 
     /** Sets a form error that stays on screen, unlike a toast that is gone by the time someone looks. */

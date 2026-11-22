@@ -1540,4 +1540,32 @@
     <string name="backend_auth_none">No authentication</string>
     <string name="backend_auth_token">Bearer token</string>
     <string name="backend_auth_basic">Username and password</string>
+    <string name="backend_topic_header">Topic</string>
+    <string name="backend_topic_hint">dementor-…</string>
+    <string name="backend_topic_detail">The family’s private topic name. Changing it moves the whole family — every phone needs the new code shown after saving. New topics start with dementor-.</string>
+    <string name="backend_suggest_topic">Suggest a new topic</string>
+
+    <!-- Export a family for migrating to a new phone. -->
+    <string name="export_header">Take the family with you</string>
+    <string name="export_title">Export family</string>
+    <string name="export_row_detail">Save an encrypted file with everything this family needs — server, topic, passphrase and relay sign-in — to restore it on another phone.</string>
+    <string name="export_dialog_title">Export family</string>
+    <string name="export_action">Export</string>
+    <string name="export_passphrase_hint">Passphrase for the export file</string>
+    <string name="export_passphrase_detail">The file holds this family’s passphrase and relay sign-in, so it is encrypted with its own passphrase. Choose one you have not used elsewhere, and keep it apart from the file.</string>
+    <string name="export_passphrase_too_short">Use at least %1$d characters.</string>
+    <string name="export_failed">The family could not be sealed into a file.</string>
+    <string name="export_file_name">dementor-family.txt</string>
+    <string name="export_done">Export saved. The file is useless without the passphrase.</string>
+    <string name="export_file_error">The file could not be written. Nothing was saved.</string>
+
+    <!-- Restore a family from an exported file. -->
+    <string name="restore_header">Have a file?</string>
+    <string name="restore_title">Restore from an export</string>
+    <string name="restore_row_detail">Join a family from an exported file instead of typing the code and passphrase.</string>
+    <string name="restore_dialog_title">Restore family</string>
+    <string name="restore_action">Restore</string>
+    <string name="restore_bad_file">That file is not a family export.</string>
+    <string name="restore_open_failed">The export would not open — is the passphrase right, and is the file complete?</string>
+    <string name="restore_done">Family restored. This phone now waits for a parent’s approval, like any new device.</string>
 </resources>

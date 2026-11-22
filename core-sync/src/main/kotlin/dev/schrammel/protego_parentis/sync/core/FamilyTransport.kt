@@ -106,6 +106,14 @@ data class FamilyToken(
     val serverUrl: String,
     val topic: String,
 ) {
+    /**
+     * Whether this token would be accepted. The primary constructor refuses a
+     * bad one outright; this is for validating values that arrived as strings
+     * before paying for the construction, or for screening an old instance.
+     */
+    val isValid: Boolean
+        get() = serverUrl.startsWith("https://") && isValidTopic(topic)
+
     init {
         require(serverUrl.startsWith("https://")) { "a family server must be https" }
         require(isValidTopic(topic)) { "not a usable topic name: '$topic'" }

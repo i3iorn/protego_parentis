@@ -232,9 +232,12 @@ class SyncCoordinator(context: Context, signer: Signer = KeystoreSigner()) {
     fun publishAppDecision(packageName: String, blocked: Boolean) =
         publisher.publishAppDecision(packageName, blocked)
 
-    /** Tries an address without moving to it. */
-    fun testReachable(token: FamilyToken, onFinished: (String) -> Unit) =
-        publisher.testReachable(token, onFinished)
+    /** Tries an address without moving to it, with [credentials] if given. */
+    fun testReachable(
+        token: FamilyToken,
+        credentials: NtfyCredentials? = null,
+        onFinished: (String) -> Unit,
+    ) = publisher.testReachable(token, credentials, onFinished)
 
     /** Fetches and applies anything the other phones have sent. */
     fun pollNow(minAgeMillis: Long = 0L, onFinished: (String) -> Unit = {}) =
