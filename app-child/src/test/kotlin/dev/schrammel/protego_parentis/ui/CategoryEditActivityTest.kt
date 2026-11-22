@@ -302,7 +302,19 @@ class CategoryEditActivityTest {
     }
 
     private fun clickButton(activity: CategoryEditActivity, text: String) {
-        requireNotNull(findButton(activity, text)) { "no button titled \"$text\" was rendered" }.performClick()
+        // The first render runs through a background executor (Background.load),
+        // so the button exists only once the load has landed on the main
+        // thread. Idle the looper and wait, bounded: a bare find would race the
+        // executor and fail whenever the thread was a beat slow — which is
+        // exactly what made this class the release build's flaky failure.
+        val deadline = System.currentTimeMillis() + 5_000
+        var button: Button? = findButton(activity, text)
+        while (button == null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20)
+            shadowOf(Looper.getMainLooper()).idle()
+            button = findButton(activity, text)
+        }
+        requireNotNull(button) { "no button titled \"$text\" was rendered" }.performClick()
     }
 
     private fun findButton(activity: CategoryEditActivity, text: String): Button? =
