@@ -17,7 +17,7 @@ class FamilyExportTest {
         relayPassword: String = "",
         deviceName: String = "Pixel 7",
     ) = FamilyExport(
-        token = FamilyToken(TransportKind.NTFY, "https://ntfy.schrammel.dev", "dementor-abc123"),
+        token = FamilyToken(TransportKind.NTFY, "https://ntfy.example.org", "dementor-abc123"),
         passphrase = FAMILY_PASSPHRASE,
         relayToken = relayToken,
         relayUsername = relayUsername,
