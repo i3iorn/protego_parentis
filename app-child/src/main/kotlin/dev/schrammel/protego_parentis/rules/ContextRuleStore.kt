@@ -101,72 +101,6 @@ class ContextRuleStore(context: Context) {
 
     // ---------- encoding ----------
 
-    private fun encodeRules(rules: List<ContextRule>): String =
-        JSONArray(
-            rules.map { rule ->
-                JSONObject().apply {
-                    put(KEY_ID, rule.id)
-                    put(KEY_NAME, rule.name)
-                    put(KEY_ENABLED, rule.enabled)
-                    put(KEY_CONDITION, ContextRuleCodec.encodeCondition(rule.condition))
-                    if (ContextRuleFormat.needsV2(rule)) {
-                        // No effect/target keys, so a build from before V2
-                        // drops this rule rather than enforcing part of it.
-                        put(KEY_FORMAT, FORMAT_V2)
-                        put(KEY_ACTIONS, ContextRuleCodec.encodeActions(rule.actions))
-                        rule.exceptWhen?.let { put(KEY_EXCEPT, ContextRuleCodec.encodeCondition(it)) }
-                    } else {
-                        put(KEY_EFFECT, ContextRuleCodec.encodeEffect(rule.effect))
-                        put(KEY_TARGET, ContextRuleCodec.encodeTarget(rule.target))
-                    }
-                    rule.pausedUntil?.let { put(KEY_PAUSED_UNTIL, it.toEpochMilli()) }
-                }
-            }
-        ).toString()
-
-    private fun decodeRules(raw: String?): List<ContextRule> {
-        val array = runCatching { JSONArray(raw ?: return emptyList()) }.getOrNull()
-            ?: return emptyList()
-
-        return (0 until array.length()).mapNotNull { index ->
-            val json = array.optJSONObject(index) ?: return@mapNotNull null
-            runCatching { decodeRule(json) }.getOrNull()
-        }
-    }
-
-    /**
-     * One rule, or null if any part of it can't be read. An unreadable
-     * condition used to fall back to Always, which turned a rule meant for
-     * school hours into one that never switched off.
-     */
-    private fun decodeRule(json: JSONObject): ContextRule? {
-        val condition = json.optJSONObject(KEY_CONDITION)?.let(ContextRuleCodec::decodeCondition) ?: return null
-        val v2 = json.optInt(KEY_FORMAT, 1) >= FORMAT_V2
-        val actions = if (v2) {
-            ContextRuleCodec.decodeActions(json.optJSONArray(KEY_ACTIONS)) ?: return null
-        } else {
-            val effect = json.optJSONObject(KEY_EFFECT)?.let(ContextRuleCodec::decodeEffect) ?: return null
-            val target = json.optJSONObject(KEY_TARGET)?.let(ContextRuleCodec::decodeTarget) ?: return null
-            listOf(RuleAction(effect, target))
-        }
-        val exceptWhen = if (v2 && json.has(KEY_EXCEPT)) {
-            json.optJSONObject(KEY_EXCEPT)?.let(ContextRuleCodec::decodeCondition) ?: return null
-        } else {
-            null
-        }
-        return ContextRule(
-            id = json.optString(KEY_ID),
-            name = json.optString(KEY_NAME),
-            enabled = json.optBoolean(KEY_ENABLED, true),
-            condition = condition,
-            actions = actions,
-            exceptWhen = exceptWhen,
-            pausedUntil = json.optLong(KEY_PAUSED_UNTIL, 0L).takeIf { it > 0L }?.let {
-                java.time.Instant.ofEpochMilli(it)
-            },
-        )
-    }
-
     private fun encodePlaces(places: List<Place>): String =
         JSONArray(
             places.map { place ->
@@ -217,7 +151,74 @@ class ContextRuleStore(context: Context) {
         }.toSet()
     }
 
-    private companion object {
+    companion object {
+
+    internal fun encodeRules(rules: List<ContextRule>): String =
+        JSONArray(
+            rules.map { rule ->
+                JSONObject().apply {
+                    put(KEY_ID, rule.id)
+                    put(KEY_NAME, rule.name)
+                    put(KEY_ENABLED, rule.enabled)
+                    put(KEY_CONDITION, ContextRuleCodec.encodeCondition(rule.condition))
+                    if (ContextRuleFormat.needsV2(rule)) {
+                        // No effect/target keys, so a build from before V2
+                        // drops this rule rather than enforcing part of it.
+                        put(KEY_FORMAT, FORMAT_V2)
+                        put(KEY_ACTIONS, ContextRuleCodec.encodeActions(rule.actions))
+                        rule.exceptWhen?.let { put(KEY_EXCEPT, ContextRuleCodec.encodeCondition(it)) }
+                    } else {
+                        put(KEY_EFFECT, ContextRuleCodec.encodeEffect(rule.effect))
+                        put(KEY_TARGET, ContextRuleCodec.encodeTarget(rule.target))
+                    }
+                    rule.pausedUntil?.let { put(KEY_PAUSED_UNTIL, it.toEpochMilli()) }
+                }
+            }
+        ).toString()
+
+    internal fun decodeRules(raw: String?): List<ContextRule> {
+        val array = runCatching { JSONArray(raw ?: return emptyList()) }.getOrNull()
+            ?: return emptyList()
+
+        return (0 until array.length()).mapNotNull { index ->
+            val json = array.optJSONObject(index) ?: return@mapNotNull null
+            runCatching { decodeRule(json) }.getOrNull()
+        }
+    }
+
+    /**
+     * One rule, or null if any part of it can't be read. An unreadable
+     * condition used to fall back to Always, which turned a rule meant for
+     * school hours into one that never switched off.
+     */
+    private fun decodeRule(json: JSONObject): ContextRule? {
+        val condition = json.optJSONObject(KEY_CONDITION)?.let(ContextRuleCodec::decodeCondition) ?: return null
+        val v2 = json.optInt(KEY_FORMAT, 1) >= FORMAT_V2
+        val actions = if (v2) {
+            ContextRuleCodec.decodeActions(json.optJSONArray(KEY_ACTIONS)) ?: return null
+        } else {
+            val effect = json.optJSONObject(KEY_EFFECT)?.let(ContextRuleCodec::decodeEffect) ?: return null
+            val target = json.optJSONObject(KEY_TARGET)?.let(ContextRuleCodec::decodeTarget) ?: return null
+            listOf(RuleAction(effect, target))
+        }
+        val exceptWhen = if (v2 && json.has(KEY_EXCEPT)) {
+            json.optJSONObject(KEY_EXCEPT)?.let(ContextRuleCodec::decodeCondition) ?: return null
+        } else {
+            null
+        }
+        return ContextRule(
+            id = json.optString(KEY_ID),
+            name = json.optString(KEY_NAME),
+            enabled = json.optBoolean(KEY_ENABLED, true),
+            condition = condition,
+            actions = actions,
+            exceptWhen = exceptWhen,
+            pausedUntil = json.optLong(KEY_PAUSED_UNTIL, 0L).takeIf { it > 0L }?.let {
+                java.time.Instant.ofEpochMilli(it)
+            },
+        )
+    }
+
         // Shared across instances (see DecodeCache): screens and the per-poll
         // replication classes each build their own store, so a cache held
         // per instance would almost never be warm.

@@ -53,7 +53,9 @@ class AutoApprovalStore(context: Context) {
         firedTotal += 1L
     }
 
-    private fun encode(rules: List<AutoApproval>): String = JSONArray(
+    companion object {
+
+    internal fun encode(rules: List<AutoApproval>): String = JSONArray(
         rules.map { rule ->
             JSONObject().apply {
                 put(KEY_ID, rule.id)
@@ -66,7 +68,7 @@ class AutoApprovalStore(context: Context) {
         },
     ).toString()
 
-    private fun decode(raw: String?): List<AutoApproval> {
+    internal fun decode(raw: String?): List<AutoApproval> {
         if (raw.isNullOrBlank()) return emptyList()
         val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
 
@@ -97,7 +99,6 @@ class AutoApprovalStore(context: Context) {
         }
     }
 
-    private companion object {
         const val FILE_NAME = "auto_approval"
         const val KEY_RULES = "rules"
         const val KEY_FIRED = "fired_total"

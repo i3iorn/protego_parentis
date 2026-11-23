@@ -1589,4 +1589,16 @@
     <string name="inbox_empty_detail">Requests the child sends land here until they expire.</string>
     <string name="inbox_answered_approved">Approved. The child’s phone applies the time as soon as it is online.</string>
     <string name="inbox_answered_denied">Denied. The reason was sent with the answer.</string>
+    <string name="rules_share_export">Export rules</string>
+    <string name="rules_share_export_detail">Save this child\'s complete ruleset as a file, to share with another family</string>
+    <string name="rules_share_import">Import rules</string>
+    <string name="rules_share_import_detail">Apply a ruleset another family shared. It replaces the matching rules and adds its categories, schedules, places and auto-approvals.</string>
+    <string name="rules_share_import_summary">%1$d context rules, %2$d categories, %3$d schedules, %4$d places, %5$d auto-approvals</string>
+    <string name="rules_share_import_note">This file can contain place names and locations. Glucose rules need the receiving family\'s own Nightscout login before they can fire.</string>
+    <string name="rules_share_pick_child">Which child\'s rules?</string>
+    <string name="rules_share_no_child">No managed child yet</string>
+    <string name="rules_share_nothing">No rules have arrived for this child yet</string>
+    <string name="rules_share_bad_file">That file is not a ruleset this app understands</string>
+    <string name="rules_share_done">Done</string>
+    <string name="rules_share_file_error">Could not write the file</string>
 </resources>

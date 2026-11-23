@@ -137,7 +137,22 @@ class ScheduleStore(context: Context) {
     fun active(): List<ScheduleBlock> =
         schedules.filter { it.enabled }.mapNotNull { it.toDomain() }
 
-    private fun encode(schedules: List<StoredSchedule>): String =
+    companion object {
+
+    private fun JSONArray?.toIntSet(): Set<Int> =
+        this?.let { array -> (0 until array.length()).map(array::optInt).toSet() }.orEmpty()
+
+    private fun JSONArray?.toStringSet(): Set<String> =
+        this?.let { array ->
+            (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
+        }.orEmpty().toSet()
+
+        // Shared across instances (see DecodeCache): screens and the per-poll
+        // replication classes each build their own store, so a cache held
+        // per instance would almost never be warm.
+        private val schedulesCache = DecodeCache<List<StoredSchedule>>()
+
+    internal fun encode(schedules: List<StoredSchedule>): String =
         JSONArray(
             schedules.map { schedule ->
                 JSONObject().apply {
@@ -155,7 +170,7 @@ class ScheduleStore(context: Context) {
             },
         ).toString()
 
-    private fun decode(raw: String?): List<StoredSchedule> {
+    internal fun decode(raw: String?): List<StoredSchedule> {
         if (raw.isNullOrBlank()) return emptyList()
         val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
         return (0 until array.length()).mapNotNull { index ->
@@ -188,19 +203,6 @@ class ScheduleStore(context: Context) {
         )
     }
 
-    private fun JSONArray?.toIntSet(): Set<Int> =
-        this?.let { array -> (0 until array.length()).map(array::optInt).toSet() }.orEmpty()
-
-    private fun JSONArray?.toStringSet(): Set<String> =
-        this?.let { array ->
-            (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
-        }.orEmpty().toSet()
-
-    companion object {
-        // Shared across instances (see DecodeCache): screens and the per-poll
-        // replication classes each build their own store, so a cache held
-        // per instance would almost never be warm.
-        private val schedulesCache = DecodeCache<List<StoredSchedule>>()
 
         /** The one schedule id [ScheduleStore] and its screens treat specially. */
         const val BEDTIME_ID = "bedtime"

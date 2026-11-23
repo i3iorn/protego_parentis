@@ -1556,4 +1556,16 @@
     <string name="lock_status_opens_at">Öppnas igen kl %1$s</string>
     <string name="lock_status_countdown">%1$s — kl %2$s</string>
     <string name="lock_status_remaining">Tid kvar på enheten: %1$s</string>
+    <string name="rules_share_export">Exportera regler</string>
+    <string name="rules_share_export_detail">Spara barnets kompletta regelsett som en fil att dela med en annan familj</string>
+    <string name="rules_share_import">Importera regler</string>
+    <string name="rules_share_import_detail">Använd ett regelsett som en annan familj har delat. Det ersätter motsvarande regler och l\u00e4gger till sina kategorier, scheman, platser och automatiska godk\u00e4nnanden.</string>
+    <string name="rules_share_import_summary">%1$d kontextregler, %2$d kategorier, %3$d scheman, %4$d platser, %5$d automatiska godk\u00e4nnanden</string>
+    <string name="rules_share_import_note">Filen kan inneh\u00e5lla platsnamn och platser. Glukosregler kr\u00e4ver att den mottagande familjen sj\u00e4lv kopplar sitt Nightscout-konto innan de kan l\u00f6sa ut.</string>
+    <string name="rules_share_pick_child">Vilket barns regler?</string>
+    <string name="rules_share_no_child">Inget hanterat barn \u00e4nnu</string>
+    <string name="rules_share_nothing">Inga regler har kommit fram f\u00f6r det h\u00e4r barnet \u00e4nnu</string>
+    <string name="rules_share_bad_file">Filen \u00e4r inte ett regelsett som appen f\u00f6rst\u00e5r</string>
+    <string name="rules_share_done">Klart</string>
+    <string name="rules_share_file_error">Kunde inte skriva filen</string>
 </resources>
