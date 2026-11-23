@@ -51,9 +51,16 @@ object ParentSession {
         unlock()
     }
 
-    /** Ends the pin. The ordinary five-minute window still applies afterwards. */
+    /**
+     * Ends the pin. The person closing the last pinned screen was, seconds
+     * ago, using an unlocked screen — so the ordinary window restarts from
+     * that moment rather than from whenever they entered the PIN, which could
+     * be long past. Without this, a long edit locks the phone the instant it
+     * is left, and the user re-types a PIN they just proved they know.
+     */
     fun unpin() {
         pinned = false
+        unlock()
     }
 
     /** Extends the session. Called as a parent moves between gated screens. */
