@@ -258,8 +258,8 @@ class HomeActivity : DementorActivity() {
             HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
             HomeDestination.WEEK -> startActivity(WeekActivity.intent(this))
             HomeDestination.WEB_ACTIVITY -> startActivity(WebActivityActivity.intent(this))
-            HomeDestination.RULES -> RulesEntry.launch(this)
-            HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
+            HomeDestination.RULES -> error("Rules do not appear on the managed phone's home screen")
+            HomeDestination.CONTEXT_RULES -> error("Context rules do not appear on the managed phone's home screen")
             HomeDestination.CATEGORIES,
             HomeDestination.APP_LIMITS,
             HomeDestination.APP_CONTROL,
@@ -271,8 +271,8 @@ class HomeActivity : DementorActivity() {
             HomeDestination.BONUS,
             HomeDestination.REQUEST_INBOX,
             HomeDestination.AUTO_APPROVE,
-            -> RulesEntry.launchControl(this, destination)
-            HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
+            -> error("$destination does not appear on the managed phone's home screen")
+            HomeDestination.FAMILY_DEVICES -> error("Family devices do not appear on the managed phone's home screen")
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
             HomeDestination.PRIVACY -> startActivity(PrivacyActivity.intent(this))
             HomeDestination.SETTINGS -> startActivity(SettingsActivity.intent(this))
