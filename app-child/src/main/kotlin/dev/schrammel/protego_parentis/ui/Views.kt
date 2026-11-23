@@ -5,6 +5,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -69,6 +70,7 @@ internal fun Activity.showColumn(column: LinearLayout) {
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
             isFillViewport = true
             addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
+            keepFieldsVisible()
         },
     )
 }
@@ -85,6 +87,7 @@ internal fun Activity.showRefreshableColumn(column: LinearLayout): SwipeRefreshL
         layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         isFillViewport = true
         addView(column, LinearLayout.LayoutParams(MATCH, WRAP))
+        keepFieldsVisible()
     }
     val refresh = SwipeRefreshLayout(this).apply {
         layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
@@ -92,6 +95,60 @@ internal fun Activity.showRefreshableColumn(column: LinearLayout): SwipeRefreshL
     }
     setContentView(refresh)
     return refresh
+}
+
+/**
+ * Scrolls a focused text field into the visible half of the screen, so the
+ * keyboard cannot cover what is being typed into.
+ *
+ * Two hooks, because the keyboard arrives in two different moments: when focus
+ * moves (a tap on a field, or next-field navigation), and on every layout pass
+ * while a field holds focus — which is what an `adjustResize` resize is. The
+ * second hook is what actually rescues the common case: the field was visible
+ * before the keyboard opened, and only the *resize* pushes it out of view.
+ *
+ * Fields are kept at the top quarter of the visible area rather than merely
+ * "fully visible", so the field's own suggestions, error text below it, or the
+ * next row are not sitting flush against the keyboard either.
+ */
+internal fun ScrollView.keepFieldsVisible() {
+    var active: EditText? = null
+
+    viewTreeObserver.addOnGlobalFocusChangeListener { _, new ->
+        if (new is EditText) {
+            active = new
+            post { scrollFieldIntoView(new) }
+        }
+    }
+    viewTreeObserver.addOnGlobalLayoutListener {
+        active?.let { scrollFieldIntoView(it) }
+    }
+}
+
+private fun ScrollView.scrollFieldIntoView(field: EditText) {
+    // The field's top edge measured within this scroll view's content: walk up
+    // the parent chain, summing offsets — nesting (cards, sections) is arbitrary.
+    var nested: View = field
+    var top = field.top
+    while (nested.parent !== this && nested.parent is View) {
+        nested = nested.parent as View
+        top += nested.top
+    }
+    if (nested.parent !== this) return
+
+    val margin = context.resources.getDimensionPixelSize(R.dimen.space_sm)
+    val visibleBottom = scrollY + height - margin
+    when {
+        // Below the visible area: bring its bottom (and a margin) up.
+        top + field.height > visibleBottom ->
+            scrollTo(scrollX, (top + field.height - height + margin).coerceAtLeast(0))
+        // Above the visible area: bring its top down.
+        top < scrollY -> scrollTo(scrollX, top)
+        // Visible but hugging the keyboard: lift it to the top quarter, so
+        // whatever the field offers below itself (errors, suggestions) shows too.
+        top + field.height + margin > scrollY + height - (height / 4) ->
+            scrollTo(scrollX, (top - height / 4).coerceAtLeast(0))
+    }
 }
 
 /** A grouped surface, for a summary that should read as one thing. */

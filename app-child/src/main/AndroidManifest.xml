@@ -90,7 +90,7 @@
         <activity
             android:name=".setup.GetProvisioningModeActivity"
             android:exported="true"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            android:permission="android.permission.BIND_DEVICE_ADMIN" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.app.action.GET_PROVISIONING_MODE" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -104,7 +104,7 @@
         <activity
             android:name=".setup.ComplianceActivity"
             android:exported="true"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            android:permission="android.permission.BIND_DEVICE_ADMIN" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -113,7 +113,7 @@
 
         <activity
             android:name=".ui.HomeActivity"
-            android:exported="true">
+            android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -124,24 +124,24 @@
           Asked once, on first launch, and reachable afterwards only behind the
           PIN. HomeActivity stays the launcher and routes here.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RoleSetupActivity"
             android:exported="false" />
 
         <!-- Parent mode. None of these exist on the child's phone. -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ParentHomeActivity"
             android:exported="false" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ParentDeviceActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RulesOverviewActivity"
             android:exported="false" />
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ParentInboxActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
@@ -151,12 +151,12 @@
           Rules is what makes the daily limit and bonus time reachable at all
           on a parent's phone, local or remote.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ParentBonusActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RulesetPickerActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
@@ -168,12 +168,12 @@
           this one has no dynamic stack to get right; the declared parent is
           only the fallback for a launch with no real back stack behind it.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RoleSwitchActivity"
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
@@ -186,22 +186,22 @@
           phone — never the parent's — so HomeActivity is always the right
           root here, and this one needed no dynamic stack in part 4.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.AuditActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.CategoriesActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.BlockedAppsActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.GoalActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
@@ -211,7 +211,7 @@
           phone's role" when Settings became one screen (#78 part 1). This entry
           was left pointing at the old parent until now.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.DeviceControlActivity"
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
@@ -232,72 +232,72 @@
             </intent-filter>
         </service>
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.SosActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.WebActivityActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.AutoApprovalActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.AutoApprovalEditActivity"
             android:exported="false"
             android:parentActivityName=".ui.AutoApprovalActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.WebFilterActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.AppControlActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ContextRulesActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ContextRuleEditActivity"
             android:exported="false"
             android:parentActivityName=".ui.ContextRulesActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.NightscoutActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.PlaceAlertsActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.PlacesActivity"
             android:exported="false"
             android:parentActivityName=".ui.ContextRulesActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.PrivacyActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.DiagnosticsActivity"
             android:exported="false"
             android:parentActivityName=".ui.PrivacyActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RulesTutorialActivity"
             android:exported="false"
             android:parentActivityName=".ui.ContextRulesActivity" />
@@ -309,7 +309,7 @@
           for that reason. This declaration is only the fallback for a launch
           with no real back stack behind it already (a deep link, a shortcut).
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.FamilyDevicesActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
@@ -319,22 +319,22 @@
           state, start nothing that outlives them, and exist only while somebody
           is looking at one of them.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.LanOfferActivity"
             android:exported="false"
             android:parentActivityName=".ui.JoinFamilyActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.LanFindActivity"
             android:exported="false"
             android:parentActivityName=".ui.JoinFamilyActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.PermissionsActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.ScanQrActivity"
             android:exported="false"
             android:parentActivityName=".ui.JoinFamilyActivity" />
@@ -351,24 +351,24 @@
             android:windowSoftInputMode="adjustResize" />
 
         <!-- Behind Settings now, not Rules — see DeviceControlActivity above. -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.FeatureSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
 
         <!-- Only reached when a parent's family has more than one managed phone. -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.FeatureSettingsPickerActivity"
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
 
         <!-- Behind Settings now, not More — More was deleted in #78 part 2. -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.NotificationSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.SettingsActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.SyncBackendActivity"
             android:exported="false"
             android:parentActivityName=".ui.JoinFamilyActivity" />
@@ -377,33 +377,33 @@
           Reached from Family devices' "Sync & relay" row, not Rules — that row
           moved when Settings absorbed Rules' old Family group (#78 parts 1-3).
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.JoinFamilyActivity"
             android:exported="false"
             android:parentActivityName=".ui.FamilyDevicesActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.CelebrationActivity"
             android:exported="false"
             android:launchMode="singleTop" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RequestsActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.RequestInboxActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.WeekActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
         <!-- Day detail screen opened from the weekly view -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.DayDetailActivity"
             android:exported="true" />
 
@@ -411,26 +411,26 @@
           excludeFromRecents so the PIN screen cannot be skipped by resuming the
           rules editor from the recents list.
         -->
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.PinActivity"
             android:excludeFromRecents="true"
             android:exported="false" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.AppPickerActivity"
             android:exported="false" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.AppLimitsActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.BonusTimeActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />
 
-        <activity
+        <activity android:windowSoftInputMode="adjustResize"
             android:name=".ui.CategoryEditActivity"
             android:exported="false"
             android:parentActivityName=".ui.HomeActivity" />

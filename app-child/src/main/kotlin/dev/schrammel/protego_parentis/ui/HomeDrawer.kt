@@ -93,6 +93,7 @@ internal fun Activity.showHomeDrawer(
 
     val scroll = ScrollView(this).apply {
         addView(list, LinearLayout.LayoutParams(MATCH, WRAP))
+        keepFieldsVisible()
     }
 
     val panel = LinearLayout(this).apply {
