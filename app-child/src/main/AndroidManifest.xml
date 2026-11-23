@@ -139,10 +139,7 @@
             android:parentActivityName=".ui.ParentHomeActivity" />
 
         <activity android:windowSoftInputMode="adjustResize"
-            android:name=".ui.RulesOverviewActivity"
-            android:exported="false" />
-        <activity android:windowSoftInputMode="adjustResize"
-            android:name=".ui.ParentInboxActivity"
+                    android:name=".ui.ParentInboxActivity"
             android:exported="false"
             android:parentActivityName=".ui.ParentHomeActivity" />
 

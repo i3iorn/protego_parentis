@@ -286,7 +286,7 @@ class ParentHomeActivity : ParentRoleActivity(), HomeDestinationHandler {
             HomeDestination.LOCATE -> locate()
             // "Rules" opens the map: every control, its state, and the worked
             // examples one tap away (P2.6).
-            HomeDestination.RULES -> startActivity(RulesOverviewActivity.intent(this))
+            HomeDestination.RULES -> startActivity(ContextRulesActivity.intent(this))
             HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
             HomeDestination.CATEGORIES,
             HomeDestination.APP_LIMITS,
