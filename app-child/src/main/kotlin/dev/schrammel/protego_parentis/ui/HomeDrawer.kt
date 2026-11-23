@@ -25,11 +25,11 @@ import dev.schrammel.protego_parentis.R
  * The panel is a plain view overlay on the activity's content frame rather than
  * a Dialog, so it is testable without shadow machinery and cannot float over
  * the screen a row opens — closing removes the view outright before
- * [onOpen] runs.
+ * [HomeDestinationHandler.open] runs.
  */
 internal fun Activity.showHomeDrawer(
     sections: List<HomeSection>,
-    onOpen: (HomeDestination) -> Unit,
+    handler: HomeDestinationHandler,
 ) {
     val frame = findViewById<FrameLayout>(android.R.id.content)
     val panelWidth = (resources.displayMetrics.widthPixels * PANEL_FRACTION).toInt()
@@ -68,7 +68,7 @@ internal fun Activity.showHomeDrawer(
                         showChevron = !entry.destination.isAction,
                         icon = iconFor(entry.destination),
                     ) {
-                        close { onOpen(entry.destination) }
+                        close { handler.open(entry.destination) }
                     }
                 },
             )

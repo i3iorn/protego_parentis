@@ -5,6 +5,10 @@ import dev.schrammel.protego_parentis.R
 import dev.schrammel.protego_parentis.rules.Feature
 import dev.schrammel.protego_parentis.security.DeviceRole
 
+interface HomeDestinationHandler {
+    fun open(destination: HomeDestination)
+}
+
 /**
  * Where each row on a phone's home screen leads.
  *
@@ -22,8 +26,13 @@ import dev.schrammel.protego_parentis.security.DeviceRole
  * action (locking the phone, asking where it is) in its own `open()` — the same
  * split [SettingsActivity] already uses for the same reason: this file has no
  * `Context`, and shouldn't need one to be read by a test.
+ *
+ * Navigation rows route through a [HomeDestinationHandler] rather than
+ * embedding `startActivity` in their click lambdas: the button does not need
+ * to know which screen it leads to, and changing where a destination goes
+ * later touches one place — the activity's `open()` — instead of every row.
  */
-internal enum class HomeDestination {
+enum class HomeDestination {
     // The managed phone's own things to do right now.
     REQUESTS,
     WEEK,

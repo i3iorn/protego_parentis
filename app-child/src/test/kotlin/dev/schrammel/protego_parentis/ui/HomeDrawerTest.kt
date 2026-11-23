@@ -40,19 +40,25 @@ class HomeDrawerTest {
         HomeDestination.RULES,
     )
 
-    private fun openDrawer(vararg rows: HomeRow, onOpen: (HomeDestination) -> Unit = {}) {
-        activity.showHomeDrawer(listOf(section(*rows)), onOpen)
+    private fun openDrawer(vararg rows: HomeRow) {
+        activity.showHomeDrawer(listOf(section(*rows)), object : HomeDestinationHandler {
+            var opened: HomeDestination? = null
+            override fun open(destination: HomeDestination) { opened = destination }
+        })
     }
 
     @Test
     fun `choosing a row removes the drawer and opens the destination`() {
-        var opened: HomeDestination? = null
-        openDrawer(weekRow, onOpen = { opened = it })
+        val opened = mutableListOf<HomeDestination?>()
+        val handler = object : HomeDestinationHandler {
+            override fun open(destination: HomeDestination) { opened.add(destination) }
+        }
+        activity.showHomeDrawer(listOf(section(weekRow)), handler)
 
         val title = requireNotNull(findText(decor(), activity.getString(R.string.home_open_week)))
         clickRow(title)
 
-        assertEquals("the row must open its destination", HomeDestination.WEEK, opened)
+        assertEquals("the row must open its destination", HomeDestination.WEEK, opened.lastOrNull())
         // The drawer must be gone before the screen opens — left standing, it
         // floats over the screen the reader just chose.
         assertNull("the drawer must be gone before the screen opens", findDrawer())

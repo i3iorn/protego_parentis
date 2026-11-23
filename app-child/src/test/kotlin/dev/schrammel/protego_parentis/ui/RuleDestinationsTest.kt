@@ -104,6 +104,18 @@ class RuleDestinationsTest {
     }
 
     @Test
+    fun `the rules list itself is a control the map can open`() {
+        RoleStore(context).choose(DeviceRole.PARENT)
+        enrolChild("CHILD1")
+
+        RulesEntry.launchControl(activity, HomeDestination.CONTEXT_RULES)
+
+        val started = shadowOf(activity).nextStartedActivity
+        assertEquals(ContextRulesActivity::class.java.name, started?.component?.className)
+        assertEquals("CHILD1", started?.getStringExtra("ruleTargetChildId"))
+    }
+
+    @Test
     fun `the web filter is this phone's own and never a child's`() {
         // The web filter governs browsing on the device it is set up on, so
         // there is nothing to set up on somebody else's phone.

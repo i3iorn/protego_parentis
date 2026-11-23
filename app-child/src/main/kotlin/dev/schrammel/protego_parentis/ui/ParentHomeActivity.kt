@@ -42,7 +42,7 @@ import java.time.Instant
  * front of "approve 15 minutes" is friction with nothing on the other side of it.
  * Switching the phone back to child mode *is* gated — see [RoleSwitchActivity].
  */
-class ParentHomeActivity : ParentRoleActivity() {
+class ParentHomeActivity : ParentRoleActivity(), HomeDestinationHandler {
 
     /**
      * The dashboard is a root: there is nothing behind it to go back to, so the
@@ -273,10 +273,12 @@ class ParentHomeActivity : ParentRoleActivity() {
             homeSections(DeviceRole.PARENT) { feature ->
                 featureVisible(feature, disabledByChild)
             },
-        ) { destination -> open(destination) }
+            this,
+        )
     }
 
-    private fun open(destination: HomeDestination) {
+
+    override fun open(destination: HomeDestination) {
         when (destination) {
             HomeDestination.INBOX -> startActivity(ParentInboxActivity.intent(this))
             HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))

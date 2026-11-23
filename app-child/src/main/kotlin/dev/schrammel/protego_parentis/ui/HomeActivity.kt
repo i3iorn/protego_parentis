@@ -47,7 +47,7 @@ import dev.schrammel.protego_parentis.sync.RealtimeSyncService
  * not, which meant two places to change for one dashboard and a static title that
  * never joined the accessibility heading tree the built titles use.
  */
-class HomeActivity : DementorActivity() {
+class HomeActivity : DementorActivity(), HomeDestinationHandler {
 
     private lateinit var coordinator: EnforcementCoordinator
     private lateinit var goals: GoalCoordinator
@@ -249,17 +249,19 @@ class HomeActivity : DementorActivity() {
                 DeviceRole.CHILD,
                 AppRegistry.childStores.featureFlags::isEnabled,
             ),
-        ) { destination -> open(destination) }
+            this,
+        )
     }
 
-    private fun open(destination: HomeDestination) {
+    override fun open(destination: HomeDestination) {
         when (destination) {
             HomeDestination.REQUESTS -> startActivity(RequestsActivity.intent(this))
             HomeDestination.CHAT -> startActivity(ChatActivity.intent(this))
             HomeDestination.WEEK -> startActivity(WeekActivity.intent(this))
             HomeDestination.WEB_ACTIVITY -> startActivity(WebActivityActivity.intent(this))
-            HomeDestination.RULES -> error("Rules do not appear on the managed phone's home screen")
-            HomeDestination.CONTEXT_RULES -> error("Context rules do not appear on the managed phone's home screen")
+            HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
+            // The rest are controls the child can open on this phone itself —
+            // launchControl resolves to this phone's own ruleset when none is named.
             HomeDestination.CATEGORIES,
             HomeDestination.APP_LIMITS,
             HomeDestination.APP_CONTROL,
@@ -271,11 +273,12 @@ class HomeActivity : DementorActivity() {
             HomeDestination.BONUS,
             HomeDestination.REQUEST_INBOX,
             HomeDestination.AUTO_APPROVE,
-            -> error("$destination does not appear on the managed phone's home screen")
-            HomeDestination.FAMILY_DEVICES -> error("Family devices do not appear on the managed phone's home screen")
+            -> RulesEntry.launchControl(this, destination)
+            HomeDestination.FAMILY_DEVICES -> startActivity(FamilyDevicesActivity.intent(this))
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
             HomeDestination.PRIVACY -> startActivity(PrivacyActivity.intent(this))
             HomeDestination.SETTINGS -> startActivity(SettingsActivity.intent(this))
+            HomeDestination.RULES,
             HomeDestination.INBOX,
             HomeDestination.LOCK_NOW,
             HomeDestination.LOCATE,
