@@ -121,14 +121,20 @@ def main() -> int:
 
     topic = args.topic or derive_topic(args.code, passphrase)
     auth = authorization(args.user, password)
+    url = f"https://{args.host}/{topic}/json?poll=1&since={args.since}"
     print(f"topic: {topic}", file=sys.stderr)
+    print(f"querying: {url}", file=sys.stderr)
 
     while True:
         try:
+            message_count = 0
             for message in fetch(args.host, topic, auth, args.since):
+                message_count += 1
                 show(message)
                 if message.get("id"):
                     args.since = message["id"]
+            if args.once and message_count == 0:
+                print("no messages received (topic may be empty or wrong)", file=sys.stderr)
         except urllib.error.HTTPError as error:
             try:
                 error_body = error.read().decode("utf-8", errors="replace")
