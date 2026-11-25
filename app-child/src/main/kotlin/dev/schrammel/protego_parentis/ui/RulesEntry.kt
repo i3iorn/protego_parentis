@@ -69,9 +69,9 @@ object RulesEntry {
         destination: HomeDestination,
         childId: DeviceId?,
     ): Intent = when (destination) {
-        // The rules list itself, named as a control because the parent's home
-        // menu draws it as one row among the others: it leads to the very
-        // list every other row here edits a slice of.
+        // The rules list itself: opens [ContextRulesActivity] for [childId]
+        // (or this phone when [childId] is null).
+        HomeDestination.RULES -> ContextRulesActivity.intent(context, childId)
         HomeDestination.CONTEXT_RULES -> ContextRulesActivity.intent(context, childId)
         HomeDestination.CATEGORIES ->
             RuleTargets.putExtra(Intent(context, CategoriesActivity::class.java), childId)
