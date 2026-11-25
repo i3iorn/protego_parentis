@@ -18,8 +18,21 @@ class DementorApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashRecovery.install(this) { AppRegistry.restartLauncher }
+        // The crash reporter is a supplier too: it resolves AppRegistry's
+        // publisher lazily, so a crash during installation still recovers —
+        // it just cannot publish itself yet, and the pending flush below
+        // becomes its second chance on the next start.
+        CrashRecovery.install(
+            this,
+            { AppRegistry.restartLauncher },
+            { AppRegistry.crashReportPublisher },
+        )
         AppRegistry.install(this)
+        // A crash that could not publish itself (offline, or the process died
+        // first) left a pending report; this start is the second chance. The
+        // check is synchronous and returns immediately when nothing is pending,
+        // so an ordinary start does no background work here at all.
+        AppRegistry.crashReportPublisher?.flushPending()
         // Process-lifetime, not screen-lifetime: reopens the realtime stream
         // on the next network flap even if no screen is ever opened.
         RealtimeConnectivityWatcher.install(this)

@@ -51,7 +51,11 @@ object CrashRecovery {
      * property; deferring it to a supplier means it is only read once a crash
      * actually reaches this handler, by which point installation has finished.
      */
-    fun install(app: Application, restartLauncher: () -> RestartLauncher) {
+    fun install(
+        app: Application,
+        restartLauncher: () -> RestartLauncher,
+        crashReporter: () -> CrashReporter? = { null },
+    ) {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
 
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -63,6 +67,11 @@ object CrashRecovery {
                 Log.e(TAG, "Uncaught exception on '${thread.name}'; recovering", throwable)
             }
             runCatching { Diagnostics.record(app, DiagnosticEvent.APP_CRASHED) }
+            // Recorded before anything is published, so a publish that could
+            // not run — offline, or the process dying first — is retried on
+            // the next start rather than lost with the process.
+            runCatching { CrashCapture.recordUncaught(app, thread.name, throwable) }
+            runCatching { crashReporter()?.report(thread.name, throwable) }
 
             if (runCatching { isLooping(app) }.getOrDefault(false)) {
                 previous?.uncaughtException(thread, throwable)

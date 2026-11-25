@@ -11,6 +11,7 @@ import dev.schrammel.protego_parentis.enforcement.EnforcementService
 import dev.schrammel.protego_parentis.enforcement.NotificationUx
 import dev.schrammel.protego_parentis.enforcement.RealtimeSync
 import dev.schrammel.protego_parentis.rules.ChildStores
+import dev.schrammel.protego_parentis.sync.CrashReportPublisher
 import dev.schrammel.protego_parentis.sync.RealtimeSyncAdapter
 import dev.schrammel.protego_parentis.sync.core.RuleMutationSink
 import dev.schrammel.protego_parentis.ui.RealNotificationUx
@@ -41,6 +42,12 @@ object AppRegistry {
         private set
 
     lateinit var restartLauncher: RestartLauncher
+
+    /**
+     * Null until [install] runs — the crash handler resolves it lazily, so a
+     * crash during installation still recovers; it just cannot publish yet.
+     */
+    var crashReportPublisher: CrashReportPublisher? = null
         private set
 
     /**
@@ -70,5 +77,6 @@ object AppRegistry {
         notificationUx = RealNotificationUx(appContext)
         realtimeSync = RealtimeSyncAdapter(appContext)
         restartLauncher = RealRestartLauncher()
+        crashReportPublisher = CrashReportPublisher(appContext)
     }
 }

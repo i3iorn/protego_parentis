@@ -260,6 +260,9 @@ class HomeActivity : DementorActivity(), HomeDestinationHandler {
             HomeDestination.WEEK -> startActivity(WeekActivity.intent(this))
             HomeDestination.WEB_ACTIVITY -> startActivity(WebActivityActivity.intent(this))
             HomeDestination.CONTEXT_RULES -> startActivity(ContextRulesActivity.intent(this))
+            // The rules list itself — read-only on the child's phone, same as the
+            // dashboard row at the top of this file.
+            HomeDestination.RULES -> RulesEntry.launch(this)
             // The rest are controls the child can open on this phone itself —
             // launchControl resolves to this phone's own ruleset when none is named.
             HomeDestination.CATEGORIES,
@@ -278,7 +281,6 @@ class HomeActivity : DementorActivity(), HomeDestinationHandler {
             HomeDestination.AUDIT -> startActivity(AuditActivity.intent(this))
             HomeDestination.PRIVACY -> startActivity(PrivacyActivity.intent(this))
             HomeDestination.SETTINGS -> startActivity(SettingsActivity.intent(this))
-            HomeDestination.RULES,
             HomeDestination.INBOX,
             HomeDestination.LOCK_NOW,
             HomeDestination.LOCATE,

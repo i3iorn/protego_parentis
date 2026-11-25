@@ -39,6 +39,9 @@ captures/
 .DS_Store
 Thumbs.db
 
+# Python bytecode from running tools/crash_cli.py
+tools/__pycache__/
+
 # Claude Code agent worktrees — transient checkouts for background subagents,
 # never repository content.
 .claude/worktrees/

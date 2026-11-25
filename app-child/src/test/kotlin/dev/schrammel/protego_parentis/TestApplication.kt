@@ -50,7 +50,11 @@ class TestApplication : Application() {
         RealtimeConnectivityWatcher.resetForTest()
         // Mirror DementorApplication.onCreate — kept in step with it deliberately:
         // a test process should boot exactly the way the phone does.
-        CrashRecovery.install(this) { AppRegistry.restartLauncher }
+        CrashRecovery.install(
+            this,
+            { AppRegistry.restartLauncher },
+            { AppRegistry.crashReportPublisher },
+        )
         AppRegistry.install(this)
         RealtimeConnectivityWatcher.install(this)
         UpdateCheckWorker.schedule(this)

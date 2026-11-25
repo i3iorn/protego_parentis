@@ -26,6 +26,9 @@ object CrashCapture {
 
     private const val FILE_NAME = "crash_capture"
     private const val KEY_LAST_EVALUATION_FAILURE = "lastEvaluationFailure"
+    private const val KEY_LAST_UNCAUGHT_THREAD = "lastUncaughtThread"
+    private const val KEY_LAST_UNCAUGHT_TRACE = "lastUncaughtTrace"
+    private const val KEY_LAST_UNCAUGHT_AT = "lastUncaughtAtMillis"
 
     /** Long enough for a real stack trace; short enough this never grows without bound. */
     private const val MAX_CHARS = 4000
@@ -40,8 +43,44 @@ object CrashCapture {
     fun lastEvaluationFailure(context: Context): String? =
         prefs(context).getString(KEY_LAST_EVALUATION_FAILURE, null)
 
+    /**
+     * Remembers an uncaught exception — the crash [CrashRecovery] recovers from.
+     *
+     * Kept here rather than published-and-forgotten so the report can be
+     * flushed on the next start when the network publish during the crash
+     * itself could not run (offline, or the crash handler never got that far).
+     */
+    fun recordUncaught(context: Context, thread: String, error: Throwable) {
+        prefs(context).edit {
+            putString(KEY_LAST_UNCAUGHT_THREAD, thread)
+            putString(KEY_LAST_UNCAUGHT_TRACE, error.stackTraceToString().take(MAX_CHARS))
+            putLong(KEY_LAST_UNCAUGHT_AT, System.currentTimeMillis())
+        }
+    }
+
+    /** The most recent uncaught exception, or null if none is on record. */
+    fun lastUncaught(context: Context): UncaughtCrash? {
+        val trace = prefs(context).getString(KEY_LAST_UNCAUGHT_TRACE, null) ?: return null
+        val thread = prefs(context).getString(KEY_LAST_UNCAUGHT_THREAD, null) ?: "?"
+        val at = prefs(context).getLong(KEY_LAST_UNCAUGHT_AT, 0L)
+        return UncaughtCrash(thread = thread, trace = trace, atMillis = at)
+    }
+
+    fun clearUncaught(context: Context) = prefs(context).edit {
+        remove(KEY_LAST_UNCAUGHT_THREAD)
+        remove(KEY_LAST_UNCAUGHT_TRACE)
+        remove(KEY_LAST_UNCAUGHT_AT)
+    }
+
     fun clear(context: Context) = prefs(context).edit { remove(KEY_LAST_EVALUATION_FAILURE) }
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 }
+
+/** One uncaught exception as recorded by [CrashCapture.recordUncaught]. */
+data class UncaughtCrash(
+    val thread: String,
+    val trace: String,
+    val atMillis: Long,
+)
