@@ -130,8 +130,21 @@ def main() -> int:
                 if message.get("id"):
                     args.since = message["id"]
         except urllib.error.HTTPError as error:
-            print(f"ntfy returned {error.code}", file=sys.stderr)
-            return 1
+            try:
+                error_body = error.read().decode("utf-8", errors="replace")
+            except Exception:
+                error_body = "(unreadable error body)"
+            print(f"ntfy returned {error.code} for topic {topic}", file=sys.stderr)
+            print(f"ntfy message: {error_body}", file=sys.stderr)
+            if error.code == 401:
+                print(
+                    "ntfy returned 401: the credentials or topic do not match. "
+                    "Check the ntfy user/token and that the topic is the one this "
+                    "family publishes crashes to.",
+                    file=sys.stderr,
+                )
+            if args.once:
+                return 1
         except urllib.error.URLError as error:
             print(f"cannot reach {args.host}: {error.reason}", file=sys.stderr)
             if args.once:
