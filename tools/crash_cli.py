@@ -81,7 +81,12 @@ def show(message: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--code", required=True, help="family code, e.g. DW1-abcdef")
+    parser.add_argument("--code", help="family code, e.g. DW1-abcdef")
+    parser.add_argument(
+        "--topic",
+        help="diagnostics topic as configured in the app (bypasses --code "
+        "+ --passphrase derivation)",
+    )
     parser.add_argument("--passphrase", help="family passphrase")
     parser.add_argument("--passphrase-file", help="file holding the family passphrase")
     parser.add_argument("--user", required=True, help="ntfy username")
@@ -114,7 +119,7 @@ def main() -> int:
         import getpass
         passphrase = getpass.getpass("family passphrase: ")
 
-    topic = derive_topic(args.code, passphrase)
+    topic = args.topic or derive_topic(args.code, passphrase)
     auth = authorization(args.user, password)
     print(f"topic: {topic}", file=sys.stderr)
 
