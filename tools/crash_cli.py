@@ -40,6 +40,30 @@ def derive_topic(code: str, passphrase: str) -> str:
     return f"dementor-{code.strip()}-diag-{encoded[:12]}"
 
 
+def derive_family_topic(family_topic: str, passphrase: str) -> str:
+    """Derive the diagnostics topic from the app's configured sync family topic.
+
+    Mirrors SyncConfigStore.suggestTopic() + HMAC-SHA256(code, passphrase):
+        <family-topic>-diag-<12 base32 of SHA256(passphrase, code)>
+
+    The 'dementor-' prefix is prepended because that is how the app names its
+    diagnostics topic (see Diagnostics.record / CrashReportPublisher).
+    """
+    family_topic = family_topic.strip()
+    if not family_topic.startswith("dementor-"):
+        raise ValueError(
+            f"--family-topic must start with 'dementor-', got {family_topic!r}",
+        )
+    code = family_topic[len("dementor-"):].strip()
+    digest = hmac.new(passphrase.encode("utf-8"), code.encode("utf-8"), hashlib.sha256).digest()
+    alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+    bits = ""
+    for byte in digest:
+        bits += format(byte, "08b")
+    encoded = "".join(alphabet[int(bits[i : i + 5], 2)] for i in range(0, 80, 5))
+    return f"dementor-{code}-diag-{encoded[:12]}"
+
+
 def authorization(user: str, password: str) -> str:
     if password.startswith("tk_"):
         return f"Bearer {password}"
@@ -84,8 +108,12 @@ def main() -> int:
     parser.add_argument("--code", help="family code, e.g. DW1-abcdef")
     parser.add_argument(
         "--topic",
-        help="diagnostics topic as configured in the app (bypasses --code "
-        "+ --passphrase derivation)",
+        help="exact diagnostics topic (used verbatim; must already carry the -diag- suffix)",
+    )
+    parser.add_argument(
+        "--family-topic",
+        help="the app's configured sync topic (e.g. dementor-59e5...); the crash "
+        "topic is derived from it + --passphrase exactly as the app does",
     )
     parser.add_argument("--passphrase", help="family passphrase")
     parser.add_argument("--passphrase-file", help="file holding the family passphrase")
@@ -119,7 +147,11 @@ def main() -> int:
         import getpass
         passphrase = getpass.getpass("family passphrase: ")
 
-    topic = args.topic or derive_topic(args.code, passphrase)
+    topic = (
+        args.topic
+        or (derive_family_topic(args.family_topic, passphrase) if args.family_topic else None)
+        or derive_topic(args.code, passphrase)
+    )
     auth = authorization(args.user, password)
     url = f"https://{args.host}/{topic}/json?poll=1&since={args.since}"
     print(f"topic: {topic}", file=sys.stderr)
@@ -134,7 +166,11 @@ def main() -> int:
                 if message.get("id"):
                     args.since = message["id"]
             if args.once and message_count == 0:
-                print("no messages received (topic may be empty or wrong)", file=sys.stderr)
+                print(f"no crash reports found for topic '{topic}' "
+                      f"({message_count} poll cycles, since={args.since}) — "
+                      f"check sync enablement and passphrase, or use "
+                      f"--code + --passphrase to derive the diagnostics topic",
+                      file=sys.stderr)
         except urllib.error.HTTPError as error:
             try:
                 error_body = error.read().decode("utf-8", errors="replace")
